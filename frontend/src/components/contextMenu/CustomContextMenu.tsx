@@ -12,6 +12,7 @@ interface CustomContextMenuProps extends Omit<
   mouseY?: number;
   anchorEl?: MenuProps['anchorEl'];
   listRef?: Ref<HTMLUListElement>;
+  listLabel?: string;
   onListKeyDown?: KeyboardEventHandler<HTMLUListElement>;
   /**
    * Wire the shared roving keyboard navigation (arrows, Home/End, typeahead,
@@ -30,6 +31,7 @@ export function CustomContextMenu({
   mouseY,
   anchorEl,
   listRef,
+  listLabel,
   onListKeyDown,
   keyboardNavigation = false,
   children,
@@ -54,9 +56,10 @@ export function CustomContextMenu({
           className: 'ofp-custom-context-menu',
           sx: { pointerEvents: 'auto' },
         },
-        ...(listRef || resolvedListKeyDown
+        ...(listRef || listLabel || resolvedListKeyDown
           ? {
               list: {
+                'aria-label': listLabel,
                 autoFocus: true,
                 ref: listRef,
                 onKeyDown: resolvedListKeyDown,

@@ -29,6 +29,16 @@
     "graphical": "Grafik"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Details anzeigen",
+      "backToGraphic": "Zurück zur Grafik",
+      "desktopHint": "Rechtsklick auf einen Standort, eine Parzelle oder ein Beet öffnet das Kontextmenü.",
+      "touchHint": "Standort, Parzelle oder Beet gedrückt halten, um das Kontextmenü zu öffnen.",
+      "noOpenTasks": "Keine offenen Aufgaben für dieses Beet.",
+      "moreTasks_one": "+{{count}} weitere Aufgabe",
+      "moreTasks_other": "+{{count}} weitere Aufgaben"
+    },
     "taskLayer": {
       "title": "Aufgaben im Beet",
       "show": "Aufgaben anzeigen",

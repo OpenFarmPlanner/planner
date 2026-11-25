@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link as RouterLink, useNavigate, useOutletContext, useParams } from 'react-router';
+import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams } from 'react-router';
 import {
   Alert,
   Box,
@@ -113,9 +113,10 @@ export default function GrowingAreaDetailPage() {
 }
 
 function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined; id: number | null }) {
-  const { t, i18n } = useTranslation(['hierarchy', 'locations', 'common']);
+  const { t, i18n } = useTranslation(['hierarchy', 'locations', 'common', 'fields']);
   const locale = resolveSeasonDateLocale(i18n);
   const navigate = useNavigate();
+  const fromGraphic = useLocation().state?.fromGrowingAreaGraphic === true;
   const seasonId = useOutletContext<RootLayoutOutletContext | null>()?.activeSeason?.id;
   const hierarchy = useHierarchyData(true);
   const { locations, fields, beds, setLocations, setFields, setBeds, loading, hasLoaded, error, fetchData } = hierarchy;
@@ -206,7 +207,8 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
     }
   }, [draft, resolved, setBeds, setFields, setLocations, t, type]);
 
-  const backPath = resolved && type && id !== null ? getGrowingAreaListPath(type, id) : GROWING_AREAS_PATH;
+  const backPath = !fromGraphic && resolved && type && id !== null ? getGrowingAreaListPath(type, id) : GROWING_AREAS_PATH;
+  const backLabel = t(fromGraphic ? 'fields:graphical.objects.backToGraphic' : 'hierarchy:details.backToList');
 
   if (!hasLoaded && loading) {
     return (
@@ -287,7 +289,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
             onClick={() => navigate(backPath)}
             disabled={isSaving}
           >
-            {t('hierarchy:details.backToList')}
+            {backLabel}
           </Button>
         </Box>
 

@@ -29,6 +29,17 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Ver detalhes",
+      "backToGraphic": "Voltar ao gráfico",
+      "desktopHint": "Clique com o botão direito num local, numa parcela ou num canteiro para abrir o menu de contexto.",
+      "touchHint": "Prima sem soltar num local, numa parcela ou num canteiro para abrir o menu de contexto.",
+      "noOpenTasks": "Não há tarefas em aberto neste canteiro.",
+      "moreTasks_one": "+{{count}} tarefa adicional",
+      "moreTasks_other": "+{{count}} tarefas adicionais",
+      "moreTasks_many": "+{{count}} tarefas adicionais"
+    },
     "taskLayer": {
       "title": "Tarefas dos canteiros",
       "show": "Mostrar tarefas",

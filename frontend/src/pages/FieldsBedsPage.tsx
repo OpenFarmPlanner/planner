@@ -16,7 +16,7 @@ import { DetailPageActions } from '../components/layout/DetailPageActions';
 import { locationAPI, parcelRotationAPI } from '../api/api';
 import type { LocationPathSpacing, ParcelRotationGroup } from '../api/types';
 import { ParcelRotationGroupsDialog } from '../components/hierarchy/rotation/ParcelRotationGroupsDialog';
-import { getEntityDetailPath } from '../components/hierarchy/details/hierarchyDetailRoutes';
+import { getEntityDetailPath, type HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import {
   ParcelRotationContext, type ParcelRotationMembership,
 } from '../components/hierarchy/rotation/parcelRotationContext';
@@ -159,7 +159,18 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     catch { /* Storage may be disabled. */ }
     return { locations, id };
   });
-  const [cameraState, setCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
+  const cameraKey = `graphicalCamera.${projectId}`;
+  const [cameraState, setCameraState] = useState<GraphicalCameraState>(() => {
+    try {
+      const stored = JSON.parse(sessionStorage.getItem(cameraKey) ?? 'null') as GraphicalCameraState | null;
+      if (stored?.viewports && stored.rotations) return stored;
+    } catch { /* Storage may be disabled. */ }
+    return { viewports: {}, rotations: {} };
+  });
+  const openGraphicalDetails = (type: HierarchyEntityType, id: number): void => {
+    try { sessionStorage.setItem(cameraKey, JSON.stringify(cameraState)); } catch { /* Storage may be disabled. */ }
+    void navigate(getEntityDetailPath(type, id), { state: { fromGrowingAreaGraphic: true } });
+  };
   const [isEditingGraphic, setIsEditingGraphic] = useState(false);
   const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
   const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
@@ -551,7 +562,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
 
       <Box>
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy
-          && (!shouldShowMissingFieldsState || showMeasuredEmptyLocation) && effectiveViewMode === 'graphical' ? (
+          && selectedLocation && effectiveViewMode === 'graphical' ? (
           <GraphicalFields
             selectedLocationId={selectedLocation?.id}
             cameraState={cameraState}
@@ -565,6 +576,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
+            onOpenDetails={openGraphicalDetails}
+            canCompleteTasks={Boolean(activeProjectMembership)}
             hierarchyData={hierarchyData}
           />
         ) : null}

@@ -29,6 +29,16 @@
     "graphical": "Graphic"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "View details",
+      "backToGraphic": "Back to graphic",
+      "desktopHint": "Right-click a location, parcel, or bed to open its context menu.",
+      "touchHint": "Press and hold a location, parcel, or bed to open its context menu.",
+      "noOpenTasks": "No open tasks for this bed.",
+      "moreTasks_one": "+{{count}} more task",
+      "moreTasks_other": "+{{count}} more tasks"
+    },
     "taskLayer": {
       "title": "Bed tasks",
       "show": "Show tasks",

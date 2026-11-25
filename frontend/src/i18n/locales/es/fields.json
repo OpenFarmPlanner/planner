@@ -29,6 +29,17 @@
     "graphical": "Gráfico"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Ver detalles",
+      "backToGraphic": "Volver al gráfico",
+      "desktopHint": "Haz clic con el botón derecho en una ubicación, parcela o bancal para abrir su menú contextual.",
+      "touchHint": "Mantén pulsada una ubicación, parcela o bancal para abrir su menú contextual.",
+      "noOpenTasks": "No hay tareas abiertas para este bancal.",
+      "moreTasks_one": "+{{count}} tarea más",
+      "moreTasks_other": "+{{count}} tareas más",
+      "moreTasks_many": "+{{count}} tareas más"
+    },
     "taskLayer": {
       "title": "Tareas del bancal",
       "show": "Mostrar tareas",

@@ -29,6 +29,17 @@
     "graphical": "Grafica"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Visualizza dettagli",
+      "backToGraphic": "Torna al grafico",
+      "desktopHint": "Fai clic con il tasto destro su un luogo, un appezzamento o un’aiuola per aprire il menu contestuale.",
+      "touchHint": "Tieni premuto su un luogo, un appezzamento o un’aiuola per aprire il menu contestuale.",
+      "noOpenTasks": "Nessuna attività aperta per questa aiuola.",
+      "moreTasks_one": "+{{count}} altra attività",
+      "moreTasks_other": "+{{count}} altre attività",
+      "moreTasks_many": "+{{count}} altre attività"
+    },
     "taskLayer": {
       "title": "Attività delle aiuole",
       "show": "Mostra attività",

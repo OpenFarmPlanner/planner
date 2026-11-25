@@ -2,7 +2,6 @@ import { FIELD_INNER_OFFSET_X, FIELD_INNER_OFFSET_Y, getFieldUsableArea } from '
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act, useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { MemoryRouter } from 'react-router';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { GraphicalCanvasTools } from '../pages/GraphicalCanvasTools';
 import GraphicalFields from "../pages/GraphicalFields";
@@ -33,7 +32,7 @@ const mockStageApi = {
     onMouseUp?: (event: { evt: MouseEvent; target: { getStage: () => object } }) => void;
     onTouchStart?: (event: { evt: TouchEvent; target: { getStage: () => object } }) => void;
     onTouchMove?: (event: { evt: TouchEvent; target: { getStage: () => object } }) => void;
-    onTouchEnd?: () => void;
+    onTouchEnd?: (event: { evt: TouchEvent }) => void;
   },
   setPointer(x: number, y: number) {
     this.pointer = { x, y };
@@ -252,8 +251,8 @@ vi.mock("react-konva", async () => {
             }
             onTouchMove?.({ evt: event.nativeEvent, target: stageTarget });
           }}
-          onTouchEnd={() => {
-            onTouchEnd?.();
+          onTouchEnd={event => {
+            onTouchEnd?.({ evt: event.nativeEvent });
           }}
         >
           {children}
@@ -355,15 +354,20 @@ describe("GraphicalFields", async () => {
     });
   });
 
-  it('links the selected bed’s plans to their standalone details', async () => {
-    listAreaPlansMock.mockResolvedValue({ results: [{
-      id: 42, crop: 15, crop_name: 'Testkohl', bed: 100, planting_date: null,
-    }] });
-    await renderGraphic(<MemoryRouter><GraphicalFields /></MemoryRouter>);
-    fireEvent.click(await screen.findByTestId('bed-rect-100'));
-
-    expect(await screen.findByRole('link', { name: 'Testkohl' })).toHaveAttribute('href', '/app/planting-plans/42');
-    expect(listAreaPlansMock).toHaveBeenCalledWith('bed', 100);
+  it('opens a non-modal bed preview from the keyboard and only navigates through Details', async () => {
+    const onOpenDetails = vi.fn();
+    await renderGraphic(<GraphicalFields onOpenDetails={onOpenDetails} />);
+    const bed = await screen.findByRole('button', { name: 'Beet · Beet 1' });
+    fireEvent.click(bed);
+    expect(screen.getByRole('region', { name: 'Beet 1' })).toHaveFocus();
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(onOpenDetails).not.toHaveBeenCalled();
+    expect(listAreaPlansMock).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Details anzeigen' }));
+    expect(onOpenDetails).toHaveBeenCalledWith('bed', 100);
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('region', { name: 'Beet 1' })).not.toBeInTheDocument();
+    expect(bed).toHaveFocus();
   });
 
   it("keeps field world geometry identical between desktop and mobile viewport sizes", async () => {
@@ -913,7 +917,7 @@ describe("GraphicalFields", async () => {
         evt: createTouchLikeEvent("touchmove", [{ clientX: 140, clientY: 155 }]),
         target: stageTarget,
       });
-      mockStageApi.handlers.onTouchEnd?.();
+      mockStageApi.handlers.onTouchEnd?.({ evt: createTouchLikeEvent("touchend", []) });
     });
 
     expect(Number(screen.getByTestId("konva-stage").getAttribute("data-x"))).toBeGreaterThanOrEqual(startX);
