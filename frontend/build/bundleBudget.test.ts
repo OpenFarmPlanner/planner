@@ -11,7 +11,12 @@ describe('production bundle budget', () => {
 
   beforeEach(() => {
     root = mkdtempSync(join(tmpdir(), 'ofp-bundle-budget-'));
-    writeFileSync(join(root, 'index.html'), '<script type="module" src="/index.js"></script>');
+    writeFileSync(join(root, 'index.html'), [
+      '<!doctype html>',
+      '<html><head></head><body>',
+      '<script type="module" src="/index.js"></script>',
+      '</body></html>',
+    ].join('\n'));
     writeFileSync(join(root, 'index.js'), 'console.log("OpenFarmPlanner");');
     mkdirSync(join(root, 'public/icons'), { recursive: true });
   });
