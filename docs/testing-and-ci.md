@@ -1097,6 +1097,14 @@ became ineligible since the last read, and stop and report instead of writing
 if anything does not check out cleanly. Verified removals are archived locally
 with their decisions and evidence before their cards leave the dashboard.
 Separate follow-up issues remain in the queue.
+
+A dashboard Accepted decision is the owner's acceptance for this workflow,
+recorded locally instead of on the GitHub issue; removing the row does not
+additionally require checking that row's `#1058` box. The box stays reserved
+for [personal acceptance outside the dashboard](work-execution-queue.md#personal-acceptance-and-queue-cleanup)
+(manually testing a merged change in the app without going through `ofp-qa`);
+an unchecked row is expected and normal here, not a sign the owner has not
+accepted it.
 Exit the interactive assistant when finished to continue with the QA release
 update and refresh. An unsuccessful sync exit or Ctrl+C stops the combined run.
 The refresh then reads the updated dashboard and queue to build a new candidate
