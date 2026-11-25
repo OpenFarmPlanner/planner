@@ -187,9 +187,11 @@ export function useIndividualPlants(
         individual_positions: positions.map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
       });
       replacePlan(data);
-    } catch {
+    } catch (error) {
       replacePlan(plan);
       setMoveErrorScope(scope);
+      // The plan changed elsewhere: reload it so the next drag uses its current version.
+      if (isAxiosError(error) && error.response?.status === 409) setAttempt(value => value + 1);
     } finally {
       setMovingPlans(value => {
         const next = new Set(value);
@@ -208,3 +210,17 @@ export function useIndividualPlants(
 }
 
 export type IndividualPlantsController = ReturnType<typeof useIndividualPlants>;
+
+/**
+ * Saved plans whose stems graphic edit mode may drag and save directly (#1579): not while a
+ * move of that plan is saving, and not for a plan with an open (possibly hidden) panel draft,
+ * whose edits stay in that draft.
+ */
+export function getDirectlyDraggableStemPlans(
+  controller: Pick<IndividualPlantsController, 'canEdit' | 'plans' | 'movingPlans' | 'editor'>,
+): ReadonlySet<number> {
+  if (!controller.canEdit) return new Set();
+  return new Set(controller.plans.flatMap(plan => (
+    plan.id && !controller.movingPlans.has(plan.id) && plan.id !== controller.editor.draft?.planId
+      ? [plan.id] : [])));
+}

@@ -35,7 +35,7 @@ import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
-import { useIndividualPlants } from "./useIndividualPlants";
+import { getDirectlyDraggableStemPlans, useIndividualPlants } from "./useIndividualPlants";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
@@ -971,10 +971,7 @@ export default function GraphicalFields({
             && fullscreenLocationId !== locationId;
           const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
           // In graphic edit mode a placed stem is its own drag target, above beds and parcels (#1579).
-          const draggableStemPlans = locationIsEditable && individualPlants.canEdit
-            ? new Set(individualPlants.plans.flatMap(plan => (
-              plan.id && !individualPlants.movingPlans.has(plan.id) ? [plan.id] : [])))
-            : undefined;
+          const draggableStemPlans = locationIsEditable ? getDirectlyDraggableStemPlans(individualPlants) : undefined;
           const viewport =
             viewportByLocation[locationId] ??
             fitBoundsToStage(
