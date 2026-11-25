@@ -243,6 +243,15 @@ describe('getOccupancyCalendarRange', () => {
     expect(getOccupancyCalendarRange([{ id: 1, bed: 100, planting_date: null }])).toBeNull();
   });
 
+  it('includes a continuing individual plant plan in the occupancy date range', () => {
+    const range = getOccupancyCalendarRange([{
+      id: 7, bed: null, parcel: 10, planting_date: '2026-04-01',
+      clearing_date: '2040-04-01', carried_over: true,
+    }], '2027-01-01', '2027-12-31');
+    expect(range?.start.toISOString()).toContain('2027-01-01');
+    expect(range?.end.toISOString()).toContain('2027-12-31');
+  });
+
   it('keeps a late recorded harvest out of the next season’s occupancy range', () => {
     const range = getOccupancyCalendarRange([{
       id: 1, bed: 100, carried_over: true,
@@ -874,6 +883,28 @@ describe('buildFieldOccupancyHierarchy', () => {
     { id: 101, name: 'Beet A2', field: 10 },
     { id: 200, name: 'Beet B', field: 20 },
   ];
+
+  it('places an individual perennial on its own plot row with recurring harvest bands', () => {
+    const labelSet = { ...labels, individualPlants: 'Einzelpflanzen' };
+    const nodes = buildFieldOccupancyHierarchy({
+      locations: multiLocationLocations, fields: multiLocationFields, beds: multiLocationBeds,
+      labels: labelSet, crops: [],
+      plantingPlans: [{
+        id: 7, crop: 5, crop_name: 'Apfel', bed: null, parcel: 10,
+        planting_date: '2026-04-01', clearing_date: '2040-04-01', carried_over: true,
+        seasonal_harvest: {
+          periods: [{ start_date: '2027-08-01', end_date: '2027-08-31' }],
+          actual_start_date: null, actual_end_date: null,
+        },
+      }],
+    });
+    expect(nodes.find(node => node.id === 'field-10')).toMatchObject({ planCount: 1, occupiedBedCount: 0 });
+    const individual = nodes.find(node => node.type === 'individual');
+    expect(individual).toMatchObject({
+      parentId: 'field-10', name: 'Einzelpflanzen', bedCount: 0, occupiedBedCount: 0,
+      tasks: [{ plantingPlanId: 7, readOnly: true, cropName: 'Apfel', phaseBands: [{ startDate: parseIsoDate('2027-08-01') }] }],
+    });
+  });
 
   it('always builds a location node and a field node, even for a single location', () => {
     const nodes = buildFieldOccupancyHierarchy({

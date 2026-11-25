@@ -48,7 +48,7 @@ test('compares measured yields and exposes a table and actual date deviations wi
   await expect(results.getByText('Ertragsprognose', { exact: true })).toBeVisible();
   await expect(results.getByText('88,5 kg', { exact: true })).toBeVisible();
   await expect(results.getByText('91,75 kg', { exact: true })).toBeVisible();
-  await expect(results.getByText('Nicht erfasst', { exact: true })).toHaveCount(2);
+  await expect(results.getByText('Nicht erfasst', { exact: true })).toHaveCount(3);
 
   const group = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
   const values = group.getByRole('button', { name: /^Ertrag für 2026/ });
@@ -58,7 +58,7 @@ test('compares measured yields and exposes a table and actual date deviations wi
   await values.press('Escape');
   await expect(tooltip).toHaveCount(0);
 
-  await results.locator('summary').first().press('Enter');
+  await results.locator('summary[aria-label="Termine und Beobachtungen · 2026"]').press('Enter');
   await expect(results.getByRole('heading', { name: 'Termine in der Anbausaison' })).toBeVisible();
   await expect(results.getByText('2 Tage später', { exact: true }).first()).toBeVisible();
   await expect(results.getByRole('heading', { name: 'Ertrag pro m² beernteter Fläche' })).toBeVisible();
@@ -98,8 +98,11 @@ test('combines searchable crop groups and preserves season and site filters when
   await expect(chart.getByRole('button', { name: /^Ertrag für / })).toHaveCount(3);
   const matrix = page.getByRole('table', { name: 'Ertrag pro m² nach Kultur' });
   const potatoRow = matrix.getByRole('row', { name: /^Kartoffel/ });
+  await expect(potatoRow.getByText('Nicht erfasst', { exact: true })).toHaveCount(2);
+  await page.getByRole('combobox', { name: 'Saisonen' }).click();
+  await page.getByRole('option', { name: 'Letzte 5 Saisonen', exact: true }).click();
   await expect(potatoRow.getByText('2024 → 2026')).toBeVisible();
-  await expect(potatoRow.getByText('Nicht erfasst', { exact: true })).toHaveCount(1);
+  await expect(potatoRow.getByText('Nicht erfasst', { exact: true })).toHaveCount(3);
   const trend = matrix.getByRole('button', { name: 'Entwicklung', exact: true });
   await trend.click();
   await expect(matrix.getByRole('columnheader', { name: 'Entwicklung' })).toHaveAttribute('aria-sort', 'descending');
@@ -108,7 +111,7 @@ test('combines searchable crop groups and preserves season and site filters when
   await potato.press('Enter');
   const drilldown = page.getByRole('dialog', { name: 'Kartoffel' });
   await expect(drilldown.getByText('88,5 kg', { exact: true })).toBeVisible();
-  await drilldown.locator('summary').first().press('Enter');
+  await drilldown.locator('summary[aria-label="Termine und Beobachtungen · 2026"]').press('Enter');
   await expect(drilldown.getByRole('heading', { name: 'Termine in der Anbausaison' })).toBeVisible();
   await expect(drilldown.getByRole('link').first()).toHaveAttribute('href', /^\/app\/planting-plans\/\d+$/);
   await page.keyboard.press('Escape');

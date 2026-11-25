@@ -214,7 +214,7 @@
     "searchPlaceholderSeedlings": "Suche nach Kultur…",
     "allLocations": "Alle Standorte",
     "allFields": "Alle Parzellen",
-    "onlyOccupiedBeds": "Nur belegte Beete",
+    "onlyOccupiedBeds": "Leere Beete ausblenden",
     "filterButton": "Filter",
     "filterButtonWithCount": "Filter ({{count}})",
     "locationLabel": "Standort",

@@ -217,7 +217,7 @@
     "searchPlaceholderSeedlings": "Cerca per coltura…",
     "allLocations": "Tutti i siti",
     "allFields": "Tutti gli appezzamenti",
-    "onlyOccupiedBeds": "Solo aiuole occupate",
+    "onlyOccupiedBeds": "Nascondi le aiuole vuote",
     "filterButton": "Filtra",
     "filterButtonWithCount": "Filtri ({{count}})",
     "locationLabel": "Sito",

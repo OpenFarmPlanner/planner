@@ -214,7 +214,7 @@
     "searchPlaceholderSeedlings": "Search by crop…",
     "allLocations": "All locations",
     "allFields": "All fields",
-    "onlyOccupiedBeds": "Only occupied beds",
+    "onlyOccupiedBeds": "Hide empty beds",
     "filterButton": "Filter",
     "filterButtonWithCount": "Filter ({{count}})",
     "locationLabel": "Location",

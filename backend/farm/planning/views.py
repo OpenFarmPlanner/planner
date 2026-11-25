@@ -1188,7 +1188,9 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     # resolve references, but changing them stays session-only in this
     # version (see farm/agent_api/permissions.py).
     api_token_actions = {'list', 'retrieve'}
-    queryset = Task.objects.select_related('planting_plan', 'planting_plan__crop', 'planting_plan__bed').all()
+    queryset = Task.objects.select_related(
+        'planting_plan__crop', 'planting_plan__bed', 'planting_plan__parcel',
+    )
     serializer_class = TaskSerializer
 
     def get_queryset(self) -> QuerySet[Task]:
@@ -1218,7 +1220,8 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
         if field_id is not None:
             queryset = queryset.filter(
                 Q(planting_plan__isnull=True, field_id=field_id)
-                | Q(planting_plan__bed__field_id=field_id),
+                | Q(planting_plan__bed__field_id=field_id)
+                | Q(planting_plan__parcel_id=field_id),
             )
         return queryset.filter(**filters.validated_data)
 

@@ -128,6 +128,10 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   expect(newStem.y - oldStem!.world.y).toBeCloseTo(moved.y - root!.world.y);
   expect(newBed.x - oldBed!.world.x).toBeCloseTo(moved.x - root!.world.x);
   expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(saved.individual_positions);
+
+  await page.goto('/app/gantt-chart');
+  await expect(page.getByText('Einzelpflanzen', { exact: true })).toBeVisible();
+  await expect(page.locator(`[data-task-id="plan-${saved.id}-occupancy"]`)).toBeVisible();
 });
 
 test.describe('individual plants on a phone', () => {

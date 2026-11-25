@@ -204,6 +204,25 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             {self.field.name, second.name},
         )
 
+    def test_carried_over_parcel_plan_accepts_tasks_and_matches_field_filter(self):
+        plan = self.create_plan().json()
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(self.later.id)
+        url = '/openfarmplanner/api/tasks/'
+        created = self.client.post(url, {
+            'title': 'Check stems', 'planting_plan': plan['id'], 'due_date': '2027-04-18',
+        }, format='json')
+        self.assertEqual(created.status_code, 201, created.data)
+        self.assertEqual(created.data['season'], self.later.id)
+        self.assertIn(self.field.name, created.data['planting_plan_name'])
+        filtered = self.client.get(url, {
+            'planting_plan': plan['id'], 'field': self.field.id,
+        }).json()['results']
+        self.assertIn(created.data['id'], {task['id'] for task in filtered})
+        explicitly_scoped = self.client.patch(f"{url}{created.data['id']}/", {
+            'field': self.field.id,
+        }, format='json')
+        self.assertEqual(explicitly_scoped.status_code, 200, explicitly_scoped.data)
+
     def test_rotation_keeps_the_plot_and_renewal_coordinates(self):
         opposite = Field.objects.create(
             project=self.project, location=self.location, name='Other plot',

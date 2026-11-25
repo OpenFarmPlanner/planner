@@ -94,7 +94,7 @@ describe('buildOccupancyStructureSummaries', () => {
   });
 
   it('derives the counts from the nodes it is given, not from the full-tree totals on them', () => {
-    // What "Nur belegte Beete" leaves behind: the empty Beet 3 is gone, so the
+    // What "Leere Beete ausblenden" leaves behind: the empty Beet 3 is gone, so the
     // Standort must report five beds, not the six the node still remembers.
     const pruned = fullTree().filter((node) => node.id !== 'bed-102');
 

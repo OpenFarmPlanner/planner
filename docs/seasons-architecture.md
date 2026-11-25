@@ -501,6 +501,8 @@ actual-date rules and plan history from
   A continuing individual planting retains its original plan and stem IDs.
   A copy of an ended planting creates new stem IDs at the same coordinates
   on the original parcel. Parcel rotation only remaps bed assignments.
+  The crop calendar lists individual plantings under their own parcel row
+  and shows their recurring harvest windows. Bed capacity uses bed plans.
 - `planting_date`, `harvest_date` and `harvest_end_date`
   (`PLANTING_PLAN_SHIFTED_DATE_FIELDS`) are shifted by a **whole number of
   years, chosen per plan** so the `planting_date` keeps its month and day but

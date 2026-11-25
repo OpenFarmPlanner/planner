@@ -65,12 +65,14 @@ export interface GanttTaskGroup {
 export interface GanttTaskLabels {
   harvestTaskName: (cropLabel: string) => string;
   unknownCropName: (cropId: number | null | undefined) => string;
+  individualPlants?: string;
 }
 
 export function createGanttTaskLabels(t: TFunction): GanttTaskLabels {
   return {
     harvestTaskName: (cropLabel) => t('ganttChart:taskNames.harvest', { crop: cropLabel }),
     unknownCropName: (cropId) => t('ganttChart:taskNames.unknownCrop', { id: cropId ?? '' }),
+    individualPlants: t('fields:individualPlants.title'),
   };
 }
 
@@ -91,19 +93,21 @@ export interface CalendarDateRange {
 
 type ScheduledPlantingPlan = PlantingPlan & {
   id: number;
-  bed: number;
   planting_date: string;
 };
 
-function isScheduledPlantingPlan(plan: PlantingPlan): plan is ScheduledPlantingPlan {
+function hasScheduledDates(plan: PlantingPlan): plan is ScheduledPlantingPlan {
   return (
     typeof plan.id === 'number'
-    && typeof plan.bed === 'number'
     && Boolean(plan.planting_date)
     && Boolean(plan.seasonal_harvest || plan.clearing_date || plan.harvest_date || (
       plan.carried_over && (plan.occupancy_end_date || plan.harvest_end_date)
     ))
   );
+}
+
+function isScheduledPlantingPlan(plan: PlantingPlan): plan is ScheduledPlantingPlan & { bed: number } {
+  return typeof plan.bed === 'number' && hasScheduledDates(plan);
 }
 
 interface OccupancyBedGroupCandidate {
@@ -253,7 +257,7 @@ export function getOccupancyCalendarRange(
   const startOfSeason = seasonStart ? parseDateString(seasonStart) : undefined;
   const endOfSeason = parseIsoDate(seasonEnd);
   plantingPlans.forEach((plan) => {
-    if (!isScheduledPlantingPlan(plan)) {
+    if (!hasScheduledDates(plan) || (plan.bed == null && plan.parcel == null)) {
       return;
     }
     const plantingDate = parseDateString(plan.planting_date);
@@ -723,7 +727,7 @@ export function buildFieldOccupancyTaskGroups({
   });
 }
 
-export type OccupancyHierarchyNodeType = 'location' | 'field' | 'bed';
+export type OccupancyHierarchyNodeType = 'location' | 'field' | 'bed' | 'individual';
 
 /**
  * A single row of the Standort -> Parzelle -> Beet tree, built as a flat
@@ -770,15 +774,21 @@ export function buildFieldOccupancyHierarchy({
   }
 
   const plansByBed = new Map<number, ScheduledPlantingPlan[]>();
-
-  plantingPlans.forEach((plan) => {
-    if (!isScheduledPlantingPlan(plan)) {
-      return;
+  const tasksByParcel = new Map<number, GanttTask[]>();
+  for (const plan of plantingPlans) {
+    if (isScheduledPlantingPlan(plan)) {
+      const bedPlans = plansByBed.get(plan.bed) ?? [];
+      bedPlans.push(plan);
+      plansByBed.set(plan.bed, bedPlans);
+    } else if (plan.parcel != null && hasScheduledDates(plan)) {
+      const task = buildPerennialOccupancyTask(plan, crops, labels);
+      if (task) {
+        const tasks = tasksByParcel.get(plan.parcel) ?? [];
+        tasks.push(task);
+        tasksByParcel.set(plan.parcel, tasks);
+      }
     }
-    const bedPlans = plansByBed.get(plan.bed) ?? [];
-    bedPlans.push(plan);
-    plansByBed.set(plan.bed, bedPlans);
-  });
+  }
 
   const bedsByField = beds.reduce<Record<number, Bed[]>>((accumulator, bed) => {
     const fieldId = bed.field;
@@ -906,6 +916,17 @@ export function buildFieldOccupancyHierarchy({
         planCount: 0,
       };
       nodes.push(fieldNode);
+
+      const individualTasks = tasksByParcel.get(fieldId);
+      if (individualTasks?.length) {
+        nodes.push({
+          id: `individual-${fieldId}`, parentId: fieldNodeId, type: 'individual',
+          name: labels.individualPlants ?? field.name, locationId, fieldId,
+          tasks: individualTasks, bedCount: 0, occupiedBedCount: 0, planCount: individualTasks.length,
+        });
+        fieldNode.planCount += individualTasks.length;
+        locationNode.planCount += individualTasks.length;
+      }
 
       const fieldBeds = bedsByField[fieldId] ?? [];
       fieldBeds.forEach((bed) => {

@@ -217,7 +217,7 @@
     "searchPlaceholderSeedlings": "Rechercher par culture…",
     "allLocations": "Tous les sites",
     "allFields": "Toutes les parcelles",
-    "onlyOccupiedBeds": "Planches occupées uniquement",
+    "onlyOccupiedBeds": "Masquer les planches vides",
     "filterButton": "Filtrer",
     "filterButtonWithCount": "Filtrer ({{count}})",
     "locationLabel": "Site",

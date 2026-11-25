@@ -24,7 +24,8 @@ A legacy plan without a season leaves its task unassigned too.
 field supports tasks such as fence repairs without a crop or planting plan. All relations must belong
 to the active project; the assignee must have a project membership. A linked
 plan and task must have the same season and, when a task crop is set, the same
-crop; an explicit field must match its bed’s field. Creating a linked task defaults its crop from the plan. Explicit nulls
+crop. An explicit field must match the plan’s bed parent or its directly
+assigned parcel. Creating a linked task defaults its crop from the plan. Explicit nulls
 clear optional relations on updates. A removed user clears the assignee FK.
 Tasks in soft-deleted seasons are hidden from list and detail reads, including
 standalone tasks; restoring the season makes retained tasks visible again.
@@ -104,7 +105,7 @@ overrides and generator identity untouched. Moves are optimistic; a failed
 request restores that task without reverting other tasks' concurrent changes.
 An in-flight task cannot be moved again until its request settles.
 
-Filters combine period, crop, field (resolved via plan → bed → field for linked tasks; direct field for standalone tasks) and
+Filters combine period, crop, field and
 assignee, including unassigned. Date periods use local calendar dates, inclusive
 custom bounds and Monday–Sunday for this week. Undated work remains visible
 under all dates. Metrics reflect the filtered subset and count only unfinished
@@ -151,7 +152,9 @@ crop, plan, field or assignee. The form captures title (required, up to 200
 characters), description, due date, status and optional relations. Selecting a
 plan fills its crop and field; those controls are fixed until the plan is
 cleared. Standalone field tasks use the new nullable `Task.field` relation.
-The API field filter includes both direct fields and inherited plan fields.
+The field filter uses the explicit field for standalone tasks. For a linked
+task it uses the plan’s bed parent or directly assigned parcel. A continuing
+individual planting can have tasks in the seasons where it is visible.
 Migration `0129_add_task_field` is schema-only and reversible; rolling it back
 removes field assignments while preserving tasks.
 

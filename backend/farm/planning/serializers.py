@@ -972,7 +972,7 @@ class TaskSerializer(serializers.ModelSerializer):
             return False
         if plan.season_id == season.pk:
             return True
-        if plan.bed_id is None or plan.planting_date is None or plan.occupancy_end_date is None:
+        if not plan.growing_area_assigned or plan.planting_date is None:
             return False
         if plan.planting_date < season.start_date <= plan.occupancy_end_date:
             return True
@@ -985,8 +985,8 @@ class TaskSerializer(serializers.ModelSerializer):
         plan = attrs.get('planting_plan', getattr(self.instance, 'planting_plan', None))
         field = attrs.get('field', getattr(self.instance, 'field', None))
         if plan is not None and field is not None:
-            plan_field_id = plan.bed.field_id if plan.bed_id else None
-            if field.pk != plan_field_id:
+            parcel = plan.growing_area_parcel
+            if parcel is None or field.pk != parcel.pk:
                 raise serializers.ValidationError({'field': 'Must match the planting plan field.'})
 
     def _validate_due_date_override(self, attrs: dict[str, Any]) -> None:

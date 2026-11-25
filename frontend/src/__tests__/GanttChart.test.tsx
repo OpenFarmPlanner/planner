@@ -1718,7 +1718,7 @@ describe('GanttChartPage', () => {
         renderWithAuth();
 
         await screen.findByText('Karottenbeet');
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
 
         await waitFor(() => {
           expect(screen.getByTestId('timeline-summary-Hof')).toHaveTextContent('1 Parzelle · 2 Beete · 1 belegt');
@@ -1735,7 +1735,7 @@ describe('GanttChartPage', () => {
         expect(screen.queryByTestId('timeline-summary-Karottenbeet')).not.toBeInTheDocument();
       });
 
-      it('counts the empty Beet only once "Nur belegte Beete" is switched off', async () => {
+      it('counts the empty Beet only once "Leere Beete ausblenden" is switched off', async () => {
         setUpMultiLocationFixture();
         renderWithAuth();
 
@@ -1744,7 +1744,7 @@ describe('GanttChartPage', () => {
         // Standort would claim two Beete above a single visible Beet row.
         expect(screen.getByTestId('timeline-summary-Hof')).toHaveTextContent('1 Parzelle · 1 Beet · 1 belegt');
 
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
 
         await waitFor(() => {
           expect(screen.getByTestId('timeline-summary-Hof')).toHaveTextContent('1 Parzelle · 2 Beete · 1 belegt');
@@ -1757,7 +1757,7 @@ describe('GanttChartPage', () => {
         renderWithAuth();
 
         await screen.findByText('Karottenbeet');
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
         await screen.findByText('Leerbeet');
         expect(screen.getByTestId('timeline-summary-Nordfeld')).toHaveTextContent('2 Beete · 1 belegt');
 
@@ -1776,7 +1776,7 @@ describe('GanttChartPage', () => {
         renderWithAuth();
 
         await screen.findByText('Karottenbeet');
-        fireEvent.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+        fireEvent.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
         await screen.findByText('Leerbeet');
 
         fireEvent.click(screen.getByRole('button', { name: 'Eine Hierarchieebene ausblenden' }));
@@ -1861,14 +1861,14 @@ describe('GanttChartPage', () => {
       });
     });
 
-    it('"Nur belegte Beete" hides beds without a planting plan by default and shows them when unchecked', async () => {
+    it('"Leere Beete ausblenden" hides beds without a planting plan by default and shows them when unchecked', async () => {
       setUpMultiLocationFixture();
       renderWithAuth();
 
       await screen.findByText('Karottenbeet');
       expect(screen.queryByText('Leerbeet')).not.toBeInTheDocument();
 
-      fireEvent.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
 
       await waitFor(() => {
         expect(screen.getByText('Leerbeet')).toBeInTheDocument();
@@ -1880,10 +1880,10 @@ describe('GanttChartPage', () => {
       renderWithAuth();
 
       await screen.findByText('Karottenbeet');
-      // "Nur belegte Beete" forces the ancestor chain of every occupied bed to stay
+      // "Leere Beete ausblenden" forces the ancestor chain of every occupied bed to stay
       // visible regardless of collapse state (same as an active search match) — turn
       // it off so the level toggle's own effect is observable in isolation.
-      fireEvent.click(screen.getByRole('checkbox', { name: 'Nur belegte Beete' }));
+      fireEvent.click(screen.getByRole('checkbox', { name: 'Leere Beete ausblenden' }));
       await screen.findByText('Leerbeet');
 
       const expandButton = () => screen.getByRole('button', { name: 'Eine Hierarchieebene mehr anzeigen' });
@@ -1960,7 +1960,7 @@ describe('GanttChartPage', () => {
         expect(screen.queryByPlaceholderText('Suche nach Kultur, Beet, Parzelle oder Standort…')).not.toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Suchen' })).toBeInTheDocument();
         expect(screen.getByRole('button', { name: 'Filter (1)' })).toBeInTheDocument();
-        expect(screen.queryByText('Nur belegte Beete')).not.toBeInTheDocument();
+        expect(screen.queryByText('Leere Beete ausblenden')).not.toBeInTheDocument();
 
         fireEvent.click(screen.getByRole('button', { name: 'Suchen' }));
         fireEvent.change(await screen.findByPlaceholderText('Suche nach Kultur, Beet, Parzelle oder Standort…'), {
@@ -1974,7 +1974,7 @@ describe('GanttChartPage', () => {
         });
 
         fireEvent.click(screen.getByRole('button', { name: 'Filter (1)' }));
-        expect(await screen.findByText('Nur belegte Beete')).toBeInTheDocument();
+        expect(await screen.findByText('Leere Beete ausblenden')).toBeInTheDocument();
         fireEvent.mouseDown(await screen.findByLabelText('Standort'));
         fireEvent.click(await screen.findByRole('option', { name: 'Pacht' }));
 

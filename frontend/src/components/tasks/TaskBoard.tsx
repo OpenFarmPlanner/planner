@@ -83,8 +83,8 @@ export default function TaskBoard({
     member.user_display_name || member.user_email])), [members]);
   const fieldForTask = (task: Task) => {
     if (task.planting_plan == null) return task.field ?? undefined;
-    const bedId = task.planting_plan === null ? null : planById.get(task.planting_plan)?.bed;
-    return bedId == null ? undefined : bedById.get(bedId)?.field;
+    const plan = planById.get(task.planting_plan);
+    return plan?.parcel ?? (plan?.bed == null ? undefined : bedById.get(plan.bed)?.field);
   };
   const invalidRange = filters.period === 'custom' && Boolean(filters.from && filters.to && filters.from > filters.to);
   const filtered = invalidRange ? [] : tasks.filter((task) => taskMatchesFilters(task, filters, fieldForTask(task), bounds));

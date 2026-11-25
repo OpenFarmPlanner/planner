@@ -113,6 +113,20 @@ describe('buildOccupancyTaskGroups', () => {
     expect(groups.map((group) => group.id)).toEqual(['location-1', 'field-1', 'bed-1']);
   });
 
+  it('keeps individual plants searchable while empty beds are hidden', () => {
+    const nodes: OccupancyHierarchyNode[] = [...buildNodes(), {
+      id: 'individual-10', parentId: 'field-1', type: 'individual', name: 'Einzelpflanzen',
+      locationId: 1, fieldId: 10, bedCount: 0, occupiedBedCount: 0, planCount: 1,
+      tasks: [task('orchard', 'Apfel')],
+    }];
+    const groups = buildOccupancyTaskGroups({
+      ...baseOptions, nodes, searchText: 'apfel', onlyOccupiedBeds: true, fieldFilter: 10,
+    });
+    expect(groups.map(group => group.id)).toEqual(['location-1', 'field-1', 'individual-10']);
+    expect(groups[2].rowHeightOverride).toBeUndefined();
+    expect(groups[2].bedId).toBeUndefined();
+  });
+
   it('returns no rows when the search matches nothing', () => {
     expect(buildOccupancyTaskGroups({ ...baseOptions, searchText: 'kohlrabi' })).toEqual([]);
   });
