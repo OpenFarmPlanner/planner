@@ -1,8 +1,10 @@
 """Validate individual plant coordinates for the planting-plan API."""
 
 from decimal import Decimal
+from math import isfinite
 from uuid import uuid4
 
+from django.shortcuts import get_object_or_404
 from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
@@ -43,6 +45,14 @@ class PlacementConflict(APIException):
     default_detail = {'code': 'individual_placement_changed'}
 
 
+class ParcelDimensionsConflict(APIException):
+    status_code = 409
+    default_detail = {
+        'code': 'parcel_contains_individual_positions',
+        'detail': 'The parcel dimensions must contain all existing stem positions.',
+    }
+
+
 def suggested_canopy_diameter(crop: Crop) -> Decimal | None:
     if crop.estimated_canopy_diameter_m is not None:
         return crop.estimated_canopy_diameter_m
@@ -50,26 +60,59 @@ def suggested_canopy_diameter(crop: Crop) -> Decimal | None:
     return parent.estimated_canopy_diameter_m if parent else None
 
 
+def _positions_fit(positions, width, length):
+    return not positions or (
+        width is not None and length is not None
+        and isfinite(width) and isfinite(length) and width > 0 and length > 0
+        and all(0 <= stem['x_m'] <= width and 0 <= stem['y_m'] <= length for stem in positions)
+    )
+
+
+def _check_position_bounds(parcel, positions):
+    if not _positions_fit(positions, parcel.width_m, parcel.length_m):
+        raise serializers.ValidationError({
+            'individual_positions': 'Stem positions must be within the measured parcel.',
+        })
+
+
+def lock_individual_parcel(parcel: Field) -> Field:
+    return get_object_or_404(
+        Field.objects.select_for_update(no_key=True), pk=parcel.pk, project_id=parcel.project_id,
+    )
+
+
+def check_placement_on_current_parcel(parcel: Field, positions: list[dict]) -> None:
+    """Recheck dimensions under the same lock as parcel dimension edits."""
+    _check_position_bounds(lock_individual_parcel(parcel), positions)
+
+
+def validate_individual_parcel_dimensions(parcel: Field, attrs: dict) -> None:
+    width = attrs.get('width_m', parcel.width_m)
+    length = attrs.get('length_m', parcel.length_m)
+    if (width, length) == (parcel.width_m, parcel.length_m):
+        return
+    placements = parcel.individual_planting_plans.filter(project_id=parcel.project_id)
+    for positions in placements.exclude(individual_positions=[]).values_list(
+        'individual_positions', flat=True,
+    ).iterator():
+        if not _positions_fit(positions, width, length):
+            raise ParcelDimensionsConflict()
+
+
 def _normalize_positions(positions, existing, parcel):
-    previous = {position['id']: position for position in existing}
+    previous_ids = {position['id'] for position in existing}
     seen = set()
     normalized = []
     for position in positions:
         position_id = str(position['id']) if 'id' in position else str(uuid4())
-        if position_id in seen or ('id' in position and position_id not in previous):
+        if position_id in seen or ('id' in position and position_id not in previous_ids):
             raise serializers.ValidationError({
                 'individual_positions': 'Invalid individual plant ID.',
             })
         seen.add(position_id)
         x_m, y_m = float(position['x_m']), float(position['y_m'])
-        record = {'id': position_id, 'x_m': x_m, 'y_m': y_m}
-        if record != previous.get(position_id) and not (
-            parcel.width_m and parcel.length_m and x_m <= parcel.width_m and y_m <= parcel.length_m
-        ):
-            raise serializers.ValidationError({
-                'individual_positions': 'Stem positions must be within the measured parcel.',
-            })
-        normalized.append(record)
+        normalized.append({'id': position_id, 'x_m': x_m, 'y_m': y_m})
+    _check_position_bounds(parcel, normalized)
     return normalized
 
 

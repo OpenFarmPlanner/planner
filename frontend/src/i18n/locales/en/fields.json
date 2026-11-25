@@ -159,6 +159,7 @@
     "details": "Open planting plan",
     "newPlan": "New individual plant plan",
     "dimensionsRequired": "Set the plot length and width to add new positions.",
+    "dimensionsConflict": "The plot dimensions must contain every saved stem position.",
     "loadFailed": "Could not load individual plants.",
     "cropsFailed": "Could not load crops.",
     "noPerennials": "Add a perennial crop first.",

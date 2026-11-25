@@ -161,6 +161,7 @@
     "details": "Abrir a série",
     "newPlan": "Nova série de plantas individuais",
     "dimensionsRequired": "Indique o comprimento e a largura da parcela para adicionar posições.",
+    "dimensionsConflict": "Todas as posições de tronco guardadas têm de ficar dentro da parcela.",
     "loadFailed": "Não foi possível carregar as plantas individuais.",
     "cropsFailed": "Não foi possível carregar as culturas.",
     "noPerennials": "Adicione primeiro uma cultura perene.",

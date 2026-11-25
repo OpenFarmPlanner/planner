@@ -159,6 +159,7 @@
     "details": "Teelt openen",
     "newPlan": "Nieuwe teelt met individuele planten",
     "dimensionsRequired": "Vul de lengte en breedte van het perceel in om posities toe te voegen.",
+    "dimensionsConflict": "Alle opgeslagen stamposities moeten binnen het perceel blijven.",
     "loadFailed": "Individuele planten konden niet worden geladen.",
     "cropsFailed": "Gewassen konden niet worden geladen.",
     "noPerennials": "Voeg eerst een meerjarig gewas toe.",

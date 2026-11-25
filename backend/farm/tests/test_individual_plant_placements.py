@@ -123,6 +123,34 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             created['individual_positions'],
         )
 
+    def test_parcel_dimension_changes_keep_all_saved_positions_inside(self):
+        created = self.create_plan().json()
+        parcel_url = f'/openfarmplanner/api/fields/{self.field.pk}/'
+        for dimensions in ({'width_m': 1.99}, {'length_m': 8.99}, {'width_m': None}):
+            with self.subTest(dimensions=dimensions):
+                result = self.client.patch(parcel_url, dimensions, format='json')
+                self.assertEqual(result.status_code, 409, result.data)
+                self.assertEqual(result.data['code'], 'parcel_contains_individual_positions')
+        self.field.refresh_from_db()
+        self.assertEqual((self.field.width_m, self.field.length_m), (12, 20))
+
+        exact_fit = self.client.patch(parcel_url, {'width_m': 2, 'length_m': 9}, format='json')
+        self.assertEqual(exact_fit.status_code, 200, exact_fit.data)
+        plan_url = f"{URL}{created['id']}/individual-placement/"
+        unchanged = self.client.patch(plan_url, {
+            'placement_updated_at': created['updated_at'],
+            'individual_positions': created['individual_positions'],
+        }, format='json')
+        self.assertEqual(unchanged.status_code, 200, unchanged.data)
+        self.assertEqual(unchanged.data['individual_positions'], created['individual_positions'])
+
+        removed = self.client.patch(plan_url, {
+            'placement_updated_at': unchanged.data['updated_at'], 'individual_positions': [],
+        }, format='json')
+        self.assertEqual(removed.status_code, 200, removed.data)
+        now_unmeasured = self.client.patch(parcel_url, {'width_m': None}, format='json')
+        self.assertEqual(now_unmeasured.status_code, 200, now_unmeasured.data)
+
     def test_plot_filter_keeps_bed_plans_and_canopy_does_not_reserve_the_bed(self):
         orchard = self.create_plan(estimated_canopy_diameter_m=10).json()
         vegetable = self.client.post(URL, {

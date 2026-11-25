@@ -161,6 +161,7 @@
     "details": "Apri la serie",
     "newPlan": "Nuova serie di piante singole",
     "dimensionsRequired": "Imposta lunghezza e larghezza dell’appezzamento per aggiungere posizioni.",
+    "dimensionsConflict": "Tutte le posizioni dei tronchi salvate devono rientrare nella parcella.",
     "loadFailed": "Impossibile caricare le piante singole.",
     "cropsFailed": "Impossibile caricare le colture.",
     "noPerennials": "Aggiungi prima una coltura perenne.",

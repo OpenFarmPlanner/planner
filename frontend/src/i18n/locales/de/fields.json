@@ -159,6 +159,7 @@
     "details": "Zum Anbauplan",
     "newPlan": "Neuer Einzelpflanzenplan",
     "dimensionsRequired": "Gib Länge und Breite der Parzelle ein, um neue Positionen zu setzen.",
+    "dimensionsConflict": "Alle gespeicherten Stammpositionen müssen innerhalb der Parzelle liegen.",
     "loadFailed": "Einzelpflanzen konnten nicht geladen werden.",
     "cropsFailed": "Kulturen konnten nicht geladen werden.",
     "noPerennials": "Lege zuerst eine mehrjährige Kultur an.",

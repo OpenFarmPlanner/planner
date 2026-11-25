@@ -43,7 +43,10 @@ from farm.models import (
     Season,
     Task,
 )
-from farm.planning.individual_planting import lock_and_check_individual_crop
+from farm.planning.individual_planting import (
+    check_placement_on_current_parcel,
+    lock_and_check_individual_crop,
+)
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.actual_harvest import (
     HARVEST_DATE_FIELDS,
@@ -611,8 +614,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
 
     @transaction.atomic
     def perform_create(self, serializer: PlantingPlanSerializer) -> None:
-        if serializer.validated_data.get('parcel') is not None:
-            lock_and_check_individual_crop(serializer.validated_data['crop'])
+        data = serializer.validated_data
+        if data.get('parcel') is not None:
+            lock_and_check_individual_crop(data['crop'])
+            check_placement_on_current_parcel(data['parcel'], data['individual_positions'])
         current_user = self.request.user if self.request.user.is_authenticated else None
         extra_fields = {}
         if 'season' not in serializer.validated_data:
@@ -658,10 +663,13 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
 
     @transaction.atomic
     def perform_update(self, serializer: PlantingPlanSerializer) -> None:
-        crop = serializer.validated_data.get('crop')
+        data = serializer.validated_data
+        crop = data.get('crop')
         plan = serializer.instance
         if plan.parcel_id and crop is not None and crop.pk != plan.crop_id:
             lock_and_check_individual_crop(crop)
+        if plan.parcel_id and 'individual_positions' in data:
+            check_placement_on_current_parcel(plan.parcel, data['individual_positions'])
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         actual_dates_only = serializer.is_actual_date_update(serializer.validated_data)

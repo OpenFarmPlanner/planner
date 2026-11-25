@@ -161,6 +161,7 @@
     "details": "Abrir la serie",
     "newPlan": "Nueva serie de plantas individuales",
     "dimensionsRequired": "Indica el largo y el ancho de la parcela para añadir posiciones.",
+    "dimensionsConflict": "Todas las posiciones de tronco guardadas deben quedar dentro de la parcela.",
     "loadFailed": "No se pudieron cargar las plantas individuales.",
     "cropsFailed": "No se pudieron cargar los cultivos.",
     "noPerennials": "Primero añade un cultivo perenne.",

@@ -907,6 +907,20 @@ class TaskApiTest(ProjectApiTestCase):
         self.client.defaults['HTTP_X_SEASON_ID'] = str(second.pk + 1000)
         self.assertEqual(self.client.post(self.url, {'title': 'Task'}).status_code, 400)
 
+    def test_dated_bed_draft_cannot_accept_a_task_in_a_later_season(self):
+        draft = PlantingPlan.objects.create(
+            project=self.project, bed=self.bed, season=self.season, planting_date=date(2026, 8, 1),
+        )
+        later = Season.objects.create(
+            project=self.project, start_date=date(2027, 1, 1), end_date=date(2027, 12, 31),
+        )
+        self.assertIsNone(draft.harvest_end_date)
+        denied = self.client.post(self.url, {
+            'title': 'Weed', 'planting_plan': draft.pk, 'season': later.pk,
+        })
+        self.assertEqual(denied.status_code, 400, denied.data)
+        self.assertIn('season', denied.data)
+
     def test_filters_and_season_scope(self) -> None:
         task = Task.objects.create(
             project=self.project, season=self.season, crop=self.crop, planting_plan=self.plan,

@@ -186,6 +186,15 @@ describe('extractApiErrorMessage', () => {
     },
   );
 
+  it('localizes a parcel dimension conflict in the growing areas view', async () => {
+    await loadLanguages(['fr']);
+    const t = i18n.getFixedT('fr', 'hierarchy');
+    const error = createAxiosError(409, { code: 'parcel_contains_individual_positions' });
+    expect(extractApiErrorMessage(error, t, fallbackMessage)).toBe(
+      'Toutes les positions de tronc enregistrées doivent rester dans la parcelle.',
+    );
+  });
+
   it('maps duplicate supplier-data backend codes to localized text', () => {
     const t = createT({
       'fields.supplier_id': 'Lieferant',

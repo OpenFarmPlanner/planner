@@ -976,7 +976,10 @@ class TaskSerializer(serializers.ModelSerializer):
             return True
         if not plan.growing_area_assigned or plan.planting_date is None:
             return False
-        if plan.planting_date < season.start_date <= plan.occupancy_end_date:
+        occupancy_end = plan.occupancy_end_date
+        if occupancy_end is None:
+            return False
+        if plan.planting_date < season.start_date <= occupancy_end:
             return True
         schedule = recurring_harvest_schedule(plan)
         return schedule is not None and recurring_plan_visible_in_season(plan, season, schedule)
