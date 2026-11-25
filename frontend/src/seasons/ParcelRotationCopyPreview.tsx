@@ -3,18 +3,19 @@ import { Alert, Box, Checkbox, FormControlLabel, Stack, Typography } from '@mui/
 import type { ParcelRotationSummary } from '../api/types';
 import { useTranslation } from '../i18n';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
+import { SeasonCopyRotationSummary } from './SeasonCopyRotationSummary';
 
 interface ParcelRotationCopyPreviewProps {
   report: ParcelRotationSummary | null | undefined;
   checked: boolean;
   disabled: boolean;
   excludedMoves?: readonly number[];
-  showCropWarnings?: boolean;
+  sourceSeasonLabel?: string;
   onChange: (checked: boolean) => void;
 }
 
 export function ParcelRotationCopyPreview({
-  report, checked, disabled, excludedMoves, showCropWarnings = true, onChange,
+  report, checked, disabled, excludedMoves, sourceSeasonLabel, onChange,
 }: ParcelRotationCopyPreviewProps) {
   const { t } = useTranslation(['hierarchy', 'navigation', 'plantingPlans']);
   const helpId = useId();
@@ -23,7 +24,7 @@ export function ParcelRotationCopyPreview({
   const locale = getActiveFormattingLocale();
   const number = (value: number | null) => value === null
     ? '–' : formatLocalizedNumber(value, locale, { maximumFractionDigits: 3 });
-  const cropRotation = showCropWarnings ? report.crop_rotation : undefined;
+  const cropRotation = report.crop_rotation;
   const moves = report.moves.filter(move => !excludedMoves?.includes(move.source_plan_id));
   const dateFormat = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeZone: 'UTC' });
 
@@ -97,15 +98,9 @@ export function ParcelRotationCopyPreview({
               ))}
             </Stack>
           ) : null}
-          {cropRotation && cropRotation.conflict_count > 0 ? (
-            <Alert severity="warning">{t('navigation:seasonSwitcher.copyDialog.rotation.warningConflicts', {
-              conflicts: cropRotation.conflict_count,
-            })}</Alert>
-          ) : null}
-          {cropRotation && cropRotation.hint_count > 0 ? (
-            <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.rotation.hintsOnly', {
-              hints: cropRotation.hint_count,
-            })}</Alert>
+          {sourceSeasonLabel && cropRotation && cropRotation.items.length > 0 ? (
+            <SeasonCopyRotationSummary
+              preview={{ ...cropRotation, source_season_label: sourceSeasonLabel }} />
           ) : null}
         </>
       ) : null}

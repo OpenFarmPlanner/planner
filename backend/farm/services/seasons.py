@@ -451,6 +451,7 @@ def copy_planting_plans(
         pairs = apply_confirmed_parcel_rotation(
             source_season, target_season, pairs, preceding=source_season == predecessor,
             continuing_count=continuing_count, fingerprint=parcel_rotation_fingerprint,
+            language_code=language_code,
         )
     if source_season == predecessor:
         for source, copy in pairs:
@@ -628,6 +629,7 @@ def distribute_planting_plans(
     followup_season: Season,
     use_actual_dates: bool = False,
     parcel_rotation_fingerprint: str | None = None,
+    language_code: str = 'de',
 ) -> dict:
     """Copy the selected source across the transition and follow-up periods."""
     per_target, skipped_count, continuing_count, unconfigured_count = (
@@ -648,7 +650,7 @@ def distribute_planting_plans(
         rotated = apply_confirmed_parcel_rotation(
             source_season, copy_period, [*per_target['first'], *per_target['second']],
             preceding=source_season == predecessor, continuing_count=continuing_count,
-            fingerprint=parcel_rotation_fingerprint,
+            fingerprint=parcel_rotation_fingerprint, language_code=language_code,
         )
         per_target = {'first': rotated[:first_count], 'second': rotated[first_count:]}
     if source_season == predecessor:

@@ -579,6 +579,7 @@ export function SeasonCreateSuggestionDialog({
                     </Typography>
                   </Box>
                   <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
+                    sourceSeasonLabel={copyFromLabel}
                     disabled={creatingSuggested || checkingCopyOptions} onChange={checked => {
                       setCreateError(null);
                       setRotateParcelsChoice(checked);

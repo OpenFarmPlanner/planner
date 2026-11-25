@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 
 from farm.history.project_restore import capture_project_state, record_project_checkpoint
-from farm.models import Bed, Field, Location, PlantingPlan, Project, Season
+from farm.models import Bed, Crop, Field, Location, PlantingPlan, Project, Season
 from farm.tests.api_base import ProjectApiTestCase
 
 GROUPS_URL = '/openfarmplanner/api/parcel-rotation-groups/'
@@ -212,14 +212,96 @@ class ParcelRotationApiTest(ProjectApiTestCase):
         PlantingPlan.objects.filter(pk=original.pk).update(
             cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
         )
-        preview = self.client.get(f'{SEASONS_URL}{target.pk}/copy-preview/', {
-            'source_season_id': source.pk, 'rotate_parcels': True,
-        })
+        preview = self.client.get(
+            f'{SEASONS_URL}{target.pk}/copy-preview/',
+            {
+                'source_season_id': source.pk,
+                'rotate_parcels': True,
+            },
+        )
         self.assertEqual(preview.status_code, 200, preview.data)
         move = preview.data['parcel_rotation']['moves'][0]
         self.assertEqual(move['quantity_override'], 25)
         self.assertIsNone(move['seed_requirement'])
         self.assertIsNone(move['seed_unit'])
+
+    def test_undated_draft_scales_without_reserving_bed_capacity(self):
+        self._create_group()
+        source, target = self._season(2026), self._season(2027)
+        draft = self._plan(source, self.rotation_beds[0][0], '5')
+        PlantingPlan.objects.filter(pk=draft.pk).update(planting_date=None)
+        winter = self._plan(source, self.rotation_beds[1][0], '8.1')
+        PlantingPlan.objects.filter(pk=winter.pk).update(
+            planting_date=date(2026, 10, 15),
+            harvest_date=date(2027, 5, 1),
+            harvest_end_date=date(2027, 6, 1),
+        )
+        record_project_checkpoint(self.project, capture_project_state(self.project))
+        path = f'{SEASONS_URL}{target.pk}/'
+        params = {'source_season_id': source.pk, 'rotate_parcels': True}
+        preview = self.client.get(f'{path}copy-preview/', params)
+        rotation = preview.data['parcel_rotation']
+        self.assertTrue(rotation['enabled'], rotation)
+        self.assertEqual(rotation['continuing_count'], 1)
+        self.assertEqual(rotation['moves'][0]['new_area_sqm'], Decimal('4.05'))
+        copied = self.client.post(
+            f'{path}copy-from/',
+            {
+                **params,
+                'parcel_rotation_fingerprint': rotation['fingerprint'],
+            },
+            format='json',
+        )
+        self.assertEqual(copied.status_code, 200, copied.data)
+        copy = target.planting_plans.get()
+        self.assertEqual(copy.bed_id, winter.bed_id)
+        self.assertEqual(copy.area_usage_sqm, Decimal('4.05'))
+        self.assertIsNone(copy.planting_date)
+
+    def test_changed_crop_family_finding_requires_a_fresh_confirmation(self):
+        self._create_group()
+        previous, source, target = [self._season(year) for year in (2025, 2026, 2027)]
+        self.crop.crop_family_id = 'Brassicaceae'
+        self.crop.rotation_break_years = 4
+        self.crop.save()
+        self._plan(source, self.rotation_beds[0][0], '5')
+        prior = self._plan(previous, self.rotation_beds[1][0], '3')
+        replacement = Crop.objects.create(
+            project=self.project,
+            name='Replacement cabbage',
+            crop_family_id='Brassicaceae',
+            rotation_break_years=4,
+        )
+        path = f'{SEASONS_URL}{target.pk}/'
+        params = {'source_season_id': source.pk, 'rotate_parcels': True}
+        old = self.client.get(f'{path}copy-preview/', params, HTTP_ACCEPT_LANGUAGE='fr').data
+        PlantingPlan.objects.filter(pk=prior.pk).update(crop=replacement)
+        record_project_checkpoint(self.project, capture_project_state(self.project))
+        new = self.client.get(f'{path}copy-preview/', params, HTTP_ACCEPT_LANGUAGE='fr').data
+        self.assertEqual((old['conflict_count'], new['conflict_count']), (1, 1))
+        self.assertNotEqual(old['items'][0]['findings'], new['items'][0]['findings'])
+        stale = self.client.post(
+            f'{path}copy-from/',
+            {
+                **params,
+                'parcel_rotation_fingerprint': old['parcel_rotation']['fingerprint'],
+            },
+            format='json',
+            HTTP_ACCEPT_LANGUAGE='fr',
+        )
+        self.assertEqual(stale.status_code, 409, stale.data)
+        self.assertFalse(target.planting_plans.exists())
+        confirmed = self.client.post(
+            f'{path}copy-from/',
+            {
+                **params,
+                'parcel_rotation_fingerprint': new['parcel_rotation']['fingerprint'],
+            },
+            format='json',
+            HTTP_ACCEPT_LANGUAGE='fr',
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.data)
+        self.assertEqual(target.planting_plans.count(), 1)
 
     def test_partial_coverage_and_date_basis_match_guided_copy(self):
         self._create_group()

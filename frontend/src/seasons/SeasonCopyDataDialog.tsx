@@ -224,7 +224,7 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
 
         {previewLoading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
         {source && <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
-          excludedMoves={excludedMoves} showCropWarnings={false}
+          excludedMoves={excludedMoves}
           disabled={submitting} onChange={checked => {
             setRotationMode(null);
             refreshPreview(source.id, options.useActualDates, checked);

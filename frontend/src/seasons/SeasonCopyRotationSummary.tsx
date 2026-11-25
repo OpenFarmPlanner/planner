@@ -20,10 +20,11 @@ const VISIBLE_ITEM_COUNT = 3;
 const MODE_ORDER: readonly SeasonCopyRotationMode[] = ['without_bed', 'keep', 'skip'];
 
 interface SeasonCopyRotationSummaryProps {
-  preview: SeasonCopyPreview;
-  mode: SeasonCopyRotationMode;
+  preview: Pick<SeasonCopyPreview, 'total' | 'conflict_count' | 'hint_count'
+    | 'conflict_free_count' | 'items' | 'source_season_label'>;
+  mode?: SeasonCopyRotationMode;
   parcelRotation?: boolean;
-  onModeChange: (mode: SeasonCopyRotationMode) => void;
+  onModeChange?: (mode: SeasonCopyRotationMode) => void;
 }
 
 function useItemReason() {
@@ -98,7 +99,7 @@ export function SeasonCopyRotationSummary({ preview, mode, parcelRotation, onMod
         </Link>
       ) : null}
 
-      {conflicts > 0 ? (
+      {conflicts > 0 && mode && onModeChange ? (
         <FormControl sx={{ mt: 2 }}>
           <FormLabel id="season-copy-rotation-mode-label">
             {t('seasonSwitcher.copyDialog.rotation.modeLabel', values)}

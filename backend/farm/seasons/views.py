@@ -597,13 +597,13 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             'unconfigured_perennial_count': distribution.get('unconfigured_perennial_count', 0),
         }, status=status.HTTP_201_CREATED)
 
-    @staticmethod
-    def _copy_transition_plans(source, transition, followup, validated_data):
+    def _copy_transition_plans(self, source, transition, followup, validated_data):
         try:
             return distribute_planting_plans(
                 source_season=source, transition_season=transition, followup_season=followup,
                 use_actual_dates=validated_data['use_actual_dates'],
                 parcel_rotation_fingerprint=_confirmed_rotation(validated_data),
+                language_code=resolve_request_language(self.request),
             )
         except ParcelRotationConflict as exc:
             raise ParcelRotationConfirmationRequired() from exc

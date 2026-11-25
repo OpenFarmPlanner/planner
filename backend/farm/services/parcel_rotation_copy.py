@@ -80,7 +80,7 @@ def _occupancy(
     events = plan_event_dates(plan, crops)
     return build_occupancy(
         rule=index.rule,
-        start=plan.planting_date or plan.season.start_date,
+        start=plan.planting_date,
         harvest_start=None if plan.clearing_date else events.get('harvest_start'),
         end=plan.clearing_date or events.get('harvest_end'),
         area_sqm=plan.area_usage_sqm,
@@ -128,19 +128,27 @@ def _allocate_area(
     return all(item.raw_units == 0 or item.units > 0 for item in allocations)
 
 
-def _move_area(plan: PlantingPlan, allocation: AreaAllocation, bed: Bed) -> None:
-    plan.area_usage_sqm = Decimal(allocation.units) / AREA_UNITS
+def _move_area(
+    plan: PlantingPlan,
+    bed: Bed,
+    units: int,
+    original_area: Decimal,
+    original_bed_area: Decimal,
+) -> None:
+    plan.area_usage_sqm = Decimal(units) / AREA_UNITS
     plan.parcel_rotation_basis = {
         'bed_id': bed.pk,
-        'area_sqm': str(allocation.original_area),
-        'bed_area_sqm': str(allocation.original_bed_area),
+        'area_sqm': str(original_area),
+        'bed_area_sqm': str(original_bed_area),
         'last_area_sqm': str(plan.area_usage_sqm),
         'last_bed_area_sqm': str(bed.area_sqm),
     }
 
 
 def _describe_move(
-    source: PlantingPlan, plan: PlantingPlan, crop_index: GeneralCropIndex,
+    source: PlantingPlan,
+    plan: PlantingPlan,
+    crop_index: GeneralCropIndex,
     requirement: tuple[Decimal | None, str | None],
 ) -> dict:
     events = plan_event_dates(plan, crop_index)
@@ -222,32 +230,44 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops):
             original_area, original_bed = _reference_area(source, source_bed)
             ideal = Fraction(original_area) * Fraction(target_bed.area_sqm)
             units = ideal * AREA_UNITS / Fraction(original_bed)
-            occupancy = _occupancy(rotated_plan, index, crops)
-            allocations[target_bed.pk].append(
-                AreaAllocation(
-                    source,
-                    rotated_plan,
-                    original_area,
-                    original_bed,
-                    units,
-                    occupancy.start,
-                    occupancy.firm_end,
-                    int(units),
+            if rotated_plan.planting_date is None:
+                # Undated drafts do not reserve time on a bed.
+                if units > target_bed.area_sqm * AREA_UNITS:
+                    issues.append(_bed_capacity_issue(target_bed))
+                else:
+                    rounded = max(int(units > 0), round(units))
+                    _move_area(rotated_plan, target_bed, rounded, original_area, original_bed)
+            else:
+                occupancy = _occupancy(rotated_plan, index, crops)
+                allocations[target_bed.pk].append(
+                    AreaAllocation(
+                        source,
+                        rotated_plan,
+                        original_area,
+                        original_bed,
+                        units,
+                        occupancy.start,
+                        occupancy.firm_end,
+                        int(units),
+                    )
                 )
-            )
         rotated.append((source, rotated_plan))
     _apply_allocations(allocations, index, issues)
     return rotated
+
+
+def _bed_capacity_issue(bed: Bed) -> dict:
+    return {'code': 'bed_capacity', 'bed': bed.name, 'parcel': bed.field.name}
 
 
 def _apply_allocations(allocations, index, issues):
     for bed_id, rows in allocations.items():
         bed = rows[0].plan.bed
         if not _allocate_area(rows, index.occupancies_for_bed(bed_id), bed.area_sqm):
-            issues.append({'code': 'bed_capacity', 'bed': bed.name, 'parcel': bed.field.name})
+            issues.append(_bed_capacity_issue(bed))
             continue
         for row in rows:
-            _move_area(row.plan, row, bed)
+            _move_area(row.plan, bed, row.units, row.original_area, row.original_bed_area)
 
 
 def preview_parcel_rotation(
@@ -286,8 +306,7 @@ def preview_parcel_rotation(
     moved = [(a, b) for a, b in rotated if a.bed_id != b.bed_id]
     demand = preview_plan_seed_demand(source.project, [plan for _, plan in moved], crop_index)
     moves = [
-        _describe_move(a, b, crop_index, seeds)
-        for (a, b), seeds in zip(moved, demand, strict=True)
+        _describe_move(a, b, crop_index, seeds) for (a, b), seeds in zip(moved, demand, strict=True)
     ]
     service = RotationService(
         source.project_id,
@@ -303,11 +322,10 @@ def preview_parcel_rotation(
         'mappings': mappings,
         'moves': moves,
         'continuing': continuing_count,
-        'copies': [(a.pk, b.bed_id, b.area_usage_sqm, plan_event_dates(b, crop_index))
-                   for a, b in rotated],
-        'crop_rotation': sorted(
-            (item['source_plan_id'], item['status']) for item in crop_rotation['items']
-        ),
+        'copies': [
+            (a.pk, b.bed_id, b.area_usage_sqm, plan_event_dates(b, crop_index)) for a, b in rotated
+        ],
+        'crop_rotation': crop_rotation,
     }
     summary['fingerprint'] = sha256(
         json.dumps(fingerprint, sort_keys=True, default=str).encode()
@@ -323,6 +341,7 @@ def apply_confirmed_parcel_rotation(
     preceding: bool,
     continuing_count: int,
     fingerprint: str,
+    language_code: str,
 ) -> list[PlanPair]:
     preview = preview_parcel_rotation(
         source,
@@ -331,6 +350,7 @@ def apply_confirmed_parcel_rotation(
         preceding=preceding,
         requested=True,
         continuing_count=continuing_count,
+        language_code=language_code,
     )
     if not preview.summary['enabled'] or preview.summary['fingerprint'] != fingerprint:
         raise ParcelRotationConflict(preview.summary)
