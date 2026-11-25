@@ -44,9 +44,11 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
       setGroups(data);
       setLoadError(false);
       setHasLoaded(true);
+      setLoading(false);
     } catch {
       if (request !== latestRequest.current) return false;
       setLoadError(true);
+      setLoading(false);
     }
     return true;
   }, [enabled]);
@@ -55,7 +57,7 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
   const open = useCallback((fieldId?: number) => {
     setLoading(true);
     setDialogState({ fieldId });
-    void refresh().then((latest) => { if (latest) setLoading(false); });
+    void refresh();
   }, [refresh]);
 
   const memberships = useMemo(() => new Map<number, ParcelRotationMembership>(groups.flatMap(group => (
