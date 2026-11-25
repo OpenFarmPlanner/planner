@@ -108,7 +108,7 @@
     "viewModeDescription": "Navigeer, zoom en bekijk details. Teeltoppervlakken kunnen alleen in de bewerkmodus worden verplaatst of bewerkt.",
     "editModeDescription": "Verplaats percelen en bedden en pas indelingen aan.",
     "editModeBanner": "Bewerkmodus actief: percelen en bedden kunnen nu worden verplaatst.",
-    "locationEditModeBanner": "Grafisch bewerken actief: percelen en bedden op deze locatie kunnen worden verplaatst.",
+    "locationEditModeHelp": "In de bewerkingsmodus kun je percelen en bedden verplaatsen.",
     "editModeShortcut": "Sneltoets: Alt+E",
     "locationEditModeAction": "Grafische weergave bewerken",
     "locationEditModeActive": "Grafisch bewerken actief",

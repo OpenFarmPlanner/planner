@@ -1,10 +1,11 @@
 import { useId, useState, type FormEvent, type MouseEvent } from 'react';
-import { Alert, Box, Button, Checkbox, Divider, FormControlLabel, Popover, Stack, TextField, Typography } from '@mui/material';
+import { Alert, Box, Button, Checkbox, Divider, FormControlLabel, Popover, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import type { Location, LocationPathSpacing } from '../api/types';
 import { defaultLocationPathSpacing, getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { useTranslation } from '../i18n';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale, parseLocalizedNumber } from '../utils/numberLocalization';
+import { GraphicalWorkspaceAction } from './GraphicalWorkspaceAction';
 
 interface SpacingDraft {
   bed: string;
@@ -32,6 +33,8 @@ export function GraphicalSpacingControl({
   const { t } = useTranslation('fields');
   const locale = getActiveFormattingLocale();
   const id = useId();
+  const touchOnly = useMediaQuery('(any-pointer: coarse) and (any-hover: none)');
+  const [openedByKeyboard, setOpenedByKeyboard] = useState(false);
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [draft, setDraft] = useState<SpacingDraft>(() => toDraft(getLocationPathSpacing(location), locale));
   const [saving, setSaving] = useState(false);
@@ -42,6 +45,7 @@ export function GraphicalSpacingControl({
   const open = (event: MouseEvent<HTMLButtonElement>): void => {
     setDraft(toDraft(getLocationPathSpacing(location), locale));
     setSaveFailed(false);
+    setOpenedByKeyboard(event.detail === 0);
     setAnchor(event.currentTarget);
   };
 
@@ -66,17 +70,15 @@ export function GraphicalSpacingControl({
 
   return (
     <>
-      <Button
+      <GraphicalWorkspaceAction
         variant="outlined"
-        startIcon={<StraightenIcon />}
+        label={t('graphical.spacing.button')}
+        icon={<StraightenIcon fontSize="small" />}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
         aria-controls={anchor ? id : undefined}
         onClick={open}
-        sx={{ flexShrink: 0, minHeight: { xs: 44, sm: 40 }, maxWidth: '100%', whiteSpace: 'normal' }}
-      >
-        {t('graphical.spacing.button')}
-      </Button>
+      />
       <Popover
         open={Boolean(anchor)}
         anchorEl={anchor}
@@ -122,7 +124,9 @@ export function GraphicalSpacingControl({
                 onChange={(_, checked) => setDraft(current => ({ ...current, snap: checked }))} />}
               label={t('graphical.spacing.snap')}
             />
-            <Typography variant="body2" color="text.secondary">{t('graphical.spacing.bypass')}</Typography>
+            {!touchOnly || openedByKeyboard ? (
+              <Typography variant="body2" color="text.secondary">{t('graphical.spacing.bypass')}</Typography>
+            ) : null}
             {saveFailed ? <Alert severity="error">{t('graphical.spacing.saveError')}</Alert> : null}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'flex-end' }}>
               <Button disabled={saving} onClick={() => setDraft(toDraft(defaultLocationPathSpacing, locale))}>

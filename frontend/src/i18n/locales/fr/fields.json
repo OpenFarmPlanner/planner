@@ -110,7 +110,7 @@
     "viewModeDescription": "Naviguer, zoomer et consulter les détails. Les parcelles et les planches ne peuvent être déplacées ou modifiées qu'en mode édition.",
     "editModeDescription": "Déplacer les parcelles et les planches et ajuster la disposition.",
     "editModeBanner": "Mode édition actif – les parcelles et les planches peuvent maintenant être déplacées.",
-    "locationEditModeBanner": "Édition graphique active : les parcelles et les planches de ce site peuvent être déplacées.",
+    "locationEditModeHelp": "En mode édition, déplacez les parcelles et les planches.",
     "editModeShortcut": "Raccourci : Alt+E",
     "locationEditModeAction": "Modifier le graphique",
     "locationEditModeActive": "Édition graphique active",

@@ -573,7 +573,7 @@ describe("GraphicalFields", async () => {
     });
 
     expect(screen.getByRole("button", { name: "Bearbeiten" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("alert")).toHaveTextContent(LOCATION_EDIT_MODE_BANNER);
+    expect(screen.queryByText(LOCATION_EDIT_MODE_BANNER)).not.toBeInTheDocument();
   }, 15000);
 
   it("renders fit-to-view and zoom controls", async () => {
@@ -628,7 +628,7 @@ describe("GraphicalFields", async () => {
     expect(Number(screen.getByTestId("konva-stage").getAttribute("data-y"))).toBeGreaterThan(startY);
   }, 15000);
 
-  it("keeps UI hint and interaction state consistent with the edit mode toggle", async () => {
+  it("keeps dragging and the pressed state consistent with the edit mode toggle", async () => {
     await renderGraphic(<GraphicalFields />);
 
     expect(screen.getByRole("button", { name: "Bearbeiten" })).toHaveAttribute("aria-pressed", "false");
@@ -652,7 +652,7 @@ describe("GraphicalFields", async () => {
         "true",
       );
     });
-    expect(screen.getByText(LOCATION_EDIT_MODE_BANNER)).toBeInTheDocument();
+    expect(screen.queryByText(LOCATION_EDIT_MODE_BANNER)).not.toBeInTheDocument();
   }, 15000);
 
   it("renders and edits only the selected location with the controlled topbar mode", async () => {
@@ -668,7 +668,7 @@ describe("GraphicalFields", async () => {
     expect(view.container.querySelector('.MuiAccordion-root')).toBeNull();
     view.rerender(<GraphicalFields showModeToggle={false} selectedLocationId={2} interactionMode="edit" />);
     expect(screen.getByTestId('field-group-20')).toHaveAttribute('draggable', 'true');
-    expect(screen.getByRole('alert')).toHaveTextContent(LOCATION_EDIT_MODE_BANNER);
+    expect(screen.queryByText(LOCATION_EDIT_MODE_BANNER)).not.toBeInTheDocument();
   });
 
   it("renders compact overlay zoom controls inside the graphic container", async () => {
@@ -1249,7 +1249,7 @@ describe("GraphicalFields", async () => {
     });
 
     expect(screen.getByRole("button", { name: "Bearbeiten" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("alert")).toHaveTextContent(LOCATION_EDIT_MODE_BANNER);
+    expect(screen.queryByText(LOCATION_EDIT_MODE_BANNER)).not.toBeInTheDocument();
 
     const input = document.createElement("input");
     document.body.appendChild(input);

@@ -110,7 +110,7 @@
     "viewModeDescription": "Naviga, usa lo zoom e consulta i dettagli. Puoi spostare o modificare appezzamenti e aiuole solo in modalità modifica.",
     "editModeDescription": "Sposta appezzamenti e aiuole e modifica la disposizione.",
     "editModeBanner": "Modalità modifica attiva: ora puoi spostare appezzamenti e aiuole.",
-    "locationEditModeBanner": "Modifica grafica attiva: puoi spostare appezzamenti e aiuole in questo sito.",
+    "locationEditModeHelp": "In modalità di modifica puoi spostare appezzamenti e aiuole.",
     "editModeShortcut": "Scorciatoia: Alt+E",
     "locationEditModeAction": "Modifica grafica",
     "locationEditModeActive": "Modifica grafica attiva",

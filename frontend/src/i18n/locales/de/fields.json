@@ -108,7 +108,7 @@
     "viewModeDescription": "Navigieren, hinein- und herauszoomen und Details öffnen. Parzellen und Beete lassen sich nur im Bearbeitungsmodus verschieben oder bearbeiten.",
     "editModeDescription": "Flächen verschieben und Layouts anpassen.",
     "editModeBanner": "Bearbeitungsmodus aktiv – Parzellen und Beete können jetzt verschoben werden.",
-    "locationEditModeBanner": "Grafikbearbeitung aktiv: Parzellen und Beete dieses Standorts können verschoben werden.",
+    "locationEditModeHelp": "Im Bearbeitungsmodus lassen sich Parzellen und Beete verschieben.",
     "editModeShortcut": "Tastenkürzel: Alt+E",
     "locationEditModeAction": "Grafik bearbeiten",
     "locationEditModeActive": "Grafikbearbeitung aktiv",
