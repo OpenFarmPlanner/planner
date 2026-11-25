@@ -294,7 +294,8 @@
         "fullscreen": "Afficher en plein écran",
         "editToggle": "Modifier la disposition : déplacer et organiser par glisser-déposer les planches et parcelles d'un site",
         "freeSite": "Le bleu clair indique la surface libre hors des parcelles.",
-        "freeParcel": "Le vert clair indique la surface libre dans les parcelles, hors des planches."
+        "freeParcel": "Le vert clair indique la surface libre dans les parcelles, hors des planches.",
+        "individualPlant": "Le point indique la position du tronc. Le cercle translucide représente le houppier estimé."
       }
     },
     "yieldOverview": {

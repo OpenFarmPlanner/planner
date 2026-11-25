@@ -294,7 +294,8 @@
         "fullscreen": "Mostra a schermo intero",
         "editToggle": "Modifica disposizione: trascina per spostare e disporre aiuole e appezzamenti di un sito",
         "freeSite": "L’azzurro indica la superficie libera fuori dagli appezzamenti.",
-        "freeParcel": "Il verde chiaro indica la superficie libera negli appezzamenti, fuori dalle aiuole."
+        "freeParcel": "Il verde chiaro indica la superficie libera negli appezzamenti, fuori dalle aiuole.",
+        "individualPlant": "Il punto indica la posizione del tronco. Il cerchio traslucido mostra la chioma stimata."
       }
     },
     "yieldOverview": {

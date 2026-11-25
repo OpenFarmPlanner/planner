@@ -241,7 +241,11 @@ In Farm Garden, choose **More canvas tools** → **Individual plants** and selec
 the North Early Beds plot. Its three Topaz apple trees share one plan, with
 an estimated canopy diameter of 3.8 m. Their stems retain their IDs as the
 planting continues into the following season. Select a stem to inspect its
-coordinates or edit them with the map or the keyboard. The nearby lettuce
+coordinates. While editing, the panel separates the planting plan from the
+placement: **Place plants on the map** is the main action, and exact X/Y
+entry stays available under **Enter coordinates manually**
+([#1575](https://github.com/OpenFarmPlanner/planner/issues/1575)). In
+graphic edit mode a stem can also be dragged directly. The nearby lettuce
 beds retain their ordinary capacity.
 
 The explicit command-line public-library fixture also copies botanical names,

@@ -53,6 +53,9 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
     distance_within_row_cm: 400, estimated_canopy_diameter_m: 3.8,
     cultivation_types: ['pre_cultivation'], light_requirement: ['full_sun'],
   });
+  await apiRequest(page, 'POST', '/crops/', {
+    name: 'Rhabarber', life_cycle: 'perennial', standing_time_years: 8, cultivation_types: ['pre_cultivation'],
+  });
 
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
@@ -60,10 +63,32 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await control.press('Enter');
   await page.getByRole('menuitem', { name: 'Einzelpflanzen', exact: true }).press('Enter');
   const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  // #1575: a fixed parcel is context, planning and placement are separate sections, and the
+  // stem/canopy explanation lives in the page help instead of the form.
+  await expect(panel.getByTestId('individual-plants-parcel')).toHaveText(/Obstparzelle/);
+  await expect(panel.getByRole('heading', { name: 'Anbauplan', level: 3 })).toBeVisible();
+  await expect(panel.getByText(/Der Punkt zeigt die Stammposition/)).toHaveCount(0);
   await panel.getByRole('button', { name: 'Neuer Einzelpflanzenplan' }).click();
+  await expect(panel.getByRole('heading', { name: 'Platzierung', level: 3 })).toBeVisible();
+  // A crop without a canopy estimate keeps the diameter behind an optional disclosure.
+  await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+  await page.getByRole('option', { name: 'Rhabarber', exact: true }).click();
+  await expect(panel.getByRole('textbox', { name: /Kronendurchmesser/ })).toHaveCount(0);
+  await panel.getByRole('button', { name: 'Kronendurchmesser angeben (optional)' }).click();
+  await expect(panel.getByRole('textbox', { name: /Kronendurchmesser/ })).toHaveValue('');
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
   await page.getByRole('option', { name: 'Apfel', exact: true }).click();
   await expect(panel.getByRole('textbox', { name: /Kronendurchmesser/ })).toHaveValue('3,8');
+  await expect(panel.getByRole('button', { name: 'Pflanzen in der Grafik platzieren', exact: true })).toBeVisible();
+  await expect(panel.getByText('0 Einzelpflanzen', { exact: true })).toBeVisible();
+
+  // Manual coordinates start collapsed and open with the keyboard.
+  const manual = panel.getByRole('button', { name: 'Koordinaten manuell eingeben' });
+  await expect(manual).toHaveAttribute('aria-expanded', 'false');
+  await expect(panel.getByRole('textbox', { name: 'X (m)', exact: true })).toBeHidden();
+  await manual.focus();
+  await page.keyboard.press('Enter');
+  await expect(manual).toHaveAttribute('aria-expanded', 'true');
 
   for (const [index, coordinates] of [['1,5', '3'], ['1,5', '6,4']].entries()) {
     if (index) await panel.getByRole('button', { name: 'Neue Stammposition' }).click();
@@ -86,6 +111,16 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   expect(created).toMatchObject({ parcel: plot.id, bed: null, plants_count: 2 });
   const [first, second] = created.individual_positions;
   await expect.poll(() => shape(page, `individual-canopy-${first.id}`)).toMatchObject({ listened: false });
+
+  // After saving, the next draft starts with the optional canopy disclosure collapsed again.
+  await panel.getByRole('button', { name: 'Neuer Einzelpflanzenplan' }).click();
+  await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+  await page.getByRole('option', { name: 'Rhabarber', exact: true }).click();
+  await expect(panel.getByRole('textbox', { name: /Kronendurchmesser/ })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'Kronendurchmesser angeben (optional)' })).toBeVisible();
+  await panel.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await panel.getByRole('combobox', { name: 'Anbauplan', exact: true }).click();
+  await page.getByRole('option', { name: /^Apfel/ }).click();
 
   await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
   const beforeDrag = await shape(page, `individual-stem-${first.id}`);
@@ -329,7 +364,7 @@ test.describe('individual plants on a phone', () => {
     await page.touchscreen.tap(target.x, target.y);
     await expect(panel.getByRole('button', { name: 'Platzierung abbrechen' })).toHaveCount(0);
     await expect(panel.getByText('3 Einzelpflanzen', { exact: true })).toBeVisible();
-    await panel.getByRole('button', { name: 'In der Grafik platzieren', exact: true }).tap();
+    await panel.getByRole('button', { name: 'Pflanzen in der Grafik platzieren', exact: true }).tap();
     await expect.poll(() => shape(page, surfaceId)).not.toBeNull();
     const add = (await shape(page, surfaceId))!.screen;
     await page.touchscreen.tap(add.x + add.width * 0.7, add.y + add.height * 0.3);
@@ -351,6 +386,9 @@ test.describe('individual plants on a phone', () => {
     expect(await french.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
     await testInfo.attach('individual-plants-phone-french', { body: await french.screenshot(), contentType: 'image/png' });
     await page.setViewportSize({ width: 800, height: 375 });
+    // The origin and bounds guidance sits in the collapsed manual-coordinates section (#1575).
+    await expect(french.getByText(/Depuis l’angle supérieur gauche/)).toBeHidden();
+    await french.getByRole('button', { name: 'Saisir les coordonnées manuellement' }).tap();
     await expect(french.getByText(/Depuis l’angle supérieur gauche/)).toBeVisible();
     expect(await french.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
   });

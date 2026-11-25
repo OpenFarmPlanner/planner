@@ -294,7 +294,8 @@
         "fullscreen": "Mostrar en pantalla completa",
         "editToggle": "Editar disposición: arrastrar y soltar para mover y ordenar los bancales y parcelas de una ubicación",
         "freeSite": "El azul claro indica la superficie libre fuera de las parcelas.",
-        "freeParcel": "El verde claro indica la superficie libre dentro de las parcelas y fuera de los bancales."
+        "freeParcel": "El verde claro indica la superficie libre dentro de las parcelas y fuera de los bancales.",
+        "individualPlant": "El punto indica la posición del tronco. El círculo translúcido muestra la copa estimada."
       }
     },
     "yieldOverview": {

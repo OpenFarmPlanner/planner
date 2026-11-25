@@ -58,6 +58,9 @@ describe('PageHelp', () => {
     expect(screen.getByText('Mit „Grafik bearbeiten“ änderst du die Anordnung des gewählten Standorts.', { exact: false })).toBeInTheDocument();
     expect(screen.getByText('Grafik bearbeiten: Beete und Parzellen eines Standorts per Drag-and-Drop verschieben und anordnen')).toBeInTheDocument();
     expect(screen.getByTestId('EditOutlinedIcon')).toBeInTheDocument();
+    // The stem/canopy explanation moved here from the individual-plant panel (#1575).
+    expect(screen.getByText('Der Punkt zeigt die Stammposition. Der durchscheinende Kreis zeigt die geschätzte Krone.'))
+      .toBeInTheDocument();
     expect(screen.queryByText('Modus')).not.toBeInTheDocument();
     expect(screen.queryByText('Ansicht')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Bearbeiten' })).not.toBeInTheDocument();
