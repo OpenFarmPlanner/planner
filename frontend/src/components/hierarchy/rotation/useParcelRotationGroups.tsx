@@ -61,7 +61,8 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
     setLoadError(false);
     void refresh();
   }, [refresh]);
-  const status: ParcelRotationLoadStatus = hasLoaded ? 'ready' : loadError ? 'error' : 'loading';
+  // A failed refresh (e.g. after saving a group) must not leave older memberships presented as current.
+  const status: ParcelRotationLoadStatus = loadError ? 'error' : hasLoaded ? 'ready' : 'loading';
 
   const close = () => setDialogState(null);
   const dialog = !dialogState ? null : loading || loadError ? (

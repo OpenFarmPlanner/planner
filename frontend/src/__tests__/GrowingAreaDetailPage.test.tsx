@@ -16,6 +16,7 @@ const apiMocks = vi.hoisted(() => ({
   layouts: vi.fn(),
   bedUpdate: vi.fn(),
   rotationGroups: vi.fn(),
+  rotationUpdate: vi.fn(),
   membership: undefined as { project_id: number } | undefined,
 }));
 
@@ -39,7 +40,7 @@ vi.mock('../api/api', async () => {
     bedAPI: { ...actual.bedAPI, listAll: apiMocks.beds, update: apiMocks.bedUpdate },
     layoutAPI: { ...actual.layoutAPI, listByLocation: apiMocks.layouts },
     plantingPlanAPI: { ...actual.plantingPlanAPI, listAll: apiMocks.plans },
-    parcelRotationAPI: { ...actual.parcelRotationAPI, list: apiMocks.rotationGroups },
+    parcelRotationAPI: { ...actual.parcelRotationAPI, list: apiMocks.rotationGroups, update: apiMocks.rotationUpdate },
   };
 });
 
@@ -269,7 +270,8 @@ describe('GrowingAreaDetailPage', () => {
     renderDetail('/app/fields-beds/fields/10');
 
     const section = await screen.findByTestId('detail-section-rotation');
-    expect(within(section).getByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).toBeInTheDocument();
+    // The section shows a loading state first; wait for the loaded groups.
+    expect(await within(section).findByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).toBeInTheDocument();
     await user.click(within(section).getByRole('button', { name: 'Einer Rotationsgruppe zuordnen' }));
 
     const dialog = await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' });
@@ -295,12 +297,31 @@ describe('GrowingAreaDetailPage', () => {
     expect(within(section).queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('reports a failed refresh after saving instead of keeping the old membership as current', async () => {
+    const group = { id: 5, name: 'Nord–Süd', parcels: [{ id: 10, name: 'Tunnel', beds: [] }] };
+    apiMocks.rotationGroups.mockResolvedValueOnce({ data: [group] }).mockResolvedValueOnce({ data: [group] })
+      .mockRejectedValueOnce(new Error('Unavailable'));
+    apiMocks.rotationUpdate.mockResolvedValue({ data: group });
+    const user = userEvent.setup();
+    renderDetail('/app/fields-beds/fields/10');
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    await within(section).findByTestId('detail-rotation-group');
+    await user.click(within(section).getByRole('button', { name: 'Rotationsgruppen verwalten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+    await user.click(await within(dialog).findByRole('button', { name: 'Speichern' }));
+
+    expect(await within(section).findByRole('alert')).toHaveTextContent('Die Rotationsgruppen konnten nicht geladen werden.');
+    expect(within(section).queryByTestId('detail-rotation-group')).not.toBeInTheDocument();
+  });
+
   it('shows rotation membership without a management action to users outside the project', async () => {
     apiMocks.membership = undefined;
     renderDetail('/app/fields-beds/fields/10');
 
     const section = await screen.findByTestId('detail-section-rotation');
-    expect(within(section).getByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).toBeInTheDocument();
+    // The section shows a loading state first; wait for the loaded groups.
+    expect(await within(section).findByText('Diese Parzelle gehört zu keiner Rotationsgruppe.')).toBeInTheDocument();
     expect(within(section).queryByRole('button')).not.toBeInTheDocument();
   });
 
