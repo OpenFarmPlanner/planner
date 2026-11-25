@@ -1,7 +1,10 @@
 {
   "parcelRotation": {
-    "configure": "Configure parcel rotation",
     "manage": "Manage parcel rotation groups",
+    "assign": "Add to a rotation group",
+    "section": "Parcel rotation",
+    "position": "Parcel {{position}} of {{size}}",
+    "unassigned": "This parcel is not in a rotation group.",
     "name": "Group name",
     "group": "Rotation group",
     "newGroup": "New group",

@@ -153,6 +153,28 @@ describe('a field row', () => {
   });
 });
 
+describe('row quick-action tooltips (#1576)', () => {
+  it.each([
+    ['location', location(), ['Parzelle', 'Löschen', 'Aktionen']],
+    ['field', field(), ['Beet für diese Parzelle hinzufügen', 'Löschen', 'Aktionen']],
+    ['bed', bed(), ['Löschen', 'Aktionen']],
+  ] as const)('shows no identification tooltip on the %s add/delete/actions icons', async (_type, row, names) => {
+    const user = userEvent.setup();
+    // Standalone keeps the indicator interactive without a grid row to hover.
+    setup(row, { isStandalone: true });
+
+    for (const name of names) {
+      await user.hover(button(name));
+      button(name).focus();
+      // Longer than MUI's default enter delay, which shows the bed's plan tooltip.
+      await new Promise((resolve) => { setTimeout(resolve, 300); });
+      expect(button(name)).toHaveAccessibleName(name);
+      expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+      await user.unhover(button(name));
+    }
+  });
+});
+
 describe('a bed row', () => {
   it('offers a planting plan, deleting, and the overflow menu', () => {
     // A bed is the end of the hierarchy, so instead of adding a child it

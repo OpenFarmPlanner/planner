@@ -148,6 +148,12 @@ import {
 import { HIGHLIGHT_FLASH_DURATION_MS } from "../components/feedback/highlightFlashStyles";
 import type { CommandSpec } from "../commands/types";
 import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
+import { HIERARCHY_ROW_ACTIONS_SLOT_PX } from "../components/hierarchy/hierarchyNameCell";
+import {
+  createParcelRotationColumn,
+  PARCEL_ROTATION_COLUMN_FIELD,
+} from "../components/hierarchy/rotation/parcelRotationColumn";
+import { ParcelRotationManageButton } from "../components/hierarchy/rotation/ParcelRotationManageButton";
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
 
 interface FieldsBedsHierarchyProps {
@@ -174,6 +180,8 @@ interface HierarchyRowAction {
   icon?: React.ReactNode;
   shortcutHint?: string;
 }
+
+const DEFAULT_HIDDEN_COLUMN_FIELDS = [PARCEL_ROTATION_COLUMN_FIELD, ...SITE_CONDITION_COLUMN_FIELDS];
 
 const hierarchyGridSlots = {
   row: GridRowWithSaveStatus,
@@ -278,7 +286,7 @@ function FieldsBedsHierarchy({
   const [isColumnsPanelOpen, setIsColumnsPanelOpen] = useState(false);
   const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
     tableKey: "fieldsBedsHierarchy",
-    defaultHiddenFields: SITE_CONDITION_COLUMN_FIELDS,
+    defaultHiddenFields: DEFAULT_HIDDEN_COLUMN_FIELDS,
   });
   const columnVisibilityModelRef = useRef(columnVisibilityModel);
   useLayoutEffect(() => {
@@ -1474,7 +1482,6 @@ function FieldsBedsHierarchy({
     }));
   }, [rememberRowSnapshot, rowsRef, selectedRowIdRef]);
 
-  const { configure: configureRotation } = useContext(ParcelRotationContext);
   const getHierarchyRowActions = useCallback((row: HierarchyRow): HierarchyRowAction[] => {
     const createActions: HierarchyRowAction[] = [];
     const detailPath = row.isNew ? null : getHierarchyDetailPath(row);
@@ -1499,10 +1506,6 @@ function FieldsBedsHierarchy({
     }
 
     if (row.type === "field" && row.fieldId) {
-      if (configureRotation && !row.isNew) detailActions.push({
-        id: "configure-rotation", label: t("parcelRotation.configure"), group: "details",
-        onClick: () => configureRotation(row.fieldId!),
-      });
       createActions.push({
         id: "add-bed",
         label: t("actions.addBed"),
@@ -1563,7 +1566,6 @@ function FieldsBedsHierarchy({
 
     return [...detailActions, ...createActions, ...destructiveActions];
   }, [
-    configureRotation,
     navigate,
     deleteHierarchyRowWithUndo,
     handleAddBed,
@@ -1743,7 +1745,10 @@ function FieldsBedsHierarchy({
   const nameColumnWidthLimit = showPersistentContextMenuButton ? Math.max(260, viewportWidth - 88) : Infinity;
   // Keep the row actions within reach on narrow screens while retaining the
   // user's preferred width for when the list has enough room again.
-  const effectiveNameColumnWidth = Math.min(nameColumnWidth, nameColumnWidthLimit);
+  const effectiveNameColumnWidth = Math.min(
+    nameColumnWidth + (showPersistentContextMenuButton ? 0 : HIERARCHY_ROW_ACTIONS_SLOT_PX),
+    nameColumnWidthLimit,
+  );
 
   const handleContextMenuButtonOpen = useEventCallback((row: HierarchyRow, origin: HTMLElement): void => {
     const rect = origin.getBoundingClientRect();
@@ -1770,6 +1775,9 @@ function FieldsBedsHierarchy({
   /**
    * Create columns with callbacks
    */
+  const {
+    memberships: rotationMemberships, status: rotationStatus, manage: manageRotationGroups,
+  } = useContext(ParcelRotationContext);
   const columns = useMemo(() => {
     const baseColumns = createHierarchyColumns(
       toggleExpand,
@@ -1798,10 +1806,11 @@ function FieldsBedsHierarchy({
         },
       },
     );
-    // The optional site-condition columns sit before the notes (#1075).
+    // The optional rotation-group (#1576) and site-condition (#1075) columns sit before the notes.
     const notesIndex = baseColumns.findIndex((column) => column.field === "notes");
     const orderedColumns = [
       ...baseColumns.slice(0, notesIndex),
+      createParcelRotationColumn(t, rotationMemberships, rotationStatus),
       ...createSiteConditionColumns(t),
       ...baseColumns.slice(notesIndex),
     ];
@@ -1826,6 +1835,8 @@ function FieldsBedsHierarchy({
     hierarchyLevelToggle.canCollapse,
     expandOneLevel,
     collapseOneLevel,
+    rotationMemberships,
+    rotationStatus,
   ]);
   const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId);
 
@@ -2125,6 +2136,7 @@ function FieldsBedsHierarchy({
             columnsPanelOpen={isColumnsPanelOpen}
             onColumnsPanelOpenChange={setIsColumnsPanelOpen}
             columnsButtonRef={setColumnsAnchorEl}
+            viewControls={manageRotationGroups ? <ParcelRotationManageButton onClick={manageRotationGroups} /> : undefined}
           />
         ) : null}
 

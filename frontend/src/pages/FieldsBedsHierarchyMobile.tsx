@@ -8,10 +8,12 @@
  * instead.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Box, CircularProgress, Stack } from "@mui/material";
 import { useTranslation } from "../i18n";
+import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
+import { ParcelRotationManageButton } from "../components/hierarchy/rotation/ParcelRotationManageButton";
 import { useHierarchyData, type HierarchyDataState } from "../components/hierarchy/hooks/useHierarchyData";
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import { usePersistentSortModel } from "../hooks/usePersistentSortModel";
@@ -65,6 +67,7 @@ function FieldsBedsHierarchyMobile({
   bedDefaults,
   graphicalRotations,
 }: FieldsBedsHierarchyMobileProps) {
+  const { manage: manageRotationGroups } = useContext(ParcelRotationContext);
   const { t } = useTranslation(["hierarchy", "common"]);
   const navigate = useNavigate();
   const location = useLocation();
@@ -308,7 +311,7 @@ function FieldsBedsHierarchyMobile({
     // usual discard confirmation first when the form has unsaved edits.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
       action.group === "destructive" || action.id === "duplicate-bed" || action.id === "duplicate-field"
-        || action.id === "bulk-create-beds" || action.id === "configure-rotation"
+        || action.id === "bulk-create-beds"
         ? { ...action, closeSheetBeforeRun: true }
         : action,
     );
@@ -331,6 +334,7 @@ function FieldsBedsHierarchyMobile({
         filterButtonRef={filterButtonRef}
         isFilterPanelOpen={isFilterPanelOpen}
         onFilterPanelOpenChange={setIsFilterPanelOpen}
+        viewControls={manageRotationGroups ? <ParcelRotationManageButton onClick={manageRotationGroups} /> : undefined}
       />
       {!loading && isSearchActive && rows.length === 0 ? (
         <GrowingAreaSearchEmptyState search={growingAreaSearch} />

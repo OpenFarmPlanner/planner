@@ -363,8 +363,8 @@ describe('hierarchy components and behaviors', () => {
     render(<>{renderedCell}</>);
 
     expect(actionOverlay?.props.sx).toMatchObject({
-      position: 'absolute',
-      right: 0,
+      flex: '0 0 auto',
+      opacity: 0,
       '@media (hover: hover)': {
         '.MuiDataGrid-row:hover &': {
           opacity: 1,
@@ -407,8 +407,8 @@ describe('hierarchy components and behaviors', () => {
     render(<>{renderedCell}</>);
 
     expect(actionOverlay?.props.sx).toMatchObject({
-      position: 'absolute',
-      right: 0,
+      flex: '0 0 auto',
+      opacity: 0,
       '@media (hover: hover)': {
         '.MuiDataGrid-row:hover &': {
           opacity: 1,
@@ -496,18 +496,11 @@ describe('hierarchy components and behaviors', () => {
       width: '100%',
       maxWidth: 'none',
     });
+    // The actions keep their own slot beside the name instead of covering it (#1576).
     expect(actionOverlay?.props.sx).toMatchObject({
-      position: 'absolute',
-      right: 0,
-      pl: 0.25,
-      bgcolor: 'background.paper',
+      flex: '0 0 auto',
       opacity: 0,
       pointerEvents: 'none',
-      '&::before': {
-        right: '100%',
-        width: 16,
-        pointerEvents: 'none',
-      },
       '@media (hover: hover)': {
         '.MuiDataGrid-row:hover &': {
           opacity: 1,

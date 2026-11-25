@@ -9,6 +9,8 @@ import type {
   NameCellCallbacks,
 } from '../components/hierarchy/hierarchyColumnShared';
 import i18n from '../i18n';
+import { ParcelRotationContext } from '../components/hierarchy/rotation/parcelRotationContext';
+import { createParcelRotationColumn } from '../components/hierarchy/rotation/parcelRotationColumn';
 
 const t = i18n.getFixedT('de', 'hierarchy');
 
@@ -299,6 +301,50 @@ describe('renderNameCell', () => {
 
       const overlay = screen.getByTestId('hierarchy-name-actions-overlay');
       expect(overlay).toHaveStyle({ opacity: '1', pointerEvents: 'auto' });
+    });
+  });
+
+  describe('the rotation group (#1576)', () => {
+    const memberships = new Map([[7, { group: 'Nord–Süd', position: 2, size: 3 }]]);
+
+    it('is no longer shown as a badge beside an assigned parcel name', () => {
+      const params = { row: row({ id: 'field-7', type: 'field', fieldId: 7, level: 1 }), value: 'Nord', api: {} };
+      render(
+        <ParcelRotationContext.Provider value={{ memberships }}>
+          {renderNameCell(params as unknown as GridRenderCellParams<HierarchyRow>, callbacks(), t, {})}
+        </ParcelRotationContext.Provider>,
+      );
+
+      expect(screen.queryByText(/Nord–Süd/)).not.toBeInTheDocument();
+      expect(screen.queryByRole('img', { name: /Rotationsgruppe/ })).not.toBeInTheDocument();
+      expect(nameText()).toHaveTextContent('Nord');
+    });
+
+    it('fills the optional column only for assigned parcels', () => {
+      const column = createParcelRotationColumn(t, memberships);
+      const value = (current: HierarchyRow) => (column.valueGetter as (v: unknown, r: HierarchyRow) => string)(
+        undefined, current,
+      );
+
+      expect(column).toMatchObject({ field: 'rotation_group', headerName: 'Rotationsgruppe', editable: false });
+      expect(value(row({ type: 'field', fieldId: 7 }))).toBe('Nord–Süd · 2/3');
+      expect(value(row({ type: 'field', fieldId: 8 }))).toBe('');
+      expect(value(row({ type: 'location', locationId: 7 }))).toBe('');
+      expect(value(row({ type: 'bed', bedId: 7, fieldId: 7 }))).toBe('');
+    });
+
+    it.each(['loading', 'error'] as const)('never shows a parcel as unassigned while the groups are %s', (status) => {
+      const column = createParcelRotationColumn(t, memberships, status);
+      const parcel = row({ id: 'field-7', type: 'field', fieldId: 7 });
+      const value = (column.valueGetter as (v: unknown, r: HierarchyRow) => string)(undefined, parcel);
+      render(<div>{column.renderCell?.({ row: parcel, value } as never)}</div>);
+
+      if (status === 'loading') {
+        expect(screen.getByRole('progressbar', { name: 'Lädt...' })).toBeInTheDocument();
+      } else {
+        expect(screen.getByRole('img', { name: 'Die Rotationsgruppen konnten nicht geladen werden.' })).toBeInTheDocument();
+      }
+      expect(screen.queryByTestId('parcel-rotation-cell')).not.toBeInTheDocument();
     });
   });
 });

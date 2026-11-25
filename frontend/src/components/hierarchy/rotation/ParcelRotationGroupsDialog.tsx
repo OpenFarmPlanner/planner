@@ -10,7 +10,7 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { parcelRotationAPI } from '../../../api/api';
 import type { Bed, Field, ParcelRotationConfiguration, ParcelRotationGroup } from '../../../api/types';
 import { useTranslation } from '../../../i18n';
-import { ParcelRotationContext } from './parcelRotationContext';
+import { formatParcelRotationMembership, ParcelRotationContext } from './parcelRotationContext';
 
 type Member = ParcelRotationConfiguration['parcels'][number];
 
@@ -32,7 +32,7 @@ export function ParcelRotationBadge({ fieldId }: { fieldId: number }) {
         display: 'inline-block', maxWidth: 110, flexShrink: 0,
         px: 0.75, borderRadius: 0.75, bgcolor: 'action.selected', color: 'text.secondary',
         typography: 'caption', ml: 0.75 }} title={label}>
-      {membership.group} · {membership.position}/{membership.size}
+      {formatParcelRotationMembership(membership)}
     </Box>
   );
 }

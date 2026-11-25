@@ -1,4 +1,4 @@
-import { useMemo, type Ref, type RefObject } from 'react';
+import { useMemo, type ReactNode, type Ref, type RefObject } from 'react';
 import { Box, Button, Stack, Typography } from '@mui/material';
 import type { TFunction } from 'i18next';
 
@@ -120,6 +120,8 @@ interface GrowingAreaSearchToolbarProps {
   columnsPanelOpen?: boolean;
   onColumnsPanelOpenChange?: (open: boolean) => void;
   columnsButtonRef?: Ref<HTMLButtonElement>;
+  /** Extra page-level controls after Filter/Columns, e.g. rotation-group management. */
+  viewControls?: ReactNode;
 }
 
 /** Search / Filter / Columns above the Growing Areas list. */
@@ -134,6 +136,7 @@ export function GrowingAreaSearchToolbar({
   columnsPanelOpen,
   onColumnsPanelOpenChange,
   columnsButtonRef,
+  viewControls,
 }: GrowingAreaSearchToolbarProps) {
   const { t } = useTranslation(['hierarchy']);
   const options = useFilterOptions(search, locations, fields);
@@ -192,6 +195,7 @@ export function GrowingAreaSearchToolbar({
       columnsPanelOpen={columnsPanelOpen}
       onColumnsPanelOpenChange={onColumnsPanelOpenChange}
       columnsButtonRef={columnsButtonRef}
+      viewControls={viewControls}
     />
   );
 }

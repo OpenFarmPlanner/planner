@@ -223,13 +223,14 @@ test('a phone configures parcel and bed order and copies a reviewed rotation', a
   if (!(await northRow.isVisible())) {
     await page.getByRole('button', { name: /^Aufklappen:.*Versuchsgarten/ }).click();
   }
-  await northRow.getByRole('button', { name: /^Nord/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Weitere Aktionen' }).click();
-  await page.getByRole('menuitem', { name: 'Parzellenrotation konfigurieren' }).click();
+  // Rotation groups are project-wide: the list toolbar opens their management (#1576).
+  await page.getByRole('button', { name: 'Rotationsgruppen verwalten' }).click();
   const settings = page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' });
   await settings.getByRole('textbox', { name: 'Gruppenname' }).fill('Nord–Süd');
-  await settings.getByRole('combobox', { name: 'Parzelle hinzufügen' }).click();
-  await page.getByRole('option', { name: 'Süd', exact: true }).click();
+  for (const name of ['Nord', 'Süd']) {
+    await settings.getByRole('combobox', { name: 'Parzelle hinzufügen' }).click();
+    await page.getByRole('option', { name, exact: true }).click();
+  }
   await settings.getByRole('button', { name: 'Süd nach oben verschieben' }).click();
   await settings.getByText('Beetreihenfolge', { exact: true }).first().click();
   await settings.getByRole('button', { name: 'Südbeet 2 nach oben verschieben' }).click();
@@ -293,8 +294,7 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   await seedRotationSourcePlan(page, older.id, north.beds[1].id, 2025);
 
   await page.goto('/app/fields-beds');
-  await page.getByRole('button', { name: 'Weitere Aktionen', exact: true }).click();
-  await page.getByRole('menuitem', { name: 'Rotationsgruppen verwalten' }).click();
+  await page.getByTestId('growing-area-search-toolbar').getByRole('button', { name: 'Rotationsgruppen verwalten' }).click();
   const groups = page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' });
   await groups.getByRole('textbox', { name: 'Gruppenname' }).fill('Nord–Süd');
   for (const name of ['Süd', 'Nord']) {

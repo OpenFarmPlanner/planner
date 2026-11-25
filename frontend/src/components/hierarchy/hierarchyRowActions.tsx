@@ -21,19 +21,15 @@ function renderHierarchyAddIconButton({
   onClick: (event: MouseEvent<HTMLButtonElement>) => void;
 }): ReactElement {
   return (
-    <AppTooltip title={label} {...NON_BLOCKING_TOOLTIP_PROPS}>
-      <span>
-        <HierarchyAddIcon
-          ariaLabel={label}
-          tabIndex={-1}
-          onClick={(event) => {
-            event.stopPropagation();
-            onClick(event);
-          }}
-          sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
-        />
-      </span>
-    </AppTooltip>
+    <HierarchyAddIcon
+      ariaLabel={label}
+      tabIndex={-1}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick(event);
+      }}
+      sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
+    />
   );
 }
 
@@ -85,61 +81,55 @@ function renderDeleteActionButton(
 
   if (row.type === 'location' && row.locationId !== undefined) {
     return (
-      <AppTooltip title={label} {...NON_BLOCKING_TOOLTIP_PROPS}>
-        <IconButton
-          size="small"
-          color="error"
-          aria-label={label}
-          tabIndex={-1}
-          onClick={(event) => {
-            event.stopPropagation();
-            callbacks.onDeleteLocation(row.locationId!);
-          }}
-          sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
-        >
-          <DeleteIcon />
-        </IconButton>
-      </AppTooltip>
+      <IconButton
+        size="small"
+        color="error"
+        aria-label={label}
+        tabIndex={-1}
+        onClick={(event) => {
+          event.stopPropagation();
+          callbacks.onDeleteLocation(row.locationId!);
+        }}
+        sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
+      >
+        <DeleteIcon />
+      </IconButton>
     );
   }
 
   if (row.type === 'field' && row.fieldId !== undefined) {
     return (
-      <AppTooltip title={label} {...NON_BLOCKING_TOOLTIP_PROPS}>
-        <IconButton
-          size="small"
-          color="error"
-          aria-label={label}
-          tabIndex={-1}
-          onClick={(event) => {
-            event.stopPropagation();
-            callbacks.onDeleteField(row.fieldId!);
-          }}
-          sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
-        >
-          <DeleteIcon />
-        </IconButton>
-      </AppTooltip>
+      <IconButton
+        size="small"
+        color="error"
+        aria-label={label}
+        tabIndex={-1}
+        onClick={(event) => {
+          event.stopPropagation();
+          callbacks.onDeleteField(row.fieldId!);
+        }}
+        sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
+      >
+        <DeleteIcon />
+      </IconButton>
     );
   }
 
   if (row.type === 'bed' && row.bedId !== undefined) {
     return (
-      <AppTooltip title={label} {...NON_BLOCKING_TOOLTIP_PROPS}>
-        <IconButton
-          size="small"
-          color="error"
-          aria-label={label}
-          tabIndex={-1}
-          onClick={(event) => {
-            event.stopPropagation();
-            callbacks.onDeleteBed(row.bedId!);
-          }}
-          sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
-        >
-          <DeleteIcon />
-        </IconButton>
-      </AppTooltip>
+      <IconButton
+        size="small"
+        color="error"
+        aria-label={label}
+        tabIndex={-1}
+        onClick={(event) => {
+          event.stopPropagation();
+          callbacks.onDeleteBed(row.bedId!);
+        }}
+        sx={{ p: 0.5, '& .MuiSvgIcon-root': { fontSize: 18 } }}
+      >
+        <DeleteIcon />
+      </IconButton>
     );
   }
 
@@ -156,6 +146,7 @@ export function renderMoreActionsButton(
   return (
     <ContextMenuIndicator
       label={t('common:actions.actions')}
+      showTooltip={false}
       tabIndex={-1}
       onClick={(event) => callbacks.onOpenContextMenu(event, row)}
       onTouchActivate={
