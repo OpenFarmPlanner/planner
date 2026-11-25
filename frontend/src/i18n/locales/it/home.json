@@ -129,32 +129,84 @@
       "yourCropsTitle": "Le tue colture"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Pianificazione grafica delle superfici",
+    "title": "Pianifica le superfici così come sono sul terreno.",
+    "description": "Disegna siti, appezzamenti e aiuole come una pianta in scala, non come una mappa. Dimensioni, distanze e posizione restano collegate alle tue serie.",
+    "points": {
+      "layout": "Spostare e ruotare le aiuole su un appezzamento e disporle in file",
+      "paths": "Considerare la larghezza dei passaggi e vedere a colpo d’occhio la superficie libera",
+      "individualPlants": "Posizionare alberi e arbusti come piante singole con il diametro della chioma"
+    },
+    "illustration": {
+      "ariaLabel": "Pianta schematica: un sito con un appezzamento, quattro aiuole con passaggi tra di loro e un albero da frutto come pianta singola.",
+      "location": "Sito",
+      "parcel": "Appezzamento",
+      "bed": "Aiuola {{number}}",
+      "path": "Passaggio",
+      "tree": "Albero da frutto"
+    }
+  },
   "seasonFeatures": {
     "title": "Tutto per la tua stagione",
+    "groups": {
+      "plan": "Pianificare le colture",
+      "crops": "Colture e sementi",
+      "track": "Seguire e valutare",
+      "collaborate": "Lavorare in modo flessibile e insieme"
+    },
     "items": {
       "calendar": {
         "title": "Calendario colturale",
         "description": "Vedi a colpo d'occhio quale coltura occupa quale aiuola e quando, e individua presto le sovrapposizioni."
       },
-      "rolloverSeason": {
-        "title": "Passa alla stagione successiva",
-        "description": "Trasferisci in un passaggio le serie collaudate nella nuova stagione e modifica solo ciò che cambia."
+      "graphicalPlanning": {
+        "title": "Pianificazione grafica delle superfici",
+        "description": "Siti, appezzamenti e aiuole con la larghezza dei passaggi come pianta schematica."
+      },
+      "seasonsRotation": {
+        "title": "Stagioni e rotazione colturale",
+        "description": "Copiare le serie delle stagioni precedenti, verificare la rotazione colturale e ruotare gli appezzamenti."
+      },
+      "perennials": {
+        "title": "Colture perenni",
+        "description": "Pianificare le colture perenni su più stagioni, con alberi e arbusti come piante singole."
+      },
+      "cropsVarieties": {
+        "title": "Colture e varietà",
+        "description": "Gestisci le tue colture e varietà, con distanze, durata della coltura e rese."
       },
       "seedDemand": {
         "title": "Calcola fabbisogno di sementi",
         "description": "Quantità e formati adatti delle confezioni derivano da serie, dati colturali e fornitori."
       },
-      "yieldDistribution": {
-        "title": "Distribuzione delle rese",
-        "description": "Le quantità di raccolto previste per settimana e coltura rivelano vuoti e picchi prima che si verifichino."
+      "companionHealth": {
+        "title": "Consociazioni e salute delle piante",
+        "description": "Riconosci i vicini buoni e cattivi sull’aiuola e registra le perdite dovute a parassiti o malattie."
       },
-      "fieldMap": {
-        "title": "Vista grafica degli appezzamenti",
-        "description": "Disponi le aiuole nei tuoi appezzamenti come si trovano realmente sul terreno."
+      "suppliers": {
+        "title": "Fornitori e offerte di sementi",
+        "description": "Registra i fornitori con confezioni e prezzi e confrontali."
+      },
+      "tasks": {
+        "title": "Pianificazione delle attività",
+        "description": "Semina, trapianto e raccolta diventano attività da spuntare."
+      },
+      "plannedActual": {
+        "title": "Date previste ed effettive",
+        "description": "Registra le date effettive accanto al piano e impara per la stagione successiva."
+      },
+      "yieldPlanning": {
+        "title": "Previsione delle rese e registro dei raccolti",
+        "description": "Pianifica i raccolti attesi, registra quelli effettivi e confronta le stagioni."
+      },
+      "notesPhotos": {
+        "title": "Note e foto",
+        "description": "Annota le osservazioni con foto direttamente sulla serie."
       },
       "collaboration": {
-        "title": "Pianifica insieme",
-        "description": "Invita il tuo gruppo di coltivazione e lavora sullo stesso piano aggiornato."
+        "title": "Lavoro di squadra",
+        "description": "Invita la tua squadra e lavorate insieme a uno o più progetti."
       },
       "history": {
         "title": "Cronologia delle versioni e cestino",
@@ -162,11 +214,11 @@
       },
       "importExport": {
         "title": "Importazione ed esportazione",
-        "description": "Importa i dati colturali dai fogli di calcolo e portali di nuovo con te quando vuoi."
+        "description": "Importa i dati colturali da fogli di calcolo ed esportali in qualsiasi momento."
       },
-      "installApp": {
-        "title": "Installa come app",
-        "description": "Funziona nel browser e si può installare su telefono o tablet come un'app."
+      "mobileLanguages": {
+        "title": "Mobile e multilingue",
+        "description": "Funziona nel browser, si installa come app e parla sette lingue."
       }
     }
   },

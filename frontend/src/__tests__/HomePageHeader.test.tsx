@@ -63,3 +63,24 @@ describe('HomePage closing section', () => {
     expect(link).toHaveAttribute('href', '/ueber');
   });
 });
+
+describe('HomePage feature overview (#1583)', () => {
+  it('gives graphical planning its own section and groups the season features under four headings', () => {
+    renderHomePage();
+
+    const graphical = screen.getByRole('region', { name: 'Deine Flächen so planen, wie sie im Gelände liegen.' });
+    expect(within(graphical).getByRole('img', { name: /Schematischer Flächenplan/ })).toBeInTheDocument();
+    expect(within(graphical).getByText('Bäume und Sträucher als Einzelpflanzen mit Kronendurchmesser platzieren')).toBeInTheDocument();
+
+    const overview = screen.getByRole('region', { name: 'Alles für deine Saison' });
+    const groups = within(overview).getAllByRole('heading', { level: 3 }).map(heading => heading.textContent);
+    expect(groups).toEqual([
+      'Anbau planen', 'Kulturen und Saatgut', 'Anbau begleiten und auswerten', 'Flexibel und gemeinsam arbeiten',
+    ]);
+    for (const name of groups) {
+      const group = within(overview).getByRole('region', { name: name! });
+      expect(within(group).getAllByRole('heading', { level: 4 })).toHaveLength(4);
+    }
+    expect(within(overview).getByRole('heading', { level: 4, name: 'Mischkultur und Pflanzengesundheit' })).toBeInTheDocument();
+  });
+});

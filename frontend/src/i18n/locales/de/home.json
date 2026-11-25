@@ -125,32 +125,84 @@
       "yourCropsTitle": "Deine Kulturen"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Grafische Flächenplanung",
+    "title": "Deine Flächen so planen, wie sie im Gelände liegen.",
+    "description": "Zeichne Standorte, Parzellen und Beete als maßstäblichen Plan, nicht als Landkarte. Abmessungen, Abstände und Lage bleiben mit deinen Anbauplänen verbunden.",
+    "points": {
+      "layout": "Beete auf der Parzelle verschieben, drehen und in Reihen anlegen",
+      "paths": "Wegbreiten berücksichtigen und freie Fläche auf einen Blick sehen",
+      "individualPlants": "Bäume und Sträucher als Einzelpflanzen mit Kronendurchmesser platzieren"
+    },
+    "illustration": {
+      "ariaLabel": "Schematischer Flächenplan: ein Standort mit einer Parzelle, vier Beeten mit Wegen dazwischen und einem Obstbaum als Einzelpflanze.",
+      "location": "Standort",
+      "parcel": "Parzelle",
+      "bed": "Beet {{number}}",
+      "path": "Weg",
+      "tree": "Obstbaum"
+    }
+  },
   "seasonFeatures": {
     "title": "Alles für deine Saison",
+    "groups": {
+      "plan": "Anbau planen",
+      "crops": "Kulturen und Saatgut",
+      "track": "Anbau begleiten und auswerten",
+      "collaborate": "Flexibel und gemeinsam arbeiten"
+    },
     "items": {
       "calendar": {
         "title": "Anbaukalender",
         "description": "Sieh auf einen Blick, wann welche Kultur auf welchem Beet steht, und erkenne Überschneidungen früh."
       },
-      "rolloverSeason": {
-        "title": "Nächste Saison übernehmen",
-        "description": "Übertrage bewährte Anbaupläne mit einem Schritt in die neue Saison und passe nur an, was sich ändert."
+      "graphicalPlanning": {
+        "title": "Grafische Flächenplanung",
+        "description": "Standorte, Parzellen und Beete mit Wegbreiten als schematischer Plan."
+      },
+      "seasonsRotation": {
+        "title": "Saisonen und Fruchtfolge",
+        "description": "Anbaupläne aus früheren Saisonen übernehmen, Fruchtfolge prüfen und Parzellen rotieren."
+      },
+      "perennials": {
+        "title": "Mehrjährige Kulturen",
+        "description": "Mehrjährige Kulturen über mehrere Saisonen planen, Bäume und Sträucher als Einzelpflanzen."
+      },
+      "cropsVarieties": {
+        "title": "Kulturen und Sorten",
+        "description": "Eigene Kulturen und Sorten pflegen, mit Abständen, Kulturdauer und Erträgen."
       },
       "seedDemand": {
         "title": "Saatgutbedarf berechnen",
         "description": "Menge und passende Packungsgrößen werden aus Plänen, Kulturdaten und Lieferanten abgeleitet."
       },
-      "yieldDistribution": {
-        "title": "Ertragsverteilung",
-        "description": "Erwartete Erntemengen pro Woche und Kultur zeigen Lücken und Spitzen, bevor sie auftreten."
+      "companionHealth": {
+        "title": "Mischkultur und Pflanzengesundheit",
+        "description": "Gute und schlechte Nachbarn auf dem Beet erkennen und Ausfälle durch Schädlinge oder Krankheiten festhalten."
       },
-      "fieldMap": {
-        "title": "Grafische Flächenansicht",
-        "description": "Ordne Beete auf deinen Parzellen so an, wie sie im Gelände liegen."
+      "suppliers": {
+        "title": "Lieferanten und Saatgutangebote",
+        "description": "Lieferanten mit Packungsgrößen und Preisen hinterlegen und vergleichen."
+      },
+      "tasks": {
+        "title": "Aufgabenplanung",
+        "description": "Aussaat, Pflanzung und Ernte werden zu Aufgaben, die du abhaken kannst."
+      },
+      "plannedActual": {
+        "title": "Plan- und Ist-Termine",
+        "description": "Tatsächliche Termine neben der Planung festhalten und daraus für die nächste Saison lernen."
+      },
+      "yieldPlanning": {
+        "title": "Ertragsplanung und Erntedokumentation",
+        "description": "Erwartete Erntemengen planen, tatsächliche Ernten erfassen und Saisonen vergleichen."
+      },
+      "notesPhotos": {
+        "title": "Notizen und Fotos",
+        "description": "Beobachtungen mit Fotos direkt am Anbauplan festhalten."
       },
       "collaboration": {
-        "title": "Gemeinsam planen",
-        "description": "Lade dein Anbauteam ein und arbeitet alle am selben aktuellen Plan."
+        "title": "Teamarbeit",
+        "description": "Lade dein Team ein und arbeitet gemeinsam an einem oder mehreren Projekten."
       },
       "history": {
         "title": "Versionsverlauf und Papierkorb",
@@ -158,11 +210,11 @@
       },
       "importExport": {
         "title": "Import und Export",
-        "description": "Bring deine Kulturdaten aus Tabellen mit und nimm sie jederzeit wieder mit."
+        "description": "Kulturdaten aus Tabellen importieren und jederzeit wieder exportieren."
       },
-      "installApp": {
-        "title": "Als App installieren",
-        "description": "Läuft im Browser und lässt sich am Handy oder Tablet wie eine App installieren."
+      "mobileLanguages": {
+        "title": "Mobil und mehrsprachig",
+        "description": "Läuft im Browser, lässt sich als App installieren und spricht sieben Sprachen."
       }
     }
   },

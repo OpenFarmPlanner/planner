@@ -129,32 +129,84 @@
       "yourCropsTitle": "Tus cultivos"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Planificación gráfica de superficies",
+    "title": "Planifica tus superficies tal como están en el terreno.",
+    "description": "Dibuja ubicaciones, parcelas y bancales como un plano a escala, no como un mapa. Las dimensiones, distancias y posiciones siguen vinculadas a tus series.",
+    "points": {
+      "layout": "Mover y girar bancales en una parcela y disponerlos en filas",
+      "paths": "Tener en cuenta el ancho de los pasillos y ver la superficie libre de un vistazo",
+      "individualPlants": "Colocar árboles y arbustos como plantas individuales con su diámetro de copa"
+    },
+    "illustration": {
+      "ariaLabel": "Plano esquemático: una ubicación con una parcela, cuatro bancales con pasillos entre ellos y un frutal como planta individual.",
+      "location": "Ubicación",
+      "parcel": "Parcela",
+      "bed": "Bancal {{number}}",
+      "path": "Pasillo",
+      "tree": "Frutal"
+    }
+  },
   "seasonFeatures": {
     "title": "Todo para tu temporada",
+    "groups": {
+      "plan": "Planificar los cultivos",
+      "crops": "Cultivos y semillas",
+      "track": "Acompañar y evaluar",
+      "collaborate": "Trabajar de forma flexible y en equipo"
+    },
     "items": {
       "calendar": {
         "title": "Calendario de cultivo",
         "description": "Consulta de un vistazo qué cultivo ocupa qué bancal y cuándo, y detecta los solapamientos a tiempo."
       },
-      "rolloverSeason": {
-        "title": "Pasar a la temporada siguiente",
-        "description": "Lleva en un solo paso los planes de cultivo probados a la nueva temporada y ajusta solo lo que cambie."
+      "graphicalPlanning": {
+        "title": "Planificación gráfica de superficies",
+        "description": "Ubicaciones, parcelas y bancales con el ancho de los pasillos como plano esquemático."
+      },
+      "seasonsRotation": {
+        "title": "Temporadas y rotación de cultivos",
+        "description": "Copiar series de temporadas anteriores, comprobar la rotación de cultivos y rotar parcelas."
+      },
+      "perennials": {
+        "title": "Cultivos perennes",
+        "description": "Planificar cultivos perennes a lo largo de varias temporadas, con árboles y arbustos como plantas individuales."
+      },
+      "cropsVarieties": {
+        "title": "Cultivos y variedades",
+        "description": "Gestiona tus propios cultivos y variedades, con distancias, duración del cultivo y rendimientos."
       },
       "seedDemand": {
         "title": "Calcular la necesidad de semillas",
         "description": "La cantidad y los envases adecuados se derivan de los planes, los datos de cultivo y los proveedores."
       },
-      "yieldDistribution": {
-        "title": "Distribución de rendimientos",
-        "description": "Las cantidades de cosecha previstas por semana y cultivo muestran los huecos y los picos antes de que se produzcan."
+      "companionHealth": {
+        "title": "Asociaciones y sanidad vegetal",
+        "description": "Detecta buenos y malos vecinos en el bancal y registra pérdidas por plagas o enfermedades."
       },
-      "fieldMap": {
-        "title": "Vista gráfica de parcelas",
-        "description": "Coloca los bancales en tus parcelas tal como están realmente sobre el terreno."
+      "suppliers": {
+        "title": "Proveedores y ofertas de semillas",
+        "description": "Guarda proveedores con tamaños de sobre y precios y compáralos."
+      },
+      "tasks": {
+        "title": "Planificación de tareas",
+        "description": "Siembra, plantación y cosecha se convierten en tareas que puedes marcar."
+      },
+      "plannedActual": {
+        "title": "Fechas previstas y reales",
+        "description": "Registra las fechas reales junto al plan y aprende de ellas para la próxima temporada."
+      },
+      "yieldPlanning": {
+        "title": "Previsión de rendimientos y registro de cosechas",
+        "description": "Planifica las cosechas esperadas, registra las reales y compara temporadas."
+      },
+      "notesPhotos": {
+        "title": "Notas y fotos",
+        "description": "Guarda observaciones con fotos directamente en la serie."
       },
       "collaboration": {
-        "title": "Planificar en equipo",
-        "description": "Invita a tu equipo de cultivo y trabajad sobre el mismo plan actualizado."
+        "title": "Trabajo en equipo",
+        "description": "Invita a tu equipo y trabajad juntos en uno o varios proyectos."
       },
       "history": {
         "title": "Historial de versiones y papelera",
@@ -162,11 +214,11 @@
       },
       "importExport": {
         "title": "Importación y exportación",
-        "description": "Trae tus datos de cultivo desde hojas de cálculo y llévatelos de nuevo en cualquier momento."
+        "description": "Importa datos de cultivo desde hojas de cálculo y expórtalos cuando quieras."
       },
-      "installApp": {
-        "title": "Instalar como aplicación",
-        "description": "Funciona en el navegador y se puede instalar en el móvil o la tableta como una aplicación."
+      "mobileLanguages": {
+        "title": "Móvil y multilingüe",
+        "description": "Funciona en el navegador, se instala como app y habla siete idiomas."
       }
     }
   },

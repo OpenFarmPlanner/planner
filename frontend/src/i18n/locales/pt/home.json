@@ -129,32 +129,84 @@
       "yourCropsTitle": "As culturas do projeto"
     }
   },
+  "graphicalPlanning": {
+    "eyebrow": "Planeamento gráfico das áreas",
+    "title": "Planeie as áreas tal como estão no terreno.",
+    "description": "Desenhe explorações, parcelas e canteiros como uma planta à escala, não como um mapa. Dimensões, espaçamentos e posição mantêm-se ligados às séries.",
+    "points": {
+      "layout": "Mover e rodar canteiros numa parcela e dispô-los em filas",
+      "paths": "Ter em conta a largura dos caminhos e ver a área livre de relance",
+      "individualPlants": "Colocar árvores e arbustos como plantas individuais com o diâmetro da copa"
+    },
+    "illustration": {
+      "ariaLabel": "Planta esquemática: uma exploração com uma parcela, quatro canteiros com caminhos entre eles e uma árvore de fruto como planta individual.",
+      "location": "Exploração",
+      "parcel": "Parcela",
+      "bed": "Canteiro {{number}}",
+      "path": "Caminho",
+      "tree": "Árvore de fruto"
+    }
+  },
   "seasonFeatures": {
     "title": "Tudo para a época",
+    "groups": {
+      "plan": "Planear as culturas",
+      "crops": "Culturas e sementes",
+      "track": "Acompanhar e avaliar",
+      "collaborate": "Trabalhar de forma flexível e em conjunto"
+    },
     "items": {
       "calendar": {
         "title": "Calendário de cultivo",
         "description": "Veja de imediato qual a cultura que ocupa cada canteiro e quando e identifique sobreposições antecipadamente."
       },
-      "rolloverSeason": {
-        "title": "Passar à época seguinte",
-        "description": "Transfira séries comprovadas para a nova época num único passo e ajuste apenas o que mudar."
+      "graphicalPlanning": {
+        "title": "Planeamento gráfico das áreas",
+        "description": "Explorações, parcelas e canteiros com a largura dos caminhos como planta esquemática."
+      },
+      "seasonsRotation": {
+        "title": "Épocas e rotação de culturas",
+        "description": "Copiar séries de épocas anteriores, verificar a rotação de culturas e rodar parcelas."
+      },
+      "perennials": {
+        "title": "Culturas perenes",
+        "description": "Planear culturas perenes ao longo de várias épocas, com árvores e arbustos como plantas individuais."
+      },
+      "cropsVarieties": {
+        "title": "Culturas e variedades",
+        "description": "Gerir as próprias culturas e variedades, com espaçamentos, duração da cultura e produções."
       },
       "seedDemand": {
         "title": "Calcular necessidades de sementes",
         "description": "As quantidades e os tamanhos de embalagem adequados são calculados a partir das séries, dos dados das culturas e dos fornecedores."
       },
-      "yieldDistribution": {
-        "title": "Distribuição dos rendimentos",
-        "description": "As quantidades de colheita esperadas por semana e cultura revelam faltas e picos antes de acontecerem."
+      "companionHealth": {
+        "title": "Consociações e sanidade vegetal",
+        "description": "Identificar boas e más vizinhanças no canteiro e registar perdas por pragas ou doenças."
       },
-      "fieldMap": {
-        "title": "Vista gráfica das parcelas",
-        "description": "Organize os canteiros nas parcelas de acordo com a disposição real no terreno."
+      "suppliers": {
+        "title": "Fornecedores e ofertas de sementes",
+        "description": "Guardar fornecedores com embalagens e preços e compará-los."
+      },
+      "tasks": {
+        "title": "Planeamento de tarefas",
+        "description": "Sementeira, plantação e colheita tornam-se tarefas que se podem marcar como feitas."
+      },
+      "plannedActual": {
+        "title": "Datas previstas e reais",
+        "description": "Registar as datas reais ao lado do plano e aprender com elas para a época seguinte."
+      },
+      "yieldPlanning": {
+        "title": "Previsão de produção e registo de colheitas",
+        "description": "Planear as colheitas esperadas, registar as reais e comparar épocas."
+      },
+      "notesPhotos": {
+        "title": "Notas e fotografias",
+        "description": "Registar observações com fotografias diretamente na série."
       },
       "collaboration": {
-        "title": "Planear em conjunto",
-        "description": "Convide a equipa de cultivo e trabalhem no mesmo plano atualizado."
+        "title": "Trabalho em equipa",
+        "description": "Convide a equipa e trabalhem em conjunto num ou mais projetos."
       },
       "history": {
         "title": "Histórico de versões e reciclagem",
@@ -162,11 +214,11 @@
       },
       "importExport": {
         "title": "Importação e exportação",
-        "description": "Importe dados de culturas a partir de folhas de cálculo e volte a exportá-los a qualquer momento."
+        "description": "Importar dados de culturas a partir de folhas de cálculo e exportá-los a qualquer momento."
       },
-      "installApp": {
-        "title": "Instalar como aplicação",
-        "description": "Funciona no navegador e pode ser instalado no telemóvel ou tablet como aplicação."
+      "mobileLanguages": {
+        "title": "Móvel e multilingue",
+        "description": "Funciona no navegador, instala-se como aplicação e está disponível em sete línguas."
       }
     }
   },
