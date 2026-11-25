@@ -172,6 +172,23 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         }, format='json')
         self.assertEqual(denied.status_code, 404, denied.data)
 
+    def test_harvest_suggestions_distinguish_two_direct_parcels(self):
+        second = Field.objects.create(
+            project=self.project, location=self.location, name='South orchard',
+            width_m=12, length_m=20,
+        )
+        first_plan = self.create_plan().json()
+        second_plan = self.create_plan(parcel=second.pk).json()
+        self.client.defaults['HTTP_X_SEASON_ID'] = str(self.later.id)
+        response = self.client.get('/openfarmplanner/api/harvests/suggestions/', {
+            'crop': self.apple.pk, 'date': '2027-08-29',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(
+            {(item['id'], item['field_name'], item['bed_name']) for item in response.data},
+            {(first_plan['id'], self.field.name, ''), (second_plan['id'], second.name, '')},
+        )
+
     def test_rotation_keeps_the_plot_and_renewal_coordinates(self):
         opposite = Field.objects.create(
             project=self.project, location=self.location, name='Other plot',

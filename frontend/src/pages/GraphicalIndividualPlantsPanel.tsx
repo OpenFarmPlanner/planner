@@ -128,7 +128,8 @@ export function GraphicalIndividualPlantsPanel({
   const validCanopy = !invalidCanopy && (canopy == null || (
     Number(canopy) >= 0.01 && Number(canopy) <= 99999.99
   ));
-  const canAdd = Boolean(parcel && parcelMeters(parcel) && stems.length < MAX_INDIVIDUAL_POSITIONS);
+  const measured = parcel ? parcelMeters(parcel) : null;
+  const canAdd = Boolean(measured && stems.length < MAX_INDIVIDUAL_POSITIONS);
   const canSave = Boolean(draft && validCanopy && !saving && (
     draft.planId ? draft.expectedUpdatedAt : draft.crop && stems.length > 0 && draft.date >= season.start_date && draft.date <= season.end_date
   ));
@@ -183,7 +184,7 @@ export function GraphicalIndividualPlantsPanel({
           </Stack>
         )}
         {!draft && canEdit && parcelId && (
-          <Button variant="outlined" disabled={!canAdd || controller.loading || controller.failed}
+          <Button variant="outlined" disabled={!measured || controller.loading || controller.failed}
             onClick={() => startDraft(parcelId)}>{tr('newPlan')}</Button>
         )}
         {parcel && !parcelMeters(parcel) && <Alert severity="info">{tr('dimensionsRequired')}</Alert>}

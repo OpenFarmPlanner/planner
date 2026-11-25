@@ -126,7 +126,7 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
             raise NotFound("Crop is not available in this project.")
         day = query.validated_data["date"]
         plans = eligible_harvest_plans(project.pk, crop_id, day).select_related(
-            "bed__field", "season"
+            "bed__field", "parcel", "season"
         )
         ranked = sorted(plans, key=lambda plan: harvest_plan_sort_key(plan, day))
         return Response(
@@ -134,9 +134,11 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
                 {
                     "id": plan.pk,
                     "bed_name": plan.bed.name if plan.bed_id is not None else "",
-                    "field_name": plan.bed.field.name
-                    if plan.bed_id is not None and plan.bed.field_id
-                    else "",
+                    "field_name": (
+                        plan.parcel.name if plan.parcel_id is not None
+                        else plan.bed.field.name if plan.bed_id is not None and plan.bed.field_id
+                        else ""
+                    ),
                     "season_label": plan.season.label if plan.season_id is not None else "",
                     "planting_date": plan.planting_date,
                     "harvest_start": plan.harvest_date,
