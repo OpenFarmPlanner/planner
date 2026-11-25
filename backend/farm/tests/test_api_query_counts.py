@@ -940,7 +940,8 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 for index in range(ROW_COUNT):
                     PlantingPlan.objects.create(
                         crop=self.crops[index], parcel=self.beds[index].field,
-                        planting_date=date(2027, 8, 1), project=self.project, season=self.seasons[index],
+                        planting_date=date(2027, 8, 1), project=self.project,
+                        season=self.seasons[index],
                     )
 
     def test_planting_plans_list_query_count_with_harvest_overlaps(self):

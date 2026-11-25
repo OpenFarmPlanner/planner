@@ -55,11 +55,11 @@ from farm.services.crop_rotation import (
 )
 from farm.services.demo_features import FEATURE_TEXT
 from farm.services.demo_project import (
+    DEMO_ORCHARD_CROP_NAMES,
     DEMO_PROJECT_DESCRIPTION,
     DEMO_PROJECT_NAME,
     DEMO_PROJECT_NAME_EN,
     DEMO_PROJECT_SLUG,
-    DEMO_ORCHARD_CROP_NAMES,
     DEMO_ROTATION_GROUP_NAMES,
     DEMO_TEXT,
     DemoProjectResult,

@@ -659,7 +659,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     @transaction.atomic
     def perform_update(self, serializer: PlantingPlanSerializer) -> None:
         crop = serializer.validated_data.get('crop')
-        if serializer.instance.parcel_id and crop is not None and crop.pk != serializer.instance.crop_id:
+        plan = serializer.instance
+        if plan.parcel_id and crop is not None and crop.pk != plan.crop_id:
             lock_and_check_individual_crop(crop)
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)

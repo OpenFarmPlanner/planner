@@ -730,13 +730,15 @@ def resolve_crop_field(
 
 
 def validate_individual_plan_lifecycles(previous: dict, current: dict) -> None:
-    """Keep a crop edit from invalidating plans that use its effective life cycle."""
+    """Protect direct plans while crops are edited or archived."""
     project_id = current['project_id']
     general_species = {
         row['crop_species_id'] for row in (previous, current)
         if row['crop_species_id'] and not row['variety_normalized']
     }
-    affected = Crop.objects.filter(
+    # An individual plan can still reference a variety archived earlier or in
+    # the same batch. Its lifecycle continues to depend on the active parent.
+    affected = Crop.all_objects.filter(
         Q(pk=current['id']) | Q(crop_species_id__in=general_species, life_cycle=''),
         project_id=project_id, planting_plans__project_id=project_id,
         planting_plans__parcel__isnull=False,

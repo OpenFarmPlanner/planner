@@ -253,7 +253,9 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         return self._germination_result(obj)['germination_findings']
 
     def get_site_suitability_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
-        return check_site_suitability(obj.crop, obj.bed or obj.parcel, self._general_crop_index(obj))
+        return check_site_suitability(
+            obj.crop, obj.bed or obj.parcel, self._general_crop_index(obj),
+        )
 
     def get_expected_emergence(self, obj: PlantingPlan) -> dict[str, str] | None:
         return self._germination_result(obj)['expected_emergence']

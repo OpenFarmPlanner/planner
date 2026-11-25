@@ -157,13 +157,17 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         [listed] = self.client.get(URL, {'individual_location': self.location.pk}).json()['results']
         light, water = detail['site_suitability_findings']
         self.assertEqual((light['code'], light['light']['source']), ('light_mismatch', 'field'))
-        self.assertEqual((water['code'], water['irrigation']['source']), ('water_mismatch', 'location'))
+        self.assertEqual(
+            (water['code'], water['irrigation']['source']), ('water_mismatch', 'location'),
+        )
         self.assertEqual(water['soil_moisture']['source'], 'field')
         self.assertEqual(detail['site_suitability_findings'], listed['site_suitability_findings'])
 
     def test_crop_cannot_become_annual_while_used_by_an_individual_plan(self):
         created = self.create_plan().json()
-        response = self.client.patch(f'{CROP_URL}{self.apple.pk}/', {'life_cycle': 'annual'}, format='json')
+        response = self.client.patch(
+            f'{CROP_URL}{self.apple.pk}/', {'life_cycle': 'annual'}, format='json',
+        )
         self.assertEqual(response.status_code, 409, response.data)
         self.assertEqual(response.data['code'], 'individual_plant_lifecycle_conflict')
         self.apple.refresh_from_db()
@@ -171,15 +175,20 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         detail = self.client.get(f"{URL}{created['id']}/").json()
         self.assertEqual(detail['individual_positions'], created['individual_positions'])
         self.assertEqual(detail['clearing_date'], created['clearing_date'])
-        self.assertTrue(eligible_harvest_plans(self.project.id, self.apple.id, date(2027, 8, 29)).exists())
+        self.assertTrue(eligible_harvest_plans(
+            self.project.id, self.apple.id, date(2027, 8, 29),
+        ).exists())
 
-    def test_general_crop_edit_respects_the_effective_lifecycle_of_used_varieties(self):
+    def variety_inheriting_from_apple(self):
         species = CropSpecies.objects.create(name='Orchard apple')
         self.apple.crop_species = species
         self.apple.save()
-        variety = Crop.objects.create(
+        return Crop.objects.create(
             project=self.project, name=self.apple.name, crop_species=species, variety='Topaz',
         )
+
+    def test_general_crop_edit_respects_the_effective_lifecycle_of_used_varieties(self):
+        variety = self.variety_inheriting_from_apple()
         self.create_plan(crop=variety.pk)
 
         url = f'{CROP_URL}{self.apple.pk}/'
@@ -191,8 +200,30 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(own_perennial.status_code, 200, own_perennial.data)
         allowed = self.client.patch(url, {'life_cycle': 'annual'}, format='json')
         self.assertEqual(allowed.status_code, 200, allowed.data)
-        no_override = self.client.patch(f'{CROP_URL}{variety.pk}/', {'life_cycle': ''}, format='json')
+        no_override = self.client.patch(
+            f'{CROP_URL}{variety.pk}/', {'life_cycle': ''}, format='json',
+        )
         self.assertEqual(no_override.status_code, 409, no_override.data)
+
+    def test_cannot_archive_the_perennial_parent_of_an_individual_plan(self):
+        variety = self.variety_inheriting_from_apple()
+        plan = self.create_plan(crop=variety.pk).json()
+        parent_url = f'{CROP_URL}{self.apple.pk}/'
+
+        rejected = self.client.delete(parent_url)
+        self.assertEqual(rejected.status_code, 409, rejected.data)
+        self.assertEqual(rejected.data['code'], 'individual_plant_lifecycle_conflict')
+        self.assertTrue(Crop.objects.filter(pk=variety.pk).exists())
+
+        archived_variety = self.client.delete(f'{CROP_URL}{variety.pk}/')
+        self.assertEqual(archived_variety.status_code, 204, archived_variety.data)
+        still_rejected = self.client.delete(parent_url)
+        self.assertEqual(still_rejected.status_code, 409, still_rejected.data)
+        self.apple.refresh_from_db()
+        self.assertIsNone(self.apple.deleted_at)
+        self.assertTrue(eligible_harvest_plans(
+            self.project.pk, variety.pk, date(2027, 8, 29),
+        ).filter(pk=plan['id']).exists())
 
     def test_carryover_is_the_same_planting_and_can_be_edited_in_the_visible_season(self):
         created = self.create_plan().json()

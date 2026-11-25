@@ -5,7 +5,10 @@ from typing import Any
 from farm.crop_light import normalize_crop_light
 from farm.models import Bed, Crop, Field
 from farm.services.crop_inheritance import GeneralCropIndex, resolve_crop_field
-from farm.services.site_conditions import effective_conditions_for_bed, effective_conditions_for_field
+from farm.services.site_conditions import (
+    effective_conditions_for_bed,
+    effective_conditions_for_field,
+)
 
 CROP_LIGHT_BY_SITE_LIGHT = {
     'sunny': 'full_sun',
