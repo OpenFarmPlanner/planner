@@ -1086,9 +1086,13 @@ Run `ofp-qa refresh --agent codex` (or `--agent claude`) from an interactive
 terminal to review accepted work and then prepare newly implemented issues.
 The launcher first runs the existing `sync` assistant: it verifies Accepted
 decisions against the reviewed implementation and the live queue, previews the
-eligible removals, and asks for one explicit confirmation before editing #1058.
-Verified removals are archived locally with their decisions and evidence before
-their cards leave the dashboard. Separate follow-up issues remain in the queue.
+eligible removals, and applies them directly under the standing owner
+authorization in [CLAUDE.md](../CLAUDE.md#qa--exploratory-testing) — closure,
+matching Accepted revision, merged reviewed PR, no open implementation-PR gate
+re-checked immediately before each write — without asking for a chat
+confirmation each run. Verified removals are archived locally with their
+decisions and evidence before their cards leave the dashboard. Separate
+follow-up issues remain in the queue.
 Exit the interactive assistant when finished to continue with the QA release
 update and refresh. An unsuccessful sync exit or Ctrl+C stops the combined run.
 The refresh then reads the updated dashboard and queue to build a new candidate
@@ -1103,8 +1107,9 @@ Codex sync sessions explicitly use `--ask-for-approval never` with the
 `workspace-write` sandbox and network access enabled. This avoids individual
 command approval prompts during GitHub relationship reads. The same policy
 applies when `refresh` starts its sync phase and when automatic agent selection
-chooses Codex. It applies to all commands in that session, including approved
-queue writes; the existing sync task still requires an explicit confirmation of
-the exact batch before remote changes. This is an assistant instruction, not a
-network write filter. Global Codex settings are unchanged. Preview mode starts
-no assistant; Claude's startup options are unchanged.
+chooses Codex. It applies to all commands in that session, including the
+verified queue-row removals it writes directly under the standing owner
+authorization described above, without an additional chat confirmation. This
+is an assistant instruction, not a network write filter. Global Codex settings
+are unchanged. Preview mode starts no assistant; Claude's startup options are
+unchanged.
