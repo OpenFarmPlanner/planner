@@ -291,7 +291,9 @@
         "zoomOut": "Uitzoomen",
         "fit": "Hele weergave inpassen",
         "fullscreen": "Volledig scherm tonen",
-        "editToggle": "Indeling bewerken: versleep bedden en percelen van een locatie om ze te verplaatsen en te ordenen"
+        "editToggle": "Indeling bewerken: versleep bedden en percelen van een locatie om ze te verplaatsen en te ordenen",
+        "freeSite": "Lichtblauw toont vrije oppervlakte buiten percelen.",
+        "freeParcel": "Lichtgroen toont vrije oppervlakte binnen percelen en buiten bedden."
       }
     },
     "yieldOverview": {

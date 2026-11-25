@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Alert,
   Box,
@@ -36,7 +36,7 @@ import {
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
 import { GraphicalFieldDetailsDialog } from "./GraphicalFieldDetailsDialog";
-import { GraphicalFreeAreaInfo, GraphicalFreeRectangles } from "./GraphicalFreeAreas";
+import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
 import { GraphicalBedTasksControl } from "./GraphicalBedTasksControl";
 import { bedTaskColors, BED_TASK_SYMBOLS } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
@@ -46,18 +46,12 @@ import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndi
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
-import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
-import type { MetricCoverage } from "../components/hierarchy/utils/growingAreaGeometry";
+import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, getSchematicLocationLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
 import ModeToggle from "../components/ModeToggle";
 import {
   clampInsideBoundary,
   clampInsideParent,
-  fieldUsesWorldScale,
-  getFieldRectSize,
-  getLocationBoundaryRect,
   isRectOutsideBoundary,
-  arrangeFieldRects,
-  placeFieldRects,
   DEFAULT_GRAPHICAL_ROTATION,
   rotateRect,
   rotateRectBetweenSizes,
@@ -84,23 +78,13 @@ import {
   zoomAroundPoint,
 } from "./graphicalViewport";
 import {
-  DEFAULT_STAGE_HEIGHT,
   FIELD_INNER_OFFSET_X,
   FIELD_INNER_OFFSET_Y,
   FIELD_SNAP_THRESHOLD,
-  FIELD_WORLD_BASE_WIDTH,
-  FIELD_WORLD_MAX_WIDTH,
-  FIELD_WORLD_MIN_HEIGHT,
-  FIELD_WORLD_MIN_WIDTH,
   FIELD_WORLD_PX_PER_METER,
-  FIELD_WORLD_SCALE_FACTOR,
-  LOCATION_FIELD_GAP,
-  LOCATION_LAYOUT_PADDING,
   PAN_FAST_STEP,
   PAN_STEP,
   SNAP_THRESHOLD,
-  WORKSPACE_MIN_HEIGHT,
-  WORKSPACE_MIN_WIDTH,
   ZOOM_STEP,
   getFitViewportPadding,
   type BedViewModel,
@@ -117,9 +101,8 @@ import { useGraphicalStageSize } from "./useGraphicalStageSize";
 import { formatLocalizedNumber, getActiveFormattingLocale } from "../utils/numberLocalization";
 import { AppTooltip } from '../components/AppTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
+import { hasPendingFieldLayout, saveTrackedBedLayout, saveTrackedFieldLayout, waitForLocationLayoutSaves } from './graphicalLayoutRequests';
 
-// A quick Graphic → List → Graphic switch must read after an in-flight drop.
-const pendingFieldSaves = new Map<number, Promise<void>>();
 const BED_ACTIVATION_SLOP = 8;
 const BED_TASK_BADGE_WIDTH = 19;
 
@@ -128,7 +111,6 @@ export default function GraphicalFields({
   interactionMode: controlledInteractionMode,
   onInteractionModeChange,
   showModeToggle = true,
-  showFreeAreas = false,
   activeSeasonId,
   individualSeason,
   canEditIndividualPlants = false,
@@ -202,7 +184,6 @@ export default function GraphicalFields({
   const [selectedElement, setSelectedElement] =
     useState<SelectedElement | null>(null);
   const stageRefs = useRef<Record<number, Konva.Stage | null>>({});
-  const saveTimers = useRef<Record<string, number>>({});
   const panSessionRef = useRef<Record<number, PanSession | null>>({});
   const pinchStateRef = useRef<
     Record<number, { distance: number; center: Point } | null>
@@ -242,7 +223,7 @@ export default function GraphicalFields({
       if (activeLocationId === null) return;
 
       try {
-        await pendingFieldSaves.get(activeLocationId);
+        await waitForLocationLayoutSaves(activeLocationId);
         if (!active) return;
         const { data } = await layoutAPI.listByLocation(activeLocationId);
         if (!active) return;
@@ -273,15 +254,6 @@ export default function GraphicalFields({
       active = false;
     };
   }, [activeLocationId, layoutAttempt]);
-
-  useEffect(() => {
-    const timers = saveTimers.current;
-    return () => {
-      Object.values(timers).forEach((timer) => {
-        window.clearTimeout(timer);
-      });
-    };
-  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -324,21 +296,12 @@ export default function GraphicalFields({
   );
 
   const saveBedLayout = (locationId: number, payload: BedLayoutEntry): void => {
-    const timerKey = `bed-${payload.bed}`;
-    if (saveTimers.current[timerKey]) {
-      window.clearTimeout(saveTimers.current[timerKey]);
-    }
-
-    saveTimers.current[timerKey] = window.setTimeout(async () => {
-      try {
-        await layoutAPI.saveByLocation(locationId, {
-          bed_layouts: [payload],
-          field_layouts: [],
-        });
-      } catch (saveError) {
-        console.error("Failed to save bed layout", saveError);
-      }
-    }, 250);
+    void saveTrackedBedLayout(locationId, payload.bed, () => layoutAPI.saveByLocation(locationId, {
+      bed_layouts: [payload],
+      field_layouts: [],
+    })).catch((saveError: unknown) => {
+      console.error("Failed to save bed layout", saveError);
+    });
   };
 
   const saveFieldLayout = (
@@ -354,148 +317,65 @@ export default function GraphicalFields({
     }
     // The first drop sets the boundary origin and the parcel position in one
     // request. Bed positions are already relative to the parcel.
-    const save = layoutAPI.saveByLocation(locationId, {
+    void saveTrackedFieldLayout(locationId, () => layoutAPI.saveByLocation(locationId, {
       bed_layouts: [],
       field_layouts: [payload],
       ...(boundaryOrigin && { location_boundary: boundaryOrigin }),
-    }).then(() => undefined).catch((saveError: unknown) => {
+    })).catch((saveError: unknown) => {
       setLayoutsByField((prev) => {
+        if (prev[payload.field] !== payload) return prev;
         const restored = { ...prev };
         if (previousLayout) restored[payload.field] = previousLayout;
         else delete restored[payload.field];
         return restored;
       });
       if (boundaryOrigin) {
-        setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: null }));
+        setBoundaryOriginByLocation((prev) => prev[locationId] === boundaryOrigin
+          ? { ...prev, [locationId]: null } : prev);
       }
       setFieldSaveErrorLocation(locationId);
       console.error("Failed to save field layout", saveError);
-    }).finally(() => {
-      pendingFieldSaves.delete(locationId);
     });
-    pendingFieldSaves.set(locationId, save);
   };
 
-  const fieldsByLocation = new Map<number, typeof fields>();
-  locations.forEach((location) => {
-    if (!location.id) return;
-    fieldsByLocation.set(
-      location.id,
-      fields.filter(
-        (field) => field.location === location.id && field.id !== undefined,
-      ),
-    );
-  });
-
-  const locationLayouts = locations.flatMap((location) => {
+  const locationLayouts = useMemo(() => locations.flatMap(location => {
     if (!location.id) return [];
-    const locationFields = fieldsByLocation.get(location.id) ?? [];
-    const sizedFields = locationFields.map((field) => {
-      const size = getFieldRectSize(field, FIELD_WORLD_PX_PER_METER, {
-        baseWidth: FIELD_WORLD_BASE_WIDTH,
-        minWidth: FIELD_WORLD_MIN_WIDTH,
-        maxWidth: FIELD_WORLD_MAX_WIDTH,
-        minHeight: FIELD_WORLD_MIN_HEIGHT,
-        scaleFactor: FIELD_WORLD_SCALE_FACTOR,
-      });
-      return {
-        field,
-        width: size.width,
-        height: size.height,
-      };
-    });
-    const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
-    const arrangement = arrangeFieldRects(
-      sizedFields,
-      // Pack for the default quarter turn; later rotations preserve this arrangement.
-      Math.max(1, stageHeight - fitPadding.top - fitPadding.bottom) /
-        Math.max(1, stageWidth - fitPadding.left - fitPadding.right),
-      LOCATION_FIELD_GAP,
-    );
-    const originX = Math.max(
-      LOCATION_LAYOUT_PADDING,
-      Math.round(WORKSPACE_MIN_WIDTH / 2 - arrangement.width / 2),
-    );
-    const originY = Math.max(
-      LOCATION_LAYOUT_PADDING,
-      Math.round(WORKSPACE_MIN_HEIGHT / 2 - arrangement.height / 2),
-    );
-    const defaultFieldRects = sizedFields.map((entry, index) => ({
-      ...entry,
-      defaultX: originX + arrangement.positions[index].x,
-      defaultY: originY + arrangement.positions[index].y,
-    }));
-
-    const fieldsContentSize = {
-      width: Math.max(
-        WORKSPACE_MIN_WIDTH,
-        ...defaultFieldRects.map(
-          (rect) =>
-            rect.width + rect.defaultX + LOCATION_LAYOUT_PADDING,
-        ),
-      ),
-      height: Math.max(
-        WORKSPACE_MIN_HEIGHT,
-        DEFAULT_STAGE_HEIGHT,
-        originY + arrangement.height + LOCATION_LAYOUT_PADDING,
-      ),
-    };
-    const storedFieldRects = placeFieldRects(
-      defaultFieldRects,
-      layoutsByField,
-      fieldsContentSize,
-    );
-    // A saved origin keeps the boundary fixed while plots move inside it.
-    // Until one is saved the boundary starts at the plots' top-left corner
-    // (#1190); the first plot move saves that corner as the origin.
-    const savedBoundaryOrigin = boundaryOriginByLocation[location.id] ?? null;
-    const storedFieldBounds = getContentBoundsFromRects(storedFieldRects);
-    const storedBoundary = getLocationBoundaryRect(
+    return [getSchematicLocationLayout(
       location,
-      FIELD_WORLD_PX_PER_METER,
-      savedBoundaryOrigin ??
-        (storedFieldBounds
-          ? { x: storedFieldBounds.minX, y: storedFieldBounds.minY }
-          : { x: originX, y: originY }),
-    );
-    const contentWidth = Math.max(
-      fieldsContentSize.width,
-      storedBoundary ? storedBoundary.x + storedBoundary.width + LOCATION_LAYOUT_PADDING : 0,
-    );
-    const contentHeight = Math.max(
-      fieldsContentSize.height,
-      storedBoundary ? storedBoundary.y + storedBoundary.height + LOCATION_LAYOUT_PADDING : 0,
-    );
-    const rotation = rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION;
-    const storedContentSize = { width: contentWidth, height: contentHeight };
-    const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
-    const metricFieldIds = new Set(sizedFields
-      .filter(rect => fieldUsesWorldScale(rect.field, rect, FIELD_WORLD_PX_PER_METER))
-      .map(rect => rect.field.id));
-    const fieldViewModels = storedFieldRects.map(rect => ({
-      ...rotateRect(rect, storedContentSize, rotation),
-      supportsMetricSpacing: metricFieldIds.has(rect.id),
-    }));
-    const boundary = storedBoundary
-      ? rotateRect(storedBoundary, storedContentSize, rotation)
-      : null;
+      fields.filter(field => field.location === location.id && field.id !== undefined),
+      layoutsByField,
+      boundaryOriginByLocation[location.id] ?? null,
+      rotationByLocation[location.id] ?? DEFAULT_GRAPHICAL_ROTATION,
+      stageWidth,
+      stageHeight,
+    )];
+  }), [locations, fields, layoutsByField, boundaryOriginByLocation, rotationByLocation, stageWidth, stageHeight]);
 
-    return [
-      {
-        location,
-        defaultFieldRects,
-        fieldViewModels,
-        boundary,
-        unsavedBoundaryOrigin:
-          storedBoundary && !savedBoundaryOrigin
-            ? { x: storedBoundary.x, y: storedBoundary.y }
-            : null,
-        contentWidth: rotatedContent.width,
-        contentHeight: rotatedContent.height,
-        rotation,
-      },
-    ];
-  });
+  const activeLayout = locationLayouts.find(layout => layout.location.id === activeLocationId);
+  const activeScene = useMemo(() => {
+    if (!activeLayout) return null;
+    const { location, defaultFieldRects, fieldViewModels, boundary, rotation } = activeLayout;
+    const fieldRectsById = new Map(fieldViewModels.map(rect => [rect.id, rect]));
+    const parcels = defaultFieldRects.flatMap<GraphicalParcel>(stored => {
+      const { field } = stored;
+      const rect = fieldRectsById.get(field.id!);
+      if (!rect) return [];
+      return [{ field, rect, layout: getGraphicalBedLayout(
+        field, stored, beds.filter(bed => bed.field === rect.id), layoutsByBed, rotation,
+      ) }];
+    });
+    const spacing = getLocationPathSpacing(location);
+    const savedGeometry = analyzeGraphicalGeometry(location, boundary, parcels, spacing, rotation, null, true);
+    return { parcels, fieldRectsById, spacing, savedGeometry };
+  }, [activeLayout, beds, layoutsByBed]);
+  const geometry = useMemo(() => {
+    if (!activeLayout || !activeScene) return null;
+    if (!geometryPreview) return activeScene.savedGeometry;
+    return analyzeGraphicalGeometry(
+      activeLayout.location, activeLayout.boundary, activeScene.parcels, activeScene.spacing,
+      activeLayout.rotation, geometryPreview, true, activeScene.savedGeometry,
+    );
+  }, [activeLayout, activeScene, geometryPreview]);
 
   const getContentBoundsForLocation = (locationId: number): ContentBounds => {
     const layout = locationLayouts.find((item) => item.location.id === locationId);
@@ -781,12 +661,11 @@ export default function GraphicalFields({
     boundary: PlacementRect | null,
     unsavedBoundaryOrigin: LocationBoundaryOrigin | null,
     snapping: DragSnapping,
-    coverage: MetricCoverage | undefined,
   ): KonvaNodeEvents & { draggable: boolean } => {
     if (!isLocationEditMode(locationId)) {
       const select = () => setSelectedElement({
         type: "field", id: fieldId, name: baseRect.field.name,
-        area: Number(baseRect.field.area_sqm ?? 0), locationName, coverage,
+        area: Number(baseRect.field.area_sqm ?? 0), locationName,
       });
       return {
         draggable: false,
@@ -808,7 +687,7 @@ export default function GraphicalFields({
       neighbors: fieldViewModels,
       snapping,
       constrain,
-      blocked: () => pendingFieldSaves.has(locationId),
+      blocked: () => hasPendingFieldLayout(locationId),
       onGuides: setActiveGuides,
       onPreview: position => setGeometryPreview(position && { type: "field", id: fieldId, locationId, position }),
       onDrop: position => {
@@ -1023,7 +902,6 @@ export default function GraphicalFields({
       {locationLayouts.filter(layout => layout.location.id === activeLocationId).map(
         ({
           location,
-          defaultFieldRects,
           fieldViewModels,
           boundary,
           unsavedBoundaryOrigin,
@@ -1031,25 +909,10 @@ export default function GraphicalFields({
           contentHeight,
           rotation,
         }) => {
-          if (!location.id) {
-            return null;
-          }
+          if (!location.id || !activeScene || !geometry) return null;
           const locationId = location.id;
-          const fieldRectsById = new Map(fieldViewModels.map(rect => [rect.id, rect]));
-          const parcels = defaultFieldRects.flatMap<GraphicalParcel>(stored => {
-            const { field } = stored;
-            const rect = fieldRectsById.get(field.id!);
-            if (!rect) return [];
-            return [{ field, rect, layout: getGraphicalBedLayout(
-              field, stored, beds.filter(bed => bed.field === rect.id), layoutsByBed, rotation,
-            ) }];
-          });
-          const pathSpacing = getLocationPathSpacing(location);
-          const geometry = analyzeGraphicalGeometry(location, boundary, parcels, pathSpacing, rotation, geometryPreview, showFreeAreas);
+          const { parcels, fieldRectsById, spacing: pathSpacing } = activeScene;
           const locationCoverage = geometry.locationReport.coverage;
-          const parcelCoverage = showFreeAreas ? [...geometry.parcelReports.values()].map(report => report.coverage) : [];
-          const missingParcelDimensions = parcelCoverage.some(coverage => coverage.grossArea === null);
-          const missingBedDimensions = parcelCoverage.some(coverage => coverage.grossArea !== null && coverage.freeRects === null);
           const parcelWarnings = getGeometryOutlines(geometry.locationReport.issues);
           const fieldsOutsideBoundary = new Set(geometry.locationReport.issues.flatMap(issue => issue.kind === "outside" ? [issue.id] : []));
           if (boundary) {
@@ -1130,8 +993,6 @@ export default function GraphicalFields({
                     <Stack spacing={0} sx={{ alignItems: "stretch", }} >
                       <GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
                         outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />
-                      {showFreeAreas ? <GraphicalFreeAreaInfo coverage={locationCoverage}
-                        missingParcelDimensions={missingParcelDimensions} missingBedDimensions={missingBedDimensions} t={t} /> : null}
                       {activeSeasonId !== undefined && <GraphicalBedTasksControl key={locationId}
                         enabled={showBedTasks} onToggle={setShowBedTasks}
                         beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
@@ -1409,8 +1270,8 @@ export default function GraphicalFields({
                     <Layer>
                       {boundary ? (
                         <Group listening={false}>
-                          {showFreeAreas ? <GraphicalFreeRectangles coverage={locationCoverage} origin={boundary}
-                            scale={{ x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER }} kind="site" /> : null}
+                          <GraphicalFreeRectangles coverage={locationCoverage} origin={boundary}
+                            scale={{ x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER }} kind="site" />
                           <Rect
                             {...boundary}
                             stroke={theme.palette.text.secondary}
@@ -1470,7 +1331,6 @@ export default function GraphicalFields({
                             centimeters: pathSpacing.parcel_path_spacing_cm,
                             pixelsPerMeter: { x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER },
                           } },
-                          parcelReport?.coverage,
                         );
                         return (
                           <Group
@@ -1500,7 +1360,7 @@ export default function GraphicalFields({
                               listening={false}
                               data-testid={`field-usable-area-${fieldId}`}
                             />
-                            {showFreeAreas && pixelsPerMeter ? <GraphicalFreeRectangles coverage={parcelReport?.coverage}
+                            {pixelsPerMeter ? <GraphicalFreeRectangles coverage={parcelReport?.coverage}
                               origin={fieldUsableArea} scale={pixelsPerMeter} kind="parcel" /> : null}
                             <Rect
                               width={baseRect.width}

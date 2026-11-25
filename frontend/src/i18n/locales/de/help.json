@@ -291,7 +291,9 @@
         "zoomOut": "Herauszoomen",
         "fit": "Gesamte Ansicht einpassen",
         "fullscreen": "Im Vollbild anzeigen",
-        "editToggle": "Grafik bearbeiten: Beete und Parzellen eines Standorts per Drag-and-Drop verschieben und anordnen"
+        "editToggle": "Grafik bearbeiten: Beete und Parzellen eines Standorts per Drag-and-Drop verschieben und anordnen",
+        "freeSite": "Hellblau zeigt freie Fläche außerhalb von Parzellen.",
+        "freeParcel": "Hellgrün zeigt freie Fläche innerhalb von Parzellen, außerhalb der Beete."
       }
     },
     "yieldOverview": {

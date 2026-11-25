@@ -7,7 +7,6 @@ import type { HierarchyDataState } from "../components/hierarchy/hooks/useHierar
 import type { ViewportPadding, ViewportState } from "./graphicalViewport";
 import type { Dispatch, SetStateAction } from "react";
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
-import type { MetricCoverage } from "../components/hierarchy/utils/growingAreaGeometry";
 import type { Season } from "../api/types";
 
 export interface Point {
@@ -57,7 +56,6 @@ export interface SelectedElement {
   area: number | null;
   locationName: string;
   parentName?: string;
-  coverage?: MetricCoverage;
 }
 
 export interface GraphicalFieldsProps {
@@ -65,7 +63,6 @@ export interface GraphicalFieldsProps {
   interactionMode?: InteractionMode;
   onInteractionModeChange?: (mode: InteractionMode) => void;
   showModeToggle?: boolean;
-  showFreeAreas?: boolean;
   activeSeasonId?: number;
   individualSeason?: Season;
   canEditIndividualPlants?: boolean;

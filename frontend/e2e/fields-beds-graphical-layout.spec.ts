@@ -150,10 +150,10 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   const bed = (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0];
   await page.mouse.click(bed.container.x + bed.bounds.x + bed.bounds.width / 2,
     bed.container.y + bed.bounds.y + bed.bounds.height / 2);
-  await expect(page.getByRole('dialog')).toContainText('Beet 1 mit einem langen lesbaren Namen');
+  await expect(page.getByRole('heading', { level: 1, name: 'Beet 1 mit einem langen lesbaren Namen' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('graphical-bed-details.png'), animations: 'disabled' });
   expect(layoutWrites).toEqual([]);
-  await page.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await page.goBack();
   await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();

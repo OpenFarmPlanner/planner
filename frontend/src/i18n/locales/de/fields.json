@@ -51,19 +51,6 @@
       "completeNamed": "„{{title}}“ als erledigt markieren",
       "allTasks": "Alle Aufgaben"
     },
-    "freeArea": {
-      "toggle": "Freiflächen und Wege anzeigen",
-      "title": "Freiflächen",
-      "site": "Freifläche außerhalb der Parzellen",
-      "parcel": "Fläche innerhalb der Parzellen ohne Beete",
-      "incomplete": "Freiflächen teilweise nicht messbar",
-      "gross": "Bruttofläche des Standorts {{area}}",
-      "covered": "Fläche der Parzellen innerhalb des Standorts {{area}}",
-      "remaining": "Freifläche außerhalb der Parzellen {{area}}",
-      "unknownLocation": "Für die Freiflächen des Standorts werden genaue Standort- und Parzellenumrisse benötigt.",
-      "unknownParcel": "Einige Parzellen sind wegen fehlender Maße ohne Freiflächenschattierung.",
-      "unknownBed": "Einige Beete haben keine vollständigen Maße. Die Freiflächen ihrer Parzellen bleiben ungeschattet."
-    },
     "geometry": {
       "title": "Layoutprüfung",
       "open": "Layoutprüfung ({{count}})",
@@ -75,12 +62,7 @@
       "noPathSpace": "Die Beete füllen {{name}} vollständig. Für die empfohlenen Wege fehlt Platz.",
       "unknownLocation": "Trage die Standortmaße in der Liste ein, um die Grenze zu prüfen.",
       "unknownParcels": "Für {{names}} fehlen die Maße oder die Umrisse sind vergrößert. Eine genaue Parzellenprüfung ist daher nicht möglich.",
-      "unknownBeds": "In {{name}} lässt sich die Beetfläche für {{names}} nicht genau bestimmen. Prüfe die Parzellen- und Beetmaße in der Liste.",
-      "grossArea": "Bruttofläche {{area}}",
-      "bedFootprint": "Von Beeten belegte Fläche innerhalb der Parzelle {{area}}",
-      "remainingArea": "Verbleibende Fläche {{area}}",
-      "remainingHelp": "Die verbleibende Fläche umfasst Wege und Randflächen.",
-      "areaUnknown": "Für die belegte und verbleibende Fläche werden die Parzellen- und Beetmaße benötigt."
+      "unknownBeds": "In {{name}} lässt sich die Beetfläche für {{names}} nicht genau bestimmen. Prüfe die Parzellen- und Beetmaße in der Liste."
     },
     "spacing": {
       "button": "Abstände",

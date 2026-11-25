@@ -361,6 +361,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Gross area",
+      "parcelFootprint": "Parcel footprint within the location",
+      "bedFootprint": "Bed footprint within the parcel",
+      "outsideParcels": "Free area outside parcels",
+      "withoutBeds": "Area without beds",
+      "parcelRemainingHelp": "Includes paths, margins and other uses.",
+      "loading": "Loading area coverage…",
+      "loadError": "Could not load area coverage.",
+      "locationUnknown": "Area coverage needs location and parcel dimensions and known parcel positions.",
+      "parcelUnknown": "Area coverage needs dimensions for the parcel and all its beds."
+    },
     "open": {
       "location": "Location details",
       "field": "Field details",

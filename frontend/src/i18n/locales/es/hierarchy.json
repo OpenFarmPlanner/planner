@@ -381,6 +381,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Superficie bruta",
+      "parcelFootprint": "Superficie ocupada por parcelas dentro de la ubicación",
+      "bedFootprint": "Superficie ocupada por bancales dentro de la parcela",
+      "outsideParcels": "Superficie libre fuera de las parcelas",
+      "withoutBeds": "Superficie sin bancales",
+      "parcelRemainingHelp": "Incluye caminos, márgenes y otros usos.",
+      "loading": "Cargando superficies…",
+      "loadError": "No se pudieron cargar las superficies.",
+      "locationUnknown": "Para calcular la superficie se necesitan las dimensiones de la ubicación y de las parcelas, y la posición de las parcelas.",
+      "parcelUnknown": "Para calcular la superficie se necesitan las dimensiones de la parcela y de todos sus bancales."
+    },
     "open": {
       "location": "Detalles de la ubicación",
       "field": "Detalles de la parcela",

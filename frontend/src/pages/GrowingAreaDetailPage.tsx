@@ -41,6 +41,9 @@ import { GrowingAreaPlanLinks } from '../planting-plans/GrowingAreaPlanLinks';
 import { BedTaskSection } from '../components/tasks/BedTaskSection';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { parseDimensionValue } from '../components/hierarchy/utils/hierarchyAreaParsing';
+import { formatLocalizedNumber } from '../utils/numberLocalization';
+import { GrowingAreaCoverageRows } from './GrowingAreaCoverageRows';
+import { getMeasuredArea } from './graphicalAreaGeometry';
 import {
   DETAIL_ROUTE_SEGMENTS,
   resolveGrowingAreaEntity,
@@ -115,7 +118,8 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   const navigate = useNavigate();
   const seasonId = useOutletContext<RootLayoutOutletContext | null>()?.activeSeason?.id;
   const hierarchy = useHierarchyData(true);
-  const { locations, fields, beds, setLocations, setFields, setBeds, loading, hasLoaded, error } = hierarchy;
+  const { locations, fields, beds, setLocations, setFields, setBeds, loading, hasLoaded, error, fetchData } = hierarchy;
+  const refreshHierarchy = useCallback(() => fetchData({ showLoading: false }), [fetchData]);
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState<GrowingAreaDetailDraft | null>(null);
   const [saveError, setSaveError] = useState('');
@@ -299,7 +303,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
               nameError={!draft.name.trim() ? t('hierarchy:validation.nameRequired') : undefined}
             />
           ) : (
-            <GrowingAreaReadView resolved={resolved} locale={locale} />
+            <GrowingAreaReadView resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} />
           )}
           <GrowingAreaRelatedPlans bedIds={resolved.bedIds} showBed={type !== 'bed'} />
           {type === 'bed' && id !== null && <BedTaskSection bedId={id} seasonId={seasonId} />}
@@ -382,16 +386,17 @@ function OptionalSection({ title, rows, testId }: { title: string; rows: ReactNo
 function GrowingAreaReadView({
   resolved,
   locale,
+  refreshHierarchy,
 }: {
   resolved: ResolvedGrowingAreaEntity;
   locale: string;
+  refreshHierarchy: () => Promise<void>;
 }) {
   const { t } = useTranslation(['hierarchy', 'locations', 'common']);
   const { type } = resolved;
   const entity = resolved.entity as Location & Field & Bed;
-  const area = type === 'location'
-    ? (entity.length_m && entity.width_m ? entity.length_m * entity.width_m : null)
-    : (entity.length_m && entity.width_m ? entity.length_m * entity.width_m : Number(entity.area_sqm) || null);
+  const measuredArea = getMeasuredArea(entity);
+  const area = measuredArea ?? (type === 'location' ? null : Number(entity.area_sqm) || null);
   const text = (key: string, label: string, value: string | null | undefined): ReactNode => (
     value && value.trim() ? <DetailRow key={key} label={label} value={value} testId={`detail-${key}`} /> : null
   );
@@ -434,7 +439,11 @@ function GrowingAreaReadView({
         rows={[
           text('length_m', t('hierarchy:columns.length'), formatNumber(entity.length_m, locale)),
           text('width_m', t('hierarchy:columns.width'), formatNumber(entity.width_m, locale)),
-          text('area', t('hierarchy:columns.area'), formatNumber(area === null ? null : Math.round(area * 10) / 10, locale)),
+          type !== 'bed' && measuredArea !== null
+            ? text('area', t('hierarchy:details.coverage.gross'),
+              `${formatLocalizedNumber(measuredArea, locale, { maximumFractionDigits: 2 })} ${t('common:units.squareMeters')}`)
+            : text('area', t('hierarchy:columns.area'), formatNumber(area === null ? null : Math.round(area * 10) / 10, locale)),
+          type !== 'bed' ? <GrowingAreaCoverageRows key="coverage" resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} /> : null,
         ]}
       />
       <OptionalSection

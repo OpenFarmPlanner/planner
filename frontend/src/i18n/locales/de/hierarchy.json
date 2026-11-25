@@ -361,6 +361,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Bruttofläche",
+      "parcelFootprint": "Parzellenfläche innerhalb des Standorts",
+      "bedFootprint": "Beetfläche innerhalb der Parzelle",
+      "outsideParcels": "Freifläche außerhalb der Parzellen",
+      "withoutBeds": "Fläche ohne Beete",
+      "parcelRemainingHelp": "Dazu zählen Wege, Ränder und andere Nutzungen.",
+      "loading": "Flächenbelegung wird geladen …",
+      "loadError": "Die Flächenbelegung konnte nicht geladen werden.",
+      "locationUnknown": "Für die Flächenberechnung fehlen Standort- oder Parzellenmaße oder eindeutige Parzellenpositionen.",
+      "parcelUnknown": "Für die Flächenberechnung fehlen Maße der Parzelle oder ihrer Beete."
+    },
     "open": {
       "location": "Standortdetails",
       "field": "Parzellendetails",

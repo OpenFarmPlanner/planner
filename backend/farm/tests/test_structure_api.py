@@ -804,6 +804,92 @@ class CropLayoutApiTest(DRFAPITestCase):
         self.assertEqual(len(get_response.data['field_layouts']), 1)
         self.assertEqual(get_response.data['field_layouts'][0]['x'], 66.0)
 
+    def test_bed_offsets_follow_a_parcel_to_its_current_location(self):
+        first = Location.objects.create(name='Old location', project=self.project)
+        second = Location.objects.create(name='New location', project=self.project)
+        field = Field.objects.create(name='Moving parcel', location=first, project=self.project)
+        bed = Bed.objects.create(
+            name='Positioned bed', field=field, area_sqm=6, project=self.project,
+        )
+        layout = BedLayout.objects.create(
+            bed=bed, location=first, project=self.project, x=144, y=12,
+            version=2, runs_across_parcel=True,
+        )
+        FieldLayout.objects.create(field=field, location=first, project=self.project, x=30, y=40)
+
+        move = self.client.patch(
+            f'/openfarmplanner/api/fields/{field.id}/', {'location': second.id}, format='json',
+        )
+        self.assertEqual(move.status_code, status.HTTP_200_OK)
+        old_layouts = self.client.get(f'/openfarmplanner/api/locations/{first.id}/layouts/')
+        current_layouts = self.client.get(f'/openfarmplanner/api/locations/{second.id}/layouts/')
+        self.assertEqual(old_layouts.status_code, status.HTTP_200_OK)
+        self.assertEqual(current_layouts.status_code, status.HTTP_200_OK)
+        self.assertEqual(old_layouts.data['bed_layouts'], [])
+        self.assertEqual(current_layouts.data['field_layouts'], [])
+        self.assertEqual(len(current_layouts.data['bed_layouts']), 1)
+        saved = current_layouts.data['bed_layouts'][0]
+        expected = {
+            'bed': bed.id, 'location': second.id, 'x': 144.0, 'y': 12.0,
+            'version': 2, 'runs_across_parcel': True,
+        }
+        self.assertEqual({key: saved[key] for key in expected}, expected)
+        layout.refresh_from_db()
+        self.assertEqual(layout.location_id, second.id)
+        removed = self.client.delete(f'/openfarmplanner/api/locations/{first.id}/')
+        self.assertEqual(removed.status_code, status.HTTP_204_NO_CONTENT)
+        layout.refresh_from_db()
+        self.assertEqual((layout.x, layout.y, layout.runs_across_parcel), (144, 12, True))
+
+    def test_legacy_layout_reads_and_survives_deletion_of_the_former_location(self):
+        former = Location.objects.create(name='Former location', project=self.project)
+        current = Location.objects.create(name='Current location', project=self.project)
+        field = Field.objects.create(
+            name='Previously moved parcel', location=current, project=self.project,
+        )
+        bed = Bed.objects.create(
+            name='Positioned bed', field=field, area_sqm=6, project=self.project,
+        )
+        layout = BedLayout.objects.create(
+            bed=bed, location=former, project=self.project, x=144, y=12,
+        )
+
+        response = self.client.get(f'/openfarmplanner/api/locations/{current.id}/layouts/')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['bed_layouts']), 1)
+        saved = response.data['bed_layouts'][0]
+        self.assertEqual((saved['location'], saved['x'], saved['y']), (current.id, 144, 12))
+        layout.refresh_from_db()
+        self.assertEqual(layout.location_id, former.id)
+        deleted = self.client.delete(f'/openfarmplanner/api/locations/{former.id}/')
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        layout.refresh_from_db()
+        self.assertEqual((layout.location_id, layout.x, layout.y), (current.id, 144, 12))
+        deleted = self.client.delete(f'/openfarmplanner/api/beds/{bed.id}/')
+        self.assertEqual(deleted.status_code, status.HTTP_204_NO_CONTENT)
+        self.assertFalse(BedLayout.objects.filter(pk=layout.pk).exists())
+
+    def test_bed_layout_follows_reassignment_to_another_locations_parcel(self):
+        former, _, bed = self._location_with_bed('Former bed location')
+        current, parcel, _ = self._location_with_bed('Current bed location')
+        layout = BedLayout.objects.create(
+            bed=bed, location=former, project=self.project, x=22, y=17, runs_across_parcel=True,
+        )
+        moved = self.client.patch(
+            f'/openfarmplanner/api/beds/{bed.id}/', {'field': parcel.id}, format='json',
+        )
+        self.assertEqual(moved.status_code, status.HTTP_200_OK)
+        rejected = self._put_layouts(former, {
+            'bed_layouts': [{'bed': bed.id, 'x': 2, 'y': 3}], 'field_layouts': [],
+        })
+        self.assertEqual(rejected.status_code, status.HTTP_400_BAD_REQUEST)
+        removed = self.client.delete(f'/openfarmplanner/api/locations/{former.id}/')
+        self.assertEqual(removed.status_code, status.HTTP_204_NO_CONTENT)
+
+        layout.refresh_from_db()
+        self.assertEqual(layout.location_id, current.id)
+        self.assertEqual((layout.x, layout.y, layout.runs_across_parcel), (22, 17, True))
+
     def test_layouts_reject_bed_from_other_location(self):
         location = Location.objects.create(name='Layout test source location', project=self.project)
         other_location = Location.objects.create(name='Secondary location', project=self.project)

@@ -431,6 +431,11 @@ class BedLayoutSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'field_id', 'created_at', 'updated_at']
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['location'] = instance.bed.field.location_id
+        return data
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         bed = attrs.get('bed') or getattr(self.instance, 'bed', None)

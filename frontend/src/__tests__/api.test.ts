@@ -525,6 +525,9 @@ describe('untested endpoint groups', () => {
   it('reads and writes layouts under the location that owns them', () => {
     layoutAPI.listByLocation(5);
     expect(getMock).toHaveBeenCalledWith('/locations/5/layouts/');
+    const { signal } = new AbortController();
+    layoutAPI.listByLocation(5, signal);
+    expect(getMock).toHaveBeenLastCalledWith('/locations/5/layouts/', { signal });
     const payload = { bed_layouts: [], field_layouts: [] };
     layoutAPI.saveByLocation(5, payload);
     expect(putMock).toHaveBeenCalledWith('/locations/5/layouts/', payload);

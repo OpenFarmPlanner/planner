@@ -94,10 +94,7 @@ for (const mobile of [false, true]) {
       await expect(taskControl).toBeVisible();
       await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
       const ordinaryFill = (await getBed())?.fill;
-      await page.getByRole('button', { name: 'Abstände', exact: true }).click();
-      await page.getByRole('checkbox', { name: 'Freiflächen und Wege anzeigen' }).check();
-      await page.keyboard.press('Escape');
-      await page.getByRole('button', { name: /Flächenbilanz|Freiflächen/ }).waitFor();
+      await expect.poll(() => findShape(page, 'graphical-free-area-site')).not.toBeNull();
       await taskControl.click();
       let panel = page.getByRole('dialog', { name: 'Aufgaben im Beet' });
       await expect(panel.getByRole('switch', { name: 'Aufgaben anzeigen' })).not.toBeChecked();
@@ -259,9 +256,11 @@ for (const input of ['mouse', 'touch'] as const) {
         const full = (await findShape(page, `field-rect-${fullFieldId}`))!;
         await page.mouse.click(full.screen.x + full.screen.width / 2, full.screen.y + 8);
         const details = page.getByRole('dialog', { name: 'Parzellendetails' });
-        await expect(details.getByText('Bruttofläche 100 m²')).toBeVisible();
-        await expect(details.getByText('Von Beeten belegte Fläche innerhalb der Parzelle 100 m²')).toBeVisible();
-        await expect(details.getByText('Verbleibende Fläche 0 m²')).toBeVisible();
+        await expect(details.getByText(/Volle Parzelle/)).toBeVisible();
+        await page.goto(`/app/fields-beds/fields/${fullFieldId}`);
+        await expect(page.getByTestId('detail-area')).toContainText('100 m²');
+        await expect(page.getByTestId('detail-covered-area')).toContainText('100 m²');
+        await expect(page.getByTestId('detail-remaining-area')).toContainText(/0 m² \(0\s?%\)/);
       }
     });
   });

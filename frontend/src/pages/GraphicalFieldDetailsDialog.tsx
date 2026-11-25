@@ -37,7 +37,6 @@ export function GraphicalFieldDetailsDialog({
   onClose,
   t,
 }: GraphicalFieldDetailsDialogProps) {
-  const coverage = element?.coverage;
   const formatArea = (area: number) => `${formatLocalizedNumber(area, getActiveFormattingLocale(), {
     maximumFractionDigits: 2,
   })} ${t('common:units.squareMeters')}`;
@@ -68,22 +67,10 @@ export function GraphicalFieldDetailsDialog({
                 {element.parentName}
               </Typography>
             ) : null}
-            {element.area !== null && coverage?.grossArea == null ? (
+            {element.area !== null ? (
               <Typography>
-                {t("fields:graphical.area")}: {element.area} {t('common:units.squareMeters')}
+                {t("fields:graphical.area")}: {formatArea(element.area)}
               </Typography>
-            ) : null}
-            {coverage?.grossArea != null ? (
-              <Typography>{t('fields:graphical.geometry.grossArea', { area: formatArea(coverage.grossArea) })}</Typography>
-            ) : null}
-            {coverage?.footprintArea != null && coverage.remainingArea != null ? (
-              <>
-                <Typography>{t('fields:graphical.geometry.bedFootprint', { area: formatArea(coverage.footprintArea) })}</Typography>
-                <Typography>{t('fields:graphical.geometry.remainingArea', { area: formatArea(coverage.remainingArea) })}</Typography>
-                <Typography variant="body2" color="text.secondary">{t('fields:graphical.geometry.remainingHelp')}</Typography>
-              </>
-            ) : coverage ? (
-              <Typography variant="body2" color="text.secondary">{t('fields:graphical.geometry.areaUnknown')}</Typography>
             ) : null}
             <GraphicalAreaPlans key={`${element.type}:${element.id}`} type={element.type} id={element.id} />
           </Stack>

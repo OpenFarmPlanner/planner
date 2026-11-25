@@ -291,7 +291,9 @@
         "zoomOut": "Zoom out",
         "fit": "Fit whole view",
         "fullscreen": "Show fullscreen",
-        "editToggle": "Edit layout: drag and drop to move and arrange a location's beds and fields"
+        "editToggle": "Edit layout: drag and drop to move and arrange a location's beds and fields",
+        "freeSite": "Light blue shows free area outside parcels.",
+        "freeParcel": "Light green shows free area inside parcels and outside beds."
       }
     },
     "yieldOverview": {

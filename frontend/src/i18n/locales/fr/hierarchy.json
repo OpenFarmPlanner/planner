@@ -381,6 +381,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Surface brute",
+      "parcelFootprint": "Emprise des parcelles sur le site",
+      "bedFootprint": "Emprise des planches dans la parcelle",
+      "outsideParcels": "Surface libre hors des parcelles",
+      "withoutBeds": "Surface sans planches",
+      "parcelRemainingHelp": "Comprend les allées, les marges et les autres usages.",
+      "loading": "Chargement des surfaces…",
+      "loadError": "Impossible de charger les surfaces.",
+      "locationUnknown": "Le calcul nécessite les dimensions du site et des parcelles ainsi que la position des parcelles.",
+      "parcelUnknown": "Le calcul nécessite les dimensions de la parcelle et de toutes ses planches."
+    },
     "open": {
       "location": "Détails du site",
       "field": "Détails de la parcelle",

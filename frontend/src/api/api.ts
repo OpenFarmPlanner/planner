@@ -674,7 +674,10 @@ export const seasonSetupAPI = {
 };
 
 export const layoutAPI = {
-  listByLocation: (locationId: number) => http.get<LocationLayoutsResponse>(`/locations/${locationId}/layouts/`),
+  listByLocation: (locationId: number, signal?: AbortSignal) => {
+    const path = `/locations/${locationId}/layouts/`;
+    return signal ? http.get<LocationLayoutsResponse>(path, { signal }) : http.get<LocationLayoutsResponse>(path);
+  },
   saveByLocation: (locationId: number, payload: LocationLayoutsPayload) =>
     http.put<LocationLayoutsResponse>(`/locations/${locationId}/layouts/`, payload),
 };

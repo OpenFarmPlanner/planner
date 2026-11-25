@@ -1,6 +1,8 @@
-import type { Bed, Field, Location } from '../api/types';
+import type { Bed, Field, Location, LocationLayoutsResponse } from '../api/types';
+import { alpha, createTheme } from '@mui/material/styles';
+import { freeAreaColor } from '../components/hierarchy/utils/freeAreaColors';
 import { defaultLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
-import { analyzeGraphicalGeometry, getGraphicalBedLayout } from '../pages/graphicalAreaGeometry';
+import { analyzeGraphicalGeometry, getGraphicalBedLayout, getSavedLocationCoverage, getSavedParcelCoverage, getSchematicLocationLayout } from '../pages/graphicalAreaGeometry';
 import { fieldUsesWorldScale, getFieldRectSize, rotateRect, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
 
 const location: Location = { id: 1, name: 'Farm', width_m: 30, length_m: 30 };
@@ -52,5 +54,51 @@ describe('graphical layout analysis', () => {
     expect(graph.parcelReports.get(1)?.coverage.remainingArea).toBeCloseTo(94);
     expect(layout.bedRects[0].x).toBe(144);
     expect(layouts[2].x).toBe(144);
+  });
+});
+
+describe('saved coverage for detail pages', () => {
+  it('counts the clipped parcel union and distinguishes unsaved position and empty coverage', () => {
+    const fields = [field, { ...field, id: 2 }, { ...field, id: 3 }];
+    const layouts: LocationLayoutsResponse = {
+      location_boundary: { x: 0, y: 0 }, bed_layouts: [],
+      field_layouts: [
+        { field: 1, location: 1, x: 0, y: 0 },
+        { field: 2, location: 1, x: 90, y: 0 },
+        { field: 3, location: 1, x: 522, y: 522 },
+      ],
+    };
+    expect(getSavedLocationCoverage(location, fields, layouts)).toEqual({ grossArea: 900, footprintArea: 151, remainingArea: 749 });
+    expect(getSavedLocationCoverage(location, fields, { ...layouts, field_layouts: [] }))
+      .toEqual({ grossArea: 900, footprintArea: null, remainingArea: null });
+    expect(getSavedLocationCoverage(location, [], layouts)).toEqual({ grossArea: 900, footprintArea: 0, remainingArea: 900 });
+  });
+
+  it('uses the same parcel padding, orientation and clipping as the canvas', () => {
+    const bedLayout = { bed: 2, location: 1, x: 144, y: 0 };
+    const coverage = getSavedParcelCoverage(field, beds, { field_layouts: [], bed_layouts: [bedLayout] });
+    expect(coverage.footprintArea).toBeCloseTo(3);
+    expect(coverage.remainingArea).toBeCloseTo(97);
+    expect(getSavedParcelCoverage(field, [{ ...beds[0], width_m: null }], { field_layouts: [], bed_layouts: [] }))
+      .toEqual({ grossArea: 100, footprintArea: null, remainingArea: null });
+  });
+
+  it('keeps a saved parcel beyond the original workspace outside the location on every viewport', () => {
+    const saved = { field: 1, location: 1, x: 6000, y: 6000 };
+    const expandedLocation = { ...location, width_m: 300, length_m: 300 };
+    const origin = { x: 0, y: 0 };
+    for (const [width, height] of [[375, 600], [1440, 900]]) {
+      const canvasLayout = getSchematicLocationLayout(expandedLocation, [field], { 1: saved }, origin, 0, width, height);
+      expect(canvasLayout.fieldViewModels[0]).toMatchObject({ x: saved.x, y: saved.y });
+    }
+    expect(getSavedLocationCoverage(expandedLocation, [field], {
+      field_layouts: [saved], bed_layouts: [], location_boundary: origin,
+    })).toEqual({ grossArea: 90000, footprintArea: 0, remainingArea: 90000 });
+  });
+
+  it.each(['light', 'dark'] as const)('uses the %s theme colors for the legend and rendering', mode => {
+    const theme = createTheme({ palette: { mode } });
+    expect(freeAreaColor(theme, 'site')).toBe(alpha(theme.palette.info.main, 0.12));
+    expect(freeAreaColor(theme, 'parcel')).toBe(alpha(theme.palette.success.main, 0.16));
   });
 });

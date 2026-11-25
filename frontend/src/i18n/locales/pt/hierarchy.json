@@ -381,6 +381,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Área bruta",
+      "parcelFootprint": "Área ocupada por parcelas dentro da exploração",
+      "bedFootprint": "Área ocupada por canteiros dentro da parcela",
+      "outsideParcels": "Área livre fora das parcelas",
+      "withoutBeds": "Área sem canteiros",
+      "parcelRemainingHelp": "Inclui caminhos, margens e outros usos.",
+      "loading": "A carregar as áreas…",
+      "loadError": "Não foi possível carregar as áreas.",
+      "locationUnknown": "O cálculo exige as dimensões da exploração e das parcelas e a posição das parcelas.",
+      "parcelUnknown": "O cálculo exige as dimensões da parcela e de todos os seus canteiros."
+    },
     "open": {
       "location": "Detalhes da exploração",
       "field": "Detalhes da parcela",
