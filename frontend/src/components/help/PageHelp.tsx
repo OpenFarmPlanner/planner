@@ -176,6 +176,19 @@ const PAGE_SYMBOL_DEFINITIONS: Partial<Record<HelpPageKey, SymbolDefinition[]>> 
         bgcolor: freeAreaColor(theme, kind),
       })} />,
     })),
+    {
+      // Individual plants: the stem dot inside its estimated canopy circle (#1575).
+      key: 'individualPlant',
+      icon: (
+        <Box aria-hidden sx={theme => ({
+          width: 18, height: 18, borderRadius: '50%', display: 'grid', placeItems: 'center',
+          bgcolor: alpha(theme.palette.success.main, 0.15), border: '1px solid',
+          borderColor: alpha(theme.palette.success.dark, 0.36),
+        })}>
+          <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: 'text.primary' }} />
+        </Box>
+      ),
+    },
   ],
 };
 

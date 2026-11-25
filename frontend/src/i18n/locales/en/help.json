@@ -294,7 +294,8 @@
         "fullscreen": "Show fullscreen",
         "editToggle": "Edit layout: drag and drop to move and arrange a location's beds and fields",
         "freeSite": "Light blue shows free area outside parcels.",
-        "freeParcel": "Light green shows free area inside parcels and outside beds."
+        "freeParcel": "Light green shows free area inside parcels and outside beds.",
+        "individualPlant": "The dot marks the stem position. The translucent circle shows the estimated canopy."
       }
     },
     "yieldOverview": {

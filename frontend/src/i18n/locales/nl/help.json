@@ -294,7 +294,8 @@
         "fullscreen": "Volledig scherm tonen",
         "editToggle": "Indeling bewerken: versleep bedden en percelen van een locatie om ze te verplaatsen en te ordenen",
         "freeSite": "Lichtblauw toont vrije oppervlakte buiten percelen.",
-        "freeParcel": "Lichtgroen toont vrije oppervlakte binnen percelen en buiten bedden."
+        "freeParcel": "Lichtgroen toont vrije oppervlakte binnen percelen en buiten bedden.",
+        "individualPlant": "De stip geeft de stampositie aan. De doorschijnende cirkel toont de geschatte kroon."
       }
     },
     "yieldOverview": {

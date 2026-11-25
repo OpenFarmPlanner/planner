@@ -294,7 +294,8 @@
         "fullscreen": "Mostrar em ecrã inteiro",
         "editToggle": "Editar disposição: arrastar e largar para mover e organizar os canteiros e parcelas de uma exploração",
         "freeSite": "O azul-claro indica a área livre fora das parcelas.",
-        "freeParcel": "O verde-claro indica a área livre dentro das parcelas e fora dos canteiros."
+        "freeParcel": "O verde-claro indica a área livre dentro das parcelas e fora dos canteiros.",
+        "individualPlant": "O ponto indica a posição do tronco. O círculo translúcido mostra a copa estimada."
       }
     },
     "yieldOverview": {
