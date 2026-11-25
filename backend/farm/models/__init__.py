@@ -81,7 +81,9 @@ from .structure import (  # noqa: E402
     ParcelRotationMember,
 )
 from .usage import (  # noqa: E402
+    CountedActionOperation,
     CropLibraryUsageDay,
+    ProjectActionDay,
     ProjectActiveUserDay,
     ProjectChangeDay,
 )
@@ -94,6 +96,7 @@ __all__ = [
     'BatchOperation',
     'Bed',
     'BedLayout',
+    'CountedActionOperation',
     'Crop',
     'CropCompanion',
     'CropImportDraft',
@@ -116,6 +119,7 @@ __all__ = [
     'ParcelRotationMember',
     'PlantingPlan',
     'Project',
+    'ProjectActionDay',
     'ProjectActiveUserDay',
     'ProjectChangeDay',
     'ProjectApiToken',

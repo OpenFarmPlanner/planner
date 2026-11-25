@@ -19,6 +19,7 @@ from farm.models import (
     BatchOperation,
     Bed,
     BedLayout,
+    CountedActionOperation,
     Crop,
     EntityRevision,
     Feedback,
@@ -30,6 +31,7 @@ from farm.models import (
     NoteAttachment,
     PlantingPlan,
     Project,
+    ProjectActionDay,
     ProjectActiveUserDay,
     ProjectChangeDay,
     ProjectMembership,
@@ -1486,6 +1488,113 @@ class PlatformActivityTests(TestCase):
         self.assertEqual((row.created, row.updated, row.deleted, row.restored), (1, 1, 1, 1))
         self.assertEqual(ProjectActiveUserDay.objects.filter(user=self.user).count(), 1)
 
+    def _actions(self) -> dict[str, int]:
+        return dict(ProjectActionDay.objects.filter(project=self.project).values_list(
+            'category', 'count',
+        ))
+
+    def test_each_independent_write_counts_as_one_user_action(self) -> None:
+        created = self.client.post(
+            self.endpoint, {'name': 'Action crop'}, content_type='application/json', **self.headers,
+        )
+        self.assertEqual(created.status_code, 201, created.content)
+        crop_url = f'{self.endpoint}{created.json()["id"]}/'
+        for notes in ('First note', 'First note', 'Second note'):
+            response = self.client.patch(
+                crop_url, {'notes': notes}, content_type='application/json', **self.headers,
+            )
+            self.assertEqual(response.status_code, 200, response.content)
+        self.assertEqual(self.client.get(crop_url, **self.headers).status_code, 200)
+        self.assertEqual(self.client.delete(crop_url, **self.headers).status_code, 204)
+        self.assertEqual(self.client.delete(crop_url, **self.headers).status_code, 404)
+
+        # Create, two real edits and the delete count; no-op edit, read and failed delete do not.
+        self.assertEqual(self._actions(), {'crop': 4})
+
+    def test_a_batched_spreadsheet_import_is_one_action_with_its_full_object_count(self) -> None:
+        url = '/openfarmplanner/api/crops/import/apply/'
+
+        def apply(import_id: str, rows: list[dict], phase: str) -> None:
+            response = self.client.post(url, {
+                'items': rows, 'phase': phase, 'import_operation_id': import_id,
+                'confirm_updates': True,
+            }, content_type='application/json', **self.headers)
+            self.assertEqual(response.status_code, 200, response.content)
+
+        preview = self.client.post(
+            '/openfarmplanner/api/crops/import/preview/', [{'name': 'Preview only'}],
+            content_type='application/json', **self.headers,
+        )
+        self.assertEqual(preview.status_code, 200, preview.content)
+        first = str(uuid4())
+        batches = [[{'name': f'Imported crop {row}'} for row in range(start, start + 4)]
+                   for start in (0, 4, 8)]
+        for rows in batches:
+            apply(first, rows, 'crops')
+        apply(first, batches[-1], 'crops')  # A retried batch is no new action.
+        apply(first, [], 'finalize')
+        self.assertEqual(self._actions(), {'crop': 1})
+        self.assertEqual(ProjectChangeDay.objects.get(project=self.project).created, 12)
+
+        second = str(uuid4())
+        apply(second, [{'name': 'Second import'}], 'crops')
+        apply(second, [], 'finalize')
+        self.assertEqual(self._actions(), {'crop': 2})
+        self.assertEqual(CountedActionOperation.objects.count(), 2)
+
+    def test_an_action_across_categories_counts_once_in_its_main_workflow(self) -> None:
+        crop = Crop.objects.create(project=self.project, name='Cascading crop')
+        location = Location.objects.create(project=self.project, name='Action location')
+        field = Field.objects.create(project=self.project, location=location, name='Field')
+        bed = Bed.objects.create(project=self.project, field=field, name='Bed')
+        for _ in range(2):
+            PlantingPlan.objects.create(project=self.project, bed=bed, crop=crop)
+        url = f'/openfarmplanner/api/locations/{location.pk}/'
+        self.assertEqual(self.client.delete(url, **self.headers).status_code, 204)
+
+        # Location, field and bed outnumber the two plans removed with them.
+        self.assertEqual(self._actions(), {'growing_area': 1})
+        self.assertEqual(sum(ProjectChangeDay.objects.values_list('deleted', flat=True)), 5)
+
+    def test_rolled_back_and_background_writes_never_count_as_actions(self) -> None:
+        def synthetic_view(request: HttpRequest) -> HttpResponse:
+            with transaction.atomic():
+                Crop.objects.create(project=self.project, name='Rolled-back crop')
+                transaction.set_rollback(True)
+            return HttpResponse()
+
+        request = RequestFactory().post(self.endpoint)
+        request.user = self.user
+        request.session = {}
+        self.assertEqual(ProjectUsageMiddleware(synthetic_view)(request).status_code, 200)
+        Crop.objects.create(project=self.project, name='Background crop')
+        self.assertFalse(ProjectActionDay.objects.exists())
+        self.assertFalse(CountedActionOperation.objects.exists())
+
+    def test_user_action_trend_reconciles_categories_and_marks_unknown_history(self) -> None:
+        today = self.now.astimezone(UTC).date()
+        scratch = Project.objects.create(name='Scratch actions', slug='activity-scratch-actions')
+        ProjectActionDay.objects.bulk_create([
+            ProjectActionDay(project=self.project, day=today, category='crop', count=3),
+            ProjectActionDay(project=self.project, day=today, category='planting', count=2),
+            ProjectActionDay(project=scratch, day=today, category='crop', count=50),
+            ProjectActionDay(
+                project=self.project, day=today - timedelta(days=10), category='task', count=7,
+            ),
+        ])
+        coverage = self.now - timedelta(days=2)
+        with patch('farm.services.activity_trends.migration_applied_at', return_value=coverage):
+            trends = build_activity_trends(
+                self.now, days=30, series='user_actions', include_hidden=False,
+                excluded_project_ids={scratch.pk},
+            )
+        self.assertEqual(trends.user_actions, 5)
+        self.assertEqual(sum(row.actions for row in trends.action_categories), 5)
+        self.assertTrue(trends.action_partial_coverage)
+        self.assertIsNone(trends.trend[0].count)
+        self.assertEqual(trends.trend[-1].count, 5)
+
+
     def test_session_writes_count_with_unrelated_authorization_headers(self) -> None:
         for index, header in enumerate(('Basic irrelevant', 'Bearer unrelated')):
             with self.subTest(header=header):
@@ -1655,7 +1764,8 @@ class PlatformActivityTests(TestCase):
             self.assertIsNone(totals.trend[0].count)
             crop = next(category for category in totals.categories if category.created)
             self.assertEqual((crop.projects, crop.created), (2, 3))
-            with self.assertNumQueries(6):
+            # Constant: one more for the user-action categories (#1591).
+            with self.assertNumQueries(7):
                 build_activity_trends(
                     self.now, days=90, series='active_users', include_hidden=False,
                     excluded_project_ids={scratch.pk},
@@ -1665,7 +1775,7 @@ class PlatformActivityTests(TestCase):
                 ProjectActiveUserDay.objects.create(
                     user=extra_user, project=self.project, day=today,
                 )
-            with self.assertNumQueries(6):
+            with self.assertNumQueries(7):
                 monthly = build_activity_trends(
                     self.now, days=90, series='active_users', include_hidden=False,
                     excluded_project_ids={scratch.pk},
@@ -1702,6 +1812,11 @@ class PlatformActivityTests(TestCase):
         self.assertContains(response, 'period=7&amp;series=registrations#activity-trends')
         self.assertContains(response, 'o=-parcel_area&amp;period=90&amp;series=registrations')
         self.assertContains(response, 'Die Erfassung der Aktivität begann')
+
+        default = self.client.get(reverse('admin:farm_project_engagement'))
+        self.assertContains(default, '<figcaption>Nutzeraktionen</figcaption>', html=True)
+        self.assertContains(default, 'Nutzeraktionen nach Arbeitsbereich')
+        self.assertContains(default, 'Die Erfassung der Nutzeraktionen begann')
 
     def test_cleanup_expires_only_days_outside_the_retention_window(self) -> None:
         today = self.now.astimezone(UTC).date()

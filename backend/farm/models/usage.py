@@ -63,3 +63,37 @@ class ProjectActiveUserDay(models.Model):
                 fields=['day', 'project', 'user'], name='unique_active_user_day',
             ),
         ]
+
+
+class ProjectActionDay(models.Model):
+    """Completed user actions by UTC day, project and primary workflow category.
+
+    One action is one successful user-initiated write that commits at least one
+    tracked object change, however many objects it touches (#1591).
+    """
+
+    day = models.DateField()
+    project = models.ForeignKey('farm.Project', on_delete=models.CASCADE, related_name='+')
+    category = models.CharField(max_length=16, choices=ProjectChangeDay.Category.choices)
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['day', 'project', 'category'], name='unique_project_action_day',
+            ),
+        ]
+
+
+class CountedActionOperation(models.Model):
+    """A history batch already counted as one user action.
+
+    Multi-request workflows (crop spreadsheet import, library import) share one
+    BatchOperation across all their requests and retries; this bounded marker
+    keeps them from counting more than once. Expires with the activity window.
+    """
+
+    batch_operation = models.OneToOneField(
+        'farm.BatchOperation', on_delete=models.CASCADE, related_name='+', primary_key=True,
+    )
+    day = models.DateField(db_index=True)

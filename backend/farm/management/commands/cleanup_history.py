@@ -7,9 +7,11 @@ from django.utils import timezone
 
 from farm.models import (
     BatchOperation,
+    CountedActionOperation,
     CropLibraryUsageDay,
     CropRevision,
     EntityRevision,
+    ProjectActionDay,
     ProjectActiveUserDay,
     ProjectChangeDay,
     ProjectRevision,
@@ -79,6 +81,8 @@ class Command(BaseCommand):
         )
         ProjectActiveUserDay.objects.filter(day__lt=first_activity_day).delete()
         ProjectChangeDay.objects.filter(day__lt=first_activity_day).delete()
+        ProjectActionDay.objects.filter(day__lt=first_activity_day).delete()
+        CountedActionOperation.objects.filter(day__lt=first_activity_day).delete()
 
         self.stdout.write(
             self.style.SUCCESS(
