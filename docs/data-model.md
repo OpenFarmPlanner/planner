@@ -164,6 +164,11 @@ erDiagram
   plot that lies outside (e.g. after the dimensions shrank) keeps its position,
   gets a warning-coloured outline and the canvas shows a hint until it is moved
   in. Without both dimensions nothing is drawn or clamped.
+- A `ParcelRotationGroup` belongs to a project. Its `ParcelRotationMember`
+  rows assign each `Field` to at most one group and store its position and
+  ordered bed IDs. Current bed counts are checked when configuring a group
+  and when copying. Existing beds keep the saved order after renaming or
+  sorting. Newly added beds join at the end until the grower reorders them.
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
   graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
   separate rows from `Bed`/`Field` themselves, not embedded fields.
@@ -316,6 +321,11 @@ erDiagram
 ```
 
 - **`PlantingPlan`** is the central operational record for one crop on one bed.
+  Its internal `parcel_rotation_basis` retains the original occupied area and
+  bed area as decimal strings after a rotating copy. Subsequent copies derive
+  areas from that fraction while the current bed and area match the last
+  rotation. This preserves the original areas after a complete circuit even
+  though saved areas are in hundredths of a square metre.
   Its planned planting date and computed harvest dates drive the Gantt and
   bed occupancy calendar, seed demand, young plant demand, and the yield
   overview. `planting_date` anchors the main field activity, either direct

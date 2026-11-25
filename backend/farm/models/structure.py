@@ -279,6 +279,45 @@ class Bed(SiteConditionsMixin, TimestampedModel):
         ]
 
 
+class ParcelRotationGroup(TimestampedModel):
+    """A named sequence of parcels in one project's season copy workflow."""
+
+    project = models.ForeignKey(
+        Project, on_delete=models.CASCADE, related_name='parcel_rotation_groups',
+    )
+    name = models.CharField(max_length=200)
+
+    class Meta:
+        ordering = ['name', 'pk']
+        constraints = [models.UniqueConstraint(
+            fields=['project', 'name'], name='unique_parcel_rotation_group_project_name',
+        )]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+class ParcelRotationMember(TimestampedModel):
+    """The parcel's stable position and the bed IDs in mapping order."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE)
+    group = models.ForeignKey(ParcelRotationGroup, on_delete=models.CASCADE, related_name='members')
+    field = models.OneToOneField(
+        Field, on_delete=models.CASCADE, related_name='rotation_membership',
+    )
+    position = models.PositiveIntegerField()
+    bed_order = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        ordering = ['position', 'pk']
+        constraints = [models.UniqueConstraint(
+            fields=['group', 'position'], name='unique_parcel_rotation_group_position',
+        )]
+
+    def __str__(self) -> str:
+        return f'{self.group_id} / {self.position}'
+
+
 class BedLayout(TimestampedModel):
     """Persisted bed layout coordinates for the graphical field view."""
 

@@ -11,8 +11,12 @@ import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } f
 import type { CommandSpec } from '../commands/types';
 import { useTranslation } from '../i18n';
 import PageContainer from '../components/layout/PageContainer';
-import { locationAPI } from '../api/api';
-import type { LocationPathSpacing } from '../api/types';
+import { locationAPI, parcelRotationAPI } from '../api/api';
+import type { LocationPathSpacing, ParcelRotationGroup } from '../api/types';
+import { ParcelRotationGroupsDialog } from '../components/hierarchy/rotation/ParcelRotationGroupsDialog';
+import {
+  ParcelRotationContext, type ParcelRotationMembership,
+} from '../components/hierarchy/rotation/parcelRotationContext';
 import { getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTopbarContextActions } from '../hooks/useTopbarContextActions';
@@ -104,6 +108,34 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     fields,
     beds,
   } = hierarchyData;
+  const [rotationGroups, setRotationGroups] = useState<ParcelRotationGroup[]>([]);
+  const [rotationDialog, setRotationDialog] = useState<{ fieldId?: number } | null>(null);
+  const [rotationLoadError, setRotationLoadError] = useState(false);
+  const [rotationLoading, setRotationLoading] = useState(false);
+  const refreshRotationGroups = useCallback(async () => {
+    if (projectId == null) return;
+    try {
+      const { data } = await parcelRotationAPI.list();
+      setRotationGroups(data);
+      setRotationLoadError(false);
+    } catch {
+      setRotationLoadError(true);
+    }
+  }, [projectId]);
+  useEffect(() => { void refreshRotationGroups(); }, [refreshRotationGroups]);
+  const openRotationGroups = useCallback((fieldId?: number) => {
+    setRotationLoading(true);
+    setRotationDialog({ fieldId });
+    void refreshRotationGroups().finally(() => setRotationLoading(false));
+  }, [refreshRotationGroups]);
+  const rotationControls = useMemo(() => ({
+    memberships: new Map<number, ParcelRotationMembership>(rotationGroups.flatMap(group => (
+      group.parcels.map((field, index) => [field.id, {
+        group: group.name, position: index + 1, size: group.parcels.length,
+      }])
+    ))),
+    configure: activeProjectMembership ? openRotationGroups : undefined,
+  }), [activeProjectMembership, openRotationGroups, rotationGroups]);
 
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
@@ -361,8 +393,14 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           ariaLabel: t('hierarchy:actions.createLocation'),
         },
       ];
+    if (activeProjectMembership && !shouldShowProjectRequiredState) globalActions.push({
+      id: 'fields-rotation-groups', label: t('hierarchy:parcelRotation.manage'),
+      onClick: () => openRotationGroups(),
+    });
     return globalActions;
   }, [
+    activeProjectMembership,
+    openRotationGroups,
     openAddLocationDialog,
     shouldShowProjectRequiredState,
     t,
@@ -439,7 +477,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   useRegisterCreateActions('areas-page', createActions);
 
   return (
-    <>
+    <ParcelRotationContext.Provider value={rotationControls}>
       {/*
         Wrapped in one Box instead of leaving these as two separate
         PageContainer siblings: <main> (in App.tsx) lays its direct children
@@ -572,6 +610,20 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           </DialogActions>
         </Box>
       </Dialog>
-    </>
+      {rotationDialog && (rotationLoading || rotationLoadError ? (
+        <Dialog open fullWidth maxWidth="xs" onClose={() => setRotationDialog(null)}>
+          <DialogTitle>{t('hierarchy:parcelRotation.manage')}</DialogTitle>
+          <DialogContent>{rotationLoading ? <CircularProgress aria-label={t('common:messages.loading')} />
+            : <Alert severity="error">{t('hierarchy:parcelRotation.loadError')}</Alert>}</DialogContent>
+          <DialogActions>
+            {!rotationLoading && <Button onClick={() => openRotationGroups(rotationDialog.fieldId)}>
+              {t('common:runtime.retryAction')}
+            </Button>}
+            <Button onClick={() => setRotationDialog(null)}>{t('common:actions.cancel')}</Button>
+          </DialogActions>
+        </Dialog>
+      ) : <ParcelRotationGroupsDialog groups={rotationGroups} fields={fields} beds={beds}
+        parcelId={rotationDialog.fieldId} onChanged={refreshRotationGroups} onClose={() => setRotationDialog(null)} />)}
+    </ParcelRotationContext.Provider>
   );
 }

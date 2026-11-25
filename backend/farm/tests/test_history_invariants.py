@@ -642,6 +642,20 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
                 'area_sqm': 8,
             },
         )['id']
+        ids['rotating_field'] = self.write('create second parcel', 'post', '/fields/', {
+            'name': 'Field B', 'location': ids['location'],
+        })['id']
+        for name in ('Bed 3', 'Bed 4'):
+            self.write(f'create {name}', 'post', '/beds/', {
+                'name': name, 'field': ids['rotating_field'], 'area_sqm': 10,
+            })
+        parcels = [{'id': ids['field']}, {'id': ids['rotating_field']}]
+        ids['rotation'] = self.write('create rotation', 'post', '/parcel-rotation-groups/', {
+            'name': 'North rotation', 'parcels': parcels,
+        })['id']
+        self.write('reorder rotation', 'put', f"/parcel-rotation-groups/{ids['rotation']}/", {
+            'name': 'Garden rotation', 'parcels': list(reversed(parcels)),
+        })
         self.write(
             'place beds and fields',
             'put',
@@ -848,6 +862,7 @@ class HistoryRoundTripScenarioTests(HistoryInvariantTestCase):
         )
         self.write('delete planting plan', 'delete', f"/planting-plans/{ids['plan']}/")
         self.write('delete unassigned harvest', 'delete', f"/harvests/{ids['harvest']}/")
+        self.write('delete rotation', 'delete', f"/parcel-rotation-groups/{ids['rotation']}/")
         self.write('delete spare bed', 'delete', f"/beds/{ids['spare_bed']}/")
         self.write('delete supplier', 'delete', f"/suppliers/{ids['supplier']}/")
         self.write('delete variety', 'delete', f"/crops/{ids['variety']}/")

@@ -557,11 +557,18 @@ actual-date rules and plan history from
   all (`rotation_conflicts` on `copy-from`, API default `keep`). The copies
   are built once by `build_planting_plan_copies`, shared by the preview and
   the copy. Details: [crop-rotation.md](./crop-rotation.md#season-copy).
-- Field-group rotation ([#1063](https://github.com/OpenFarmPlanner/planner/issues/1063))
-  is limited to immediate predecessor copies. The existing-season preview
-  reports `is_preceding_source`. Creation options report this separately for
-  each copy target in `copy_is_preceding_source`. The crop-family conflict
-  check still applies when copying from a historical source.
+- For immediate predecessor copies, **Rotate plans to the next parcel** applies
+  the project's parcel sequence and bed order to the copied plans. A valid group
+  selects the option by default. The date-basis choice remains independent.
+  Historical sources remain available for plain copying and crop-family checks.
+  The preview reports the wraparound mappings, adjusted occupied area, plant
+  counts, seed requirements and conflicts. An unequal bed count, unmeasured bed
+  or insufficient capacity prevents rotation. Existing and continuing plans
+  take up area in the target beds. Both copy flows confirm the proposed rotation
+  with its preview fingerprint and revalidate before saving. Continuing annual
+  and perennial plans remain on their original beds.
+  Parcel-direct plant placements introduced by #1015 must stay outside this
+  workflow. The current model represents bed assignments and occupied areas.
 
 For local QA, preview the guarded fixture command, then repeat with `--apply`
 after confirming the database target. In **Historical season copy**, open

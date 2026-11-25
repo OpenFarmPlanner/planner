@@ -179,3 +179,156 @@ for (const basis of ['planned', 'actual'] as const) {
     });
   });
 }
+
+async function seedRotationParcels(page: Page) {
+  const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Versuchsgarten' });
+  const createParcel = async (name: string, length: number) => {
+    const parcel = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+      name, location: location.id, length_m: 20, width_m: 10,
+    });
+    const beds = [];
+    for (const suffix of ['1', '2']) {
+      beds.push(await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+        name: `${name}beet ${suffix}`, field: parcel.id, length_m: length, width_m: 1,
+      }));
+    }
+    return { ...parcel, beds };
+  };
+  return { north: await createParcel('Nord', 10), south: await createParcel('Süd', 8) };
+}
+
+async function seedRotationSourcePlan(page: Page, season: number, bed: number, year: number) {
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: `Rotationssalat ${year}`, cultivation_type: 'direct_sowing', growth_duration_days: 30,
+    row_spacing_m: 0.5, distance_within_row_m: 0.2,
+    seed_rate_direct_value: 2, seed_rate_direct_unit: 'g_per_m2',
+    sowing_calculation_safety_percent_direct: 25,
+  });
+  return apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+    season, bed, crop: crop.id, planting_date: `${year}-04-01`, cultivation_type: 'direct_sowing',
+    actual_sowing_date: `${year}-04-06`, area_usage_sqm: 5, quantity: 25,
+  });
+}
+
+test('a phone configures parcel and bed order and copies a reviewed rotation', async ({ page, request }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await loginWithDeterministicProject(page, request, 'parcel-rotation-phone', { loginAsAdmin: true });
+  const { north, south } = await seedRotationParcels(page);
+  const source = await createSeason(page, '2026-01-01', '2026-12-31', 'Ursprung');
+  const target = await createSeason(page, '2027-01-01', '2027-12-31', 'Ziel');
+  await seedRotationSourcePlan(page, source.id, north.beds[0].id, 2026);
+
+  await page.goto('/app/fields-beds');
+  const northRow = page.locator(`[data-hierarchy-mobile-row-id="field-${north.id}"]`);
+  if (!(await northRow.isVisible())) {
+    await page.getByRole('button', { name: /^Aufklappen:.*Versuchsgarten/ }).click();
+  }
+  await northRow.getByRole('button', { name: /^Nord/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Weitere Aktionen' }).click();
+  await page.getByRole('menuitem', { name: 'Parzellenrotation konfigurieren' }).click();
+  const settings = page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+  await settings.getByRole('textbox', { name: 'Gruppenname' }).fill('Nord–Süd');
+  await settings.getByRole('combobox', { name: 'Parzelle hinzufügen' }).click();
+  await page.getByRole('option', { name: 'Süd', exact: true }).click();
+  await settings.getByRole('button', { name: 'Süd nach oben verschieben' }).click();
+  await settings.getByText('Beetreihenfolge', { exact: true }).first().click();
+  await settings.getByRole('button', { name: 'Südbeet 2 nach oben verschieben' }).click();
+  expect(await settings.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  await test.info().attach('parcel-order-phone', {
+    body: await settings.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+  });
+  await settings.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(settings).toHaveCount(0);
+  await expect(northRow.getByRole('img', { name: 'Rotationsgruppe Nord–Süd, Parzelle 2 von 2' })).toBeVisible();
+  await page.reload();
+  await expect(northRow.getByText('Nord–Süd · 2/2')).toBeVisible();
+
+  await page.goto(plansPage);
+  await page.getByRole('button', { name: 'Aktive Saison wechseln' }).click();
+  await page.getByRole('menuitem').filter({ hasText: 'Ziel' })
+    .getByRole('button', { name: 'Saison-Aktionen öffnen' }).click();
+  await page.getByRole('menuitem', { name: 'Daten übernehmen', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Daten übernehmen' });
+  const rotate = dialog.getByRole('checkbox', { name: 'Anbaupläne zur nächsten Parzelle verschieben' });
+  const actual = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+  await expect(rotate).toBeChecked();
+  await expect(dialog.getByText('Nord → Süd', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
+  await expect(dialog.getByText('Berechnete Pflanzenzahl 50 → 40')).toBeVisible();
+  await expect(dialog.getByText('Saatgutbedarf 10 g')).toBeVisible();
+  await actual.check();
+  await expect(rotate).toBeChecked();
+  await rotate.uncheck();
+  await expect(actual).toBeChecked();
+  await expect(rotate).not.toBeChecked();
+  await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toHaveCount(0);
+  await rotate.check();
+  await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
+  expect(await dialog.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
+  await test.info().attach('rotation-copy-phone', {
+    body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+  });
+  const copying = page.waitForResponse(response => response.url().endsWith(`/seasons/${target.id}/copy-from/`));
+  await dialog.getByRole('button', { name: 'Übernehmen', exact: true }).click();
+  const response = await copying;
+  expect(response.request().postDataJSON()).toMatchObject({
+    source_season_id: source.id, use_actual_dates: true, rotate_parcels: true,
+    parcel_rotation_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
+  });
+  expect(await response.json()).toMatchObject({ copied_count: 1 });
+  const { results } = await apiRequest<{ results: Array<{ season: number }> }>(page, 'GET', '/planting-plans/');
+  expect(results.filter(plan => plan.season === target.id)).toMatchObject([{
+    bed: south.beds[1].id, area_usage_sqm: '4.00', quantity: 25, planting_date: '2027-04-06',
+  }]);
+});
+
+test('guided creation refreshes the rotated preview before accepting changed dates', async ({ page, request }) => {
+  await loginWithDeterministicProject(page, request, 'parcel-rotation-creation', { loginAsAdmin: true });
+  const { north, south } = await seedRotationParcels(page);
+  const source = await createSeason(page, '2025-09-01', '2026-08-31', 'Letzte Saison');
+  const older = await createSeason(page, '2024-09-01', '2025-08-31', 'Frühere Saison');
+  await apiRequest(page, 'PATCH', '/season-pattern/', { start_day: 1, start_month: 9 });
+  await apiRequest(page, 'POST', '/parcel-rotation-groups/', {
+    name: 'Nord–Süd', parcels: [{ id: north.id }, { id: south.id }],
+  });
+  await seedRotationSourcePlan(page, source.id, north.beds[0].id, 2026);
+  await seedRotationSourcePlan(page, older.id, north.beds[1].id, 2025);
+
+  await page.goto(plansPage);
+  const switcher = page.getByRole('button', { name: 'Aktive Saison wechseln' });
+  await switcher.click();
+  await page.getByRole('menuitem').filter({ hasText: 'Saison 26/27 anlegen' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Saison 26/27 anlegen?' });
+  const select = dialog.getByRole('combobox', { name: 'Ausgangssaison' });
+  const rotate = dialog.getByRole('checkbox', { name: 'Anbaupläne zur nächsten Parzelle verschieben' });
+  const actual = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
+  await expect(select).toHaveText('Letzte Saison');
+  await expect(rotate).toBeChecked();
+  await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
+  await actual.check();
+  await select.click();
+  await page.getByRole('option', { name: 'Frühere Saison' }).click();
+  await expect(rotate).toBeDisabled();
+  await expect(rotate).not.toBeChecked();
+  await expect(actual).toBeChecked();
+  await select.click();
+  await page.getByRole('option', { name: 'Letzte Saison' }).click();
+  await expect(rotate).toBeChecked();
+  await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
+  await test.info().attach('rotation-creation-desktop', {
+    body: await dialog.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+  });
+  const copying = page.waitForResponse(response => response.url().endsWith('/seasons/create-and-copy/'));
+  await dialog.getByRole('button', { name: 'Anlegen', exact: true }).click();
+  const response = await copying;
+  expect(response.request().postDataJSON()).toMatchObject({
+    source_season_id: source.id, use_actual_dates: true, rotate_parcels: true,
+    parcel_rotation_fingerprint: expect.stringMatching(/^[0-9a-f]{64}$/),
+  });
+  expect(response.status()).toBe(201);
+  const target = await response.json();
+  const { results } = await apiRequest<{ results: Array<{ season: number }> }>(page, 'GET', '/planting-plans/');
+  expect(results.filter(plan => plan.season === target.id)).toMatchObject([{
+    bed: south.beds[0].id, area_usage_sqm: '4.00', quantity: 25, planting_date: '2027-04-06',
+  }]);
+});

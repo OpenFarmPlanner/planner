@@ -20,6 +20,10 @@ from farm.services.crop_inheritance import (
     plan_cultivation_type,
     resolve_crop_field,
 )
+from farm.services.parcel_rotation_copy import (
+    apply_confirmed_parcel_rotation,
+    preview_parcel_rotation,
+)
 from farm.services.tasks import (
     generate_tasks_for_plans,
     plan_event_dates,
@@ -43,6 +47,7 @@ PLANTING_PLAN_COPY_FIELDS = (
     'clearing_date',
     'quantity',
     'area_usage_sqm',
+    'parcel_rotation_basis',
     'notes',
 )
 
@@ -407,6 +412,7 @@ def copy_planting_plans(
     rotation_conflicts: str = 'keep',
     language_code: str = 'de',
     use_actual_dates: bool = False,
+    parcel_rotation_fingerprint: str | None = None,
 ) -> tuple[list[PlantingPlan], int, int, int]:
     """Copy planting plans from `source_season` into `target_season`, additively.
 
@@ -441,6 +447,11 @@ def copy_planting_plans(
         use_actual_dates=use_actual_dates,
     )
     predecessor = preceding_season_copy_source(target_season.project, target_season.start_date)
+    if parcel_rotation_fingerprint is not None:
+        pairs = apply_confirmed_parcel_rotation(
+            source_season, target_season, pairs, preceding=source_season == predecessor,
+            continuing_count=continuing_count, fingerprint=parcel_rotation_fingerprint,
+        )
     if source_season == predecessor:
         for source, copy in pairs:
             copy.copied_from_plan_id = source.pk
@@ -452,7 +463,10 @@ def copy_planting_plans(
             check_season_copies,
         )
 
-        service = RotationService(target_season.project_id, language_code=language_code)
+        service = RotationService(
+            target_season.project_id, language_code=language_code,
+            region=target_season.project.region or '',
+        )
         new_plans = []
         for (_, copy), result in zip(pairs, check_season_copies(service, pairs), strict=True):
             if not result.is_conflict:
@@ -572,8 +586,9 @@ def _build_distributed_plan_copies(
     source_plans = (
         PlantingPlan.objects
         .filter(season=source_season, project_id=transition_season.project_id)
-        .select_related('crop', 'crop__crop_species')
+        .select_related('crop', 'crop__crop_species', 'bed')
         .prefetch_related('crop__crop_species__translations')
+        .order_by('pk')
     )
     for plan in source_plans:
         fields = _season_copy_fields(plan, crop_index if use_actual_dates else None)
@@ -595,6 +610,7 @@ def _build_distributed_plan_copies(
             fields[date_field] = add_months(value, month_offset) if value else None
         copy = PlantingPlan(project=season.project, season=season, **fields)
         copy.crop = plan.crop
+        copy.bed = plan.bed
         if not _prepare_perennial_copy(copy, crop_index):
             unconfigured_count += 1
             continue
@@ -611,6 +627,7 @@ def distribute_planting_plans(
     transition_season: Season,
     followup_season: Season,
     use_actual_dates: bool = False,
+    parcel_rotation_fingerprint: str | None = None,
 ) -> dict:
     """Copy the selected source across the transition and follow-up periods."""
     per_target, skipped_count, continuing_count, unconfigured_count = (
@@ -622,6 +639,18 @@ def distribute_planting_plans(
     predecessor = preceding_season_copy_source(
         transition_season.project, transition_season.start_date,
     )
+    if parcel_rotation_fingerprint is not None:
+        first_count = len(per_target['first'])
+        copy_period = Season(
+            project=transition_season.project, start_date=transition_season.start_date,
+            end_date=followup_season.end_date,
+        )
+        rotated = apply_confirmed_parcel_rotation(
+            source_season, copy_period, [*per_target['first'], *per_target['second']],
+            preceding=source_season == predecessor, continuing_count=continuing_count,
+            fingerprint=parcel_rotation_fingerprint,
+        )
+        per_target = {'first': rotated[:first_count], 'second': rotated[first_count:]}
     if source_season == predecessor:
         for pairs in per_target.values():
             for source, copy in pairs:
@@ -847,6 +876,32 @@ def _planned_copy_periods(
     ]
 
 
+def _preview_creation_parcel_rotation(
+    source: Season, target: Season, followup: Season | None, *,
+    use_actual_dates: bool, preceding: bool, requested: bool, language_code: str,
+) -> dict:
+    if not requested or not preceding:
+        return preview_parcel_rotation(
+            source, target, [], preceding=preceding, requested=False, continuing_count=0,
+        ).summary
+    if followup is None:
+        pairs, _, continuing, _ = build_planting_plan_copies(
+            source_season=source, target_season=target, use_actual_dates=use_actual_dates,
+        )
+    else:
+        by_target, _, continuing, _ = _build_distributed_plan_copies(
+            source_season=source, transition_season=target, followup_season=followup,
+            use_actual_dates=use_actual_dates,
+        )
+        pairs = [*by_target['first'], *by_target['second']]
+        target = Season(project=target.project, start_date=target.start_date,
+                        end_date=followup.end_date)
+    return preview_parcel_rotation(
+        source, target, pairs, preceding=preceding, requested=True, continuing_count=continuing,
+        language_code=language_code,
+    ).summary
+
+
 def _creation_copy_options(
     project: Project,
     targets: dict[str, Season],
@@ -855,6 +910,8 @@ def _creation_copy_options(
     use_actual_dates: bool,
     copy_source: Season | None,
     copy_target: str,
+    rotate_parcels: bool,
+    language_code: str,
 ) -> dict[str, Any] | None:
     eligible_by_target = {
         choice: [season for season in seasons
@@ -869,6 +926,7 @@ def _creation_copy_options(
         'copy_source_label': None,
         'copy_sources': {'adopt': [], 'transition': [], 'manual': []},
         'copy_is_preceding_source': {'adopt': False, 'transition': False, 'manual': False},
+        'parcel_rotation': {'adopt': None, 'transition': None, 'manual': None},
         'copy_preview': {'adopt': None, 'transition': None, 'transition_followup': None, 'manual': None},
     }
     plan_periods = {}
@@ -883,8 +941,12 @@ def _creation_copy_options(
         if choice == copy_target:
             options['copy_source_season_id'] = source.pk
             options['copy_source_label'] = source.label
-        options['copy_is_preceding_source'][choice] = (
-            source == preceding_season_copy_source(project, target.start_date)
+        preceding = source == preceding_season_copy_source(project, target.start_date)
+        options['copy_is_preceding_source'][choice] = preceding
+        followup = targets['adopt'] if choice == 'transition' else None
+        options['parcel_rotation'][choice] = _preview_creation_parcel_rotation(
+            source, target, followup, use_actual_dates=use_actual_dates, preceding=preceding,
+            requested=rotate_parcels and choice == copy_target, language_code=language_code,
         )
         if source.pk not in plan_periods:
             plan_periods[source.pk] = _planned_copy_periods(source, use_actual_dates)
@@ -907,6 +969,8 @@ def build_season_creation_options(
     use_actual_dates: bool = False,
     copy_source: Season | None = None,
     copy_target: str | None = None,
+    rotate_parcels: bool = False,
+    language_code: str = 'en',
 ) -> dict[str, Any] | None:
     """Describe the gap/overlap decision for the next season the user would create.
 
@@ -980,6 +1044,7 @@ def build_season_creation_options(
     copy_options = _creation_copy_options(
         project, targets, seasons, use_actual_dates=use_actual_dates, copy_source=copy_source,
         copy_target=copy_target or ('manual' if manual_start else 'adopt'),
+        rotate_parcels=rotate_parcels, language_code=language_code,
     )
     return {**payload, **copy_options} if copy_options is not None else None
 

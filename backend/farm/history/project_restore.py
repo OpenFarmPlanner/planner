@@ -9,7 +9,7 @@ from uuid import uuid4
 from django.core.files.storage import default_storage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import IntegrityError, connection, models, transaction
-from django.db.models import Q
+from django.db.models import F, Q
 from django.db.models.deletion import Collector, ProtectedError
 from django.db.models.functions import Cast, Length
 from django.utils import timezone
@@ -22,6 +22,7 @@ from farm.models import (
     CropTaskTemplate,
     EntityRevision,
     MediaFile,
+    ParcelRotationMember,
     Project,
     RetainedUpload,
     Season,
@@ -177,6 +178,9 @@ def _checkpoint_state(snapshot: dict[str, Any]) -> ProjectState | None:
         return None
     if not isinstance(state, dict):
         raise ProjectRestoreConflict("incompatible checkpoint")
+    rotation_models = {"parcel_rotation_group", "parcel_rotation_member"}
+    if not rotation_models.intersection(state):
+        state = {**state, **{label: {} for label in rotation_models}}
     # Older checkpoints predate the loss table or both dated event features.
     for added in ({"crop_loss"}, {"crop_loss", "harvest_record", "harvest_allocation"}):
         if set(state) == set(_MODELS) - added:
@@ -575,6 +579,8 @@ def _write_target_rows(
 ) -> None:
     for model, _label in PROJECT_STATE_MODELS:
         manager = _model_manager(model)
+        if model is ParcelRotationMember:
+            _stage_rotation_order(project, target[model], current[_label])
         for pk, row in target[model].items():
             if str(pk) in current[_label]:
                 if state[_label][str(pk)] == current[_label][str(pk)]:
@@ -596,6 +602,17 @@ def _write_target_rows(
                 if creation:
                     manager.filter(project=project, pk=pk).update(**creation)
             _restore_snapshot_children(model, pk, state[_label][str(pk)])
+
+
+def _stage_rotation_order(project: Project, target: dict, current: dict) -> None:
+    """Move changed positions out of the way before restoring a group's order."""
+    changed = [pk for pk, row in target.items() if str(pk) in current
+               and row['position'] != current[str(pk)]['position']]
+    if changed:
+        offset = max(item['position'] for item in [*target.values(), *current.values()])
+        ParcelRotationMember.objects.filter(project=project, pk__in=changed).update(
+            position=F('position') + offset,
+        )
 
 
 def _effective_target(

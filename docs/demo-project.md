@@ -16,10 +16,10 @@ The service has two persistent-data entry points:
 The template currently creates the `Solawi Sonnenacker` / `Sunny Acre CSA`
 project with three locations, six fields, twenty beds, three suppliers, thirty
 crop-library rows, seed package data for the planned varieties, and
-sixty-five planting plans split across four seasons — twenty-two in the
-current season, twenty-two and twenty in the two seasons before it, and one
-three seasons back — so the season switcher has more than one season to
-demonstrate. The season years are derived from today's date
+sixty-eight planting plans across four seasons. The current season and the
+preceding season each contain twenty-three plans, with twenty-one two seasons
+back and one three seasons back. The following season starts with no plans
+and is available as a copy destination. The season years are derived from today's date
 (`demo_current_year()`), never hardcoded, so the history stays inside the
 crop rotation check window in every year. `populate_demo_project` takes an
 optional `current_year` for time-pinned specs; the E2E fixture endpoint
@@ -119,6 +119,13 @@ The previous seasons rotate the plant families across the beds so the
 current season shows every rotation and bed-capacity case on purpose. The
 full list, with culture, bed and expected status for a manual check, is the
 "Demo cases" table in [crop-rotation.md](./crop-rotation.md#demo-cases).
+
+The farm garden's North–South parcel rotation group connects North Early Beds
+and South Polytunnel. Each parcel has three beds with distinct sizes across the
+parcels. Open the following year's **Copy season data** action and use the
+current season as the source. The preview shows both mappings, partial areas
+scaled to the target beds and the plans that are already active in the target
+season. The following season starts with no copied plans.
 
 - **Hofgarten / Acker am Bach** keep the original story: most plans "passt",
   the spring and autumn lettuce on "Salat 1" flag each other (two plans of

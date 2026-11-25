@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -14,12 +14,13 @@ import {
   Typography,
 } from '@mui/material';
 import { seasonAPI } from '../api/api';
-import type { Season, SeasonCopyPreview, SeasonCopyRotationMode } from '../api/types';
+import type { ParcelRotationConfirmation, Season, SeasonCopyPreview, SeasonCopyRotationMode } from '../api/types';
 import { useTranslation } from '../i18n';
 import { extractApiErrorCode, extractApiErrorMessage } from '../api/errors';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { SeasonCopyRotationSummary } from './SeasonCopyRotationSummary';
+import { ParcelRotationCopyPreview } from './ParcelRotationCopyPreview';
 
 interface SeasonCopyDataDialogProps {
   targetSeason: Season;
@@ -30,6 +31,7 @@ interface SeasonCopyDataDialogProps {
     sourceSeasonId: number,
     rotationConflicts?: SeasonCopyRotationMode,
     useActualDates?: boolean,
+    parcelRotation?: ParcelRotationConfirmation,
   ) => Promise<{ copied_count: number; target_planting_plan_count: number }>;
 }
 
@@ -37,14 +39,13 @@ interface PreviewRequest {
   target: Season;
   source: Season;
   useActualDates: boolean;
+  rotateParcels?: boolean;
 }
 
 type PreviewState = { request: PreviewRequest } & (
   | { data: SeasonCopyPreview }
   | { error: unknown }
 );
-
-const DEFAULT_ROTATION_MODE: SeasonCopyRotationMode = 'without_bed';
 
 function isStaleSourceError(code: string | null | undefined) {
   return code === 'source_season_not_found' || code === 'season_copy_source_not_earlier'
@@ -56,12 +57,15 @@ function isEarlierSource(season: Season, target: Season) {
 }
 
 export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm }: SeasonCopyDataDialogProps) {
-  const { t } = useTranslation(['navigation', 'common']);
+  const { t } = useTranslation(['navigation', 'common', 'hierarchy']);
   const [submitting, setSubmitting] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [previewState, setPreviewState] = useState<PreviewState | null>(null);
-  const [options, setOptions] = useState({ sourceId: null as number | null, useActualDates: false });
-  const [rotationMode, setRotationMode] = useState<SeasonCopyRotationMode>(DEFAULT_ROTATION_MODE);
+  const [options, setOptions] = useState<{
+    sourceId: number | null; useActualDates: boolean; rotateParcels?: boolean;
+  }>({ sourceId: null, useActualDates: false });
+  const [selectedCropMode, setRotationMode] = useState<SeasonCopyRotationMode | null>(null);
   const sourceInputId = useId();
   const dateBasisHelpId = useId();
 
@@ -70,7 +74,7 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
   const selectedSourceId = options.sourceId ?? availableSources[0]?.id;
   const source = seasons.find(season => season.id === selectedSourceId && isEarlierSource(season, targetSeason));
   const request = useMemo<PreviewRequest | null>(() => source ? ({
-    target: targetSeason, source, useActualDates: options.useActualDates,
+    target: targetSeason, source, useActualDates: options.useActualDates, rotateParcels: options.rotateParcels,
   }) : null, [source, targetSeason, options]);
 
   useEffect(() => {
@@ -78,7 +82,10 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
       return undefined;
     }
     let cancelled = false;
-    seasonAPI.copyPreview(request.target.id, request.source.id, request.useActualDates)
+    const response = seasonAPI.copyPreview(
+      request.target.id, request.source.id, request.useActualDates, request.rotateParcels ?? true,
+    );
+    response
       .then((response) => {
         if (response.data.source_season_id !== request.source.id) {
           throw new Error('The copy preview returned a different source season.');
@@ -105,26 +112,39 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
   const previewErrorCode = extractApiErrorCode(previewFailure?.error);
   const sourceChanged = (options.sourceId !== null && !source) || isStaleSourceError(previewErrorCode);
   const previewLoading = Boolean(request && !result);
+  const parcelRotation = preview?.parcel_rotation;
+  const rotateParcels = Boolean(parcelRotation?.eligible && (options.rotateParcels ?? parcelRotation.enabled));
+  const rotationPending = rotateParcels && !parcelRotation?.fingerprint;
+  const rotationEnabled = Boolean(parcelRotation?.enabled);
+  const rotationMode = rotationEnabled && selectedCropMode !== 'skip'
+    ? 'keep' : (selectedCropMode ?? 'without_bed');
+  const excludedMoves = rotationMode === 'skip'
+    ? preview?.items.filter(item => item.status === 'conflict').map(item => item.source_plan_id)
+    : undefined;
   const hasRotationFindings = Boolean(preview && (preview.conflict_count > 0 || preview.hint_count > 0));
   const copyCount = preview && (rotationMode === 'skip' ? preview.conflict_free_count : preview.total);
 
-  const refreshPreview = (sourceId: number, useActualDates: boolean) => {
+  const refreshPreview = (sourceId: number, useActualDates: boolean, rotate = options.rotateParcels) => {
     setError(null);
-    setOptions({ sourceId, useActualDates });
+    setOptions({ sourceId, useActualDates, rotateParcels: rotate });
   };
 
   const handleConfirm = async () => {
-    if (!request || !preview || submitting) {
+    if (!request || !preview || submittingRef.current || rotationPending) {
       return;
     }
+    submittingRef.current = true;
     setSubmitting(true);
     setError(null);
     try {
-      const result = await onConfirm(
+      const args = [
         request.target.id, request.source.id,
         preview.conflict_count > 0 ? rotationMode : undefined,
         request.useActualDates,
-      );
+      ] as const;
+      const result = rotateParcels && parcelRotation?.fingerprint
+        ? await onConfirm(...args, { rotate_parcels: true, parcel_rotation_fingerprint: parcelRotation.fingerprint })
+        : await onConfirm(...args);
       showGlobalSnackbar({
         message: t(result.copied_count > 0 ? 'seasonSwitcher.copyDialog.success' : 'seasonSwitcher.copyDialog.noCopies', {
           target: request.target.label,
@@ -136,10 +156,14 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
       const code = extractApiErrorCode(confirmError);
       if (isStaleSourceError(code)) {
         setPreviewState({ request, error: confirmError });
+      } else if (code === 'parcel_rotation_preview_changed') {
+        refreshPreview(request.source.id, request.useActualDates);
+        setError(t('hierarchy:parcelRotation.previewChanged'));
       } else {
         setError(extractApiErrorMessage(confirmError, t, t('navigation:seasonSwitcher.copyDialog.error')));
       }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   };
@@ -162,10 +186,10 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
             label={t('navigation:seasonSwitcher.copyDialog.selectSource')}
             value={source?.id ?? ''}
             disabled={submitting}
-            helperText={preview?.is_preceding_source === false
+            helperText={preview?.is_preceding_source === false && !parcelRotation?.mappings.length
               ? t('navigation:seasonSwitcher.copyDialog.parcelRotationUnavailable') : undefined}
             onChange={(event) => {
-              setRotationMode(DEFAULT_ROTATION_MODE);
+              setRotationMode(null);
               refreshPreview(Number(event.target.value), options.useActualDates);
             }}
             sx={{
@@ -199,6 +223,12 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
         )}
 
         {previewLoading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
+        {source && <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
+          excludedMoves={excludedMoves} showCropWarnings={false}
+          disabled={submitting} onChange={checked => {
+            setRotationMode(null);
+            refreshPreview(source.id, options.useActualDates, checked);
+          }} />}
         {availableSources.length === 0 && !sourceChanged && (
           <Alert severity="info">{t('navigation:seasonSwitcher.copyDialog.noEarlierSource')}</Alert>
         )}
@@ -249,7 +279,8 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
         )}
 
         {preview && hasRotationFindings ? (
-          <SeasonCopyRotationSummary preview={preview} mode={rotationMode} onModeChange={setRotationMode} />
+          <SeasonCopyRotationSummary preview={preview} mode={rotationMode}
+            parcelRotation={rotationEnabled} onModeChange={setRotationMode} />
         ) : null}
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
@@ -262,7 +293,8 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
             ? t('common:disabledReasons.busy')
             : previewLoading ? t('common:messages.loading') : ''}
         >
-          <Button onClick={() => void handleConfirm()} variant="contained" disabled={submitting || !preview}>
+          <Button onClick={() => void handleConfirm()} variant="contained"
+            disabled={submitting || !preview || rotationPending}>
             {t('navigation:seasonSwitcher.copyDialog.confirm')}
           </Button>
         </DisabledActionTooltip>

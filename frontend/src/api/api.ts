@@ -100,6 +100,9 @@ import type {
   SeasonCreationCopyTarget,
   SeasonCreateTransitionResponse,
   SeasonTransitionPeriods,
+  ParcelRotationConfiguration,
+  ParcelRotationConfirmation,
+  ParcelRotationGroup,
   SeasonDueSuggestion,
   SeasonCopyFromResponse,
   SeasonCopyPreview,
@@ -602,23 +605,27 @@ export const seasonAPI = {
   list: () => http.get<PaginatedResponse<Season>>('/seasons/', { params: { page_size: 1000 } }),
   create: (data: { start_date: string; end_date: string; custom_label?: string }) =>
     http.post<Season>('/seasons/', data),
-  createAndCopy: (data: { start_date: string; end_date: string; source_season_id: number; use_actual_dates?: boolean }) =>
+  createAndCopy: (data: { start_date: string; end_date: string; source_season_id: number; use_actual_dates?: boolean }
+    & Partial<ParcelRotationConfirmation>) =>
     http.post<Season>('/seasons/create-and-copy/', data),
   update: (id: number, data: Partial<{ custom_label: string; start_date: string; end_date: string }>) =>
     http.patch<Season>(`/seasons/${id}/`, data),
   delete: (id: number) => http.delete(`/seasons/${id}/`),
   undelete: (id: number) => http.post<Season>(`/seasons/${id}/undelete/`, {}),
-  copyFrom: (targetId: number, sourceSeasonId: number, rotationConflicts?: SeasonCopyRotationMode, useActualDates = false) =>
+  copyFrom: (targetId: number, sourceSeasonId: number, rotationConflicts?: SeasonCopyRotationMode,
+    useActualDates = false, parcelRotation?: ParcelRotationConfirmation) =>
     http.post<SeasonCopyFromResponse>(`/seasons/${targetId}/copy-from/`, {
       source_season_id: sourceSeasonId,
       ...(rotationConflicts ? { rotation_conflicts: rotationConflicts } : {}),
       ...(useActualDates ? { use_actual_dates: true } : {}),
+      ...parcelRotation,
     }),
-  copyPreview: (targetId: number, sourceSeasonId: number, useActualDates = false) =>
+  copyPreview: (targetId: number, sourceSeasonId: number, useActualDates = false, rotateParcels?: boolean) =>
     http.get<SeasonCopyPreview>(`/seasons/${targetId}/copy-preview/`, {
       params: {
         source_season_id: sourceSeasonId,
         ...(useActualDates ? { use_actual_dates: 'true' } : {}),
+        rotate_parcels: rotateParcels,
       },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
@@ -627,11 +634,21 @@ export const seasonAPI = {
     use_actual_dates?: boolean;
     source_season_id?: number;
     copy_target?: SeasonCreationCopyTarget;
+    rotate_parcels?: boolean;
   }) =>
     http.get<SeasonCreationOptions>('/seasons/creation-options/', { params }),
   createTransition: (data: { copy: boolean; source_season_id?: number; use_actual_dates?: boolean }
-    & Partial<SeasonTransitionPeriods>) =>
+    & Partial<SeasonTransitionPeriods & ParcelRotationConfirmation>) =>
     http.post<SeasonCreateTransitionResponse>('/seasons/create-transition/', data),
+};
+
+export const parcelRotationAPI = {
+  list: () => http.get<ParcelRotationGroup[]>('/parcel-rotation-groups/'),
+  create: (data: ParcelRotationConfiguration) =>
+    http.post<ParcelRotationGroup>('/parcel-rotation-groups/', data),
+  update: (id: number, data: ParcelRotationConfiguration) =>
+    http.put<ParcelRotationGroup>(`/parcel-rotation-groups/${id}/`, data),
+  remove: (id: number) => http.delete(`/parcel-rotation-groups/${id}/`),
 };
 
 export const seasonPatternAPI = {

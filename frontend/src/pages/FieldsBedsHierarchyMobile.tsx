@@ -304,7 +304,8 @@ function FieldsBedsHierarchyMobile({
     // set closeSheetBeforeRun: the sheet closes them itself, and asks for the
     // usual discard confirmation first when the form has unsaved edits.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
-      action.group === "destructive" || action.id === "duplicate-bed" || action.id === "duplicate-field" || action.id === "bulk-create-beds"
+      action.group === "destructive" || action.id === "duplicate-bed" || action.id === "duplicate-field"
+        || action.id === "bulk-create-beds" || action.id === "configure-rotation"
         ? { ...action, closeSheetBeforeRun: true }
         : action,
     );

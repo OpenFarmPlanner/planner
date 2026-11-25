@@ -102,6 +102,10 @@ class PlantingPlan(TimestampedModel):
         blank=True,
         help_text="Area in square meters used by this planting plan"
     )
+    parcel_rotation_basis = models.JSONField(
+        default=dict, blank=True, editable=False,
+        help_text='Reference areas and last applied areas in square metres for parcel rotation.',
+    )
     notes = models.TextField(blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,

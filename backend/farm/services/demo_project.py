@@ -31,6 +31,7 @@ from farm.models import (
     HarvestAllocation,
     HarvestRecord,
     Location,
+    ParcelRotationGroup,
     PlantingPlan,
     Project,
     ProjectMembership,
@@ -98,6 +99,16 @@ BULK_BED_EXAMPLE_NOTES = {
     'it': 'In fondo all’appezzamento c’è spazio per provare «Aggiungi più aiuole».',
     'pt': 'Há espaço no fundo da parcela para experimentar «Adicionar vários canteiros».',
     'nl': 'Aan het einde van het perceel is ruimte om ‘Meerdere bedden toevoegen’ te proberen.',
+}
+
+DEMO_ROTATION_GROUP_NAMES = {
+    'de': 'Hofgarten Nord–Süd',
+    'en': 'Farm Garden North–South',
+    'fr': 'Jardin de la ferme Nord–Sud',
+    'es': 'Huerta de la granja Norte–Sur',
+    'it': 'Orto della fattoria Nord–Sud',
+    'pt': 'Horta da quinta Norte–Sul',
+    'nl': 'Boerderijtuin Noord–Zuid',
 }
 
 DEMO_TEXT = {
@@ -463,6 +474,7 @@ def reset_project_demo_data(project: Project) -> None:
     Season.all_objects.filter(project=project).delete()
     BedLayout.objects.filter(project=project).delete()
     FieldLayout.objects.filter(project=project).delete()
+    ParcelRotationGroup.objects.filter(project=project).delete()
     Bed.objects.filter(project=project).delete()
     Field.objects.filter(project=project).delete()
     Location.objects.filter(project=project).delete()
@@ -544,7 +556,7 @@ def resolve_demo_language(language_code: str | None) -> str:
     bundles = (
         DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
         DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
-        BULK_BED_EXAMPLE_NOTES,
+        BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES,
     )
     complete = all(
         _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
@@ -593,6 +605,7 @@ def populate_demo_project(
         suppliers = _create_suppliers(project)
         locations, fields, beds = _create_area_hierarchy(project, language_code=language)
         _create_layouts(project, fields, beds)
+        _create_parcel_rotation(project, fields, beds, language)
         crops = _create_crops(project, suppliers, language_code=language)
         populate_demo_crop_features(project, crops, suppliers, language_code=language)
         _create_planting_plans(
@@ -604,6 +617,7 @@ def populate_demo_project(
             current_year=year,
         )
         assign_unassigned_planting_plans(project, owner=owner)
+        get_or_create_season_for_date(project, date(year + 1, 1, 1), created_by=owner)
         _create_demo_harvests(project, crops, beds, language, year)
         _create_demo_crop_losses(project, crops, beds, language, year)
         _create_demo_previous_season_reference(project, crops, beds, year)
@@ -935,6 +949,23 @@ def _create_area_hierarchy(
 
 
 DEMO_BOUNDARY_ORIGIN = 22.0
+
+
+def _create_parcel_rotation(
+    project: Project, fields: dict[str, Field], beds: dict[str, Bed], language: str,
+) -> None:
+    group = ParcelRotationGroup.objects.create(
+        project=project, name=DEMO_ROTATION_GROUP_NAMES[language],
+    )
+    order = (
+        ('fruehbeete', ('salat-1', 'salat-2', 'kraeuter')),
+        ('tunnel', ('tomate-1', 'tomate-2', 'gurke')),
+    )
+    for position, (parcel, bed_keys) in enumerate(order, start=1):
+        group.members.create(
+            project=project, field=fields[parcel], position=position,
+            bed_order=[beds[key].pk for key in bed_keys],
+        )
 
 
 def _create_layouts(

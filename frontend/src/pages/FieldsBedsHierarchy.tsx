@@ -10,6 +10,7 @@
 
 import React, {
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
@@ -146,6 +147,7 @@ import {
 } from "../commands/useCommandContext";
 import { HIGHLIGHT_FLASH_DURATION_MS } from "../components/feedback/highlightFlashStyles";
 import type { CommandSpec } from "../commands/types";
+import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
 
 interface FieldsBedsHierarchyProps {
   showTitle?: boolean;
@@ -1469,6 +1471,7 @@ function FieldsBedsHierarchy({
     }));
   }, [rememberRowSnapshot, rowsRef, selectedRowIdRef]);
 
+  const { configure: configureRotation } = useContext(ParcelRotationContext);
   const getHierarchyRowActions = useCallback((row: HierarchyRow): HierarchyRowAction[] => {
     const createActions: HierarchyRowAction[] = [];
     const detailPath = row.isNew ? null : getHierarchyDetailPath(row);
@@ -1493,6 +1496,10 @@ function FieldsBedsHierarchy({
     }
 
     if (row.type === "field" && row.fieldId) {
+      if (configureRotation && !row.isNew) detailActions.push({
+        id: "configure-rotation", label: t("parcelRotation.configure"), group: "details",
+        onClick: () => configureRotation(row.fieldId!),
+      });
       createActions.push({
         id: "add-bed",
         label: t("actions.addBed"),
@@ -1553,6 +1560,7 @@ function FieldsBedsHierarchy({
 
     return [...detailActions, ...createActions, ...destructiveActions];
   }, [
+    configureRotation,
     navigate,
     deleteHierarchyRowWithUndo,
     handleAddBed,

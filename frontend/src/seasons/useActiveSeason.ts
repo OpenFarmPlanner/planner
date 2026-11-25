@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { seasonAPI } from '../api/api';
 import type {
-  Season, SeasonCopyRotationMode, SeasonCreationOptions, SeasonDueSuggestion, SeasonTransitionPeriods,
+  ParcelRotationConfirmation, Season, SeasonCopyRotationMode, SeasonCreationOptions,
+  SeasonDueSuggestion, SeasonTransitionPeriods,
 } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { useTranslation } from '../i18n';
@@ -137,12 +138,13 @@ export function useActiveSeason() {
     endDate: string,
     copyFromSeasonId?: number,
     useActualDates = false,
+    parcelRotation?: ParcelRotationConfirmation,
   ): Promise<Season> => {
     const period = { start_date: startDate, end_date: endDate };
     const response = copyFromSeasonId === undefined
       ? await seasonAPI.create(period)
       : await seasonAPI.createAndCopy({
-        ...period, source_season_id: copyFromSeasonId,
+        ...period, source_season_id: copyFromSeasonId, ...parcelRotation,
         ...(useActualDates ? { use_actual_dates: true } : {}),
       });
     await reload();
@@ -151,9 +153,10 @@ export function useActiveSeason() {
 
   const createTransitionSeasons = useCallback(async (
     copy: boolean, expectedSourceId?: number, useActualDates = false, expectedPeriods?: SeasonTransitionPeriods,
+    parcelRotation?: ParcelRotationConfirmation,
   ) => {
     const response = await seasonAPI.createTransition({
-      copy, ...expectedPeriods,
+      copy, ...expectedPeriods, ...parcelRotation,
       ...(expectedSourceId === undefined ? {} : { source_season_id: expectedSourceId }),
       ...(copy && useActualDates ? { use_actual_dates: true } : {}),
     });
@@ -179,8 +182,10 @@ export function useActiveSeason() {
     sourceSeasonId: number,
     rotationConflicts?: SeasonCopyRotationMode,
     useActualDates?: boolean,
+    parcelRotation?: ParcelRotationConfirmation,
   ) => {
-    const response = await seasonAPI.copyFrom(targetSeasonId, sourceSeasonId, rotationConflicts, useActualDates);
+    const args = [targetSeasonId, sourceSeasonId, rotationConflicts, useActualDates] as const;
+    const response = await (parcelRotation ? seasonAPI.copyFrom(...args, parcelRotation) : seasonAPI.copyFrom(...args));
     await reload();
     return response.data;
   }, [reload]);

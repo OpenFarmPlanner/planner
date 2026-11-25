@@ -9,7 +9,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
-from rest_framework.exceptions import ValidationError
+from rest_framework.exceptions import APIException, ValidationError
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -38,6 +38,7 @@ from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, Se
 from farm.project_context import get_active_project_or_400
 from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_rotation import COPY_CONFLICTS_KEEP, RotationService, preview_season_copy
+from farm.services.parcel_rotation_copy import ParcelRotationConflict, preview_parcel_rotation
 from farm.services.seasons import (
     analyze_period_transition,
     build_planting_plan_copies,
@@ -73,6 +74,22 @@ from .serializers import (
     SeasonPatternSerializer,
     SeasonSerializer,
 )
+
+
+class ParcelRotationConfirmationRequired(APIException):
+    status_code = status.HTTP_409_CONFLICT
+
+    def __init__(self):
+        super().__init__({
+            'code': 'parcel_rotation_preview_changed',
+            'detail': 'Refresh the parcel rotation preview before copying.',
+        })
+
+
+def _confirmed_rotation(options: dict) -> str | None:
+    if options.get('rotate_parcels'):
+        return options.get('parcel_rotation_fingerprint', '')
+    return None
 
 
 class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
@@ -313,19 +330,29 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             source_season=source_season, target_season=target_season,
             use_actual_dates=options.validated_data['use_actual_dates'],
         )
-        service = RotationService(
-            target_season.project_id,
+        parcel_rotation = preview_parcel_rotation(
+            source_season, target_season, pairs, preceding=source_season == preceding,
+            requested=options.validated_data.get('rotate_parcels', False),
+            continuing_count=continuing_count,
             language_code=resolve_request_language(request),
-            region=getattr(self.request.active_project, 'region', '') or '',
         )
+        crop_rotation = parcel_rotation.summary.get('crop_rotation')
+        if crop_rotation is None:
+            service = RotationService(
+                target_season.project_id,
+                language_code=resolve_request_language(request),
+                region=self.request.active_project.region or '',
+            )
+            crop_rotation = preview_season_copy(service, parcel_rotation.pairs)
         return Response({
-            **preview_season_copy(service, pairs),
+            **crop_rotation,
             'skipped_count': skipped_count,
             'continuing_count': continuing_count,
             'unconfigured_perennial_count': unconfigured_count,
             'source_season_id': source_season.pk,
             'source_season_label': source_season.label,
             'is_preceding_source': source_season == preceding,
+            'parcel_rotation': parcel_rotation.summary,
         })
 
     @action(detail=True, methods=['post'], url_path='copy-from', history_read_only=True)
@@ -350,6 +377,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         return Response(self._copy_plans(
             source_season, target_season, serializer.validated_data['rotation_conflicts'],
             use_actual_dates=serializer.validated_data['use_actual_dates'],
+            parcel_rotation_fingerprint=_confirmed_rotation(serializer.validated_data),
         ))
 
     @action(
@@ -379,6 +407,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         result = self._copy_plans(
             source_season, serializer.instance,
             use_actual_dates=serializer.validated_data['use_actual_dates'],
+            parcel_rotation_fingerprint=_confirmed_rotation(serializer.validated_data),
         )
         serializer.instance.planting_plan_count = result['target_planting_plan_count']
         return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -387,14 +416,19 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         self, source_season: Season, target_season: Season,
         rotation_conflicts: str = COPY_CONFLICTS_KEEP,
         *, use_actual_dates: bool = False,
+        parcel_rotation_fingerprint: str | None = None,
     ) -> dict[str, int]:
-        created_plans, skipped_count, continuing_count, unconfigured_count = copy_planting_plans(
-            source_season=source_season,
-            target_season=target_season,
-            rotation_conflicts=rotation_conflicts,
-            language_code=resolve_request_language(self.request),
-            use_actual_dates=use_actual_dates,
-        )
+        try:
+            result = copy_planting_plans(
+                source_season=source_season, target_season=target_season,
+                rotation_conflicts=rotation_conflicts,
+                language_code=resolve_request_language(self.request),
+                use_actual_dates=use_actual_dates,
+                parcel_rotation_fingerprint=parcel_rotation_fingerprint,
+            )
+        except ParcelRotationConflict as exc:
+            raise ParcelRotationConfirmationRequired() from exc
+        created_plans, skipped_count, continuing_count, unconfigured_count = result
         if created_plans:
             # Group the created revisions while keeping each copy individually restorable.
             batch = start_batch_operation(
@@ -453,6 +487,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             use_actual_dates=options.validated_data['use_actual_dates'],
             copy_source=source,
             copy_target=options.validated_data.get('copy_target'),
+            rotate_parcels=options.validated_data.get('rotate_parcels', False),
+            language_code=resolve_request_language(request),
         )
         return self._copy_source_not_earlier() if result is None else Response(result)
 
@@ -525,11 +561,8 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         )
         distribution = {'transition': [], 'followup': [], 'skipped': 0}
         if source is not None:
-            distribution = distribute_planting_plans(
-                source_season=source,
-                transition_season=transition_season,
-                followup_season=followup_season,
-                use_actual_dates=options.validated_data['use_actual_dates'],
+            distribution = self._copy_transition_plans(
+                source, transition_season, followup_season, options.validated_data,
             )
             created_ids = [
                 plan.pk
@@ -556,6 +589,17 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             'continuing_count': distribution.get('continuing_count', 0),
             'unconfigured_perennial_count': distribution.get('unconfigured_perennial_count', 0),
         }, status=status.HTTP_201_CREATED)
+
+    @staticmethod
+    def _copy_transition_plans(source, transition, followup, validated_data):
+        try:
+            return distribute_planting_plans(
+                source_season=source, transition_season=transition, followup_season=followup,
+                use_actual_dates=validated_data['use_actual_dates'],
+                parcel_rotation_fingerprint=_confirmed_rotation(validated_data),
+            )
+        except ParcelRotationConflict as exc:
+            raise ParcelRotationConfirmationRequired() from exc
 
     @action(detail=False, methods=['get'], url_path='due-suggestion')
     def due_suggestion(self, request):

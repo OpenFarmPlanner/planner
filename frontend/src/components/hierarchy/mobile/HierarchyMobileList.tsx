@@ -5,6 +5,7 @@ import { useTranslation } from "../../../i18n";
 import { resolveLocaleFromLanguage } from "../../../utils/numberLocalization";
 import { buildHierarchySecondaryLine } from "./hierarchyMobileFormatting";
 import type { MobileHierarchyRow } from "../hooks/useMobileHierarchyRows";
+import { ParcelRotationBadge } from "../rotation/ParcelRotationGroupsDialog";
 
 /** Indentation, in theme spacing units, applied per hierarchy level. */
 export const INDENT_UNIT = 2;
@@ -104,6 +105,7 @@ export function HierarchyMobileList({
                   >
                     {row.name}
                   </Typography>
+                  {row.type === 'field' && row.fieldId ? <ParcelRotationBadge fieldId={row.fieldId} /> : null}
                   {hasNotes ? (
                     <Box
                       component="span"

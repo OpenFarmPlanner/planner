@@ -71,7 +71,15 @@ from .projects import (  # noqa: E402
     RetainedUpload,
 )
 from .seasons import ActiveSeasonManager, Season, SeasonPattern  # noqa: E402
-from .structure import Bed, BedLayout, Field, FieldLayout, Location  # noqa: E402
+from .structure import (  # noqa: E402
+    Bed,
+    BedLayout,
+    Field,
+    FieldLayout,
+    Location,
+    ParcelRotationGroup,
+    ParcelRotationMember,
+)
 from .usage import (  # noqa: E402
     CropLibraryUsageDay,
     ProjectActiveUserDay,
@@ -104,6 +112,8 @@ __all__ = [
     'Location',
     'MediaFile',
     'NoteAttachment',
+    'ParcelRotationGroup',
+    'ParcelRotationMember',
     'PlantingPlan',
     'Project',
     'ProjectActiveUserDay',

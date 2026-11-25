@@ -1,6 +1,8 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
+from farm.structure.parcel_rotation import ParcelRotationGroupViewSet
+
 from .agent_api.views import (
     AgentContextView,
     AgentOpenApiSchemaView,
@@ -81,6 +83,9 @@ router.register(r'locations', LocationViewSet)
 router.register(r'suppliers', SupplierViewSet)
 router.register(r'fields', FieldViewSet)
 router.register(r'beds', BedViewSet)
+router.register(
+    r'parcel-rotation-groups', ParcelRotationGroupViewSet, basename='parcel-rotation-group',
+)
 router.register(r'crops', CropViewSet)
 router.register(r'crop-supplier-data', CropSupplierDataViewSet)
 router.register(r'crop-companions', CropCompanionViewSet)
