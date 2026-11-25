@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { MemoryRouter, Route, Routes } from 'react-router';
+import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { resolveGrowingAreaEntity } from '../components/hierarchy/details/growingAreaEntity';
 import { GrowingAreaCoverageRows } from '../pages/GrowingAreaCoverageRows';
@@ -313,6 +313,31 @@ describe('GrowingAreaDetailPage', () => {
 
     expect(await within(section).findByRole('alert')).toHaveTextContent('Die Rotationsgruppen konnten nicht geladen werden.');
     expect(within(section).queryByTestId('detail-rotation-group')).not.toBeInTheDocument();
+  });
+
+  it('refreshes season options after a rotation group is saved from parcel details', async () => {
+    const group = { id: 5, name: 'Nord–Süd', parcels: [{ id: 10, name: 'Tunnel', beds: [] }] };
+    apiMocks.rotationGroups.mockResolvedValue({ data: [group] });
+    apiMocks.rotationUpdate.mockResolvedValue({ data: group });
+    const reloadActiveSeason = vi.fn().mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <MemoryRouter initialEntries={['/app/fields-beds/fields/10']}>
+        <Routes>
+          <Route element={<Outlet context={{ reloadActiveSeason }} />}>
+            <Route path="/app/fields-beds/:entityType/:entityId" element={<GrowingAreaDetailPage />} />
+          </Route>
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    const section = await screen.findByTestId('detail-section-rotation');
+    await within(section).findByTestId('detail-rotation-group');
+    await user.click(within(section).getByRole('button', { name: 'Rotationsgruppen verwalten' }));
+    const dialog = await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' });
+    await user.click(await within(dialog).findByRole('button', { name: 'Speichern' }));
+
+    await waitFor(() => expect(reloadActiveSeason).toHaveBeenCalledTimes(1));
   });
 
   it('shows rotation membership without a management action to users outside the project', async () => {

@@ -119,7 +119,9 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   const locale = resolveSeasonDateLocale(i18n);
   const navigate = useNavigate();
   const fromGraphic = useLocation().state?.fromGrowingAreaGraphic === true;
-  const seasonId = useOutletContext<RootLayoutOutletContext | null>()?.activeSeason?.id;
+  const outletContext = useOutletContext<RootLayoutOutletContext | null>();
+  const seasonId = outletContext?.activeSeason?.id;
+  const reloadActiveSeason = outletContext?.reloadActiveSeason;
   const hierarchy = useHierarchyData(true);
   const { locations, fields, beds, setLocations, setFields, setBeds, loading, hasLoaded, error, fetchData } = hierarchy;
   const refreshHierarchy = useCallback(() => fetchData({ showLoading: false }), [fetchData]);
@@ -310,7 +312,8 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
             <GrowingAreaReadView resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} />
           )}
           {!isEditing && type === 'field' && id !== null ? (
-            <ParcelRotationDetailSection fieldId={id} fields={fields} beds={beds} canManage={Boolean(activeProjectMembership)} />
+            <ParcelRotationDetailSection fieldId={id} fields={fields} beds={beds}
+              canManage={Boolean(activeProjectMembership)} onChanged={() => { void reloadActiveSeason?.(); }} />
           ) : null}
           <GrowingAreaRelatedPlans bedIds={resolved.bedIds} showBed={type !== 'bed'} />
           {type === 'bed' && id !== null && <BedTaskSection bedId={id} seasonId={seasonId} />}

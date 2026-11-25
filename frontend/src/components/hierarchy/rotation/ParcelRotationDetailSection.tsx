@@ -11,12 +11,16 @@ interface Props {
   fields: readonly Field[];
   beds: readonly Bed[];
   canManage: boolean;
+  /** Called after a group was saved or deleted, e.g. to refresh season-copy options. */
+  onChanged?: () => void;
 }
 
 /** Rotation group and position of a parcel on its detail page, with access to the shared group dialog (#1576). */
-export function ParcelRotationDetailSection({ fieldId, fields, beds, canManage }: Props) {
+export function ParcelRotationDetailSection({ fieldId, fields, beds, canManage, onChanged }: Props) {
   const { t } = useTranslation(['hierarchy', 'common']);
-  const { memberships, status, reload, open, dialog } = useParcelRotationGroups({ enabled: true, fields, beds });
+  const { memberships, status, reload, open, dialog } = useParcelRotationGroups({
+    enabled: true, fields, beds, onChanged,
+  });
   const membership = memberships.get(fieldId);
   if (status !== 'ready') {
     return (
