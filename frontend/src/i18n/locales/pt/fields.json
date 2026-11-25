@@ -53,19 +53,6 @@
       "outstanding_many": "{{count}} tarefas em aberto",
       "undatedCount_many": "{{count}} sem data"
     },
-    "freeArea": {
-      "toggle": "Mostrar espaços livres e caminhos",
-      "title": "Espaços livres",
-      "site": "Espaço sem atribuição fora das parcelas",
-      "parcel": "Espaço dentro das parcelas sem canteiros",
-      "incomplete": "Alguns espaços livres não podem ser medidos",
-      "gross": "Área bruta da exploração {{area}}",
-      "covered": "Área das parcelas dentro da exploração {{area}}",
-      "remaining": "Espaço sem atribuição fora das parcelas {{area}}",
-      "unknownLocation": "A visualização dos espaços livres requer contornos medidos da exploração e das parcelas.",
-      "unknownParcel": "Faltam dimensões para sombrear o espaço livre de algumas parcelas.",
-      "unknownBed": "Faltam dimensões de alguns canteiros. Os espaços livres nas respetivas parcelas ficam sem sombreado."
-    },
     "geometry": {
       "title": "Verificação do esquema",
       "open": "Verificação do esquema ({{count}})",
@@ -77,12 +64,7 @@
       "noPathSpace": "Os canteiros ocupam toda a área de {{name}}. Não há espaço para os caminhos recomendados.",
       "unknownLocation": "Indica as dimensões da exploração na lista para verificar o limite.",
       "unknownParcels": "Não é possível verificar {{names}} com precisão porque faltam as dimensões ou os contornos estão ampliados.",
-      "unknownBeds": "Não é possível medir a área ocupada por {{names}} em {{name}}. Confirma as dimensões da parcela e dos canteiros na lista.",
-      "grossArea": "Área bruta {{area}}",
-      "bedFootprint": "Área de canteiros dentro da parcela {{area}}",
-      "remainingArea": "Área restante {{area}}",
-      "remainingHelp": "A área restante inclui caminhos e margens.",
-      "areaUnknown": "São necessárias as dimensões da parcela e dos canteiros para calcular as áreas ocupada e restante."
+      "unknownBeds": "Não é possível medir a área ocupada por {{names}} em {{name}}. Confirma as dimensões da parcela e dos canteiros na lista."
     },
     "spacing": {
       "button": "Espaçamento",

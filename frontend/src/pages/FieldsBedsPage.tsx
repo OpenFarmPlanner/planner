@@ -39,6 +39,7 @@ import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls';
 import type { GraphicalCameraState } from './graphicalFieldsGeometry';
+import { getMeasuredArea } from './graphicalAreaGeometry';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
@@ -160,16 +161,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   });
   const [cameraState, setCameraState] = useState<GraphicalCameraState>({ viewports: {}, rotations: {} });
   const [isEditingGraphic, setIsEditingGraphic] = useState(false);
-  const [freeAreasByLocation, setFreeAreasByLocation] = useState<Record<number, boolean>>({});
   const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
   const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
-  const graphLocationId = selectedLocation?.id;
-  const showFreeAreas = graphLocationId !== undefined && (freeAreasByLocation[graphLocationId] ?? false);
-  const changeFreeAreas = useCallback((checked: boolean) => {
-    if (graphLocationId !== undefined) {
-      setFreeAreasByLocation(current => ({ ...current, [graphLocationId]: checked }));
-    }
-  }, [graphLocationId]);
   // Retain the actual selected ID when new/renamed/removed locations change order.
   if (locationSelection.locations !== locations) {
     setLocationSelection({ locations, id: selectedLocation?.id ?? null });
@@ -351,8 +344,10 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const shouldShowAreasEmptyState = hasAreaDataLoaded && !isAreaDataLoading && !areaDataError && !hasLocations;
   const hasSelectedGraphicalFields = fields.some(field => field.location === selectedLocation?.id && hasPersistedEntityId(field.id));
   const shouldShowMissingFieldsState = hasLocations
-    && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields && !showFreeAreas : !hasFields)
+    && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
     && !hasUnsavedFields && createFieldRequest <= 0;
+  const showMeasuredEmptyLocation = shouldShowMissingFieldsState && effectiveViewMode === 'graphical'
+    && Boolean(selectedLocation && getMeasuredArea(selectedLocation) !== null);
   const shouldShowMissingBedsHint = hasFields && !hasBeds && !hasUnsavedBeds;
   const shouldRenderHierarchy = hasHierarchyRows || createFieldRequest > 0 || effectivePendingHierarchyDeletionCount > 0;
   const createBedAction = getProjectSetupAction('beds');
@@ -436,8 +431,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           onClick={() => setIsEditingGraphic(value => !value)}
         />
         {activeProjectMembership ? (
-          <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing}
-            showFreeAreas={showFreeAreas} onFreeAreasChange={changeFreeAreas} />
+          <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing} />
         ) : null}
       </Box>
     </> : null}
@@ -446,8 +440,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           onOpenOverflow={event => setAreaMenuAnchor(event.currentTarget)} />
       )}
     </>
-  ) : null, [activeProjectMembership, changeFreeAreas, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
-    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, showFreeAreas, shouldShowProjectRequiredState, t]);
+  ) : null, [activeProjectMembership, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
+    graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 
@@ -540,7 +534,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             containerSx={CONTENT_ALIGNED_EMPTY_STATE_SX}
           />
         ) : null}
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && (shouldShowAreasEmptyState || shouldShowMissingFieldsState) ? (
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && showMeasuredEmptyLocation ? (
+          <Alert severity="info" sx={{ mb: 1 }}>{t('fields:graphical.noFields')}</Alert>
+        ) : null}
+        {!shouldShowProjectRequiredState && !isAreaDataLoading
+          && (shouldShowAreasEmptyState || (shouldShowMissingFieldsState && !showMeasuredEmptyLocation)) ? (
           <EmptyStateCard
             title={shouldShowMissingFieldsState ? t('hierarchy:emptyAreas.missingFieldTitle') : t('hierarchy:emptyAreas.missingLocationTitle')}
             description={effectiveViewMode === 'graphical' && hasLocations ? t('fields:graphical.noFields') : emptyAreasDescription}
@@ -552,7 +550,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       </PageContainer>
 
       <Box>
-        {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && !shouldShowMissingFieldsState && effectiveViewMode === 'graphical' ? (
+        {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy
+          && (!shouldShowMissingFieldsState || showMeasuredEmptyLocation) && effectiveViewMode === 'graphical' ? (
           <GraphicalFields
             selectedLocationId={selectedLocation?.id}
             cameraState={cameraState}
@@ -561,7 +560,6 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             onInteractionModeChange={mode => setIsEditingGraphic(mode === 'edit')}
             showTitle={false}
             showModeToggle={false}
-            showFreeAreas={showFreeAreas}
             activeSeasonId={outletContext?.activeSeason?.id}
             individualSeason={outletContext?.activeSeason ?? undefined}
             canEditIndividualPlants={Boolean(activeProjectMembership)}

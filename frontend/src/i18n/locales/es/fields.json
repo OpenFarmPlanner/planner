@@ -53,19 +53,6 @@
       "outstanding_many": "{{count}} tareas abiertas",
       "undatedCount_many": "{{count}} sin fecha"
     },
-    "freeArea": {
-      "toggle": "Mostrar espacios libres y caminos",
-      "title": "Espacios libres",
-      "site": "Espacio sin asignar fuera de las parcelas",
-      "parcel": "Espacio dentro de las parcelas sin bancales",
-      "incomplete": "Algunos espacios libres no se pueden medir",
-      "gross": "Superficie bruta de la ubicación {{area}}",
-      "covered": "Superficie de parcelas dentro de la ubicación {{area}}",
-      "remaining": "Espacio sin asignar fuera de las parcelas {{area}}",
-      "unknownLocation": "Se necesitan contornos medidos de la ubicación y de sus parcelas.",
-      "unknownParcel": "Faltan dimensiones para sombrear el espacio libre de algunas parcelas.",
-      "unknownBed": "Faltan dimensiones de algunos bancales. Los espacios libres de sus parcelas no se sombrean."
-    },
     "geometry": {
       "title": "Comprobación del esquema",
       "open": "Comprobación del esquema ({{count}})",
@@ -77,12 +64,7 @@
       "noPathSpace": "Los bancales ocupan todo el espacio de {{name}}. No queda sitio para los caminos recomendados.",
       "unknownLocation": "Introduce las dimensiones de la ubicación en la lista para comprobar su límite.",
       "unknownParcels": "No se puede comprobar con precisión {{names}} porque faltan las dimensiones o los contornos están ampliados.",
-      "unknownBeds": "No se puede medir la superficie que ocupa {{names}} en {{name}}. Comprueba las dimensiones de la parcela y de los bancales en la lista.",
-      "grossArea": "Superficie bruta {{area}}",
-      "bedFootprint": "Superficie ocupada por bancales dentro de la parcela {{area}}",
-      "remainingArea": "Superficie restante {{area}}",
-      "remainingHelp": "La superficie restante incluye caminos y márgenes.",
-      "areaUnknown": "Se necesitan las dimensiones de la parcela y de los bancales para calcular la superficie ocupada y la restante."
+      "unknownBeds": "No se puede medir la superficie que ocupa {{names}} en {{name}}. Comprueba las dimensiones de la parcela y de los bancales en la lista."
     },
     "spacing": {
       "button": "Distancias",

@@ -381,6 +381,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Superficie lorda",
+      "parcelFootprint": "Superficie degli appezzamenti all’interno del sito",
+      "bedFootprint": "Superficie delle aiuole all’interno dell’appezzamento",
+      "outsideParcels": "Superficie libera fuori dagli appezzamenti",
+      "withoutBeds": "Superficie senza aiuole",
+      "parcelRemainingHelp": "Comprende i passaggi, i margini e gli altri usi.",
+      "loading": "Caricamento delle superfici…",
+      "loadError": "Impossibile caricare le superfici.",
+      "locationUnknown": "Per il calcolo servono le dimensioni del sito e degli appezzamenti e la posizione degli appezzamenti.",
+      "parcelUnknown": "Per il calcolo servono le dimensioni dell’appezzamento e di tutte le sue aiuole."
+    },
     "open": {
       "location": "Dettagli del sito",
       "field": "Dettagli dell’appezzamento",

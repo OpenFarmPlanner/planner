@@ -51,19 +51,6 @@
       "completeNamed": "‘{{title}}’ als klaar markeren",
       "allTasks": "Alle taken"
     },
-    "freeArea": {
-      "toggle": "Vrije ruimte en paden tonen",
-      "title": "Vrije ruimte",
-      "site": "Niet-toegewezen ruimte buiten de percelen",
-      "parcel": "Ruimte binnen percelen zonder bedden",
-      "incomplete": "Een deel van de vrije ruimte is niet meetbaar",
-      "gross": "Bruto-oppervlakte van de locatie {{area}}",
-      "covered": "Perceeloppervlakte binnen de locatie {{area}}",
-      "remaining": "Niet-toegewezen ruimte buiten de percelen {{area}}",
-      "unknownLocation": "Voor de vrije ruimte op de locatie zijn gemeten locatie- en perceelgrenzen nodig.",
-      "unknownParcel": "Voor enkele percelen ontbreken afmetingen om hun vrije ruimte in te kleuren.",
-      "unknownBed": "Bij enkele bedden ontbreken afmetingen. De vrije ruimte in hun percelen wordt niet ingekleurd."
-    },
     "geometry": {
       "title": "Indelingscontrole",
       "open": "Indelingscontrole ({{count}})",
@@ -75,12 +62,7 @@
       "noPathSpace": "De bedden vullen {{name}}. Er is geen ruimte voor de aanbevolen paden.",
       "unknownLocation": "Vul de afmetingen van de locatie in de lijst in om de grens te controleren.",
       "unknownParcels": "Een nauwkeurige controle van {{names}} is niet mogelijk omdat de afmetingen ontbreken of de contouren vergroot zijn.",
-      "unknownBeds": "De oppervlakte van {{names}} in {{name}} kan niet worden gemeten. Controleer de afmetingen van het perceel en de bedden in de lijst.",
-      "grossArea": "Bruto-oppervlakte {{area}}",
-      "bedFootprint": "Oppervlakte van bedden binnen het perceel {{area}}",
-      "remainingArea": "Resterende oppervlakte {{area}}",
-      "remainingHelp": "De resterende oppervlakte omvat paden en randen.",
-      "areaUnknown": "Voor de gebruikte en resterende oppervlakte zijn de afmetingen van het perceel en de bedden nodig."
+      "unknownBeds": "De oppervlakte van {{names}} in {{name}} kan niet worden gemeten. Controleer de afmetingen van het perceel en de bedden in de lijst."
     },
     "spacing": {
       "button": "Afstanden",

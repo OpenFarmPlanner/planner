@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import GrowingAreaDetailPage from '../pages/GrowingAreaDetailPage';
+import { trackBedLayoutSave } from '../pages/graphicalLayoutRequests';
 
 const apiMocks = vi.hoisted(() => ({
   projectId: 1,
@@ -10,6 +11,7 @@ const apiMocks = vi.hoisted(() => ({
   fields: vi.fn(),
   beds: vi.fn(),
   plans: vi.fn(),
+  layouts: vi.fn(),
   bedUpdate: vi.fn(),
 }));
 
@@ -30,6 +32,7 @@ vi.mock('../api/api', async () => {
     locationAPI: { ...actual.locationAPI, listAll: apiMocks.locations },
     fieldAPI: { ...actual.fieldAPI, listAll: apiMocks.fields },
     bedAPI: { ...actual.bedAPI, listAll: apiMocks.beds, update: apiMocks.bedUpdate },
+    layoutAPI: { ...actual.layoutAPI, listByLocation: apiMocks.layouts },
     plantingPlanAPI: { ...actual.plantingPlanAPI, listAll: apiMocks.plans },
   };
 });
@@ -50,6 +53,7 @@ describe('GrowingAreaDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.projectId = 1;
+    apiMocks.layouts.mockResolvedValue({ data: { field_layouts: [], bed_layouts: [] } });
     apiMocks.locations.mockResolvedValue(page([
       { id: 1, name: 'Hofgarten', light_condition: 'sunny', irrigation: 'unavailable', length_m: 40, width_m: 20 },
     ]).data);
@@ -63,6 +67,67 @@ describe('GrowingAreaDetailPage', () => {
       { id: 7, bed: 100, crop: 3, crop_name: 'Tomate', planting_date: '2026-05-01' },
       { id: 8, bed: 999, crop: 3, crop_name: 'Fremd', planting_date: '2026-05-01' },
     ]).data);
+  });
+
+  it('shows zero covered area for a measured empty location after the layout loads', async () => {
+    apiMocks.fields.mockResolvedValueOnce(page([]).data);
+    let finishLayouts!: (data: unknown) => void;
+    apiMocks.layouts.mockReturnValueOnce(new Promise(resolve => { finishLayouts = resolve; }));
+    renderDetail('/app/fields-beds/locations/1');
+
+    const geometry = within(await screen.findByTestId('detail-section-geometry'));
+    expect(geometry.getByText('Flächenbelegung wird geladen …')).toBeVisible();
+    expect(geometry.getByText('800 m²')).toBeVisible();
+    expect(geometry.queryByTestId('detail-covered-area')).not.toBeInTheDocument();
+    await act(async () => finishLayouts({ data: { field_layouts: [], bed_layouts: [] } }));
+    expect(geometry.getByTestId('detail-covered-area')).toHaveTextContent('0 m²');
+    expect(geometry.getByTestId('detail-remaining-area')).toHaveTextContent(/800 m² \(100\s*%\)/);
+    expect(geometry.getAllByText('Bruttofläche')).toHaveLength(1);
+  });
+
+  it('recovers a failed coverage request and refreshes saved layouts on focus', async () => {
+    apiMocks.fields.mockResolvedValue(page([
+      { id: 10, name: 'Tunnel', location: 1, width_m: 10, length_m: 10 },
+    ]).data);
+    const layout = { field: 10, location: 1, x: 0, y: 0 };
+    const payload = { bed_layouts: [], field_layouts: [layout], location_boundary: { x: 0, y: 0 } };
+    apiMocks.layouts.mockRejectedValueOnce(new Error('Temporary layout error'))
+      .mockResolvedValueOnce({ data: payload })
+      .mockResolvedValueOnce({ data: { ...payload, field_layouts: [{ ...layout, x: 270 }] } });
+    renderDetail('/app/fields-beds/locations/1');
+
+    const geometry = within(await screen.findByTestId('detail-section-geometry'));
+    expect(await geometry.findByRole('alert')).toHaveTextContent('Die Flächenbelegung konnte nicht geladen werden.');
+    await userEvent.click(geometry.getByRole('button', { name: 'Erneut versuchen' }));
+    expect(await geometry.findByTestId('detail-covered-area')).toHaveTextContent('100 m²');
+    fireEvent.focus(window);
+    await waitFor(() => expect(geometry.getByTestId('detail-covered-area')).toHaveTextContent('50 m²'));
+    expect(geometry.getByTestId('detail-remaining-area')).toHaveTextContent(/750 m² \(93,8\s*%\)/);
+  });
+
+  it('explains incomplete parcel measurements without displaying a zero as an estimate', async () => {
+    renderDetail('/app/fields-beds/fields/10');
+    const geometry = within(await screen.findByTestId('detail-section-geometry'));
+    expect(await geometry.findByText('Für die Flächenberechnung fehlen Maße der Parzelle oder ihrer Beete.')).toBeVisible();
+    expect(geometry.queryByTestId('detail-remaining-area')).not.toBeInTheDocument();
+  });
+
+  it('waits for a bed move already being saved before reading the parcel layout', async () => {
+    apiMocks.fields.mockResolvedValue(page([
+      { id: 10, name: 'Tunnel', location: 1, width_m: 10, length_m: 10 },
+    ]).data);
+    let finishSave!: () => void;
+    const save = trackBedLayoutSave(1, new Promise<void>(resolve => { finishSave = resolve; }));
+    renderDetail('/app/fields-beds/fields/10');
+
+    const geometry = within(await screen.findByTestId('detail-section-geometry'));
+    expect(geometry.getByRole('status')).toBeVisible();
+    expect(apiMocks.layouts).not.toHaveBeenCalled();
+    await act(async () => {
+      finishSave();
+      await save;
+    });
+    expect(geometry.getByTestId('detail-covered-area')).toBeVisible();
   });
 
   it('shows own and inherited conditions with their source and hides empty sections', async () => {

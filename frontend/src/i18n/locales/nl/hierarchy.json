@@ -361,6 +361,18 @@
     }
   },
   "details": {
+    "coverage": {
+      "gross": "Bruto-oppervlakte",
+      "parcelFootprint": "Oppervlakte van percelen binnen de locatie",
+      "bedFootprint": "Oppervlakte van bedden binnen het perceel",
+      "outsideParcels": "Vrije oppervlakte buiten de percelen",
+      "withoutBeds": "Oppervlakte zonder bedden",
+      "parcelRemainingHelp": "Omvat paden, randen en ander gebruik.",
+      "loading": "Oppervlakten laden…",
+      "loadError": "De oppervlakten konden niet worden geladen.",
+      "locationUnknown": "Voor de berekening zijn de afmetingen van de locatie en percelen en de posities van de percelen nodig.",
+      "parcelUnknown": "Voor de berekening zijn de afmetingen van het perceel en al zijn bedden nodig."
+    },
     "open": {
       "location": "Locatiedetails",
       "field": "Perceeldetails",

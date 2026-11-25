@@ -1,5 +1,5 @@
 import { useId, useState, type FormEvent, type MouseEvent } from 'react';
-import { Alert, Box, Button, Checkbox, Divider, FormControlLabel, Popover, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, Checkbox, FormControlLabel, Popover, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import type { Location, LocationPathSpacing } from '../api/types';
 import { defaultLocationPathSpacing, getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
@@ -23,12 +23,10 @@ const isValidSpacing = (value: number | null): value is number =>
   value !== null && Number.isFinite(value) && value >= 0;
 
 export function GraphicalSpacingControl({
-  location, onSave, showFreeAreas, onFreeAreasChange,
+  location, onSave,
 }: {
   location: Location;
   onSave: (id: number, spacing: LocationPathSpacing) => Promise<void>;
-  showFreeAreas: boolean;
-  onFreeAreasChange: (checked: boolean) => void;
 }) {
   const { t } = useTranslation('fields');
   const locale = getActiveFormattingLocale();
@@ -89,55 +87,48 @@ export function GraphicalSpacingControl({
           sx: { width: 380, maxWidth: 'calc(100% - 32px)', mt: 0.5 },
         } }}
       >
-        <Stack spacing={1.5} sx={{ p: 2 }}>
+        <Stack component="form" spacing={1.5} sx={{ p: 2 }} onSubmit={event => { void submit(event); }}>
+          <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>
+            {t('graphical.spacing.title')}
+          </Typography>
+          {(['bed', 'parcel'] as const).map(kind => {
+            const valid = isValidSpacing(kind === 'bed' ? bed : parcel);
+            return (
+              <TextField
+                key={kind}
+                autoFocus={kind === 'bed'}
+                size="small"
+                slotProps={{ htmlInput: { inputMode: 'decimal' } }}
+                label={t(`graphical.spacing.${kind}`)}
+                value={draft[kind]}
+                disabled={saving}
+                error={!valid}
+                helperText={!valid ? t('graphical.spacing.invalid') : undefined}
+                onChange={event => {
+                  const value = event.target.value;
+                  setDraft(current => ({ ...current, [kind]: value }));
+                }}
+              />
+            );
+          })}
           <FormControlLabel
-            control={<Checkbox checked={showFreeAreas} onChange={(_, checked) => onFreeAreasChange(checked)} />}
-            label={t('graphical.freeArea.toggle')}
+            control={<Checkbox checked={draft.snap} disabled={saving}
+              onChange={(_, checked) => setDraft(current => ({ ...current, snap: checked }))} />}
+            label={t('graphical.spacing.snap')}
           />
-          <Divider />
-          <Stack component="form" spacing={1.5} onSubmit={event => { void submit(event); }}>
-            <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>
-              {t('graphical.spacing.title')}
-            </Typography>
-            {(['bed', 'parcel'] as const).map(kind => {
-              const valid = isValidSpacing(kind === 'bed' ? bed : parcel);
-              return (
-                <TextField
-                  key={kind}
-                  autoFocus={kind === 'bed'}
-                  size="small"
-                  slotProps={{ htmlInput: { inputMode: 'decimal' } }}
-                  label={t(`graphical.spacing.${kind}`)}
-                  value={draft[kind]}
-                  disabled={saving}
-                  error={!valid}
-                  helperText={!valid ? t('graphical.spacing.invalid') : undefined}
-                  onChange={event => {
-                    const value = event.target.value;
-                    setDraft(current => ({ ...current, [kind]: value }));
-                  }}
-                />
-              );
-            })}
-            <FormControlLabel
-              control={<Checkbox checked={draft.snap} disabled={saving}
-                onChange={(_, checked) => setDraft(current => ({ ...current, snap: checked }))} />}
-              label={t('graphical.spacing.snap')}
-            />
-            {!touchOnly || openedByKeyboard ? (
-              <Typography variant="body2" color="text.secondary">{t('graphical.spacing.bypass')}</Typography>
-            ) : null}
-            {saveFailed ? <Alert severity="error">{t('graphical.spacing.saveError')}</Alert> : null}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'flex-end' }}>
-              <Button disabled={saving} onClick={() => setDraft(toDraft(defaultLocationPathSpacing, locale))}>
-                {t('graphical.spacing.reset')}
-              </Button>
-              <Button disabled={saving} onClick={() => setAnchor(null)}>{t('cancel')}</Button>
-              <Button type="submit" variant="contained" disabled={saving || !isValidSpacing(bed) || !isValidSpacing(parcel)}>
-                {t('graphical.spacing.apply')}
-              </Button>
-            </Box>
-          </Stack>
+          {!touchOnly || openedByKeyboard ? (
+            <Typography variant="body2" color="text.secondary">{t('graphical.spacing.bypass')}</Typography>
+          ) : null}
+          {saveFailed ? <Alert severity="error">{t('graphical.spacing.saveError')}</Alert> : null}
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, justifyContent: 'flex-end' }}>
+            <Button disabled={saving} onClick={() => setDraft(toDraft(defaultLocationPathSpacing, locale))}>
+              {t('graphical.spacing.reset')}
+            </Button>
+            <Button disabled={saving} onClick={() => setAnchor(null)}>{t('cancel')}</Button>
+            <Button type="submit" variant="contained" disabled={saving || !isValidSpacing(bed) || !isValidSpacing(parcel)}>
+              {t('graphical.spacing.apply')}
+            </Button>
+          </Box>
         </Stack>
       </Popover>
     </>

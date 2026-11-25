@@ -51,19 +51,6 @@
       "completeNamed": "Mark “{{title}}” done",
       "allTasks": "All tasks"
     },
-    "freeArea": {
-      "toggle": "Show free areas and paths",
-      "title": "Free areas",
-      "site": "Unassigned space outside parcels",
-      "parcel": "Space inside parcels without beds",
-      "incomplete": "Some free areas cannot be measured",
-      "gross": "Gross location area {{area}}",
-      "covered": "Parcel footprint within the location {{area}}",
-      "remaining": "Unassigned space outside parcels {{area}}",
-      "unknownLocation": "The location overlay requires measured site and parcel outlines.",
-      "unknownParcel": "Some parcels lack measured dimensions for shading their free areas.",
-      "unknownBed": "Some beds lack complete measurements. The free areas in their parcels are left unshaded."
-    },
     "geometry": {
       "title": "Layout checks",
       "open": "Layout checks ({{count}})",
@@ -75,12 +62,7 @@
       "noPathSpace": "Beds fill {{name}}. There is no room for the recommended paths.",
       "unknownLocation": "Set the location dimensions in List to check its boundary.",
       "unknownParcels": "Exact parcel checks are unavailable for {{names}} because their dimensions are missing or their outlines are enlarged.",
-      "unknownBeds": "The bed footprint in {{name}} could not be measured for {{names}}. Check the parcel and bed dimensions in List.",
-      "grossArea": "Gross area {{area}}",
-      "bedFootprint": "Bed footprint within the parcel {{area}}",
-      "remainingArea": "Remaining area {{area}}",
-      "remainingHelp": "The remaining area includes paths and margins.",
-      "areaUnknown": "Parcel and bed dimensions are needed to calculate the footprint and remaining area."
+      "unknownBeds": "The bed footprint in {{name}} could not be measured for {{names}}. Check the parcel and bed dimensions in List."
     },
     "spacing": {
       "button": "Spacing",

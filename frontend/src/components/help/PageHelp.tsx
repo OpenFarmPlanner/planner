@@ -43,6 +43,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent, typ
 import { useTranslation } from '../../i18n';
 import HelpIconRow from './HelpIconRow';
 import { HierarchyAddIcon } from '../hierarchy/HierarchyAddIcon';
+import { freeAreaColor } from '../hierarchy/utils/freeAreaColors';
 import { AppTooltip } from '../AppTooltip';
 import { CropLibraryStatusCircle } from '../../crops/CropLibraryStatusIcon';
 
@@ -167,6 +168,13 @@ const PAGE_SYMBOL_DEFINITIONS: Partial<Record<HelpPageKey, SymbolDefinition[]>> 
     { key: 'fit', icon: <FitScreenIcon fontSize="small" /> },
     { key: 'fullscreen', icon: <FullscreenIcon fontSize="small" /> },
     { key: 'editToggle', icon: <EditOutlinedIcon fontSize="small" sx={{ color: 'success.dark' }} /> },
+    ...(['site', 'parcel'] as const).map(kind => ({
+      key: kind === 'site' ? 'freeSite' : 'freeParcel',
+      icon: <Box aria-hidden sx={theme => ({
+        width: 20, height: 14, borderRadius: 0.5, border: '1px solid', borderColor: 'divider',
+        bgcolor: freeAreaColor(theme, kind),
+      })} />,
+    })),
   ],
 };
 

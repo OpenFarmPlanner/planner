@@ -220,6 +220,13 @@ Edit graphic and Spacing stay directly available with 44 px buttons. They
 show labels from `lg` when the topbar itself has enough width. The edit button
 shows the active state, and Spacing shows the Shift hint for keyboard users.
 
+Graphic shades reliable unoccupied location and parcel geometry by default.
+The footprint sweep clips children to the parent and counts their union once.
+It supplies the same calculation to the location and parcel details, which
+read saved layouts and show measured coverage and the remaining percentage.
+An exact location total requires reliable parcel positions. Measured empty
+areas have zero coverage. The Graphic page help explains the two colors.
+
 `useGraphicalStageSize` measures the selected canvas width and its actual top
 edge below the rendered header, leaving the main content's bottom gutter.
 ResizeObserver follows the header, container and canvas, so wrapping controls,

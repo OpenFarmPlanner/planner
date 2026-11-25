@@ -291,7 +291,9 @@
         "zoomOut": "Dézoomer",
         "fit": "Ajuster à la vue complète",
         "fullscreen": "Afficher en plein écran",
-        "editToggle": "Modifier la disposition : déplacer et organiser par glisser-déposer les planches et parcelles d'un site"
+        "editToggle": "Modifier la disposition : déplacer et organiser par glisser-déposer les planches et parcelles d'un site",
+        "freeSite": "Le bleu clair indique la surface libre hors des parcelles.",
+        "freeParcel": "Le vert clair indique la surface libre dans les parcelles, hors des planches."
       }
     },
     "yieldOverview": {
