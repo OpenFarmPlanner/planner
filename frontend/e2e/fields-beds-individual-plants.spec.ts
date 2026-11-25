@@ -275,13 +275,31 @@ test('drags a placed stem in graphic edit mode without moving the bed or parcel 
   expect(placementWrites).toBe(0);
   expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterStemDrags);
 
+  // While one stem's save is pending, its plan's other stem still takes the gesture: the parcel stays.
+  let releasePending: () => void = () => undefined;
+  const placementUrl = (url: URL) => url.pathname.endsWith('/individual-placement/');
+  await page.route(placementUrl, async route => {
+    await new Promise<void>(resolve => { releasePending = resolve; });
+    await route.continue();
+  });
+  const parcelBeforePending = (await shape(page, `field-rect-${plot.id}`))!.world;
+  await dragScreen(page, centre((await shape(page, `individual-stem-${free.id}`))!.screen), { x: 20, y: 20 });
+  await dragScreen(page, centre((await shape(page, `individual-stem-${overBed.id}`))!.screen), { x: 40, y: 30 });
+  expect((await shape(page, `field-rect-${plot.id}`))!.world).toEqual(parcelBeforePending);
+  releasePending();
+  await expect.poll(async () => (await individualPlans(page, location.id))[0].individual_positions[0].x_m)
+    .not.toBe(afterStemDrags[0].x_m);
+  await page.unroute(placementUrl);
+  const afterPending = (await individualPlans(page, location.id))[0].individual_positions;
+  expect(afterPending[1]).toEqual(afterStemDrags[1]);
+
   // A failed save restores the stem and reports the error.
-  await page.route(url => url.pathname.endsWith('/individual-placement/'), route => route.fulfill({ status: 500, json: {} }));
+  await page.route(placementUrl, route => route.fulfill({ status: 500, json: {} }));
   const beforeFailure = (await shape(page, `individual-stem-${free.id}`))!;
   await dragScreen(page, centre(beforeFailure.screen), { x: 30, y: -20 });
   await expect(page.getByText('Die Einzelpflanzen konnten nicht gespeichert werden.')).toBeVisible();
   await expect.poll(async () => (await shape(page, `individual-stem-${free.id}`))?.x_m).toBe(beforeFailure.x_m);
-  expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterStemDrags);
+  expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(afterPending);
 });
 
 test.describe('individual plants on a phone', () => {

@@ -1371,6 +1371,7 @@ export default function GraphicalFields({
                                   panel?.scrollIntoView({ block: "nearest" });
                                 }}
                                 draggablePlanIds={draggableStemPlans}
+                                captureStems={locationIsEditable && individualPlants.canEdit}
                                 onMove={(key, position) => {
                                   if (stemDraft?.parcel === fieldId) {
                                     individualPlants.changeStem(key, position);

@@ -48,6 +48,8 @@ export function useIndividualPlants(
   const [state, setState] = useState({ scope, editor: initialEditor });
   const nextStemId = useRef(0);
   const revealedPlan = useRef<number | undefined>(undefined);
+  // Bumped on every completed load: a direct move only writes into the load it started from.
+  const loadGeneration = useRef(0);
   const saving = useRef(false);
   if (state.scope !== scope) setState({ scope, editor: initialEditor });
   const editor = state.scope === scope ? state.editor : initialEditor;
@@ -59,6 +61,7 @@ export function useIndividualPlants(
     const abort = new AbortController();
     void plantingPlanAPI.listIndividualAtLocation(location, abort.signal).then(({ results }) => {
       if (abort.signal.aborted) return;
+      loadGeneration.current += 1;
       setResult({ key, plans: results, failed: false });
       const requested = requestedPlan !== revealedPlan.current
         ? results.find(plan => plan.id === requestedPlan) : undefined;
@@ -176,7 +179,9 @@ export function useIndividualPlants(
     if (!canEdit || !plan?.updated_at || movingPlans.has(planId)) return;
     const positions = (plan.individual_positions ?? []).map(stem => (
       stem.id === stemId ? { ...stem, ...point } : stem));
-    const replacePlan = (next: PlantingPlan) => setResult(value => value?.key === key ? {
+    const generation = loadGeneration.current;
+    const replacePlan = (next: PlantingPlan) => setResult(value => (
+      value?.key === key && loadGeneration.current === generation) ? {
       ...value, plans: value.plans.map(item => item.id === planId ? next : item),
     } : value);
     setMoveErrorScope(null);
