@@ -11,7 +11,7 @@ import { waitForLocationLayoutSaves } from './graphicalLayoutRequests';
 
 type CoverageRequest =
   | { status: 'loading' | 'error' }
-  | { status: 'ready'; layouts: LocationLayoutsResponse };
+  | { status: 'ready'; locationId: number; layouts: LocationLayoutsResponse };
 
 export function GrowingAreaCoverageRows({ resolved, locale, refreshHierarchy }: {
   resolved: ResolvedGrowingAreaEntity;
@@ -35,7 +35,7 @@ export function GrowingAreaCoverageRows({ resolved, locale, refreshHierarchy }: 
           layoutAPI.listByLocation(locationId, signal),
           refresh ? refreshHierarchy() : undefined,
         ]);
-        if (!signal.aborted) setRequest({ status: 'ready', layouts: data });
+        if (!signal.aborted) setRequest({ status: 'ready', locationId, layouts: data });
       } catch {
         if (!signal.aborted) setRequest({ status: 'error' });
       }
@@ -54,17 +54,19 @@ export function GrowingAreaCoverageRows({ resolved, locale, refreshHierarchy }: 
     };
   }, [locationId, attempt, refreshHierarchy]);
 
+  // Layouts loaded for another location must never be applied to this entity.
+  const isStale = request.status === 'ready' && request.locationId !== locationId;
   const coverage = useMemo(() => {
-    if (request.status !== 'ready') return null;
+    if (request.status !== 'ready' || isStale) return null;
     if (resolved.type === 'location' && resolved.location) {
       return getSavedLocationCoverage(resolved.location, resolved.children as Field[], request.layouts);
     }
     return resolved.field ? getSavedParcelCoverage(resolved.field, resolved.children as Bed[], request.layouts) : null;
-  }, [request, resolved]);
+  }, [request, isStale, resolved]);
   const area = (value: number) => `${formatLocalizedNumber(value, locale, { maximumFractionDigits: 2 })} ${t('common:units.squareMeters')}`;
   const isLocation = resolved.type === 'location';
 
-  if (locationId && request.status === 'loading') {
+  if (locationId && (request.status === 'loading' || isStale)) {
     return <Typography variant="body2" color="text.secondary" role="status">{t('details.coverage.loading')}</Typography>;
   }
   if (locationId && request.status === 'error') {
