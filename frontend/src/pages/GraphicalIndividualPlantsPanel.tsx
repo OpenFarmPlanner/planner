@@ -148,6 +148,8 @@ export function GraphicalIndividualPlantsPanel({
   const [invalidCanopy, setInvalidCanopy] = useState(false);
   // Shown directly when a crop suggestion or a saved value exists; otherwise behind an optional disclosure.
   const [canopyShown, setCanopyShown] = useState(false);
+  // Every draft starts collapsed again, however the previous one ended (save, cancel or conflict reset).
+  if (!draft && canopyShown) setCanopyShown(false);
   const validCanopy = !invalidCanopy && (canopy == null || (
     Number(canopy) >= 0.01 && Number(canopy) <= 99999.99
   ));

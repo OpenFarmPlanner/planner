@@ -112,6 +112,16 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   const [first, second] = created.individual_positions;
   await expect.poll(() => shape(page, `individual-canopy-${first.id}`)).toMatchObject({ listened: false });
 
+  // After saving, the next draft starts with the optional canopy disclosure collapsed again.
+  await panel.getByRole('button', { name: 'Neuer Einzelpflanzenplan' }).click();
+  await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+  await page.getByRole('option', { name: 'Rhabarber', exact: true }).click();
+  await expect(panel.getByRole('textbox', { name: /Kronendurchmesser/ })).toHaveCount(0);
+  await expect(panel.getByRole('button', { name: 'Kronendurchmesser angeben (optional)' })).toBeVisible();
+  await panel.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await panel.getByRole('combobox', { name: 'Anbauplan', exact: true }).click();
+  await page.getByRole('option', { name: /^Apfel/ }).click();
+
   await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
   const beforeDrag = await shape(page, `individual-stem-${first.id}`);
   expect(beforeDrag).not.toBeNull();
