@@ -188,6 +188,21 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             {(item['id'], item['field_name'], item['bed_name']) for item in response.data},
             {(first_plan['id'], self.field.name, ''), (second_plan['id'], second.name, '')},
         )
+        harvests_url = '/openfarmplanner/api/harvests/'
+        saved = self.client.post(harvests_url, {
+            'crop': self.apple.pk, 'date': '2027-08-29', 'unit': 'kg', 'quantity': 5,
+            'allocations': [
+                {'planting_plan': first_plan['id'], 'quantity': 2},
+                {'planting_plan': second_plan['id'], 'quantity': 3},
+            ],
+        }, format='json')
+        self.assertEqual(saved.status_code, 201, saved.data)
+        reopened = self.client.get(f"{harvests_url}{saved.data['id']}/")
+        self.assertEqual(reopened.status_code, 200, reopened.data)
+        self.assertEqual(
+            {item['parcel_name'] for item in reopened.data['allocations']},
+            {self.field.name, second.name},
+        )
 
     def test_rotation_keeps_the_plot_and_renewal_coordinates(self):
         opposite = Field.objects.create(

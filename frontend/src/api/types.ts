@@ -2006,6 +2006,7 @@ export interface HarvestAllocationWrite {
 export interface HarvestAllocation extends HarvestAllocationWrite {
   id: number;
   bed_name: string | null;
+  parcel_name?: string | null;
   season_label: string | null;
   planting_date: string | null;
   kilograms_per_harvested_sqm: string | null;
@@ -2100,6 +2101,7 @@ export interface IncompleteYieldPlan {
   crop_display_language_code: string;
   crop_variety: string | null;
   bed_name: string;
+  parcel_name?: string;
   planting_date: string | null;
   calculation_blockers: (
     | 'missing_crop'
@@ -2125,6 +2127,7 @@ export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPl
   | 'harvest_date' | 'harvest_end_date' | 'seasonal_harvest' | 'harvest_actual_occurrences' | 'carried_over'> & YieldComparisonCropTiming & {
     id: number;
     bed_name: string;
+    parcel_name?: string;
     crop_label?: string;
   };
 
@@ -2174,6 +2177,7 @@ export interface YieldComparisonSeason {
     date: string;
     plan_id: number;
     bed_name: string;
+    parcel_name?: string;
     area_sqm: string;
     kg_per_sqm: string | null;
     estimated: boolean;
@@ -2181,6 +2185,7 @@ export interface YieldComparisonSeason {
   losses: (Pick<CropLoss, 'id' | 'date' | 'loss_type' | 'cause' | 'extent_value' | 'extent_unit'> & {
     planting_plan_id: number;
     bed_name: string;
+    parcel_name?: string;
   })[];
   plan_dates: YieldComparisonPlanDates[];
 }

@@ -62,7 +62,7 @@ def _week_start(planting_date: date | None) -> date | None:
 
 def _plan_entry(plan: PlantingPlan, count: int | None, blockers: tuple[str, ...]) -> dict:
     bed = plan.bed
-    field_obj = bed.field if bed else plan.parcel
+    field_obj = plan.growing_area_parcel
     location = field_obj.location if field_obj else None
     return {
         'plan_id': plan.id,

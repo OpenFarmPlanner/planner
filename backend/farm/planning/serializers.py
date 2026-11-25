@@ -758,11 +758,11 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
     record_season_ids = serializers.SerializerMethodField()
 
     def get_field_name(self, obj: PlantingPlan) -> str | None:
-        parcel = obj.parcel or (obj.bed.field if obj.bed else None)
+        parcel = obj.growing_area_parcel
         return parcel.name if parcel else None
 
     def get_location_name(self, obj: PlantingPlan) -> str | None:
-        parcel = obj.parcel or (obj.bed.field if obj.bed else None)
+        parcel = obj.growing_area_parcel
         return parcel.location.name if parcel else None
 
     def get_bed_area_sqm(self, obj: PlantingPlan) -> float | None:

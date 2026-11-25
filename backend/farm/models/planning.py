@@ -257,6 +257,12 @@ class PlantingPlan(TimestampedModel):
         return self.bed_id is not None or self.parcel_id is not None
 
     @property
+    def growing_area_parcel(self) -> Field | None:
+        if self.parcel_id is not None:
+            return self.parcel
+        return self.bed.field if self.bed_id is not None else None
+
+    @property
     def occupancy_end_date(self) -> date | None:
         return (
             self.clearing_date or self.harvest_end_date or self.harvest_date or self.planting_date

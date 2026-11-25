@@ -380,7 +380,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                       plan={loadedPlan.crop_available && loadedPlan.crop !== null
                         && (!loadedPlan.carried_over || recordSeasonHasOccupancy) ? {
                         id: loadedPlan.id, crop: loadedPlan.crop, cropLabel: cropName,
-                        label: [loadedPlan.bed_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
+                        label: [loadedPlan.bed_name || loadedPlan.parcel_name, season?.label, date(loadedPlan.planting_date)].filter(Boolean).join(' · '),
                       } : undefined}
                       onChanged={() => { setAttempt(value => value + 1); onChanged(); }} />
                   </DetailSection>

@@ -236,7 +236,7 @@ Tomato Row 2 has no applicable tasks. The fence task on the leased North Plot
 stays on the task board. Open a bed's details to complete one of its tasks.
 
 In Farm Garden, open **Individual plants** in the graphical view and select
-the Early Beds North plot. Its three Topaz apple trees share one plan, with
+the North Early Beds plot. Its three Topaz apple trees share one plan, with
 an estimated canopy diameter of 3.8 m. Their stems retain their IDs as the
 planting continues into the following season. Select a stem to inspect its
 coordinates or edit them with the map or the keyboard. The nearby lettuce

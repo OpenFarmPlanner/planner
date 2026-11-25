@@ -40,6 +40,7 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
     def _with_details(queryset):
         allocations = HarvestAllocation.objects.select_related(
             "planting_plan__bed",
+            "planting_plan__parcel",
             "planting_plan__season",
         )
         return queryset.select_related("crop", "crop__crop_species").prefetch_related(
@@ -134,11 +135,7 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
                 {
                     "id": plan.pk,
                     "bed_name": plan.bed.name if plan.bed_id is not None else "",
-                    "field_name": (
-                        plan.parcel.name if plan.parcel_id is not None
-                        else plan.bed.field.name if plan.bed_id is not None and plan.bed.field_id
-                        else ""
-                    ),
+                    "field_name": area.name if (area := plan.growing_area_parcel) else "",
                     "season_label": plan.season.label if plan.season_id is not None else "",
                     "planting_date": plan.planting_date,
                     "harvest_start": plan.harvest_date,
