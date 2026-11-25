@@ -29,6 +29,16 @@
     "graphical": "Grafisch"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Details bekijken",
+      "backToGraphic": "Terug naar de grafiek",
+      "desktopHint": "Klik met de rechtermuisknop op een locatie, perceel of bed om het contextmenu te openen.",
+      "touchHint": "Houd een locatie, perceel of bed ingedrukt om het contextmenu te openen.",
+      "noOpenTasks": "Geen openstaande taken voor dit bed.",
+      "moreTasks_one": "+{{count}} andere taak",
+      "moreTasks_other": "+{{count}} andere taken"
+    },
     "taskLayer": {
       "title": "Taken per bed",
       "show": "Taken tonen",

@@ -29,6 +29,17 @@
     "graphical": "Graphique"
   },
   "graphical": {
+    "objects": {
+      "dimensions": "{{width}} × {{length}} m",
+      "viewDetails": "Voir les détails",
+      "backToGraphic": "Retour au graphique",
+      "desktopHint": "Cliquez avec le bouton droit sur un site, une parcelle ou une planche pour ouvrir son menu contextuel.",
+      "touchHint": "Appuyez longuement sur un site, une parcelle ou une planche pour ouvrir son menu contextuel.",
+      "noOpenTasks": "Aucune tâche ouverte pour cette planche.",
+      "moreTasks_one": "+{{count}} autre tâche",
+      "moreTasks_other": "+{{count}} autres tâches",
+      "moreTasks_many": "+{{count}} autres tâches"
+    },
     "taskLayer": {
       "title": "Tâches des planches",
       "show": "Afficher les tâches",

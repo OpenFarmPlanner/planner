@@ -69,7 +69,7 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
     expect(fields).toHaveLength(3);
     for (const field of fields) {
       expect(field.bounds.x).toBeGreaterThanOrEqual(0);
-      // Konva bounds include the scaled stroke around the 48px fit inset.
+      // Konva bounds include the scaled stroke around the top fit inset.
       expect(field.bounds.y).toBeGreaterThanOrEqual(44);
       expect(field.bounds.x + field.bounds.width).toBeLessThanOrEqual(field.stage.width + 1);
       expect(field.bounds.y + field.bounds.height).toBeLessThanOrEqual(field.stage.height + 1);
@@ -135,7 +135,7 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
     expect(field.width / field.height).toBeCloseTo(turn % 2 ? 0.5 : 2);
     for (const label of await canvasRects(page, 'bed-label-')) expect(label.rotation).toBe(0);
     expect(field.bounds.x).toBeGreaterThanOrEqual(0);
-    // Konva bounds include the scaled stroke around the 48px fit inset.
+    // Konva bounds include the scaled stroke around the top fit inset.
       expect(field.bounds.y).toBeGreaterThanOrEqual(44);
     expect(field.bounds.x + field.bounds.width).toBeLessThanOrEqual(field.stage.width + 1);
     expect(field.bounds.y + field.bounds.height).toBeLessThanOrEqual(field.stage.height + 1);
@@ -150,10 +150,27 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   const bed = (await canvasRects(page, `bed-rect-${bedIds[0]}`))[0];
   await page.mouse.click(bed.container.x + bed.bounds.x + bed.bounds.width / 2,
     bed.container.y + bed.bounds.y + bed.bounds.height / 2);
+  const preview = page.getByRole('region', { name: 'Beet 1 mit einem langen lesbaren Namen', exact: true });
+  await expect(preview).toBeVisible();
+  await expect(preview).toContainText('2 × 15 m');
+  await expect(page).toHaveURL(/fields-beds$/);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const camera = await activeCamera(page);
+  await preview.getByRole('button', { name: 'Details anzeigen' }).click();
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedIds[0]}$`));
   await expect(page.getByRole('heading', { level: 1, name: 'Beet 1 mit einem langen lesbaren Namen' })).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('graphical-bed-details.png'), animations: 'disabled' });
   expect(layoutWrites).toEqual([]);
-  await page.goBack();
+  await page.getByRole('button', { name: 'Zurück zur Grafik' }).click();
+  await expect(card).toBeVisible();
+  await expect.poll(() => activeCamera(page)).toEqual(camera);
+  const unmeasuredLocation = card.getByRole('button', { name: 'Standort · Grafik913' });
+  await unmeasuredLocation.click();
+  const locationPreview = page.getByRole('region', { name: 'Grafik913', exact: true });
+  await expect(locationPreview).toBeVisible();
+  await expect(locationPreview).not.toContainText('m²');
+  await expect(locationPreview).not.toContainText(' × ');
+  await page.keyboard.press('Escape');
   await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
   await page.setViewportSize({ width: 375, height: 800 });
   await page.reload();
@@ -162,6 +179,177 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   await rotateRight.hover();
   await page.screenshot({ path: testInfo.outputPath('graphical-mobile-fr.png'), animations: 'disabled' });
   await rotateRight.click();
+});
+
+function shapePoint(shape: Awaited<ReturnType<typeof canvasRects>>[number], x = 0.5, y = 0.5) {
+  return {
+    x: shape.container.x + shape.bounds.x + shape.bounds.width * x,
+    y: shape.container.y + shape.bounds.y + shape.bounds.height * y,
+  };
+}
+
+async function selectionFixture(page: Page) {
+  const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', {
+    name: 'Lernhof', width_m: 24, length_m: 28,
+  });
+  const parcel = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Lernparzelle', location: location.id, width_m: 12, length_m: 10,
+  });
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    name: 'Lernbeet', field: parcel.id, width_m: 2, length_m: 4,
+  });
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, 'Lernhof');
+  const card = page.getByRole('region', { name: 'Standort: Lernhof' });
+  await card.scrollIntoViewIfNeeded();
+  await expect.poll(async () => (await canvasRects(page, `bed-rect-${bed.id}`)).length).toBe(1);
+  return { location, parcel, bed, card };
+}
+
+test('selects the deepest object, keeps the native blank-canvas menu and supports keyboard details', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1050, height: 900 });
+  await loginWithDeterministicProject(page, request, `graphic-selection-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const { location, parcel, bed, card } = await selectionFixture(page);
+  const preview = page.getByTestId('graphical-object-preview');
+  const hint = card.getByText(/Rechtsklick auf einen Standort/);
+  await expect(hint).toBeVisible();
+
+  const at = async (id: string, x?: number, y?: number) => shapePoint((await canvasRects(page, id))[0], x, y);
+  const bedPoint = await at(`bed-rect-${bed.id}`);
+  await page.mouse.move(bedPoint.x, bedPoint.y);
+  await expect(page.getByRole('tooltip')).toContainText('2 × 4 m');
+  await page.mouse.click(bedPoint.x, bedPoint.y);
+  await expect(preview).toHaveAccessibleName('Lernbeet');
+  await expect(preview).toContainText('Lernparzelle');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await expect(page).toHaveURL(/fields-beds$/);
+
+  const parcelPoint = await at(`field-rect-${parcel.id}`, 0.9, 0.17);
+  await page.mouse.click(parcelPoint.x, parcelPoint.y);
+  await expect(preview).toHaveAccessibleName('Lernparzelle');
+  await expect(preview).toContainText('12 × 10 m');
+  await expect(preview).toContainText('112 m²');
+
+  const free = await at('graphical-free-area-site');
+  await page.mouse.click(free.x, free.y);
+  await expect(preview).toHaveAccessibleName('Lernhof');
+  await expect(preview).toContainText('Freifläche außerhalb der Parzellen');
+  await expect(preview).toContainText('552 m²');
+  await page.screenshot({ path: testInfo.outputPath('graphical-location-preview.png') });
+  await page.keyboard.press('Escape');
+  await expect(preview).toHaveCount(0);
+
+  const label = await at(`location-boundary-label-${location.id}`);
+  await page.mouse.move(label.x, label.y);
+  await expect(page.getByRole('tooltip')).toContainText('24 × 28 m');
+  await page.mouse.click(label.x, label.y, { button: 'right' });
+  await expect(page.getByRole('menu', { name: 'Lernhof' })).toBeVisible();
+  await expect(page.getByText(/Rechtsklick auf einen Standort/)).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('graphical-object-menu.png') });
+  await page.keyboard.press('Escape');
+  await expect(hint).toHaveCount(0);
+  const locationTarget = card.locator(`[data-graphical-object-target="location:${location.id}"]`);
+  await expect(locationTarget).toBeFocused();
+
+  await page.evaluate(() => {
+    const canvas = document.querySelector('.konvajs-content')!;
+    document.addEventListener('contextmenu', event => {
+      canvas.setAttribute('data-native-menu-handled', String(event.defaultPrevented));
+    }, { once: true });
+  });
+  const shape = (await canvasRects(page, `bed-rect-${bed.id}`))[0];
+  const blank = { x: shape.container.x + 5, y: shape.container.y + shape.stage.height - 8 };
+  await page.mouse.click(blank.x, blank.y, { button: 'right' });
+  await expect(page.locator('.konvajs-content')).toHaveAttribute('data-native-menu-handled', 'false');
+  await expect(page.getByRole('menu')).toHaveCount(0);
+
+  const keyboardBed = card.locator(`[data-graphical-object-target="bed:${bed.id}"]`);
+  await keyboardBed.press('Enter');
+  await expect(preview).toBeFocused();
+  await page.keyboard.press('Escape');
+  await expect(keyboardBed).toBeFocused();
+  await keyboardBed.press('Shift+F10');
+  const bedMenu = page.getByRole('menu', { name: 'Lernbeet' });
+  await expect(bedMenu).toBeVisible();
+  await bedMenu.getByRole('menuitem', { name: 'Details anzeigen' }).press('Enter');
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bed.id}$`));
+  await page.getByRole('button', { name: 'Zurück zur Grafik' }).click();
+  await expect(card).toBeVisible();
+  await expect(hint).toHaveCount(0);
+
+  const center = await at(`bed-rect-${bed.id}`);
+  const scale = (await activeCamera(page)).scale;
+  await page.mouse.dblclick(center.x, center.y);
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(scale);
+  await expect(preview).toHaveCount(0);
+  await expect(page).toHaveURL(/fields-beds$/);
+  await card.getByRole('button', { name: 'Vollbild öffnen' }).click();
+  await expect.poll(() => page.evaluate(() => document.fullscreenElement !== null)).toBe(true);
+  await locationTarget.press('Shift+F10');
+  const fullscreenMenu = page.getByRole('menu', { name: 'Lernhof' });
+  await expect(fullscreenMenu).toBeVisible();
+  expect(await fullscreenMenu.evaluate(node => document.fullscreenElement?.contains(node))).toBe(true);
+  await fullscreenMenu.getByRole('menuitem', { name: 'Details anzeigen' }).click();
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/locations/${location.id}$`));
+  await expect(page.getByTestId('detail-remaining-area')).toContainText('552 m²');
+});
+
+test.describe('graphical object touch gestures', () => {
+  test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
+
+  test('separates taps, long presses and cancelled presses, with a persistent touch hint', async ({ page, request }, testInfo) => {
+    await loginWithDeterministicProject(page, request, `graphic-touch-${testInfo.workerIndex}`, { loginAsAdmin: true });
+    const { location, parcel, bed, card } = await selectionFixture(page);
+    const touch = await page.context().newCDPSession(page);
+    const preview = page.getByTestId('graphical-object-preview');
+    const hint = card.getByText(/Standort, Parzelle oder Beet gedrückt halten/);
+    await expect(hint).toBeVisible();
+    await expect(card.getByText(/Rechtsklick auf einen Standort/)).toHaveCount(0);
+    const points = [
+      { id: `bed-rect-${bed.id}`, name: 'Lernbeet' },
+      { id: `field-rect-${parcel.id}`, name: 'Lernparzelle', x: 0.9, y: 0.17 },
+      { id: `location-boundary-label-${location.id}`, name: 'Lernhof' },
+    ];
+    for (const { id, name, x, y } of points) {
+      const point = shapePoint((await canvasRects(page, id))[0], x, y);
+      await page.touchscreen.tap(point.x, point.y);
+      await expect(preview).toHaveAccessibleName(name);
+      if (name === 'Lernbeet') await page.screenshot({ path: testInfo.outputPath('graphical-bed-preview-phone.png') });
+      await expect(page.getByRole('tooltip')).toHaveCount(0);
+      await expect(page).toHaveURL(/fields-beds$/);
+      await page.keyboard.press('Escape');
+      await expect(preview).toHaveCount(0);
+
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+      const menu = page.getByRole('menu', { name });
+      await expect(menu).toBeVisible();
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+      await expect(menu).toBeVisible();
+      await expect(preview).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(menu).toHaveCount(0);
+      await expect(hint).toHaveCount(0);
+    }
+
+    const point = shapePoint((await canvasRects(page, `bed-rect-${bed.id}`))[0]);
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: point.x + 20, y: point.y + 20 }] });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
+    // Wait past the gesture threshold so a leaked timer would open a menu.
+    await page.waitForTimeout(500);
+    await expect(page.getByRole('menu')).toHaveCount(0);
+    await expect(preview).toHaveCount(0);
+    const zoomPoint = shapePoint((await canvasRects(page, `bed-rect-${bed.id}`))[0]);
+    const beforeZoom = (await activeCamera(page)).scale;
+    await page.touchscreen.tap(zoomPoint.x, zoomPoint.y);
+    await page.touchscreen.tap(zoomPoint.x, zoomPoint.y);
+    await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(beforeZoom);
+    await expect(preview).toHaveCount(0);
+    await page.reload();
+    await expect(card).toBeVisible();
+    await expect(hint).toHaveCount(0);
+  });
 });
 
 async function activeCamera(page: Page) {
@@ -351,14 +539,14 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
-    for (const [locale, button, title, edit, shift] of [
-      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/],
-      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/],
-      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/],
-      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/],
-      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/],
-      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/],
-      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/],
+    for (const [locale, button, title, edit, shift, details] of [
+      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen'],
+      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/, 'View details'],
+      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails'],
+      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/, 'Ver detalles'],
+      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli'],
+      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/, 'Ver detalhes'],
+      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken'],
     ] as const) {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
       await page.setViewportSize({ width: 375, height: 800 });
@@ -384,6 +572,14 @@ test.describe('location spacing in a touch-capable browser', () => {
       expect(bounds.x).toBeGreaterThanOrEqual(0);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
       await page.screenshot({ path: testInfo.outputPath(`location-spacing-${locale}.png`), animations: 'disabled' });
+      await page.keyboard.press('Escape');
+      const locationTarget = page.locator('[data-graphical-object-target^="location:"]');
+      await locationTarget.press('Enter');
+      const objectPreview = page.getByTestId('graphical-object-preview');
+      await expect(objectPreview.getByRole('button', { name: details })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await locationTarget.press('Shift+F10');
+      await expect(page.getByRole('menuitem', { name: details })).toBeVisible();
       await page.keyboard.press('Escape');
     }
   });
@@ -909,4 +1105,20 @@ test('shows the only location with its name and gross area in the list and the g
   await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
   await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('single-location-graphic-1440.png'), animations: 'disabled' });
+});
+
+test('keeps an empty unmeasured location selectable with a single guidance message', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, `empty-graphic-${testInfo.workerIndex}`, { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  await page.goto('/app/fields-beds');
+  await expect(page.getByRole('heading', { name: 'Parzelle fehlt', exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await expect(page.getByText(/Dieser Standort hat noch keine Parzellen/)).toHaveCount(1);
+  await expect(page.getByRole('heading', { name: 'Parzelle fehlt', exact: true })).toHaveCount(0);
+  await page.getByRole('button', { name: `Standort · ${location.name}`, exact: true }).click();
+  const preview = page.getByTestId('graphical-object-preview');
+  await expect(preview).toHaveAccessibleName(location.name);
+  await expect(preview).not.toContainText('m²');
+  await preview.getByRole('button', { name: 'Details anzeigen' }).click();
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/locations/${location.id}$`));
 });

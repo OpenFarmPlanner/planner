@@ -23,6 +23,8 @@ interface ContextMenuHintProps {
    * already dismissed) ever appears.
    */
   variant?: 'desktop' | 'touch';
+  /** The caller selected exactly one hint based on the active input. */
+  ignorePointerAndViewport?: boolean;
 }
 
 export function ContextMenuHint({
@@ -34,6 +36,7 @@ export function ContextMenuHint({
   prominent = false,
   sx,
   variant = 'desktop',
+  ignorePointerAndViewport = false,
 }: ContextMenuHintProps) {
   const { t } = useTranslation('common');
   const isCoarsePointer = useIsCoarsePointer();
@@ -45,7 +48,7 @@ export function ContextMenuHint({
     ? (isCoarsePointer || isMobileViewport)
     : !isCoarsePointer;
 
-  if (shouldHideHint) {
+  if (!ignorePointerAndViewport && shouldHideHint) {
     return null;
   }
 

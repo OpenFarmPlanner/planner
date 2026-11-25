@@ -52,6 +52,7 @@ test('compares measured yields and exposes a table and actual date deviations wi
 
   const group = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
   const values = group.getByRole('button', { name: /^Ertrag für 2026/ });
+  await page.mouse.move(0, 0);
   await values.press('Enter');
   const tooltip = page.getByRole('tooltip');
   await expect(tooltip.getByText('Erntemenge · 88,5 kg', { exact: true })).toBeVisible();
