@@ -5,6 +5,7 @@ import FieldsBedsHierarchy from './FieldsBedsHierarchy';
 import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
 import { GraphicalSpacingControl } from './GraphicalSpacingControl';
+import { GraphicalWorkspaceAction } from './GraphicalWorkspaceAction';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
 import { HierarchyAddIcon } from '../components/hierarchy/HierarchyAddIcon';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
@@ -29,6 +30,7 @@ import { getProjectSetupAction } from './requirementFlow';
 import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation/topbarTypes';
 import { type SxProps, type Theme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useHierarchyData } from '../components/hierarchy/hooks/useHierarchyData';
 import { useIsMobileHierarchyLayout } from '../components/hierarchy/hooks/useIsMobileHierarchyLayout';
 import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUtils';
@@ -421,15 +423,18 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
         </Box>
       )}
-      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, minWidth: 0, maxWidth: '100%',
-        '& > span': { minWidth: 0 } }}>
-        <DisabledActionTooltip title={!hasSelectedGraphicalFields ? t('fields:graphical.noFields') : ''}>
-          <Button disabled={!hasSelectedGraphicalFields} variant={isEditingGraphic ? 'contained' : 'outlined'} color="success"
-            aria-pressed={isEditingGraphic} onClick={() => setIsEditingGraphic(value => !value)}
-            sx={{ minWidth: 0, maxWidth: '100%', whiteSpace: 'normal', minHeight: { xs: 44, sm: 40 } }}>
-            {t('fields:graphical.locationEditModeAction')}
-          </Button>
-        </DisabledActionTooltip>
+      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}>
+        <GraphicalWorkspaceAction
+          label={t('fields:graphical.locationEditModeAction')}
+          icon={<EditOutlinedIcon fontSize="small" />}
+          help={t('fields:graphical.locationEditModeHelp')}
+          disabled={!hasSelectedGraphicalFields}
+          disabledReason={t('fields:graphical.noFields')}
+          variant={isEditingGraphic ? 'contained' : 'outlined'}
+          color="success"
+          aria-pressed={isEditingGraphic}
+          onClick={() => setIsEditingGraphic(value => !value)}
+        />
         {activeProjectMembership ? (
           <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing}
             showFreeAreas={showFreeAreas} onFreeAreasChange={changeFreeAreas} />

@@ -108,7 +108,7 @@
     "viewModeDescription": "Navigate, zoom and inspect details. Fields and beds can only be moved or edited in edit mode.",
     "editModeDescription": "Move fields and beds and adjust layouts.",
     "editModeBanner": "Edit mode active – fields and beds can now be moved.",
-    "locationEditModeBanner": "Graphic editing active: fields and beds in this location can be moved.",
+    "locationEditModeHelp": "Move parcels and beds in edit mode.",
     "editModeShortcut": "Shortcut: Alt+E",
     "locationEditModeAction": "Edit graphic",
     "locationEditModeActive": "Graphic editing active",

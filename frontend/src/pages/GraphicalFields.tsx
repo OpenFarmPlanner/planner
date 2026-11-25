@@ -1090,12 +1090,6 @@ export default function GraphicalFields({
                 {fieldSaveErrorLocation === locationId ? (
                   <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:errors.save")}</Alert>
                 ) : null}
-                {locationIsEditable ? (
-                  <Alert severity="warning" sx={{ mb: 1.5 }}>
-                    <span>{t("fields:graphical.locationEditModeBanner")}</span>
-                    {snapping.enabled ? <> {t("fields:graphical.spacing.bypass")}</> : null}
-                  </Alert>
-                ) : null}
                 <Box sx={{
                   display: "grid", alignItems: "start", gap: showIndividualPanel ? 1.5 : 0,
                   gridTemplateColumns: { xs: "minmax(0, 1fr)", md: showIndividualPanel ? "minmax(0, 1fr) 324px" : "minmax(0, 1fr)" },

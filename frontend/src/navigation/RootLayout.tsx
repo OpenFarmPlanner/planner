@@ -1055,7 +1055,11 @@ function RootLayout() {
         position="sticky"
         color="inherit"
         elevation={0}
-        sx={{ borderBottom: '1px solid', borderColor: 'surface.surfaceBorder', bgcolor: 'surface.topbarBackground', backdropFilter: 'saturate(120%) blur(2px)' }}
+        sx={{
+          borderBottom: '1px solid', borderColor: 'surface.surfaceBorder',
+          bgcolor: 'surface.topbarBackground', backdropFilter: 'saturate(120%) blur(2px)',
+          ...(topbarWorkspaceControls ? { containerType: 'inline-size', containerName: 'workspace-topbar' } : {}),
+        }}
       >
         <Toolbar
           ref={controlsToolbarRef}

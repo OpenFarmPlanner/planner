@@ -202,6 +202,7 @@ test.describe('location spacing in a touch-capable browser', () => {
     await trigger.focus();
     await page.keyboard.press('Enter');
     await expect(bed).toBeFocused();
+    await expect(dialog.getByText(/die Umschalttaste gedrückt halten/)).toBeVisible();
     await expect(bed).toHaveValue('30');
     await expect(parcel).toHaveValue('75');
     await expect(checkbox).toBeChecked();
@@ -242,26 +243,35 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
-    for (const [locale, button, title, edit] of [
-      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique'],
-      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico'],
-      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken'],
-    ]) {
+    for (const [locale, button, title, edit, shift] of [
+      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/],
+      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/],
+      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/],
+      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/],
+      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/],
+      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/],
+      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/],
+    ] as const) {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
       await page.setViewportSize({ width: 375, height: 800 });
       await page.reload();
       const spacingButton = page.getByRole('button', { name: button, exact: true });
       const editButton = page.getByRole('button', { name: edit, exact: true });
       await expect(editButton).toBeVisible();
+      await expect(editButton.locator('[data-graphical-action-label]')).toBeHidden();
+      await expect(spacingButton.locator('[data-graphical-action-label]')).toBeHidden();
       await expect.poll(async () => {
         const [editBox, spacingBox] = await Promise.all([editButton.boundingBox(), spacingButton.boundingBox()]);
-        return editBox && spacingBox && spacingBox.x >= editBox.x + editBox.width - 1
+        return editBox && spacingBox && [editBox, spacingBox].every(box => box.width >= 44 && box.height >= 44)
+          && spacingBox.x >= editBox.x + editBox.width - 1
           && spacingBox.y < editBox.y + editBox.height && spacingBox.x + spacingBox.width <= 375;
       }).toBe(true);
       await spacingButton.tap();
       const translated = page.getByRole('dialog', { name: title });
       await expect(translated).toBeVisible();
       await expect(translated.getByRole('textbox').first()).toBeFocused();
+      await expect(translated.getByText(shift)).toHaveCount(0);
+      await expect(page.getByRole('tooltip')).toHaveCount(0);
       const bounds = (await translated.boundingBox())!;
       expect(bounds.x).toBeGreaterThanOrEqual(0);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
@@ -446,14 +456,38 @@ test('retains selected location, camera and rotation through representation chan
 test('keeps graphical controls reachable and the canvas inside the viewport as the shared header wraps', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'graphical-workspace-responsive', { demoProject: true, loginAsAdmin: true });
+  const { results: locations } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  const hofgarten = locations.find(location => location.name === 'Hofgarten')!;
+  const longLocationName = 'Hofgarten mit besonders langem Namen für die schmale Grafik-Werkzeugleiste';
+  await apiRequest(page, 'PATCH', `/locations/${hofgarten.id}/`, { name: longLocationName });
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, longLocationName);
   for (const viewport of [
-    { width: 1920, height: 1080 }, { width: 1440, height: 900 }, { width: 1024, height: 900 },
-    { width: 768, height: 900 }, { width: 375, height: 800 }, { width: 800, height: 375 },
+    { width: 1920, height: 1080 }, { width: 1440, height: 900 }, { width: 1200, height: 900 },
+    { width: 1199, height: 900 }, { width: 1024, height: 768 }, { width: 768, height: 1024 },
+    { width: 375, height: 800 }, { width: 800, height: 375 },
     { width: 1024, height: 500 },
   ]) {
     await page.setViewportSize(viewport);
+    const edit = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
+    const spacing = page.getByRole('button', { name: 'Abstände', exact: true });
+    if (viewport.width === 1200) {
+      const label = edit.locator('[data-graphical-action-label]');
+      await expect(label).toBeHidden();
+      await page.getByRole('button', { name: 'Sidebar einklappen' }).click();
+      await expect(label).toBeVisible();
+      await page.getByRole('button', { name: 'Sidebar ausklappen' }).click();
+      await expect(label).toBeHidden();
+    }
+    for (const button of [edit, spacing]) {
+      const label = button.locator('[data-graphical-action-label]');
+      if (viewport.width >= 1440) await expect(label).toBeVisible();
+      if (viewport.width < 1200) await expect(label).toBeHidden();
+      const target = (await button.boundingBox())!;
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
+    }
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),
@@ -472,6 +506,26 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
+    if ([1440, 768, 375].includes(viewport.width)) {
+      const canvas = page.locator('.konvajs-content');
+      const before = (await canvas.boundingBox())!;
+      if (viewport.width === 1440) {
+        await edit.hover();
+        await expect(page.getByRole('tooltip')).toContainText('Im Bearbeitungsmodus lassen sich Parzellen und Beete verschieben.');
+        await edit.press('Enter');
+      } else {
+        await edit.click();
+      }
+      await expect(edit).toHaveAttribute('aria-pressed', 'true');
+      await expect(edit).toHaveClass(/MuiButton-contained\b/);
+      await expect(edit).toHaveClass(/MuiButton-colorSuccess\b/);
+      await expect(page.getByRole('tooltip')).toHaveCount(0);
+      await expect(page.getByText(/^Grafikbearbeitung aktiv:/)).toHaveCount(0);
+      await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before.y, height: before.height });
+      await page.screenshot({ path: testInfo.outputPath(`workspace-edit-${viewport.width}.png`), animations: 'disabled' });
+      await edit.click();
+      await expect(edit).toHaveAttribute('aria-pressed', 'false');
+    }
     await page.screenshot({ path: testInfo.outputPath(`workspace-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
     await page.getByRole('button', { name: 'Liste', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Standort', exact: true })).toHaveCount(0);

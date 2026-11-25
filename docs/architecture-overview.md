@@ -216,11 +216,14 @@ clear the slot before the next page's registration. Growing areas uses this
 wrapping in both representations so its view switch stays reachable; the location/edit controls and compact canvas gutter remain
 exclusive to Graphic mode. The same mechanism is available for the remaining
 shared-topbar work in #930, including Cultures; other pages keep their action layouts.
+Edit graphic and Spacing stay directly available with 44 px buttons. They
+show labels from `lg` when the topbar itself has enough width. The edit button
+shows the active state, and Spacing shows the Shift hint for keyboard users.
 
 `useGraphicalStageSize` measures the selected canvas width and its actual top
 edge below the rendered header, leaving the main content's bottom gutter.
 ResizeObserver follows the header, container and canvas, so wrapping controls,
-editing banners and viewport changes update the available height. There is no
+layout errors and viewport changes update the available height. There is no
 45%-of-window height or desktop maximum. Fullscreen measures its own canvas.
 Automatic fit follows the complete field bounds until a user explicitly changes
 the camera; stored manual cameras survive ordinary UI rerenders and resizing.
