@@ -98,6 +98,28 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
     expect(result.current.plans[0].individual_positions?.[1]).toMatchObject({ x_m: 2, y_m: 3 });
   });
 
+  it('neither reports nor refreshes a conflict from a location the user has left', async () => {
+    let failSave: (reason: unknown) => void = () => undefined;
+    listMock.mockImplementation((location: number) => Promise.resolve({ results: location === 5 ? [plan()] : [] }));
+    saveMock.mockReturnValueOnce(new Promise((_resolve, reject) => { failSave = reject; }));
+    const { result, rerender } = renderHook(({ location }) => useIndividualPlants(location, season, true), {
+      initialProps: { location: 5 },
+    });
+    await waitFor(() => expect(result.current.plans).toHaveLength(1));
+
+    let move: Promise<void> = Promise.resolve();
+    act(() => { move = result.current.moveSavedStem(7, 'b', { x_m: 4, y_m: 5 }); });
+    rerender({ location: 6 });
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+    await act(async () => { failSave(conflict()); await move; });
+
+    expect(listMock).toHaveBeenCalledTimes(2);
+    expect(result.current.moveError).toBe(false);
+    rerender({ location: 5 });
+    await waitFor(() => expect(result.current.plans).toHaveLength(1));
+    expect(result.current.moveError).toBe(false);
+  });
+
   it('keeps plans with an open panel draft, a pending move or no edit right out of direct dragging', () => {
     const plans = [plan({ id: 7 }), plan({ id: 8 }), plan({ id: 9 })];
     const base = { canEdit: true, plans, movingPlans: new Set([8]), editor: { draft: { planId: 9 } } };

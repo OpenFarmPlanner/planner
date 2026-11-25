@@ -193,6 +193,8 @@ export function useIndividualPlants(
       });
       replacePlan(data);
     } catch (error) {
+      // A failure from a load the user has since left neither reports nor refreshes anything.
+      if (loadGeneration.current !== generation) return;
       replacePlan(plan);
       setMoveErrorScope(scope);
       // The plan changed elsewhere: reload it so the next drag uses its current version.
