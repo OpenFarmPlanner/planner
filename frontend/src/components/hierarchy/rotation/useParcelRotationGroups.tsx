@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Alert, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle } from '@mui/material';
 import { parcelRotationAPI } from '../../../api/api';
 import type { Bed, Field, ParcelRotationGroup } from '../../../api/types';
@@ -32,23 +32,30 @@ export function useParcelRotationGroups({ enabled, fields, beds, onChanged }: Op
   const [loading, setLoading] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
 
-  const refresh = useCallback(async () => {
-    if (!enabled) return;
+  // Only the latest request may update state: a slower, superseded one must not overwrite it.
+  const latestRequest = useRef(0);
+  /** Resolves to false when a newer request superseded this one. */
+  const refresh = useCallback(async (): Promise<boolean> => {
+    if (!enabled) return true;
+    const request = ++latestRequest.current;
     try {
       const { data } = await parcelRotationAPI.list();
+      if (request !== latestRequest.current) return false;
       setGroups(data);
       setLoadError(false);
       setHasLoaded(true);
     } catch {
+      if (request !== latestRequest.current) return false;
       setLoadError(true);
     }
+    return true;
   }, [enabled]);
   useEffect(() => { void refresh(); }, [refresh]);
 
   const open = useCallback((fieldId?: number) => {
     setLoading(true);
     setDialogState({ fieldId });
-    void refresh().finally(() => setLoading(false));
+    void refresh().then((latest) => { if (latest) setLoading(false); });
   }, [refresh]);
 
   const memberships = useMemo(() => new Map<number, ParcelRotationMembership>(groups.flatMap(group => (

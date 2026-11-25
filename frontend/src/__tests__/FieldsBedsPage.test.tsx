@@ -25,9 +25,10 @@ const projectRequirementState = vi.hoisted(() => ({
 }));
 
 function RotationContextProbe() {
-  const { memberships, manage } = useContext(ParcelRotationContext);
+  const { memberships, manage, status } = useContext(ParcelRotationContext);
   return (
     <>
+      <span data-testid="rotation-status">{status}</span>
       <span data-testid="rotation-membership">{JSON.stringify(memberships.get(11) ?? null)}</span>
       {manage ? <button type="button" onClick={manage}>Probe: manage rotation</button> : null}
     </>
@@ -181,6 +182,27 @@ describe('FieldsBedsPage', () => {
     // Opened project-wide: no parcel is preselected into a new group.
     expect(within(dialog).getByRole('combobox', { name: 'Rotationsgruppe' })).toBeInTheDocument();
     expect(within(dialog).queryByRole('list', { name: 'Parzellenreihenfolge' })).not.toBeInTheDocument();
+  });
+
+  it('lets only the latest rotation-group load update the page', async () => {
+    projectRequirementState.activeProjectMembership = { project_id: 1 };
+    let rejectMountLoad: (reason: unknown) => void = () => undefined;
+    rotationListMock.mockReset();
+    rotationListMock
+      .mockReturnValueOnce(new Promise((_resolve, reject) => { rejectMountLoad = reject; }))
+      .mockResolvedValueOnce({ data: [{ id: 5, name: 'Nord–Süd', parcels: [{ id: 11, name: 'Nord', beds: [] }] }] });
+    const user = userEvent.setup();
+    renderPage();
+
+    // Opening management while the mount load is pending starts a newer load that succeeds first.
+    await user.click(await screen.findByRole('button', { name: 'Probe: manage rotation' }));
+    await waitFor(() => expect(screen.getByTestId('rotation-status')).toHaveTextContent('ready'));
+    await act(async () => { rejectMountLoad(new Error('Late failure')); });
+
+    expect(screen.getByTestId('rotation-status')).toHaveTextContent('ready');
+    expect(screen.getByTestId('rotation-membership')).toHaveTextContent('"group":"Nord–Süd"');
+    expect(await screen.findByRole('dialog', { name: 'Rotationsgruppen verwalten' })).toBeInTheDocument();
+    expect(screen.queryByText('Die Rotationsgruppen konnten nicht geladen werden.')).not.toBeInTheDocument();
   });
 
   it('offers no rotation management without project membership', async () => {
