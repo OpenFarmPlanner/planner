@@ -20,6 +20,7 @@ from farm.models import (
     ProjectInvitation,
     ProjectMembership,
 )
+from farm.projects.serializers import ProjectSerializer
 from farm.services.demo_project import DEMO_PROJECT_NAME, DEMO_PROJECT_NAME_EN
 from farm.services.project_invitations import (
     InvitationFlowError,
@@ -473,13 +474,22 @@ class ProjectsApiTests(APITestCase):
         for payload, expected in (
             ({'default_bed_length_m': 10}, (10, None)),
             ({'default_bed_width_m': 1.2}, (10, 1.2)),
-            ({'default_bed_length_m': None}, (None, 1.2)),
+            ({'default_bed_width_m': None}, (10, None)),
+            ({'default_bed_width_m': 1.4}, (10, 1.4)),
+            ({'default_bed_length_m': None}, (None, 1.4)),
+            ({'default_bed_length_m': 10}, (10, 1.4)),
+            ({'default_bed_length_m': None, 'default_bed_width_m': None}, (None, None)),
         ):
             with self.subTest(payload=payload):
                 response = self.client.patch(project_url, payload, format='json')
                 self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
                 self.assertEqual(
                     (response.data['default_bed_length_m'], response.data['default_bed_width_m']),
+                    expected,
+                )
+                saved = self.client.get(project_url)
+                self.assertEqual(
+                    (saved.data['default_bed_length_m'], saved.data['default_bed_width_m']),
                     expected,
                 )
                 me = self.client.get('/openfarmplanner/api/auth/me/')
@@ -503,6 +513,26 @@ class ProjectsApiTests(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_201_CREATED, response.data)
         self.assertIsNone(response.data['length_m'])
         self.assertIsNone(response.data['width_m'])
+
+    def test_partial_project_update_preserves_a_concurrently_cleared_bed_default(self) -> None:
+        Project.objects.filter(pk=self.project.pk).update(default_bed_length_m=10, default_bed_width_m=1.2)
+        original_update = ProjectSerializer.update
+
+        def update_after_clear(serializer, instance, validated_data):
+            self.assertEqual(instance.default_bed_width_m, 1.2)
+            Project.objects.filter(pk=instance.pk).update(default_bed_width_m=None)
+            return original_update(serializer, instance, validated_data)
+
+        url = f'/openfarmplanner/api/projects/{self.project.id}/'
+        with patch.object(ProjectSerializer, 'update', update_after_clear):
+            response = self.client.patch(url, {'default_bed_length_m': 12}, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK, response.data)
+        self.assertEqual(response.data['default_bed_length_m'], 12)
+        self.assertIsNone(response.data['default_bed_width_m'])
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.default_bed_length_m, 12)
+        self.assertIsNone(self.project.default_bed_width_m)
 
     def test_bed_defaults_reject_nonpositive_and_nonfinite_dimensions(self) -> None:
         url = f'/openfarmplanner/api/projects/{self.project.id}/'

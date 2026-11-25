@@ -5,7 +5,7 @@
   "currentProjectLabel": "Nom du projet",
   "bedDefaults": {
     "title": "Dimensions des planches par défaut",
-    "description": "Ces dimensions sont proposées à la création de nouvelles planches."
+    "description": "Laissez un champ vide pour utiliser la dimension habituellement proposée lors de la création de planches."
   },
   "general": {
     "title": "Général",

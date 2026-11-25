@@ -5,7 +5,7 @@
   "currentProjectLabel": "Nome del progetto",
   "bedDefaults": {
     "title": "Dimensioni predefinite delle aiuole",
-    "description": "Queste dimensioni vengono proposte quando si creano nuove aiuole."
+    "description": "Lascia un campo vuoto per usare la misura suggerita di solito quando crei nuove aiuole."
   },
   "general": {
     "title": "Generale",

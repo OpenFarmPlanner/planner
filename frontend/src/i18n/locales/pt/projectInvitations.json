@@ -5,7 +5,7 @@
   "currentProjectLabel": "Nome do projeto",
   "bedDefaults": {
     "title": "Dimensões predefinidas dos canteiros",
-    "description": "Estas dimensões são sugeridas ao criar novos canteiros."
+    "description": "Deixe um campo vazio para usar a dimensão habitualmente sugerida ao criar canteiros."
   },
   "general": {
     "title": "Geral",

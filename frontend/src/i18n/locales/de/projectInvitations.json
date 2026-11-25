@@ -5,7 +5,7 @@
   "currentProjectLabel": "Projektname",
   "bedDefaults": {
     "title": "Standardmaße für Beete",
-    "description": "Diese Maße werden beim Anlegen neuer Beete vorgeschlagen."
+    "description": "Lass ein Feld leer, um beim Anlegen von Beeten den üblichen Vorschlag für dieses Maß zu verwenden."
   },
   "general": {
     "title": "Allgemein",

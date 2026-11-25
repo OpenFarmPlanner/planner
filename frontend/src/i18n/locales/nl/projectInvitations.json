@@ -5,7 +5,7 @@
   "currentProjectLabel": "Projectnaam",
   "bedDefaults": {
     "title": "Standaardafmetingen van bedden",
-    "description": "Deze afmetingen worden voorgesteld bij het aanmaken van nieuwe bedden."
+    "description": "Laat een veld leeg om bij het aanmaken van bedden de gebruikelijke suggestie voor die afmeting te gebruiken."
   },
   "general": {
     "title": "Algemeen",

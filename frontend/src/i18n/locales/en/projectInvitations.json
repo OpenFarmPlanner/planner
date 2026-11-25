@@ -5,7 +5,7 @@
   "currentProjectLabel": "Project name",
   "bedDefaults": {
     "title": "Default bed dimensions",
-    "description": "These dimensions are suggested when creating beds."
+    "description": "Leave a field blank to use the usual suggestion for that dimension when creating beds."
   },
   "general": {
     "title": "General",
