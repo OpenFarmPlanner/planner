@@ -75,7 +75,8 @@ export function GraphicalBedTasksControl({ anchor, onClose, enabled, onToggle, b
             <TextField select fullWidth size="small" label={t('graphical.taskLayer.chooseBed')} value={bed?.id ?? ''}
               slotProps={{ select: { MenuProps: { container } } }}
               onChange={event => setBedId(Number(event.target.value))}>
-              {beds.map(item => <MenuItem key={item.id} value={item.id} sx={{ minHeight: 44, whiteSpace: 'normal' }}>
+              {beds.map(item => <MenuItem key={item.id} value={item.id}
+                sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}>
                 {item.name} · {item.parcel}
               </MenuItem>)}
             </TextField>

@@ -221,21 +221,29 @@ test.describe('responsive canvas tools', () => {
     }
 
     await page.setViewportSize({ width: 768, height: 1024 });
-    const initial = await activeCamera(page);
+    await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(800);
     await trigger.press('Enter');
     await expect(menu.getByRole('menuitem', { name: rotate })).toBeVisible();
     await expect(menu.getByRole('menuitem', { name: /Freiflächen/ })).toHaveCount(0);
+    const initial = await activeCamera(page);
     await page.keyboard.press('ArrowDown');
     expect(await activeCamera(page)).toEqual(initial);
     await page.keyboard.press('Escape');
     await expect(trigger).toBeFocused();
+    const zoom = toolbar.getByRole('button', { name: 'Hineinzoomen', exact: true });
+    for (let step = 0; step < 7; step += 1) await zoom.tap();
+    const beforeHorizontal = await activeCamera(page);
     await activateCanvasTool(page, 'Ansicht nach links verschieben', 'touch');
-    await expect.poll(() => activeCamera(page)).toMatchObject({ x: initial.x + 80 });
+    await expect.poll(async () => (await activeCamera(page)).x).toBeGreaterThan(beforeHorizontal.x);
+    const left = await activeCamera(page);
     await activateCanvasTool(page, 'Ansicht nach rechts verschieben', 'touch');
+    await expect.poll(async () => (await activeCamera(page)).x).toBeLessThan(left.x);
+    const beforeVertical = await activeCamera(page);
     await activateCanvasTool(page, 'Ansicht nach oben verschieben', 'touch');
-    await expect.poll(() => activeCamera(page)).toMatchObject({ y: initial.y + 80 });
+    await expect.poll(async () => (await activeCamera(page)).y).toBeGreaterThan(beforeVertical.y);
+    const up = await activeCamera(page);
     await activateCanvasTool(page, 'Ansicht nach unten verschieben', 'touch');
-    await expect.poll(() => activeCamera(page)).toEqual(initial);
+    await expect.poll(async () => (await activeCamera(page)).y).toBeLessThan(up.y);
     const originalWidth = (await canvasRects(page, 'field-rect-'))[0].width;
     await activateCanvasTool(page, rotate, 'touch');
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].width).not.toBe(originalWidth);

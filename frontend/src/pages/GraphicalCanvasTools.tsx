@@ -98,7 +98,7 @@ export function GraphicalCanvasTools({
     active: individualPlants.active, opensPanel: true, action: individualPlants.toggle });
   const hasMenu = compact || additional.length > 0;
   const menuItem = (tool: Tool) => (
-    <MenuItem key={tool.label} sx={{ minHeight: 44, whiteSpace: 'normal' }}
+    <MenuItem key={tool.label} sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}
       aria-description={tool.active ? t('graphical.toolActive') : undefined}
       onClick={() => {
         setMenuOpen(false);
