@@ -1,6 +1,6 @@
 # Growing Areas map and aerial imagery
 
-Decision record for [#915](https://github.com/OpenFarmPlanner/planner/issues/915), 2026-11-25. The optional fourth view uses OpenLayers in React. List remains the primary creation workflow and Graphic arranges existing areas on the schematic canvas. Map edits a geographic footprint when one is recorded. Physical edits to existing growing areas require the season-effective history design from [#916](https://github.com/OpenFarmPlanner/planner/issues/916).
+Decision record for [#915](https://github.com/OpenFarmPlanner/planner/issues/915), 2026-11-25. The optional fourth view uses OpenLayers in React. List remains the primary creation workflow and Graphic arranges existing areas on the schematic canvas. Map edits a geographic footprint when one is recorded. Physical edits to existing growing areas require the [season-effective history foundation](growing-area-geometry-history.md) from [#916](https://github.com/OpenFarmPlanner/planner/issues/916).
 
 ## Editor spike
 
