@@ -15,7 +15,7 @@ const { deleteMock, confirmMock, copyMock } = vi.hoisted(() => ({
 
 vi.mock('../api/api', () => ({ plantingPlanAPI: { delete: deleteMock } }));
 vi.mock('../utils/confirmAction', () => ({ confirmAction: confirmMock }));
-vi.mock('../components/data-grid', () => ({ copyTextToClipboardSilently: copyMock }));
+vi.mock('../components/data-grid/tableClipboard', () => ({ copyTextToClipboardSilently: copyMock }));
 
 const t = i18n.getFixedT('de') as TFunction;
 

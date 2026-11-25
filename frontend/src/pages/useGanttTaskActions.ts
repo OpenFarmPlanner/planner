@@ -4,7 +4,7 @@ import type { TFunction } from 'i18next';
 import { plantingPlanAPI, type PlantingPlan } from '../api/api';
 import { extractApiErrorMessage } from '../api/errors';
 import { confirmAction } from '../utils/confirmAction';
-import { copyTextToClipboardSilently } from '../components/data-grid';
+import { copyTextToClipboardSilently } from '../components/data-grid/tableClipboard';
 import { plantingPlanDetailPath, PLANTING_PLANS_PATH } from '../planting-plans/plantingPlanDetailRoutes';
 import {
   formatCropDisplayLabel,

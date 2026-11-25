@@ -3,6 +3,7 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
 import { VitePWA } from 'vite-plugin-pwa'
+import { bundleBudgetPlugin, PRECACHE_ASSET_LIMIT_BYTES } from './build/bundleBudget.ts'
 import { seoPlugin } from './build/seoPlugin.ts'
 import { BRAND_PRIMARY_MAIN, BRAND_ROOT_BACKGROUND } from './src/brandColors.ts'
 
@@ -16,6 +17,12 @@ function normalizeBasePath(input?: string): string {
 const basePath = normalizeBasePath(process.env.VITE_BASE_PATH)
 const backendDevOrigin = process.env.DEV_BACKEND_ORIGIN || 'http://127.0.0.1:8000'
 const websocketProxyPath = basePath === '/' ? '/ws' : `${basePath.slice(0, -1)}/ws`
+const pwaManifestFilename = 'manifest.json'
+const pwaIcons = [
+  { fileName: 'icons/pwa-192x192.png', sizes: '192x192', type: 'image/png' },
+  { fileName: 'icons/pwa-512x512.png', sizes: '512x512', type: 'image/png' },
+  { fileName: 'icons/pwa-maskable-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+]
 
 // Shared by the dev server and `vite preview` (used for production-build E2E runs), so
 // requests to the Django backend work the same way regardless of which one serves the SPA.
@@ -61,7 +68,7 @@ function pwaPlugin() {
     // Registration lives in src/pwa/registerServiceWorker.ts so it is
     // explicit in the entry point rather than injected into index.html.
     injectRegister: null,
-    manifestFilename: 'manifest.json',
+    manifestFilename: pwaManifestFilename,
     manifest: {
       name: 'OpenFarmPlanner',
       short_name: 'OFP',
@@ -75,22 +82,15 @@ function pwaPlugin() {
       // Mirrors palette.primary.main and palette.surface.rootBackground.
       theme_color: BRAND_PRIMARY_MAIN,
       background_color: BRAND_ROOT_BACKGROUND,
-      icons: [
-        { src: `${basePath}icons/pwa-192x192.png`, sizes: '192x192', type: 'image/png' },
-        { src: `${basePath}icons/pwa-512x512.png`, sizes: '512x512', type: 'image/png' },
-        {
-          src: `${basePath}icons/pwa-maskable-512x512.png`,
-          sizes: '512x512',
-          type: 'image/png',
-          purpose: 'maskable',
-        },
-      ],
+      icons: pwaIcons.map(({ fileName, ...icon }) => ({ src: `${basePath}${fileName}`, ...icon })),
     },
     workbox: {
       // The manifest icons are added by the plugin itself
       // (`includeManifestIcons`), so this only has to name the build output
       // and the favicon.
       globPatterns: ['assets/**/*.{js,css,woff,woff2}', 'favicon.png'],
+      // vite-plugin-pwa treats files that exceed this limit as build errors.
+      maximumFileSizeToCacheInBytes: PRECACHE_ASSET_LIMIT_BYTES,
       // Overrides the plugin's 'index.html' default: no HTML is precached, so
       // there is nothing to fall back to and navigations stay on the network.
       navigateFallback: undefined,
@@ -156,6 +156,10 @@ function manualChunks(id: string): string | undefined {
     return 'muiIcons'
   }
 
+  if (/\/node_modules\/@mui\/x-(data-grid|internals|virtualizer)\//.test(id)) {
+    return 'muiDataGrid'
+  }
+
   if (id.includes('/node_modules/@mui/material/')) {
     return 'mui'
   }
@@ -173,7 +177,13 @@ function manualChunks(id: string): string | undefined {
 // https://vite.dev/config/
 export default defineConfig({
   base: basePath,
-  plugins: [react(), seoPlugin(process.env), pwaPlugin(), pwaHeadTagsPlugin()],
+  plugins: [
+    react(),
+    seoPlugin(process.env),
+    bundleBudgetPlugin([pwaManifestFilename, ...pwaIcons.map(({ fileName }) => fileName)]),
+    pwaPlugin(),
+    pwaHeadTagsPlugin(),
+  ],
   optimizeDeps: {
     include: ['tiptap-markdown'],
   },
