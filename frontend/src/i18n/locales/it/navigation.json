@@ -100,6 +100,7 @@
       "outOfRangeError_other": "Impossibile creare la stagione per {{period}}: {{count}} serie esistenti non rientrano nel periodo: {{examples}}. Modifica il modello di stagione nelle impostazioni progetto, poi crea di nuovo la stagione.",
       "outOfRangeFallbackExamples": "serie esistenti",
       "patternHint": {
+        "button": "Informazioni sul periodo della stagione",
         "prefix": "Il periodo non va bene? Puoi modificare il modello di stagione nelle",
         "link": "impostazioni progetto",
         "suffix": "— la modifica si applica poi alle stagioni future."
@@ -160,11 +161,26 @@
       "skippedPlans_one": "{{count}} piano di coltivazione cade fuori dalla stagione di destinazione.",
       "skippedPlans_other": "{{count}} piani di coltivazione cadono fuori dalla stagione di destinazione.",
       "skippedPlans_many": "{{count}} piani di coltivazione cadono fuori dalla stagione di destinazione.",
-      "warning_one": "La stagione {{target}} contiene già 1 serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
-      "warning_other": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
-      "summary_one": "Verrà aggiunto {{count}} piano di coltivazione. Il totale sarà di {{total}}.",
-      "summary_other": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}.",
       "confirm": "Copia",
+      "confirmCount_one": "Copia {{count}} serie",
+      "confirmCount_many": "Copia {{count}} serie",
+      "confirmCount_other": "Copia {{count}} serie",
+      "nothingToCopy": "Non ci sono serie da copiare.",
+      "preview": "Anteprima",
+      "totals": {
+        "result_one": "{{existing}} esistenti + {{added}} nuove = {{count}} serie",
+        "result_many": "{{existing}} esistenti + {{added}} nuove = {{count}} serie",
+        "result_other": "{{existing}} esistenti + {{added}} nuove = {{count}} serie",
+        "withoutBed_one": "di cui {{count}} senza aiuola",
+        "withoutBed_many": "di cui {{count}} senza aiuola",
+        "withoutBed_other": "di cui {{count}} senza aiuola",
+        "skippedConflicts_one": "{{count}} conflitto non viene copiato",
+        "skippedConflicts_many": "{{count}} conflitti non vengono copiati",
+        "skippedConflicts_other": "{{count}} conflitti non vengono copiati",
+        "existingKept_one": "La serie esistente resta invariata.",
+        "existingKept_many": "Le {{count}} serie esistenti restano invariate.",
+        "existingKept_other": "Le {{count}} serie esistenti restano invariate."
+      },
       "error": "Impossibile copiare i dati.",
       "noPrecedingSource": "Non c’è una stagione immediatamente precedente. Crea prima la stagione mancante per copiarne i dati.",
       "sourceChanged": "La stagione precedente è cambiata. Riapri la finestra per aggiornare l’anteprima.",
@@ -174,22 +190,21 @@
       "rotation": {
         "checking": "Verifica della rotazione colturale nella stagione di destinazione…",
         "checkError": "Impossibile verificare la rotazione colturale. Puoi comunque copiare.",
-        "summary_one": "1 serie dalla stagione {{source}} verrà copiata nelle stesse aiuole.",
-        "summary_other": "{{count}} serie dalla stagione {{source}} verranno copiate nelle stesse aiuole.",
-        "warningConflicts": "{{conflicts}} di queste non rispettano la rotazione colturale perché la stessa famiglia tornerebbe sulla stessa aiuola nella stagione di destinazione.",
-        "warningConflictsAndHints": "{{conflicts}} di queste non rispettano la rotazione colturale perché la stessa famiglia tornerebbe sulla stessa aiuola nella stagione di destinazione. Altre {{hints}} hanno un suggerimento sulla successione nutritiva.",
-        "hintsOnly": "{{hints}} di queste hanno un suggerimento sulla successione nutritiva.",
-        "showAll": "Mostra tutti i {{conflicts}} conflitti",
-        "showAllItems": "Mostra tutte le {{count}} voci",
-        "showLess": "Mostra meno",
+        "conflictCount_one": "{{count}} conflitto di rotazione colturale",
+        "conflictCount_many": "{{count}} conflitti di rotazione colturale",
+        "conflictCount_other": "{{count}} conflitti di rotazione colturale",
+        "hintCount_one": "{{count}} avviso sulla successione delle colture esigenti",
+        "hintCount_many": "{{count}} avvisi sulla successione delle colture esigenti",
+        "hintCount_other": "{{count}} avvisi sulla successione delle colture esigenti",
+        "showDetails": "Mostra dettagli",
         "item": "{{culture}} · {{bed}}",
-        "reasonConflict": "Ultima {{family}} nel {{year}}, nuovamente possibile non prima del {{earliestYear}}",
+        "reasonConflict": "{{family}} · Ultima volta {{year}} · Di nuovo non prima del {{earliestYear}}",
         "reasonHint": "Coltura molto esigente dopo {{previousCulture}} ({{year}})",
         "modeLabel": "Come gestire i {{conflicts}} conflitti?",
         "modes": {
           "without_bed": {
             "label": "Copia senza aiuola",
-            "description": "Le {{conflicts}} serie vengono create senza assegnazione; sceglierai l'aiuola in seguito con i suggerimenti."
+            "description": "Vengono create senza assegnazione; sceglierai poi l’aiuola con i suggerimenti."
           },
           "keep": {
             "label": "Copia comunque nelle stesse aiuole",
@@ -199,11 +214,8 @@
             "label": "Non copiare",
             "description": "Vengono copiate solo le {{ok}} serie senza conflitti."
           }
-        },
-        "summary_many": "{{count}} serie dalla stagione {{source}} verranno copiate nelle stesse aiuole."
+        }
       },
-      "warning_many": "La stagione {{target}} contiene già {{count}} serie. La copia aggiungerà le serie della stagione {{source}}; le serie esistenti in {{target}} non verranno modificate né sostituite.",
-      "summary_many": "Verranno aggiunti {{count}} piani di coltivazione. Il totale sarà di {{total}}.",
       "continuingPlans_one": "{{count}} serie prosegue e rimane nella sua stagione di origine.",
       "continuingPlans_other": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine.",
       "continuingPlans_many": "{{count}} serie proseguono e rimangono nelle loro stagioni di origine.",

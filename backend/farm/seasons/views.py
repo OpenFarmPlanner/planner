@@ -67,8 +67,8 @@ from farm.services.tasks import generate_tasks_for_plans
 
 from .serializers import (
     CreateTransitionSeasonsSerializer,
-    SeasonCopyDateBasisSerializer,
     SeasonCopyFromSerializer,
+    SeasonCopyPreviewOptionsSerializer,
     SeasonCreateAndCopySerializer,
     SeasonCreationOptionsSerializer,
     SeasonPatternSerializer,
@@ -323,7 +323,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             source_season = self._resolve_existing_copy_source(target_season, source_id)
         if isinstance(source_season, Response):
             return source_season
-        options = SeasonCopyDateBasisSerializer(data=request.query_params)
+        options = SeasonCopyPreviewOptionsSerializer(data=request.query_params)
         if not options.is_valid():
             return self._invalid_copy_options(options.errors)
         pairs, skipped_count, continuing_count, unconfigured_count = build_planting_plan_copies(
@@ -335,6 +335,7 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
             requested=options.validated_data.get('rotate_parcels', False),
             continuing_count=continuing_count,
             language_code=resolve_request_language(request),
+            rotation_conflicts=options.validated_data['rotation_conflicts'],
         )
         crop_rotation = parcel_rotation.summary.get('crop_rotation')
         if crop_rotation is None:

@@ -1,11 +1,9 @@
-import { useState } from 'react';
 import {
   Alert,
   Box,
   FormControl,
   FormControlLabel,
   FormLabel,
-  Link,
   Radio,
   RadioGroup,
   Stack,
@@ -13,17 +11,19 @@ import {
 } from '@mui/material';
 
 import type { SeasonCopyPreview, SeasonCopyPreviewItem, SeasonCopyRotationMode } from '../api/types';
+import { Disclosure } from '../components/Disclosure';
 import { useFamilyNameResolver } from '../components/planting-plans/rotation/useFamilyNameResolver';
 import { useTranslation } from '../i18n';
 
-const VISIBLE_ITEM_COUNT = 3;
 const MODE_ORDER: readonly SeasonCopyRotationMode[] = ['without_bed', 'keep', 'skip'];
+/** Up to this many findings are listed right away; more stay behind a disclosure. */
+const INLINE_ITEM_COUNT = 3;
 
 interface SeasonCopyRotationSummaryProps {
-  preview: Pick<SeasonCopyPreview, 'total' | 'conflict_count' | 'hint_count'
-    | 'conflict_free_count' | 'items' | 'source_season_label'>;
+  preview: Pick<SeasonCopyPreview, 'conflict_count' | 'hint_count' | 'conflict_free_count' | 'items'>;
   mode?: SeasonCopyRotationMode;
   parcelRotation?: boolean;
+  disabled?: boolean;
   onModeChange?: (mode: SeasonCopyRotationMode) => void;
 }
 
@@ -50,58 +50,47 @@ function useItemReason() {
 }
 
 /**
- * The crop rotation part of "Daten übernehmen": how many copies would break
- * the rotation on their bed in the target season, which ones, and what to do
- * with them. Rendered only when there is at least one conflict or hint.
+ * The crop rotation part of a season copy preview: the always visible
+ * conflict and hint counts, their details on demand and, where the dialog
+ * offers it, the treatment of the conflicts. Rendered only with a finding.
  */
-export function SeasonCopyRotationSummary({ preview, mode, parcelRotation, onModeChange }: SeasonCopyRotationSummaryProps) {
+export function SeasonCopyRotationSummary({
+  preview, mode, parcelRotation, disabled, onModeChange,
+}: SeasonCopyRotationSummaryProps) {
   const { t } = useTranslation(['navigation', 'hierarchy']);
   const getReason = useItemReason();
-  const [showAll, setShowAll] = useState(false);
   const conflicts = preview.conflict_count;
   const hints = preview.hint_count;
-  const items = showAll ? preview.items : preview.items.slice(0, VISIBLE_ITEM_COUNT);
-  const values = { conflicts, hints, ok: preview.conflict_free_count };
+  const values = { conflicts, ok: preview.conflict_free_count };
+  const counts = [
+    conflicts > 0 ? t('seasonSwitcher.copyDialog.rotation.conflictCount', { count: conflicts }) : null,
+    hints > 0 ? t('seasonSwitcher.copyDialog.rotation.hintCount', { count: hints }) : null,
+  ].filter(Boolean).join(' · ');
+  const list = (
+    <Stack component="ul" spacing={0.75} sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
+      {preview.items.map((item) => (
+        <Box component="li" key={item.source_plan_id}>
+          <Typography variant="body2" sx={{ fontWeight: 600 }}>
+            {t('seasonSwitcher.copyDialog.rotation.item', { culture: item.crop_label, bed: item.bed_name })}
+          </Typography>
+          <Typography variant="body2">{getReason(item)}</Typography>
+        </Box>
+      ))}
+    </Stack>
+  );
 
   return (
-    <Box data-testid="season-copy-rotation-summary" sx={{ mt: 2 }}>
-      <Typography variant="body2" sx={{ mb: 1 }}>
-        {t('seasonSwitcher.copyDialog.rotation.summary', {
-          count: preview.total,
-          source: preview.source_season_label,
-        })}
-      </Typography>
-      <Alert severity={conflicts > 0 ? 'warning' : 'info'} sx={{ mb: 1, boxShadow: 'none' }}>
-        {conflicts > 0
-          ? t(hints > 0
-            ? 'seasonSwitcher.copyDialog.rotation.warningConflictsAndHints'
-            : 'seasonSwitcher.copyDialog.rotation.warningConflicts', values)
-          : t('seasonSwitcher.copyDialog.rotation.hintsOnly', values)}
+    <Box data-testid="season-copy-rotation-summary">
+      <Alert severity={conflicts > 0 ? 'warning' : 'info'} sx={{ boxShadow: 'none', overflowWrap: 'anywhere' }}>
+        <Typography variant="body2" sx={{ fontWeight: 600 }}>{counts}</Typography>
+        {preview.items.length > INLINE_ITEM_COUNT ? (
+          <Disclosure label={t('seasonSwitcher.copyDialog.rotation.showDetails')}>{list}</Disclosure>
+        ) : list}
       </Alert>
-      <Stack component="ul" spacing={0.5} sx={{ m: 0, pl: 2.5 }}>
-        {items.map((item) => (
-          <Typography component="li" variant="body2" key={item.source_plan_id}>
-            <Box component="span" sx={{ fontWeight: 600 }}>
-              {t('seasonSwitcher.copyDialog.rotation.item', { culture: item.crop_label, bed: item.bed_name })}
-            </Box>
-            {': '}
-            {getReason(item)}
-          </Typography>
-        ))}
-      </Stack>
-      {preview.items.length > VISIBLE_ITEM_COUNT ? (
-        <Link component="button" type="button" variant="body2" sx={{ mt: 0.5 }} onClick={() => setShowAll((value) => !value)}>
-          {showAll
-            ? t('seasonSwitcher.copyDialog.rotation.showLess')
-            : conflicts === preview.items.length
-              ? t('seasonSwitcher.copyDialog.rotation.showAll', values)
-              : t('seasonSwitcher.copyDialog.rotation.showAllItems', { count: preview.items.length })}
-        </Link>
-      ) : null}
 
       {conflicts > 0 && mode && onModeChange ? (
-        <FormControl sx={{ mt: 2 }}>
-          <FormLabel id="season-copy-rotation-mode-label">
+        <FormControl sx={{ mt: 1.5 }} disabled={disabled}>
+          <FormLabel id="season-copy-rotation-mode-label" sx={{ typography: 'body2' }}>
             {t('seasonSwitcher.copyDialog.rotation.modeLabel', values)}
           </FormLabel>
           <RadioGroup
@@ -109,7 +98,7 @@ export function SeasonCopyRotationSummary({ preview, mode, parcelRotation, onMod
             value={mode}
             onChange={(event) => onModeChange(event.target.value as SeasonCopyRotationMode)}
           >
-            {MODE_ORDER.filter(option => !parcelRotation || option !== 'without_bed').map((option) => (
+            {MODE_ORDER.map((option) => (
               <FormControlLabel
                 key={option}
                 value={option}
@@ -120,9 +109,9 @@ export function SeasonCopyRotationSummary({ preview, mode, parcelRotation, onMod
                     <Typography variant="body2">{parcelRotation && option === 'keep'
                       ? t('hierarchy:parcelRotation.keepProposedBeds')
                       : t(`seasonSwitcher.copyDialog.rotation.modes.${option}.label`)}</Typography>
-                    {(!parcelRotation || option !== 'keep') && <Typography variant="body2" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary">
                       {t(`seasonSwitcher.copyDialog.rotation.modes.${option}.description`, values)}
-                    </Typography>}
+                    </Typography>
                   </Box>
                 )}
               />

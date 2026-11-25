@@ -100,6 +100,7 @@
       "outOfRangeError_other": "Die Saison kann für {{period}} nicht angelegt werden, weil {{count}} bestehende Anbaupläne außerhalb dieses Zeitraums liegen: {{examples}}. Passe das Saison-Muster in den Projekteinstellungen an und lege die Saison danach erneut an.",
       "outOfRangeFallbackExamples": "bestehende Anbaupläne",
       "patternHint": {
+        "button": "Hinweis zum Saisonzeitraum",
         "prefix": "Zeitraum stimmt nicht? Das Saison-Muster kannst du in den",
         "link": "Projekteinstellungen",
         "suffix": "anpassen — die Änderung gilt dann für künftige Saisons."
@@ -155,11 +156,21 @@
       "useActualDatesHelp": "Übernimmt Ist-Termine aus der vorherigen Saison. Fehlt ein Ist-Termin, wird der bisherige Plantermin verwendet.",
       "skippedPlans_one": "{{count}} Anbauplan passt zeitlich nicht in die Zielsaison.",
       "skippedPlans_other": "{{count}} Anbaupläne passen zeitlich nicht in die Zielsaison.",
-      "warning_one": "Saison {{target}} enthält bereits 1 Anbauplan. Beim Übernehmen werden die Anbaupläne aus Saison {{source}} zusätzlich hinzugefügt — bestehende Anbaupläne in {{target}} werden nicht verändert oder ersetzt.",
-      "warning_other": "Saison {{target}} enthält bereits {{count}} Anbaupläne. Beim Übernehmen werden die Anbaupläne aus Saison {{source}} zusätzlich hinzugefügt — bestehende Anbaupläne in {{target}} werden nicht verändert oder ersetzt.",
-      "summary_one": "{{count}} Anbauplan wird übernommen. Danach sind es insgesamt {{total}}.",
-      "summary_other": "{{count}} Anbaupläne werden übernommen. Danach sind es insgesamt {{total}}.",
       "confirm": "Übernehmen",
+      "confirmCount_one": "{{count}} Anbauplan übernehmen",
+      "confirmCount_other": "{{count}} Anbaupläne übernehmen",
+      "nothingToCopy": "Es gibt keine Anbaupläne zum Übernehmen.",
+      "preview": "Vorschau",
+      "totals": {
+        "result_one": "{{existing}} bestehend + {{added}} neu = {{count}} Anbauplan",
+        "result_other": "{{existing}} bestehend + {{added}} neu = {{count}} Anbaupläne",
+        "withoutBed_one": "{{count}} davon ohne Beet",
+        "withoutBed_other": "{{count}} davon ohne Beet",
+        "skippedConflicts_one": "{{count}} Konflikt wird nicht übernommen",
+        "skippedConflicts_other": "{{count}} Konflikte werden nicht übernommen",
+        "existingKept_one": "Der bestehende Anbauplan bleibt unverändert.",
+        "existingKept_other": "Die {{count}} bestehenden Anbaupläne bleiben unverändert."
+      },
       "error": "Daten konnten nicht übernommen werden.",
       "noPrecedingSource": "Es gibt keine unmittelbar vorherige Saison. Lege zuerst die fehlende Saison an, um ihre Daten zu übernehmen.",
       "sourceChanged": "Die vorherige Saison hat sich geändert. Öffne den Dialog erneut, um die Vorschau zu aktualisieren.",
@@ -169,22 +180,19 @@
       "rotation": {
         "checking": "Fruchtfolge in der Zielsaison wird geprüft …",
         "checkError": "Die Fruchtfolge konnte nicht geprüft werden. Übernommen werden kann trotzdem.",
-        "summary_one": "1 Anbauplan aus Saison {{source}} wird auf dieselben Beete übernommen.",
-        "summary_other": "{{count}} Anbaupläne aus Saison {{source}} werden auf dieselben Beete übernommen.",
-        "warningConflicts": "{{conflicts}} davon verletzen die Fruchtfolge, weil dieselbe Familie in der Zielsaison wieder auf demselben Beet stehen würde.",
-        "warningConflictsAndHints": "{{conflicts}} davon verletzen die Fruchtfolge, weil dieselbe Familie in der Zielsaison wieder auf demselben Beet stehen würde. {{hints}} weitere haben einen Hinweis zur Nährstofffolge.",
-        "hintsOnly": "{{hints}} davon haben einen Hinweis zur Nährstofffolge.",
-        "showAll": "Alle {{conflicts}} Konflikte anzeigen",
-        "showAllItems": "Alle {{count}} Einträge anzeigen",
-        "showLess": "Weniger anzeigen",
+        "conflictCount_one": "{{count}} Fruchtfolgeverstoß",
+        "conflictCount_other": "{{count}} Fruchtfolgeverstöße",
+        "hintCount_one": "{{count}} Hinweis zur Nährstofffolge",
+        "hintCount_other": "{{count}} Hinweise zur Nährstofffolge",
+        "showDetails": "Details anzeigen",
         "item": "{{culture}} · {{bed}}",
-        "reasonConflict": "{{family}} zuletzt {{year}}, frühestens wieder {{earliestYear}}",
+        "reasonConflict": "{{family}} · Zuletzt {{year}} · Frühestens wieder {{earliestYear}}",
         "reasonHint": "Starkzehrer nach {{previousCulture}} ({{year}})",
         "modeLabel": "Was soll mit den {{conflicts}} Konflikten passieren?",
         "modes": {
           "without_bed": {
             "label": "Ohne Beet übernehmen",
-            "description": "Die {{conflicts}} Anbaupläne werden als offene Zuweisungen angelegt und du wählst das Beet danach mit Vorschlägen."
+            "description": "Als offene Zuweisung anlegen; das Beet wählst du danach mit Vorschlägen."
           },
           "keep": {
             "label": "Trotzdem auf dieselben Beete übernehmen",

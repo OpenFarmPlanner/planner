@@ -6,7 +6,6 @@ from farm.models import PlantingPlan, Season, SeasonPattern
 from farm.services.crop_rotation import (
     COPY_CONFLICT_MODES,
     COPY_CONFLICTS_KEEP,
-    COPY_CONFLICTS_WITHOUT_BED,
 )
 
 
@@ -210,22 +209,24 @@ class CreateTransitionSeasonsSerializer(SeasonCopyDateBasisSerializer):
     expected_followup = SeasonPeriodRangeSerializer(required=False)
 
 
-class SeasonCopyFromSerializer(SeasonCopyDateBasisSerializer):
-    source_season_id = serializers.IntegerField()
+class SeasonCopyConflictTreatmentMixin(serializers.Serializer):
     rotation_conflicts = serializers.ChoiceField(
         choices=COPY_CONFLICT_MODES,
         default=COPY_CONFLICTS_KEEP,
         help_text=(
             'What to do with copies that would break the crop rotation on their bed: '
             '"keep" (same bed, conflict stays marked), "without_bed" (copied without a bed) '
-            'or "skip" (not copied).'
+            'or "skip" (not copied). With parcel rotation, copies without a bed or skipped '
+            'take no area on their rotated bed.'
         ),
     )
 
-    def validate(self, attrs):
-        removes_beds = attrs['rotation_conflicts'] == COPY_CONFLICTS_WITHOUT_BED
-        if attrs.get('rotate_parcels') and removes_beds:
-            raise serializers.ValidationError({
-                'rotation_conflicts': 'Choose keep or skip when rotating parcels.',
-            })
-        return attrs
+
+class SeasonCopyPreviewOptionsSerializer(
+    SeasonCopyConflictTreatmentMixin, SeasonCopyDateBasisSerializer,
+):
+    """Options of the existing-season copy preview; they must match the later copy-from."""
+
+
+class SeasonCopyFromSerializer(SeasonCopyConflictTreatmentMixin, SeasonCopyDateBasisSerializer):
+    source_season_id = serializers.IntegerField()

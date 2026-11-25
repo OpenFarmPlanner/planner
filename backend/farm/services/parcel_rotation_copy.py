@@ -16,7 +16,12 @@ from farm.services.bed_capacity import (
     build_occupancy,
 )
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
-from farm.services.crop_rotation import RotationService, preview_season_copy
+from farm.services.crop_rotation import (
+    COPY_CONFLICTS_KEEP,
+    RotationService,
+    check_season_copies,
+    preview_season_copy,
+)
 from farm.services.parcel_rotation import ordered_group, rotation_group_queryset
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.seed_demand import preview_plan_seed_demand
@@ -211,7 +216,31 @@ def _map_groups(project) -> tuple[dict[int, tuple[Bed, Bed]], list[dict], list[d
     return beds, mappings, issues
 
 
-def _build_rotated_pairs(pairs, mapping, index, issues, crops):
+def _conflicting_rotated_copies(pairs, mapping, service) -> set[int]:
+    """Source plans whose copy breaks the crop rotation on its rotated bed.
+
+    The check only needs the rotated beds, not the scaled areas, and runs on all
+    copies together, exactly like the conflict treatment at execution.
+    """
+    rotated = []
+    for source, proposed in pairs:
+        plan = copy(proposed)
+        if source.bed_id in mapping:
+            plan.bed = mapping[source.bed_id][1]
+        rotated.append((source, plan))
+    return {
+        source.pk
+        for (source, _), result in zip(rotated, check_season_copies(service, rotated), strict=True)
+        if result.is_conflict
+    }
+
+
+def _build_rotated_pairs(pairs, mapping, index, issues, crops, excluded=frozenset()):
+    """Rotate the copies; `excluded` copies get their bed but no area or capacity check.
+
+    Excluded copies are the crop-rotation conflicts the user copies without a bed
+    or skips, so they never occupy the rotated bed.
+    """
     rotated = []
     allocations: dict[int, list[AreaAllocation]] = defaultdict(list)
     for source, proposed in pairs:
@@ -222,6 +251,9 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops):
         source_bed, target_bed = match
         rotated_plan = copy(proposed)
         rotated_plan.bed = target_bed
+        if source.pk in excluded:
+            rotated.append((source, rotated_plan))
+            continue
         if not source_bed.area_sqm or not target_bed.area_sqm:
             issues.append(
                 {'code': 'missing_bed_area', 'bed': target_bed.name, 'source_bed': source_bed.name}
@@ -279,7 +311,15 @@ def preview_parcel_rotation(
     requested: bool | None,
     continuing_count: int,
     language_code: str = 'de',
+    rotation_conflicts: str = COPY_CONFLICTS_KEEP,
 ) -> ParcelRotationPreview:
+    """Preview one rotation step for the copies that keep a bed.
+
+    `rotation_conflicts` is the crop-rotation conflict treatment of the copy
+    (`farm.services.crop_rotation`). With `without_bed` or `skip`, conflicting
+    copies are not placed on their rotated bed, so they take no area there and
+    cause no capacity issue; they still count in the crop-rotation summary.
+    """
     mapping, mappings, issues = _map_groups(source.project)
     available = preceding and bool(mappings) and not issues
     summary = {
@@ -291,30 +331,46 @@ def preview_parcel_rotation(
         'moves': [],
         'fingerprint': None,
         'continuing_count': continuing_count,
+        'unchanged_count': 0,
     }
     if requested is False or not available:
         return ParcelRotationPreview(pairs, summary)
 
+    def rotation_service() -> RotationService:
+        return RotationService(
+            source.project_id,
+            language_code=language_code,
+            region=source.project.region or '',
+        )
+
+    excluded = (
+        frozenset()
+        if rotation_conflicts == COPY_CONFLICTS_KEEP
+        else frozenset(_conflicting_rotated_copies(pairs, mapping, rotation_service()))
+    )
     target_beds = {mapping[plan.bed_id][1].pk for plan, _ in pairs if plan.bed_id in mapping}
     index = HarvestOverlapIndex(source.project_id, bed_ids=target_beds, crop_label=str)
     crop_index = build_general_crop_index(source.project_id)
-    rotated = _build_rotated_pairs(pairs, mapping, index, issues, crop_index)
+    rotated = _build_rotated_pairs(pairs, mapping, index, issues, crop_index, excluded)
     if issues:
         summary['available'] = False
         return ParcelRotationPreview(pairs, summary)
 
-    moved = [(a, b) for a, b in rotated if a.bed_id != b.bed_id]
+    retained = [(a, b) for a, b in rotated if a.pk not in excluded]
+    moved = [(a, b) for a, b in retained if a.bed_id != b.bed_id]
     demand = preview_plan_seed_demand(source.project, [plan for _, plan in moved], crop_index)
     moves = [
         _describe_move(a, b, crop_index, seeds) for (a, b), seeds in zip(moved, demand, strict=True)
     ]
-    service = RotationService(
-        source.project_id,
-        language_code=language_code,
-        region=source.project.region or '',
+    crop_rotation = preview_season_copy(rotation_service(), rotated)
+    summary.update(
+        enabled=True,
+        moves=moves,
+        crop_rotation=crop_rotation,
+        unchanged_count=sum(
+            1 for a, b in retained if b.bed_id is not None and a.bed_id == b.bed_id
+        ),
     )
-    crop_rotation = preview_season_copy(service, rotated)
-    summary.update(enabled=True, moves=moves, crop_rotation=crop_rotation)
     fingerprint = {
         'source': source.pk,
         'start': target.start_date,
@@ -346,6 +402,7 @@ def apply_confirmed_parcel_rotation(
     continuing_count: int,
     fingerprint: str,
     language_code: str,
+    rotation_conflicts: str = COPY_CONFLICTS_KEEP,
 ) -> list[PlanPair]:
     preview = preview_parcel_rotation(
         source,
@@ -355,6 +412,7 @@ def apply_confirmed_parcel_rotation(
         requested=True,
         continuing_count=continuing_count,
         language_code=language_code,
+        rotation_conflicts=rotation_conflicts,
     )
     if not preview.summary['enabled'] or preview.summary['fingerprint'] != fingerprint:
         raise ParcelRotationConflict(preview.summary)

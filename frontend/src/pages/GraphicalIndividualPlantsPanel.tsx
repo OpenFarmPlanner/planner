@@ -1,13 +1,12 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Collapse, Divider, IconButton, MenuItem, Paper, Stack, TextField, Typography,
+  Alert, Box, Button, Divider, IconButton, MenuItem, Paper, Stack, TextField, Typography,
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { Link } from 'react-router';
 import { cropAPI } from '../api/api';
 import type { Crop, Field, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
+import { Disclosure } from '../components/Disclosure';
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { SiteSuitabilityHints } from '../components/planting-plans/rotation/SiteSuitabilityHints';
@@ -88,21 +87,6 @@ function CoordinateEditor({
         if (within && x !== null && y !== null) onApply({ x_m: roundMeters(x), y_m: roundMeters(y) });
       }}>{t(initial ? 'individualPlants.applyCoordinates' : 'individualPlants.addCoordinates')}</Button>
     </Stack>
-  );
-}
-
-/** A collapsed-by-default section; its content stays mounted, so drafts and errors survive collapsing. */
-function Disclosure({ label, children }: { label: string; children: ReactNode }) {
-  const [open, setOpen] = useState(false);
-  const contentId = useId();
-  return (
-    <Box>
-      <Button type="button" variant="text" size="small" aria-expanded={open} aria-controls={contentId}
-        endIcon={open ? <ExpandLessIcon /> : <ExpandMoreIcon />} onClick={() => setOpen(value => !value)}>
-        {label}
-      </Button>
-      <Collapse in={open} id={contentId}><Box sx={{ pt: 1 }}>{children}</Box></Collapse>
-    </Box>
   );
 }
 

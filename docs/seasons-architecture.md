@@ -539,9 +539,10 @@ actual-date rules and plan history from
   DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_season_creation_dates_acceptance --username LOCAL_USER --database-name LOCAL_DATABASE
   ```
 - `frontend/src/seasons/SeasonCopyDataDialog.tsx` is the shared dialog
-  opened from an existing season's row menu. It names the source and target
-  and warns when the target already has planting plans. The copies are added
-  alongside any existing plans.
+  opened from an existing season's row menu. It names the target, lets the
+  user pick the source and options, and shows one **Preview** section (shared
+  with the create-season dialog) whose summary states that existing target
+  plans stay unchanged. The copies are added alongside any existing plans.
 - The dialog loads `GET /seasons/{id}/copy-preview/?source_season_id=...`
   for the selected source and sends that same ID to `copy-from` only after
   the current preview succeeds. Both endpoints check source chronology and
@@ -569,9 +570,15 @@ actual-date rules and plan history from
   the project's parcel sequence and bed order to the copied plans. A valid group
   selects the option by default. The date-basis choice remains independent.
   Historical sources remain available for plain copying and crop-family checks.
-  The preview reports the wraparound mappings, adjusted occupied area, plant
-  counts, seed requirements and conflicts. An unequal bed count, unmeasured bed
-  or insufficient capacity prevents rotation. Existing and continuing plans
+  The preview reports the wraparound mappings, the number of plans that stay
+  on their beds, adjusted occupied area, plant counts, seed requirements and
+  conflicts. An unequal bed count, unmeasured bed or insufficient capacity
+  prevents rotation. In the existing-season dialog the preview also takes the
+  crop-rotation treatment (`rotation_conflicts` on `copy-preview` and
+  `copy-from`): conflicting copies that are copied without a bed or skipped
+  take no area on their rotated bed, so they never cause a capacity warning
+  ([#1573](https://github.com/OpenFarmPlanner/planner/issues/1573)). All three
+  treatments are offered with rotation; changing it reloads the preview. Existing and continuing plans
   take up area in the target beds. Both copy flows confirm the proposed rotation
   with its preview fingerprint and revalidate before saving. Continuing annual
   and perennial plans remain on their original beds.
