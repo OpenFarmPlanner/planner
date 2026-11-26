@@ -49,7 +49,7 @@ and open screenshots with the available image viewer.
 
 In a fresh checkout, inspect `git ls-files -s .agents/skills`: every entry must
 have mode `120000` and a relative target `../../.claude/skills/<name>`. Resolve
-all nine `SKILL.md` files and supporting resources through both paths and compare
+all ten `SKILL.md` files and supporting resources through both paths and compare
 the canonical files. Validate frontmatter `name`/`description` and local links.
 Run `python3 .agents/skills/test-coverage-campaign/mutate.py --help` to exercise
 resource lookup without mutating application files.
