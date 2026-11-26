@@ -51,9 +51,15 @@ half — adding cards for work finished since the last refresh.
   app and backend report the same commit using the documented version endpoints,
   and that the commit is reachable from `origin/main`.
 - Run tests at that commit. If your checkout differs or has local changes, use
-  `git worktree add --detach <scratch-path> <qa-commit>`. Use a fresh scratch
-  directory and symlink `frontend/node_modules` into it if the lockfile
-  matches. Clean up only the worktree and generated files created for this run.
+  `git worktree add --detach <scratch-path> <qa-commit>` in a fresh directory.
+- Prepare the dependencies in the test checkout. Check for a compatible backend
+  test environment with the test group installed. In a fresh worktree, use
+  `(cd backend && pdm install -dG test)` to create the test environment from the
+  checkout's lockfile. The running QA release's environment has production
+  dependencies. For frontend tests, reuse `frontend/node_modules` from a
+  checkout with the same lockfile or run `(cd frontend && npm ci)` locally.
+  Use the repository's documented Playwright tooling and browser prerequisites.
+  Clean up only the worktree and generated files created for this run.
 
 ## 3. Review each candidate
 
