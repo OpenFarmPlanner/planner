@@ -4,7 +4,7 @@ Targeted culture-identity correctness audit of main
 `fb7ac141907baf26e1537f9f0d23ef2302d29163`, following #1145 / PR #1150.
 This is not a full application sweep, a security review, a PostgreSQL
 concurrency run or production validation. Older broad UI coverage remains in
-[the July coverage archive](qa-archive/qa-coverage-2026-07-27.md).
+[the July coverage archive](qa-coverage-2026-07-27.md).
 
 ## Outstanding full-sweep backlog
 
@@ -80,7 +80,7 @@ why catching the database exception alone cannot enforce logical identity.
   was reopened; no application fix or data repair was applied in this QA pass.
 
 Detailed reproduction and commands are in
-[the audit report](qa-archive/qa-report-2026-11-16.md).
+[the audit report](qa-report-2026-11-16.md).
 
 ## Targeted localhost companion history acceptance — 2026-11-20
 
@@ -190,7 +190,7 @@ sweep baseline or satisfy #1232; the outstanding backlog above remains.
   Credentials and database contents are not committed. No application changes,
   deployment, full test suite or owner acceptance checkbox changes were made.
 
-Durable findings for the library restore run: [QA report](qa-archive/qa-report-2026-11-20.md).
+Durable findings for the library restore run: [QA report](qa-report-2026-11-20.md).
 
 ## Targeted localhost companion-note acceptance — 2026-11-20
 
