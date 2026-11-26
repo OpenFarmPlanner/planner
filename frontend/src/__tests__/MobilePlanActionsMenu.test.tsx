@@ -106,6 +106,13 @@ describe('MobilePlanActionsMenu', () => {
       });
     });
 
+    it('leaves ordinary edit and duplicate actions out for individual bed placements', () => {
+      renderMenu({ plan: { ...row, placement_mode: 'individual_bed' } });
+      expect(screen.queryByRole('menuitem', { name: 'Bearbeiten' })).not.toBeInTheDocument();
+      expect(screen.queryByRole('menuitem', { name: 'Duplizieren' })).not.toBeInTheDocument();
+      expect(action('Anbauplan kopieren')).toBeInTheDocument();
+    });
+
     it('distinguishes duplicating from copying, which share an icon', () => {
       renderMenu();
       expect(action('Duplizieren')).not.toBe(action('Anbauplan kopieren'));

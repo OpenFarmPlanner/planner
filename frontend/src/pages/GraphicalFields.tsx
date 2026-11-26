@@ -1396,7 +1396,7 @@ export default function GraphicalFields({
                                 const fill = includesTasks(shownMode) ? taskColors?.fill : cropFill;
                                 const bed = bedsById.get(bedVm.id);
                                 return (
-                                  <Group key={bedVm.id} name="graphical-editable"
+                                  <Group key={bedVm.id} name="graphical-editable" data-testid={`bed-group-${bedVm.id}`}
                                     x={FIELD_INNER_OFFSET_X + bedVm.x} y={FIELD_INNER_OFFSET_Y + bedVm.y}
                                     {...getBedInteractionProps(
                                       bedVm, currentFieldRect, fieldUsableArea, bedRects, locationId, storedUsableArea,

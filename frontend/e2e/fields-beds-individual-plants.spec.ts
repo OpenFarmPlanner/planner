@@ -384,7 +384,9 @@ test('places annual beans in a mixed bed and moves the bed separately from parce
   ]);
   expect(saved.status()).toBe(201);
   const plan = await saved.json() as Plan;
-  expect(plan).toMatchObject({ bed: bed.id, parcel: null, plants_count: 2, placement_mode: 'individual_bed' });
+  expect(plan).toMatchObject({
+    crop: beans.id, bed: bed.id, parcel: null, plants_count: 2, placement_mode: 'individual_bed',
+  });
   const [first] = plan.individual_positions;
 
   await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();

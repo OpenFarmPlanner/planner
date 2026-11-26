@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Maximaal beschikbare oppervlakte overgenomen: {{area}}",
+    "maxAreaUnknown": "Vul een oppervlakte in. De exacte vrije oppervlakte is onbekend door individuele planten in het bed.",
     "remainingLimitTitle": "De opgegeven oppervlakte is groter dan de beschikbare resterende oppervlakte van dit bed.",
     "noRemainingTitle": "Voor dit bed is in de gekozen periode geen vrije oppervlakte beschikbaar.",
     "bedLimitTitle": "De opgegeven oppervlakte is groter dan dit bed.",

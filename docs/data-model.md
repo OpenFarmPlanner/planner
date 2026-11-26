@@ -324,7 +324,7 @@ erDiagram
     HarvestRecord ||--o{ HarvestAllocation : "quantity split"
     PlantingPlan ||--o{ HarvestAllocation : "assigned share"
     PlantingPlan ||--o{ CropLoss : "dated incident"
-    Bed ||--o{ PlantingPlan : "scheduled on"
+    Bed |o--o{ PlantingPlan : "area or individual placement"
     Field |o--o{ PlantingPlan : "direct individual placement"
     Season ||--o{ PlantingPlan : "scoped to (nullable)"
     PlantingPlan |o--o{ PlantingPlan : "copied from plan"
@@ -338,16 +338,20 @@ erDiagram
     PlantingPlan ||--o{ NoteAttachment : "photo notes"
 ```
 
-- **`PlantingPlan`** is the operational record for one crop or variety. It can
-  describe an area on a bed or individual plants directly on a parcel.
-  In the individual mode the `parcel` foreign key identifies the parent.
+- **`PlantingPlan`** is the operational record for one crop or variety.
+  The API exposes three placement modes. `area` describes an ordinary bed
+  allocation. `individual_bed` stores the parent in `bed` and sets the
+  `individual_bed` flag. `individual_parcel` stores the parent in `parcel`.
+  Both individual modes require a crop, a planting date and a single measured
+  parent at creation. A bed can hold both area allocations and individual plans.
   Each `individual_positions` entry has a stable UUID and two coordinates in
-  metres from the parcel's unrotated origin, to centimetre precision. A
-  position edit preserves the existing UUID. The plant count is the number
-  of confirmed stems and feeds the young-plant calculation and per-plant
-  seed rates. Estimated canopy diameter is a separate optional value in metres.
-  A project crop may supply the initial estimate, which can be overridden or
-  cleared on the plan. The canopy projection does not reserve bed capacity.
+  metres from the assigned bed or parcel's unrotated origin, to centimetre
+  precision. Position edits preserve the parent and existing stem UUIDs.
+  The confirmed stem count drives young-plant demand and per-plant seed and
+  yield calculations. Individual plans leave exclusive area unset. A confirmed
+  bed placement makes exact free area unknown while measured allocations still
+  count. Estimated canopy diameter is an optional value in metres. A project
+  crop may supply an initial estimate that growers can override or clear.
   Geometry edits use the plan's `updated_at` to reject a stale replacement.
   In the graphic's edit mode a saved stem is its own drag target above beds
   and parcels: dropping it saves that plan's positions at once, like a bed

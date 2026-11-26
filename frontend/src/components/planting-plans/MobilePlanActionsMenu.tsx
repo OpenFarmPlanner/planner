@@ -46,7 +46,7 @@ export function MobilePlanActionsMenu({
 }: MobilePlanActionsMenuProps) {
   const { t } = useTranslation(["plantingPlans", "common"]);
 
-  const canEditAreaPlan = row !== null && !row.carried_over && !isIndividualPlacement(row);
+  const showAreaPlanActions = row === null || (!row.carried_over && !isIndividualPlacement(row));
 
   return (
     <Menu
@@ -60,7 +60,7 @@ export function MobilePlanActionsMenu({
         icon={action.icon} disabled={Boolean(action.disabledReason)} disabledReason={action.disabledReason}
         onClick={() => { onClose(); action.activate(anchorEl); }} />)}
       {navigationActions.length > 0 && <Divider role="separator" />}
-      {canEditAreaPlan && <ContextMenuActionItem
+      {showAreaPlanActions && <ContextMenuActionItem
         label={t("common:actions.edit")}
         icon={<EditIcon fontSize="small" />}
         onClick={() => {
@@ -70,7 +70,7 @@ export function MobilePlanActionsMenu({
           onClose();
         }}
       />}
-      {canEditAreaPlan && <ContextMenuActionItem
+      {showAreaPlanActions && <ContextMenuActionItem
         label={t("common:actions.duplicate")}
         icon={<ContentCopyIcon fontSize="small" />}
         onClick={() => {

@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Área máxima disponível aplicada: {{area}}",
+    "maxAreaUnknown": "Introduza uma área. A área livre exata é desconhecida porque o canteiro contém plantas individuais.",
     "remainingLimitTitle": "A área indicada excede a área restante disponível neste canteiro.",
     "noRemainingTitle": "Não existe área livre neste canteiro durante o período selecionado.",
     "bedLimitTitle": "A área indicada excede a dimensão deste canteiro.",

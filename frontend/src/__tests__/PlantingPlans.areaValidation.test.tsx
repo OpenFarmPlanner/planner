@@ -1032,6 +1032,26 @@ describe("PlantingPlans save-time area validation", () => {
     await expectMaxAreaApplied();
   });
 
+  it("asks for an explicit area when individual plants make max unknown", async () => {
+    mockRemainingAreaScenario();
+    apiMocks.remainingArea.mockResolvedValue({
+      data: {
+        bed_id: 101, bed_area_sqm: 7, has_bed_area: true, area_capacity_known: false,
+        overlapping_used_area_sqm: 4, remaining_area_sqm: null, unallocated_measured_area_sqm: 3,
+      },
+    });
+    mockGridRowState.row = {
+      id: 1, bed: 101, crop: 2, planting_date: "2026-04-10", harvest_date: "2026-05-10", area_m2: "max",
+    };
+    render(<MemoryRouter><PlantingPlans /></MemoryRouter>);
+    await waitForPlansToLoad();
+    await userEvent.click(await screen.findByRole("button", { name: "Zeile speichern" }));
+
+    expect(await screen.findByText(/Gib eine Fläche ein.*Restfläche unbekannt/)).toBeInTheDocument();
+    expect(commandApiSpies.saveAttemptResult).toHaveBeenLastCalledWith(false);
+    expect(commandApiSpies.setDraftValues).not.toHaveBeenCalled();
+  });
+
   it("applies the remaining area for trimmed uppercase max input", async () => {
     mockRemainingAreaScenario();
     mockGridRowState.row = {

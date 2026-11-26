@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Maximum available area applied: {{area}}",
+    "maxAreaUnknown": "Enter an area. The exact free area is unknown because the bed contains individual plants.",
     "remainingLimitTitle": "The specified area exceeds this bed's available remaining area.",
     "noRemainingTitle": "No free area is available for this bed in the selected period.",
     "bedLimitTitle": "The specified area exceeds this bed's size.",

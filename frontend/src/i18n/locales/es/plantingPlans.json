@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Superficie máxima disponible aplicada: {{area}}",
+    "maxAreaUnknown": "Introduce una superficie. La superficie libre exacta se desconoce porque hay plantas individuales en el bancal.",
     "remainingLimitTitle": "La superficie indicada supera la superficie restante disponible de este bancal.",
     "noRemainingTitle": "No hay superficie libre disponible en este bancal durante el periodo seleccionado.",
     "bedLimitTitle": "La superficie indicada supera el tamaño de este bancal.",

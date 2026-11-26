@@ -499,10 +499,15 @@ actual-date rules and plan history from
   A perennial copy also needs a valid planting date and effective productive
   lifespan. A legacy perennial that cannot be copied is counted separately.
   A continuing individual planting retains its original plan and stem IDs.
-  A copy of an ended planting creates new stem IDs at the same coordinates
-  on the original parcel. Parcel rotation only remaps bed assignments.
-  The crop calendar lists individual plantings under their own parcel row
-  and shows their recurring harvest windows. Bed capacity uses bed plans.
+  A copy of an ended individual planting creates new stem IDs at the same
+  coordinates relative to its parent. Parcel-direct plans stay on their original
+  parcel. Rotated bed placements keep their offsets on the mapped bed when the
+  destination can contain them. An incompatible destination blocks the rotation
+  in preview. Copying without rotation retains the source bed. When resolving
+  crop rotation conflicts by copying without a bed, individual bed plans with a
+  conflict are skipped. The crop calendar groups individual plantings by their
+  assigned bed or parcel and shows their recurring harvest windows. A bed with
+  active individual positions has unknown exact free area.
 - `planting_date`, `harvest_date` and `harvest_end_date`
   (`PLANTING_PLAN_SHIFTED_DATE_FIELDS`) are shifted by a **whole number of
   years, chosen per plan** so the `planting_date` keeps its month and day but

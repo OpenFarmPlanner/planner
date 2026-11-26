@@ -2915,7 +2915,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             }
             const maxKeyword = t("plantingPlans:placeholders.maxKeyword");
             if (isAutoAreaRequest(row.area_m2, maxKeyword)) {
-              if (capacity.areaCapacityKnown && capacity.availableArea > 0) {
+              if (!capacity.areaCapacityKnown) {
+                setAreaNotice({ severity: "warning", message: t("plantingPlans:areaValidation.maxAreaUnknown") });
+                return false;
+              }
+              if (capacity.availableArea > 0) {
                 setAreaNotice({
                   severity: "info",
                   message: t("plantingPlans:areaValidation.maxAreaApplied", { area: formatAreaM2(capacity.availableArea, numberLocale) }),

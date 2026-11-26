@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Superficie massima disponibile applicata: {{area}}",
+    "maxAreaUnknown": "Inserisci una superficie. La superficie libera esatta è sconosciuta perché l’aiuola contiene piante singole.",
     "remainingLimitTitle": "La superficie indicata supera quella rimanente disponibile in questa aiuola.",
     "noRemainingTitle": "Non c'è superficie libera per questa aiuola nel periodo selezionato.",
     "bedLimitTitle": "La superficie indicata supera le dimensioni di questa aiuola.",
