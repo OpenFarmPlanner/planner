@@ -236,7 +236,7 @@ for (const bedCount of [4, 30]) {
 }
 
 test('growing-area columns fit when there is room and preserve a manual width', async ({ page, request }) => {
-  await page.setViewportSize({ width: 1585, height: 900 });
+  await page.setViewportSize({ width: 1920, height: 900 });
   await loginWithDeterministicProject(page, request, 'scrollbar-hierarchy-column-fit', {
     loginAsAdmin: true, demoProject: true, demoYear: 2026,
   });
@@ -255,6 +255,7 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   };
 
   await expect(grid.getByText('Gründüngung Reserve', { exact: true })).toBeVisible();
+  await expect(page.locator('.MuiDataGrid-root')).toHaveAttribute('aria-busy', 'false');
   await expect(horizontal).toBeHidden();
   await setSiteColumns(true);
   await expect(header('irrigation')).toBeVisible();
@@ -262,7 +263,7 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   const irrigationLabel = header('irrigation').locator('.MuiDataGrid-columnHeaderTitle');
   await expect.poll(() => irrigationLabel.evaluate(el => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
 
-  await page.setViewportSize({ width: 1350, height: 900 });
+  await page.setViewportSize({ width: 1440, height: 900 });
   await expect(horizontal).toBeVisible();
   const scroller = grid.locator('.MuiDataGrid-virtualScroller');
   await scroller.evaluate(el => { el.scrollLeft = el.scrollWidth; });
@@ -275,7 +276,7 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   await expect(horizontal).toBeHidden();
   await setSiteColumns(true);
   await expect(horizontal).toBeVisible();
-  await page.setViewportSize({ width: 1585, height: 900 });
+  await page.setViewportSize({ width: 1920, height: 900 });
   await expect(horizontal).toBeHidden();
 
   const nameHeader = header('name');
@@ -314,7 +315,7 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   await page.keyboard.press('Escape');
   await expect(bedDetails).toBeHidden();
 
-  await page.setViewportSize({ width: 1800, height: 900 });
+  await page.setViewportSize({ width: 1920, height: 900 });
   await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
   await expect(horizontal).toBeVisible();
   await setSiteColumns(false);
