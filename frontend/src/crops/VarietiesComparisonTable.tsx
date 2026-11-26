@@ -109,10 +109,19 @@ export function VarietiesComparisonTable({
   const visibleFields = new Set(['variety', ...varyingFields.map(field => field.id)]);
   const visibleColumns = sizing.columns.filter(column => visibleFields.has(column.field));
   const tableWidth = visibleColumns.reduce((sum, column) => sum + column.width, showNoDifferencesNotice ? NOTICE_WIDTH : 0);
+  const nameCellSx = {
+    ...stickyNameCellSx,
+    // A very wide saved or fitted name must leave room to reach later columns.
+    [`@container (width < ${visibleColumns[0].width + 72}px)`]: { position: 'relative' },
+  } as const;
 
   return (
     <TableSurface sizingMode="fullWorkspace">
-      <TableContainer data-testid="varieties-comparison-table" sx={{ '& .MuiTableCell-body': { px: 1.25 } }}>
+      <TableContainer
+        data-testid="varieties-comparison-table"
+        style={{ width: `min(100%, ${tableWidth}px)` }}
+        sx={{ containerType: 'inline-size', '& .MuiTableCell-body': { px: 1.25 } }}
+      >
         <Table size="small" style={{ width: tableWidth, tableLayout: 'fixed' }}>
           <colgroup>
             {visibleColumns.map(column => <col key={column.field} style={{ width: column.width }} />)}
@@ -125,7 +134,7 @@ export function VarietiesComparisonTable({
                   key={column.field}
                   scope="col"
                   data-field={column.field}
-                  sx={[{ position: 'relative', pl: 1.25, pr: 3 }, column.field === 'variety' && stickyNameCellSx]}
+                  sx={[{ position: 'relative', pl: 1.25, pr: 3 }, column.field === 'variety' && nameCellSx]}
                 >
                   <TruncatedTextWithTooltip text={column.headerName ?? column.field} />
                   <TableColumnDivider
@@ -164,7 +173,7 @@ export function VarietiesComparisonTable({
                   },
                 })}
               >
-                <TableCell sx={stickyNameCellSx}>
+                <TableCell sx={nameCellSx}>
                   <TruncatedTextWithTooltip
                     text={label}
                     sx={{

@@ -1189,7 +1189,8 @@ Drag a divider to set a width or double-click it to fit that column to its full
 loaded content and heading. Manual widths and explicit auto-fit may exceed
 the automatic limit. **Auto-fit column width** is also available in each
 resizable grid column's header menu. In the varieties comparison, focus the
-divider and press Enter to auto-fit or an arrow key to resize.
+divider and press Enter to auto-fit or an arrow key to resize. The variety
+name stays pinned while there is enough room to reach the other columns.
 
 Widths are stored by stable field ID under
 `tableColumnWidths.<user>.<project>.<table>`, independently of column

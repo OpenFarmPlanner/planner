@@ -88,6 +88,7 @@ test('growing areas use their own persisted width and support menu auto-fit', as
 
   await page.reload();
   await expect.poll(() => width(name)).toBe(wide);
+  await expect(gridRoot(page)).toHaveAttribute('aria-busy', 'false');
   await name.hover();
   await name.locator('.MuiDataGrid-menuIconButton').click();
   await page.getByRole('menuitem', { name: 'Spaltenbreite automatisch anpassen' }).click();
@@ -196,6 +197,12 @@ test('variety comparison sizes only the selected column and keeps overflow insid
     await table.scrollIntoViewIfNeeded();
     if (viewport.width === 375) {
       await expect.poll(() => table.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(100);
+      await table.evaluate(node => { node.scrollLeft = node.scrollWidth; });
+      await expect.poll(() => other.evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('th')?.getAttribute('data-field');
+      })).toBe('growthDurationDays');
+      await table.evaluate(node => { node.scrollLeft = 0; });
     }
     await expectNoHorizontalPageOverflow(page);
     await page.screenshot({ path: testInfo.outputPath(`varieties-width-${viewport.key}.png`) });
