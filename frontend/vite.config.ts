@@ -185,6 +185,8 @@ export default defineConfig({
     pwaHeadTagsPlugin(),
   ],
   optimizeDeps: {
+    // Scan only the app entry; spikes/ carry their own dependencies.
+    entries: ['index.html'],
     include: ['tiptap-markdown'],
   },
   resolve: {
