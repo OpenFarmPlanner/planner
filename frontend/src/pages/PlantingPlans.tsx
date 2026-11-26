@@ -2581,7 +2581,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                     </Typography>;
                   })}
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.areaM2")}:</strong> {getDisplayArea(item)}</Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.plantsCount")}:</strong> {typeof item.plants_count === "number" ? `≈ ${Math.round(item.plants_count)}` : "—"}</Typography>
+                  <Typography variant="body2">
+                    <strong>{t("plantingPlans:columns.plantsCount")}:</strong>{' '}
+                    {typeof item.plants_count === "number"
+                      ? `${isIndividualPlacement(item) ? '' : '≈ '}${formatLocalizedNumber(Math.round(item.plants_count), numberLocale)}`
+                      : "—"}
+                  </Typography>
                   <Typography variant="body2"><strong>{t("common:fields.notes")}:</strong> {item.notes?.trim() ? item.notes : "—"}</Typography>
                 </Stack>
               )}

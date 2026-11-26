@@ -369,7 +369,10 @@ test('places annual beans in a mixed bed and moves the bed separately from parce
   const point = (left: number, top: number) => ({
     x: box.x + box.width * left, y: box.y + box.height * top,
   });
-  for (const position of [point(0.35, 0.32), point(0.72, 0.65)]) await page.mouse.click(position.x, position.y);
+  for (const position of [point(0.35, 0.32), point(0.72, 0.65)]) {
+    await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, position)).toBe('CANVAS');
+    await page.mouse.click(position.x, position.y);
+  }
   await expect(panel.getByText('2 Einzelpflanzen', { exact: true })).toBeVisible();
   await dragScreen(page, point(0.2, 0.6), { x: 35, y: 16 });
   await expect(panel.getByText('2 Einzelpflanzen', { exact: true })).toBeVisible();
