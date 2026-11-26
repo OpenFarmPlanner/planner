@@ -10,6 +10,7 @@ from fractions import Fraction
 from hashlib import sha256
 
 from farm.models import Bed, PlantingPlan, Season
+from farm.planning.individual_planting import positions_fit_parent
 from farm.services.bed_capacity import (
     BedOccupancy,
     HarvestOverlapIndex,
@@ -254,6 +255,14 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops, excluded=frozense
         if source.pk in excluded:
             rotated.append((source, rotated_plan))
             continue
+        if source.individual_bed:
+            if not positions_fit_parent(target_bed, source.individual_positions):
+                issues.append({
+                    'code': 'bed_placement_incompatible', 'bed': target_bed.name,
+                    'source_bed': source_bed.name,
+                })
+            rotated.append((source, rotated_plan))
+            continue
         if not source_bed.area_sqm or not target_bed.area_sqm:
             issues.append(
                 {'code': 'missing_bed_area', 'bed': target_bed.name, 'source_bed': source_bed.name}
@@ -382,8 +391,11 @@ def preview_parcel_rotation(
             (a.pk, b.bed_id, b.area_usage_sqm, plan_event_dates(b, crop_index)) for a, b in rotated
         ],
         'individual_copies': [
-            (a.pk, a.parcel_id, a.individual_positions, a.estimated_canopy_diameter_m)
-            for a, _ in rotated if a.parcel_id is not None
+            (
+                a.pk, a.placement_mode, b.bed_id, a.parcel_id, a.individual_positions,
+                a.estimated_canopy_diameter_m,
+            )
+            for a, b in rotated if a.is_individual
         ],
         'crop_rotation': crop_rotation,
     }

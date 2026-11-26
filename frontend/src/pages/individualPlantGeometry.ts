@@ -1,7 +1,23 @@
-import type { Field, StemCoordinates } from '../api/types';
+import type { Field, PlantingPlan, StemCoordinates } from '../api/types';
 import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
 
-export function parcelMeters(field: Pick<Field, 'width_m' | 'length_m'>) {
+export type PlacementDimensions = Pick<Field, 'width_m' | 'length_m'>;
+export type PlacementParent = { kind: 'field' | 'bed'; id: number };
+
+export function isIndividualPlacement(plan: Pick<PlantingPlan, 'placement_mode' | 'parcel'>): boolean {
+  return plan.placement_mode === 'individual_bed' || plan.parcel != null;
+}
+
+export function planPlacementParent(plan: PlantingPlan): PlacementParent | null {
+  if (plan.placement_mode === 'individual_bed' && plan.bed != null) return { kind: 'bed', id: plan.bed };
+  return plan.parcel == null ? null : { kind: 'field', id: plan.parcel };
+}
+
+export function matchesPlacementParent(a: PlacementParent | null | undefined, b: PlacementParent) {
+  return a?.kind === b.kind && a.id === b.id;
+}
+
+export function parcelMeters(field: PlacementDimensions) {
   const width = field.width_m ?? 0;
   const height = field.length_m ?? 0;
   return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0
@@ -9,7 +25,7 @@ export function parcelMeters(field: Pick<Field, 'width_m' | 'length_m'>) {
 }
 
 export function stemToCanvas(
-  stem: StemCoordinates, field: Field, surface: Rect, rotation: GraphicalRotation,
+  stem: StemCoordinates, field: PlacementDimensions, surface: Rect, rotation: GraphicalRotation,
 ): Position | null {
   const dimensions = parcelMeters(field);
   if (!dimensions) return null;
@@ -24,7 +40,7 @@ export function roundMeters(value: number): number {
 }
 
 export function canvasToStem(
-  point: Position, field: Field, surface: Rect, rotation: GraphicalRotation,
+  point: Position, field: PlacementDimensions, surface: Rect, rotation: GraphicalRotation,
 ): StemCoordinates | null {
   const dimensions = parcelMeters(field);
   if (!dimensions || !surface.width || !surface.height) return null;
@@ -38,17 +54,21 @@ export function canvasToStem(
 }
 
 export function shortStemSpacing(stems: readonly StemCoordinates[], recommended: number | null) {
-  const result = { pairs: 0, closest: null as number | null };
-  if (!recommended) return result;
+  if (!recommended) return { pairs: 0, closest: null };
+  const threshold = recommended * recommended;
+  let pairs = 0;
+  let closestSquared = threshold;
   stems.forEach((stem, index) => {
     for (let previous = 0; previous < index; previous += 1) {
       const peer = stems[previous];
-      const distance = Math.hypot(stem.x_m - peer.x_m, stem.y_m - peer.y_m);
-      if (distance < recommended) {
-        result.pairs += 1;
-        result.closest = Math.min(result.closest ?? distance, distance);
+      const dx = stem.x_m - peer.x_m;
+      const dy = stem.y_m - peer.y_m;
+      const squared = dx * dx + dy * dy;
+      if (squared < threshold) {
+        pairs += 1;
+        closestSquared = Math.min(closestSquared, squared);
       }
     }
   });
-  return result;
+  return { pairs, closest: pairs > 0 ? Math.sqrt(closestSquared) : null };
 }

@@ -780,23 +780,27 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             '/openfarmplanner/api/planting-plans/', 14, expected_rows=2 * ROW_COUNT,
         )
 
-    def test_individual_plant_plans_load_without_per_plan_parcel_queries(self):
+    def test_individual_plans_use_joined_bed_and_parcel_ancestry(self):
         url = f'/openfarmplanner/api/planting-plans/?individual_location={self.location.pk}'
         for index in range(ROW_COUNT):
-            plan = PlantingPlan.objects.create(
-                project=self.project, crop=self.crops[index], parcel=self.field,
-                season=self.seasons[index], planting_date=date(2027, 4, 1),
-            )
+            shared = {
+                'project': self.project, 'crop': self.crops[index], 'season': self.seasons[index],
+                'planting_date': date(2027, 4, 1),
+            }
+            PlantingPlan.objects.create(parcel=self.field, **shared)
+            PlantingPlan.objects.create(bed=self.bed, individual_bed=True, **shared)
             if index == 0:
                 with CaptureQueriesContext(connection) as baseline:
                     response = self.client.get(url)
-                self.assertEqual(response.data['results'][0]['id'], plan.id)
+                self.assertEqual(response.data['count'], 2)
         with self.assertNumQueries(len(baseline)):
             response = self.client.get(url)
-        self.assertEqual(response.data['count'], ROW_COUNT)
-        for plan in response.data['results']:
-            self.assertEqual(plan['parcel_location_id'], self.location.pk)
-            self.assertEqual(plan['parcel_name'], self.field.name)
+        self.assertEqual(response.data['count'], 2 * ROW_COUNT)
+        self.assertEqual(
+            {(plan['placement_mode'], plan['parcel_location_id'])
+             for plan in response.data['results']},
+            {('individual_parcel', self.location.pk), ('individual_bed', self.location.pk)},
+        )
 
     def test_planting_plans_list_query_count_with_carried_over_plans(self):
         """Carried-over plans resolve their origin season label from the joined

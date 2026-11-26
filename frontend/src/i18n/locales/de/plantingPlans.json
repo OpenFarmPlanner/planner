@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Maximal verfügbare Fläche übernommen: {{area}}",
+    "maxAreaUnknown": "Gib eine Fläche ein. Wegen der Einzelpflanzen im Beet ist die genaue Restfläche unbekannt.",
     "remainingLimitTitle": "Die angegebene Fläche überschreitet die verfügbare Restfläche dieses Beets.",
     "noRemainingTitle": "Für dieses Beet ist im gewählten Zeitraum keine freie Fläche verfügbar.",
     "bedLimitTitle": "Die angegebene Fläche überschreitet die Größe dieses Beets.",
@@ -384,7 +385,8 @@
     "capacity": {
       "partial": "{{free}} von {{total}} m² frei im Zeitraum",
       "insufficient": "Nur {{free}} m² frei im Zeitraum ({{blockingCulture}} bis {{date}}), benötigt {{needed}} m²",
-      "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²"
+      "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²",
+      "unknownIndividual": "Freie Fläche unbekannt (Einzelpflanzen im Beet)"
     }
   },
   "harvestOverlap": {

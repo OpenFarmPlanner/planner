@@ -92,6 +92,7 @@ const backendMessageMap: Record<string, string> = {
   'crop does not belong to the active project.': 'errors.cropProjectMismatch',
   'crop_variety_conflict': 'crops:form.duplicateNameVariety',
   'individual_plant_lifecycle_conflict': 'crops:siteHealth.individualPlantLifecycleConflict',
+  'bed_contains_individual_positions': 'fields:individualPlants.bedDimensionsConflict',
   'parcel_contains_individual_positions': 'fields:individualPlants.dimensionsConflict',
   'season_copy_no_preceding_source': 'navigation:seasonSwitcher.copyDialog.noPrecedingSource',
   'season_copy_source_not_preceding': 'navigation:seasonSwitcher.copyDialog.sourceChanged',

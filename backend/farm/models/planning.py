@@ -18,7 +18,11 @@ from .structure import Bed, Field
 
 
 class PlantingPlan(TimestampedModel):
-    """A planting schedule for a bed area or individual plants on a parcel."""
+    """A planting schedule for a bed area or individual plants in a measured parent."""
+    PLACEMENT_AREA = 'area'
+    PLACEMENT_BED = 'individual_bed'
+    PLACEMENT_PARCEL = 'individual_parcel'
+    PLACEMENT_MODES = (PLACEMENT_AREA, PLACEMENT_BED, PLACEMENT_PARCEL)
     ACTUAL_DATE_FIELDS = frozenset({
         'actual_propagation_start_date', 'actual_sowing_date', 'actual_transplanting_date',
         'actual_harvest_start_date', 'recorded_harvest_end_date',
@@ -55,9 +59,11 @@ class PlantingPlan(TimestampedModel):
         null=True, blank=True,
         help_text='Direct parcel assignment for individual plants.',
     )
+    individual_bed = models.BooleanField(default=False)
     individual_positions = models.JSONField(
         default=list, blank=True,
-        help_text='Individual IDs and stem coordinates in metres relative to the parcel.',
+        help_text='Individual IDs and stem coordinates in metres relative to the assigned bed '
+                  'or parcel.',
     )
     estimated_canopy_diameter_m = models.DecimalField(
         max_digits=7, decimal_places=2, null=True, blank=True,
@@ -256,6 +262,24 @@ class PlantingPlan(TimestampedModel):
     def growing_area_assigned(self) -> bool:
         return self.bed_id is not None or self.parcel_id is not None
 
+    @staticmethod
+    def individual_placements() -> Q:
+        return Q(individual_bed=True) | Q(parcel__isnull=False)
+
+    @property
+    def is_individual(self) -> bool:
+        return self.individual_bed or self.parcel_id is not None
+
+    @property
+    def placement_mode(self) -> str:
+        if self.individual_bed:
+            return self.PLACEMENT_BED
+        return self.PLACEMENT_PARCEL if self.parcel_id is not None else self.PLACEMENT_AREA
+
+    @property
+    def placement_parent(self) -> Bed | Field | None:
+        return self.bed if self.individual_bed else self.parcel
+
     @property
     def growing_area_parcel(self) -> Field | None:
         if self.parcel_id is not None:
@@ -380,6 +404,13 @@ class PlantingPlan(TimestampedModel):
                     quantity__isnull=True,
                 ),
                 name='individual_plant_plan_has_crop_without_bed_area_or_quantity',
+            ),
+            models.CheckConstraint(
+                condition=Q(individual_bed=False) | Q(
+                    bed__isnull=False, parcel__isnull=True, crop__isnull=False,
+                    area_usage_sqm__isnull=True, quantity__isnull=True,
+                ),
+                name='individual_bed_plan_has_parent_crop_without_area_or_quantity',
             ),
         ]
         indexes = [

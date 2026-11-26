@@ -146,6 +146,7 @@ import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingE
 import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../components/planting-plans/MobilePlanActionsMenu";
 import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
 import { isPlantingPlanDetailPath, plantingPlanDetailPath, PLANTING_PLANS_PATH } from "../planting-plans/plantingPlanDetailRoutes";
+import { isIndividualPlacement } from "./individualPlantGeometry";
 import { individualPlantGraphicPath } from "../planting-plans/individualPlantRoutes";
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
@@ -1305,7 +1306,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         ),
         valueFormatter: (value, row) => {
           if (typeof value === "number" && !isNaN(value)) {
-            if ((row as PlantingPlanRow).parcel) return formatLocalizedNumber(value, numberLocale);
+            if (isIndividualPlacement(row as PlantingPlanRow)) return formatLocalizedNumber(value, numberLocale);
             return `≈ ${Math.round(value)}`;
           }
           return "—";
@@ -1616,7 +1617,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const getDisplayArea = (row: PlantingPlanRow): string => {
-    if (row.parcel) return "—";
+    if (isIndividualPlacement(row)) return "—";
     const explicitArea = toNumericValue(row.area_m2);
     if (explicitArea !== null) {
       return formatAreaM2(explicitArea, numberLocale);
@@ -1893,7 +1894,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         disabledReason: cropId ? undefined : t('plantingPlans:details.missingCrop'),
         activate: () => { if (cropId) void navigate(`/app/crops?cropId=${cropId}`); },
       },
-      ...(planId && row.parcel && row.parcel_location_id ? [{
+      ...(planId && isIndividualPlacement(row) && row.parcel_location_id ? [{
         id: 'plan-placement', label: t('fields:individualPlants.openGraphic'), icon: <GridViewOutlinedIcon fontSize="small" />,
         activate: () => { if (row.parcel_location_id) void navigate(individualPlantGraphicPath(planId, row.parcel_location_id)); },
       }] : [{
@@ -1912,7 +1913,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const getDerivedAreaFromRow = (row: PlantingPlanRow): number | null => {
-    if (row.parcel) return null;
+    if (isIndividualPlacement(row)) return null;
     const explicitArea = toNumericValue(row.area_m2);
     if (explicitArea !== null) {
       return explicitArea;
@@ -1973,6 +1974,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     bedArea: number;
     occupiedArea: number;
     availableArea: number;
+    areaCapacityKnown: boolean;
     successionLimit?: SuccessionLimit | null;
   } | null> => {
     const rowBedId = getPlanBedId(row);
@@ -1983,7 +1985,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     if (!plantingDate) {
       // Without a period only the bed's own size limits the area.
       const bedArea = toNumericValue(bedById.get(rowBedId)?.area_sqm);
-      return bedArea === null ? null : { bedArea, occupiedArea: 0, availableArea: bedArea };
+      return bedArea === null ? null : { bedArea, occupiedArea: 0, availableArea: bedArea, areaCapacityKnown: true };
     }
     const endDate = getPlanOccupancyEndIso(row);
     const harvestStartDate = toPlanIsoDate(row.harvest_date);
@@ -2006,7 +2008,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       return {
         bedArea: data.bed_area_sqm,
         occupiedArea: data.overlapping_used_area_sqm,
-        availableArea: data.remaining_area_sqm,
+        availableArea: data.unallocated_measured_area_sqm ?? data.remaining_area_sqm ?? 0,
+        areaCapacityKnown: data.area_capacity_known ?? true,
         successionLimit: data.succession_limit ?? null,
       };
     } catch (error) {
@@ -2035,7 +2038,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     row: PlantingPlanRow,
   ): Promise<Pick<PlantingPlanRow, "area_m2" | "plants_count"> | null> => {
     const capacity = await fetchCapacityForRow(row);
-    if (!capacity || capacity.availableArea <= 0) {
+    if (!capacity?.areaCapacityKnown || capacity.availableArea <= 0) {
       return null;
     }
 
@@ -2190,7 +2193,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   };
 
   const openMobileEditDialog = (row: PlantingPlanRow): void => {
-    if (row.carried_over || row.parcel) return;
+    if (row.carried_over || isIndividualPlacement(row)) return;
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(row.id);
@@ -2274,7 +2277,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   }, [isMobile, isPlansLoading, mobileRows, replacePlantingPlanSearchParams, searchParams]);
 
   const openMobileDuplicateDialog = (row: PlantingPlanRow): void => {
-    if (row.carried_over || row.parcel) return;
+    if (row.carried_over || isIndividualPlacement(row)) return;
     const derivedArea = getDerivedAreaFromRow(row);
     setMobileCreateError("");
     setMobileEditId(null);
@@ -2578,7 +2581,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                     </Typography>;
                   })}
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.areaM2")}:</strong> {getDisplayArea(item)}</Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.plantsCount")}:</strong> {typeof item.plants_count === "number" ? `≈ ${Math.round(item.plants_count)}` : "—"}</Typography>
+                  <Typography variant="body2">
+                    <strong>{t("plantingPlans:columns.plantsCount")}:</strong>{' '}
+                    {typeof item.plants_count === "number"
+                      ? `${isIndividualPlacement(item) ? '' : '≈ '}${formatLocalizedNumber(Math.round(item.plants_count), numberLocale)}`
+                      : "—"}
+                  </Typography>
                   <Typography variant="body2"><strong>{t("common:fields.notes")}:</strong> {item.notes?.trim() ? item.notes : "—"}</Typography>
                 </Stack>
               )}
@@ -2682,7 +2690,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
             isStandaloneEditCell={isActualDateEditor}
-            getCellReadOnlyReason={(row, field) => row.parcel && ['bed', 'area_m2', 'plants_count'].includes(field)
+            getCellReadOnlyReason={(row, field) => isIndividualPlacement(row) && ['bed', 'area_m2', 'plants_count'].includes(field)
               ? t('fields:individualPlants.editInGraphic') : getDateReadOnlyReason(row, field)}
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
@@ -2815,7 +2823,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               notes: row.notes || "",
               cultivation_type: row.cultivation_type ?? "",
             };
-            if (row.parcel) {
+            if (isIndividualPlacement(row)) {
               lastEditedFieldRef.current = null;
               return apiData;
             }
@@ -2900,12 +2908,17 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               // No area to check: skip the request entirely.
               return true;
             }
+            if (isIndividualPlacement(row)) return true;
             const capacity = await fetchCapacityForRow(row);
             if (!capacity) {
               return true;
             }
             const maxKeyword = t("plantingPlans:placeholders.maxKeyword");
             if (isAutoAreaRequest(row.area_m2, maxKeyword)) {
+              if (!capacity.areaCapacityKnown) {
+                setAreaNotice({ severity: "warning", message: t("plantingPlans:areaValidation.maxAreaUnknown") });
+                return false;
+              }
               if (capacity.availableArea > 0) {
                 setAreaNotice({
                   severity: "info",
@@ -2928,6 +2941,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 availableArea: capacity.availableArea,
                 bedArea: capacity.bedArea,
                 occupiedArea: capacity.occupiedArea,
+                areaCapacityKnown: capacity.areaCapacityKnown,
                 cropId: row.crop ?? undefined,
                 plantsCount: row.plants_count,
                 mode: "noRemainingArea",
@@ -2942,6 +2956,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 availableArea: capacity.availableArea,
                 bedArea: capacity.bedArea,
                 occupiedArea: capacity.occupiedArea,
+                areaCapacityKnown: capacity.areaCapacityKnown,
                 cropId: row.crop ?? undefined,
                 plantsCount: row.plants_count,
                 mode: "remainingLimit",
@@ -2956,6 +2971,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 availableArea: capacity.availableArea,
                 bedArea: capacity.bedArea,
                 occupiedArea: capacity.occupiedArea,
+                areaCapacityKnown: capacity.areaCapacityKnown,
                 cropId: row.crop ?? undefined,
                 plantsCount: row.plants_count,
                 mode: "bedLimit",
@@ -3001,7 +3017,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               color: "primary",
               onClick: () => handleCreatePlan(),
             },
-            ...(!row.carried_over && !row.parcel ? [{
+            ...(!row.carried_over && !isIndividualPlacement(row) ? [{
               id: "duplicate",
               label: t("common:actions.duplicate"),
               icon: <ContentCopyIcon fontSize="small" />,

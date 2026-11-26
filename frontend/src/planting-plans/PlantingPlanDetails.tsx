@@ -21,6 +21,7 @@ import { HarvestRecords } from '../harvests/HarvestRecords';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
+import { isIndividualPlacement } from "../pages/individualPlantGeometry";
 import { individualPlantGraphicPath } from './individualPlantRoutes';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
@@ -268,7 +269,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                 </Box>)}
               </Box>
             </DetailSection>}
-            {loadedPlan.parcel && loadedPlan.parcel_location_id && (
+            {isIndividualPlacement(loadedPlan) && loadedPlan.parcel_location_id && (
               <DetailSection title={t('fields:individualPlants.title')} outlined>
                 <Stack spacing={1} sx={{ alignItems: 'flex-start' }}>
                   <Typography>{t('fields:individualPlants.count', {

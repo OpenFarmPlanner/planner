@@ -2,8 +2,8 @@ import { useRef } from 'react';
 import { alpha, useTheme } from '@mui/material/styles';
 import { Circle, Ellipse, Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type { Field, StemCoordinates } from '../api/types';
-import { canvasToStem, stemToCanvas } from './individualPlantGeometry';
+import type { StemCoordinates } from '../api/types';
+import { canvasToStem, stemToCanvas, type PlacementDimensions } from './individualPlantGeometry';
 import type { GraphicalRotation, Position, Rect as CanvasRect } from './graphicalLayoutUtils';
 
 export interface CanvasStem extends StemCoordinates {
@@ -21,9 +21,10 @@ const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
 };
 
 export function GraphicalIndividualPlantsLayer({
-  field, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
+  field, surfaceId, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
 }: {
-  field: Field;
+  field: PlacementDimensions;
+  surfaceId: string;
   surface: CanvasRect;
   pixelsPerMeter: Position;
   rotation: GraphicalRotation;
@@ -66,12 +67,22 @@ export function GraphicalIndividualPlantsLayer({
     const position = pointer && canvasToStem(pointer, field, surface, rotation);
     if (position) onAdd(position);
   });
-  const touchMove = (event: KonvaEventObject<TouchEvent>) => {
-    if (event.evt.touches.length !== 1) press.current = null;
+  const move = (event: Press) => {
+    const current = event.target.getStage()?.getPointerPosition();
+    const start = press.current?.position;
+    if (('touches' in event.evt && event.evt.touches.length !== 1)
+      || (start && current && Math.hypot(current.x - start.x, current.y - start.y) > 8)) {
+      press.current = null;
+    }
   };
 
   return (
     <Group>
+      {placing && <Rect {...surface} name="individual-placement-surface" fill={alpha(theme.palette.primary.light, 0.08)}
+        stroke={theme.palette.primary.main} strokeWidth={2} strokeScaleEnabled={false} dash={[6, 4]}
+        data-testid={surfaceId}
+        onMouseDown={beginPress} onMouseMove={move} onTouchStart={beginPress} onTouchMove={move}
+        onClick={place} onTap={place} />}
       {stems.map(stem => {
         const point = stemToCanvas(stem, field, surface, rotation);
         if (!point) return null;
@@ -109,18 +120,13 @@ export function GraphicalIndividualPlantsLayer({
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
             onMouseDown={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
             onTouchStart={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
-            onTouchMove={touchMove}
+            onTouchMove={move}
             onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
             onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
             onClick={event => click(event, () => onSelect?.(stem))}
             onTap={event => click(event, () => onSelect?.(stem))} />
         </Group>;
       })}
-      {placing && <Rect {...surface} fill={alpha(theme.palette.primary.light, 0.08)}
-        stroke={theme.palette.primary.main} strokeWidth={2} strokeScaleEnabled={false} dash={[6, 4]}
-        data-testid={`individual-place-surface-${field.id}`}
-        onMouseDown={beginPress} onTouchStart={beginPress} onTouchMove={touchMove}
-        onClick={place} onTap={place} />}
     </Group>
   );
 }

@@ -85,6 +85,7 @@ interface OverlayProps {
   stageHeight: number;
   root: RefObject<HTMLDivElement | null>;
   openDetails: (object: GraphicalObject) => void;
+  onStartIndividualPlan?: (object: GraphicalObject) => void;
   onFocusObject: (rect: Rect) => void;
   bedTasks: ReturnType<typeof useBedTasks>;
   cropPreview?: CropPreviewData;
@@ -105,7 +106,7 @@ const isGraphicalMenu = (target: EventTarget | null) => target instanceof Elemen
   && Boolean(target.closest('[data-graphical-object-target], .konvajs-content'));
 
 export function GraphicalObjectOverlays({
-  interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onFocusObject,
+  interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onStartIndividualPlan, onFocusObject,
   bedTasks, cropPreview, hoverTaskData, seasonId, canComplete, showLocationLabel,
 }: OverlayProps) {
   const { t } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard']);
@@ -320,6 +321,10 @@ export function GraphicalObjectOverlays({
             )}
             <Button size="small" onClick={() => openDetails(selection)}
               sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{detailsLabel}</Button>
+            {onStartIndividualPlan && selection.type !== 'location' && (
+              <Button size="small" onClick={() => onStartIndividualPlan(selection)}
+                sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.newPlan')}</Button>
+            )}
           </Stack>
         </Paper>
       )}

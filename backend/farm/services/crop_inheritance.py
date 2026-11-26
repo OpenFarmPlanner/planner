@@ -730,7 +730,7 @@ def resolve_crop_field(
 
 
 def validate_individual_plan_lifecycles(previous: dict, current: dict) -> None:
-    """Protect direct plans while crops are edited or archived."""
+    """Protect existing perennial placements while crops are edited or archived."""
     project_id = current['project_id']
     general_species = {
         row['crop_species_id'] for row in (previous, current)
@@ -740,8 +740,9 @@ def validate_individual_plan_lifecycles(previous: dict, current: dict) -> None:
     # the same batch. Its lifecycle continues to depend on the active parent.
     affected = Crop.all_objects.filter(
         Q(pk=current['id']) | Q(crop_species_id__in=general_species, life_cycle=''),
+        Q(planting_plans__parcel__isnull=False) | Q(planting_plans__individual_bed=True),
         project_id=project_id, planting_plans__project_id=project_id,
-        planting_plans__parcel__isnull=False,
+        planting_plans__clearing_date__isnull=False,
     ).distinct()
     crops = list(affected)
     if crops:
