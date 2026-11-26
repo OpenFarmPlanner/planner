@@ -20,7 +20,8 @@ half — adding cards for work finished since the last refresh.
 2. For every unchecked row without a `PR #N` gate, check live state with
    `gh api repos/OpenFarmPlanner/planner/issues/<n>` using `state` and
    `state_reason`. Check implementation PRs and merge commits using
-   `closedByPullRequestsReferences` via `gh api graphql`.
+   `closedByPullRequestsReferences` with `includeClosedPrs: true` via
+   `gh api graphql`. Follow pagination before deciding a candidate is eligible.
 3. Keep closed, completed issues that have no card in `.qa-review/results.json`.
    A closed issue without a recorded closing PR is still a candidate. Check
    the owner-authorized issue history, PR links and `origin/main` history to
@@ -29,10 +30,17 @@ half — adding cards for work finished since the last refresh.
    and that no implementation PR remains open or was closed unmerged. Report
    unresolved implementation evidence as blocked and continue with the other
    candidates.
-4. Exclude discovery/RFC-only rows (doc-only PRs, no app behavior — check the
+4. Reconcile existing cards listed in the manifest with the live queue and
+   GitHub state. Recheck implementation evidence when requested and refresh a
+   card's tests and screenshots if its verified implementation changed. For a
+   metadata-only update, update the queue row, position and manual test hint.
+   Archive a card that is now absent, checked, reopened or otherwise ineligible
+   only after verifying the current state. Without a manifest, compare existing
+   cards against those same states when inspecting the live queue.
+5. Exclude discovery/RFC-only rows (doc-only PRs, no app behavior — check the
    PR's changed files) the same way the existing `results.json` `exclusions`
    field already tracks them.
-5. List what you found before testing anything, the same way the sync skill
+6. List what you found before testing anything, the same way the sync skill
    previews before writing.
 
 ## 2. Prepare the environment
@@ -59,8 +67,10 @@ the checked-out tree as arguments.
 1. Run the relevant backend tests from the test checkout root with
    `(cd backend && pdm run test --no-cov <paths-relative-to-backend>)`.
    Run frontend tests with `(cd frontend && npx vitest run <paths-relative-to-frontend>)`
-   and browser specs with `(cd frontend && npx playwright test <specs-relative-to-frontend>)`.
-   Playwright manages its own production-preview webserver.
+   and browser specs with `(cd frontend && npm run test:e2e -- <specs-relative-to-frontend>)`.
+   The script builds the production bundle before Playwright starts its preview
+   server. Use free `FRONTEND_PORT` and `BACKEND_PORT` values if the defaults
+   are occupied, with separate synthetic test data.
 2. If a test fails, verify it is real before reporting it as one:
    - Rerun once or twice for determinism.
    - Rule out environment contamination: a reused dev backend
@@ -103,10 +113,15 @@ and their reasons in `problems`.
 
 Before writing:
 - Archive the current `results.json`/`decisions.json` under
-  `.qa-review/archive/pre-refresh-<id>-<date>/` (new cards only add rows; this
-  preserves the pre-refresh snapshot, consistent with sync's archival rule).
-- Append to the existing `issues` array; never overwrite other cards. New
-  cards get no `decisions.json` entry (defaults to "Review later").
+  `.qa-review/archive/pre-refresh-<id>-<date>/`, consistent with sync's
+  archival rule. Re-read the latest cards and decision revisions before
+  applying the refresh. Keep changes made in the dashboard since the manifest.
+- Add each verified new card once and apply verified updates to its existing
+  card by issue number. Preserve decisions for metadata-only edits. When the
+  implementation changed, archive its old evidence and decision and start the
+  updated card at "Review later". Use the workspace's existing archive layout
+  for ineligible cards and preserve their screenshots and decisions there.
+  New cards get no `decisions.json` entry (defaults to "Review later").
 
 After writing:
 - Rebuild `report.md`/`sync-preview.json` via the dashboard's own `build()`
