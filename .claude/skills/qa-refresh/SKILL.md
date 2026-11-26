@@ -18,9 +18,9 @@ half — adding cards for work finished since the last refresh.
    live queue #1058 rows via `node scripts/ci/agent_task_context.cjs 1058` from
    the trusted main checkout.
 2. For every unchecked row without a `PR #N` gate, check live state with
-   `gh issue view <n> --json state,stateReason` and check the implementation
-   PRs and merge commits using `closedByPullRequestsReferences` via
-   `gh api graphql`.
+   `gh api repos/OpenFarmPlanner/planner/issues/<n>` using `state` and
+   `state_reason`. Check implementation PRs and merge commits using
+   `closedByPullRequestsReferences` via `gh api graphql`.
 3. Keep closed, completed issues that have no card in `.qa-review/results.json`.
    A closed issue without a recorded closing PR is still a candidate. Check
    the owner-authorized issue history, PR links and `origin/main` history to
