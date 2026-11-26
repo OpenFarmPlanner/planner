@@ -139,7 +139,7 @@ describe('hierarchy components and behaviors', () => {
     expect(nameColumn).not.toHaveProperty('flex');
     expect(areaColumn?.width).toBe(120);
     expect(notesColumn?.width).toBe(220);
-    expect(notesColumn?.minWidth).toBe(136);
+    expect(notesColumn?.minWidth).toBe(108);
     expect(notesColumn?.flex).toBe(1);
     expect(notesColumn).not.toHaveProperty('maxWidth');
 

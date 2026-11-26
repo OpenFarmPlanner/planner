@@ -528,7 +528,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         keep their own mb spacing for when they do render something.
       */}
       <Box>
-      <PageContainer variant="standard">
+      <PageContainer variant={effectiveViewMode === 'graphical' ? 'standard' : 'workspacePage'}>
         {globalActionError ? (
           <Alert severity="error" sx={{ mb: 2 }}>
             {globalActionError}
@@ -615,7 +615,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           />
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && effectiveViewMode !== 'graphical' ? (
-          <PageContainer variant="standard">{isMobileHierarchyLayout ? (
+          <PageContainer variant="workspacePage">{isMobileHierarchyLayout ? (
             <FieldsBedsHierarchyMobile
               showTitle={false}
               createFieldRequest={createFieldRequest}
