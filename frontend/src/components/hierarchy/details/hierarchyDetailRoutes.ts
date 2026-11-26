@@ -16,6 +16,7 @@ export function getEntityDetailPath(type: HierarchyEntityType, id: number): stri
 }
 
 export function getHierarchyDetailPath(row: HierarchyRow): string | null {
+  if (row.type === 'individualPlan') return null;
   const id = row.type === 'location' ? row.locationId : row.type === 'field' ? row.fieldId : row.bedId;
   return typeof id === 'number' && id > 0 ? getEntityDetailPath(row.type, id) : null;
 }

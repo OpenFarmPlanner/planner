@@ -6,6 +6,7 @@ import { resolveLocaleFromLanguage } from "../../../utils/numberLocalization";
 import { buildHierarchySecondaryLine } from "./hierarchyMobileFormatting";
 import type { MobileHierarchyRow } from "../hooks/useMobileHierarchyRows";
 import { ParcelRotationBadge } from "../rotation/ParcelRotationGroupsDialog";
+import { IndividualPlantIcon } from '../../../planting-plans/individualPlantActions';
 
 /** Indentation, in theme spacing units, applied per hierarchy level. */
 export const INDENT_UNIT = 2;
@@ -16,7 +17,7 @@ interface HierarchyMobileListProps {
   rows: MobileHierarchyRow[];
   expandedRows: Set<string | number>;
   onToggleExpand: (id: string | number) => void;
-  onOpenRow: (row: MobileHierarchyRow) => void;
+  onOpenRow: (row: MobileHierarchyRow, anchor: HTMLButtonElement) => void;
   openRowId: string | number | null;
 }
 
@@ -76,7 +77,11 @@ export function HierarchyMobileList({
               <Box
                 component="button"
                 type="button"
-                onClick={() => onOpenRow(row)}
+                onClick={(event) => onOpenRow(row, event.currentTarget)}
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  onOpenRow(row, event.currentTarget);
+                }}
                 sx={{
                   flex: 1,
                   minWidth: 0,
@@ -98,6 +103,8 @@ export function HierarchyMobileList({
                 }}
               >
                 <Box sx={{ display: "block" }}>
+                  {row.type === 'individualPlan' && <IndividualPlantIcon fontSize="small"
+                    titleAccess={t('fields:individualPlants.title')} sx={{ verticalAlign: 'middle', mr: 0.5, color: 'text.secondary' }} />}
                   <Typography
                     component="span"
                     variant="body1"

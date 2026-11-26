@@ -14,7 +14,7 @@ import type {
 export interface HierarchyRow {
   id: string | number;
   [key: string]: unknown;
-  type: 'location' | 'field' | 'bed';
+  type: 'location' | 'field' | 'bed' | 'individualPlan';
   level: number;
   expanded?: boolean;
   hasChildren?: boolean;
@@ -39,5 +39,7 @@ export interface HierarchyRow {
   locationId?: number;
   fieldId?: number;
   bedId?: number;
+  plantingPlanId?: number;
+  individualPlantCount?: number;
   isNew?: boolean;
 }

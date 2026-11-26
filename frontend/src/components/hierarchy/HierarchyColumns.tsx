@@ -33,6 +33,7 @@ import { HierarchyLevelButtons } from './HierarchyLevelToggle';
 import { FullCellTooltip, FULL_CELL_TOOLTIP_CELL_CLASS } from '../data-grid/FullCellTooltip';
 import { dataGridHeaderLabelSx } from '../data-grid/dataGridHeaderLabelSx';
 import { widthForHeaderTitles } from '../data-grid/columnHeaderWidth';
+import { INDIVIDUAL_PLANT_COUNT_FIELD } from './utils/individualHierarchyRows';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale } from '../../utils/numberLocalization';
 import { bedDimensionInputFormat } from './utils/bedDimensions';
 
@@ -181,7 +182,8 @@ const renderDimensionCell = (
   );
 };
 
-const renderCalculatedValueCell = (params: GridRenderCellParams<HierarchyRow>): ReactElement => {
+const renderCalculatedValueCell = (params: GridRenderCellParams<HierarchyRow>): ReactElement | null => {
+  if (params.row.type === 'individualPlan') return null;
   const displayValue = params.formattedValue ?? params.value;
   const hasDisplayValue = displayValue !== null && displayValue !== undefined && String(displayValue).trim() !== '';
 
@@ -347,6 +349,14 @@ export function createHierarchyColumns(
       renderCell: renderCalculatedValueCell,
     },
     {
+      field: INDIVIDUAL_PLANT_COUNT_FIELD,
+      headerName: t('fields:individualPlants.title'),
+      type: 'number',
+      width: widthForHeaderTitles([t('fields:individualPlants.title')], { baseWidth: 128, allowance: 30, maxWidth: 240 }),
+      sortable: false,
+      editable: false,
+    },
+    {
       field: 'notes',
       headerName: t('common:fields.notes'),
       width: widths.notes,
@@ -355,6 +365,7 @@ export function createHierarchyColumns(
       editable: false,
       cellClassName: () => getNotesCellClassName(),
       renderCell: (params) => {
+        if (params.row.type === 'individualPlan') return null;
         const value = (params.value as string) || '';
         const hasValue = value.trim().length > 0;
         const excerpt = hasValue ? getPlainExcerpt(value, 120) : '';

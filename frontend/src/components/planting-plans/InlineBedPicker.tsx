@@ -20,6 +20,17 @@ import { RotationStatusIcon } from './rotation/RotationStatusIcon';
 import { formatIsoDate, getBedCapacityText, getPrimaryFinding } from './rotation/rotationCopy';
 import { useFamilyNameResolver } from './rotation/useFamilyNameResolver';
 import { useBedSuggestions, type RotationInput } from './rotation/useRotationQueries';
+import { IndividualPlantIcon } from '../../planting-plans/individualPlantActions';
+import type { PlacementParent } from '../../pages/individualPlantGeometry';
+
+type AreaOption = Exclude<BedPickerResult, { kind: 'location' }>;
+type PickerOption = BedPickerResult | { kind: 'individual'; id: number; area: AreaOption };
+
+export interface IndividualPickerChoices {
+  canChoose: (area: AreaOption) => boolean;
+  selected?: PlacementParent | null;
+  onSelect: (parent: PlacementParent) => Promise<boolean>;
+}
 
 interface InlineBedPickerProps {
   anchor: HTMLElement;
@@ -30,13 +41,15 @@ interface InlineBedPickerProps {
   numberLocale: string;
   onClose: (restoreFocus: boolean) => void;
   onSelect: (bedId: number, freeAreaSqm: number | null) => Promise<boolean>;
+  individual?: IndividualPickerChoices;
 }
 
 const touchButtonSx = { minHeight: 44, minWidth: 44, maxWidth: '100%', overflowWrap: 'anywhere', textTransform: 'none' } as const;
 const icons = { location: LocationOnOutlinedIcon, field: CropSquareIcon, bed: ViewAgendaOutlinedIcon };
-const resultId = (result: BedPickerResult): string => `${result.kind}-${result.id}`;
+const resultId = (result: PickerOption): string => result.kind === 'individual'
+  ? `individual-${result.area.kind}-${result.id}` : `${result.kind}-${result.id}`;
 
-export function InlineBedPicker({ anchor, initialQuery, options, selected, rotation, numberLocale, onClose, onSelect }: InlineBedPickerProps) {
+export function InlineBedPicker({ anchor, initialQuery, options, selected, rotation, numberLocale, onClose, onSelect, individual }: InlineBedPickerProps) {
   const { t, i18n } = useTranslation('plantingPlans');
   const familyName = useFamilyNameResolver();
   const listId = useId();
@@ -47,15 +60,19 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
   const listRef = useRef<HTMLUListElement>(null);
   const submittingRef = useRef(false);
   const [query, setQuery] = useState(initialQuery);
-  const [scope, setScope] = useState<BedPickerScope>(selected ?? ALL_BEDS);
+  const [scope, setScope] = useState<BedPickerScope>(() => selected ?? options.find(option =>
+    option.kind === individual?.selected?.kind && option.id === individual.selected.id) ?? ALL_BEDS);
   const [activeId, setActiveId] = useState<string | null>(initialQuery || !selected ? null : resultId(selected));
   const [submitting, setSubmitting] = useState(false);
   const terms = useMemo(() => tokenizeSearchQuery(query), [query]);
   const matches = useMemo(() => options.filter((option) => terms.every((term) => option.searchText.includes(term))), [options, terms]);
-  const visible = matches.filter((option) => (
-    isBedInScope(option, scope) && (option.kind === 'bed'
-      || (option.kind === 'location' ? scope.locationId === null : scope.fieldId === null))
-  ));
+  const visible = matches.flatMap((option): PickerOption[] => {
+    if (!isBedInScope(option, scope)) return [];
+    if (option.kind === 'location') return scope.locationId === null ? [option] : [];
+    const choices: PickerOption[] = option.kind === 'bed' || scope.fieldId === null ? [option] : [];
+    if (individual?.canChoose(option)) choices.push({ kind: 'individual', id: option.id, area: option });
+    return choices;
+  });
   const outsideCount = matches.filter((option) => !isBedInScope(option, scope)).length;
   const scopeOption = options.find((option) => scope.fieldId !== null
     ? option.kind === 'field' && option.id === scope.fieldId
@@ -67,14 +84,15 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
     suggestions.data?.results.map((suggestion) => [suggestion.bed_id, suggestion]) ?? [],
   ), [suggestions.data]);
   // Confirming the current bed closes the picker without writing an assignment.
-  const canChoose = (option: BedPickerResult) => (
+  const canChoose = (option: PickerOption) => (
     option.kind !== 'bed' || option.id === selected?.id
     || (!suggestions.isLoading && suggestionsByBed.get(option.id)?.has_enough_area !== false)
   );
   const enabled = visible.filter(canChoose);
   const active = enabled.find((option) => resultId(option) === activeId) ?? enabled[0];
   const activeOptionId = active ? `${listId}-${resultId(active)}` : undefined;
-  const activeAction = active?.kind !== 'bed' ? 'bedPicker.keyboardScope'
+  const activeAction = active?.kind === 'individual' ? 'fields:individualPlants.keyboardChoose'
+    : active?.kind !== 'bed' ? 'bedPicker.keyboardScope'
     : active.id === selected?.id ? 'bedPicker.keyboardKeep' : 'bedPicker.keyboardAssign';
 
   useEffect(() => {
@@ -120,18 +138,20 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
     changeScope(scope.fieldId !== null ? { locationId: scope.locationId, fieldId: null } : ALL_BEDS);
   };
 
-  const pick = async (option: BedPickerResult): Promise<void> => {
+  const pick = async (option: PickerOption): Promise<void> => {
     if (submittingRef.current || !canChoose(option)) return;
-    if (option.kind !== 'bed') {
+    if (option.kind !== 'bed' && option.kind !== 'individual') {
       changeScope({ locationId: option.locationId, fieldId: option.fieldId }, true);
       return;
     }
-    if (option.id !== selected?.id) {
+    if (option.kind === 'individual' || option.id !== selected?.id) {
       submittingRef.current = true;
       setSubmitting(true);
       let saved: boolean;
       try {
-        saved = await onSelect(option.id, suggestionsByBed.get(option.id)?.free_area_sqm ?? null);
+        saved = option.kind === 'individual'
+          ? await individual?.onSelect({ kind: option.area.kind, id: option.id }) ?? false
+          : await onSelect(option.id, suggestionsByBed.get(option.id)?.free_area_sqm ?? null);
       } catch {
         saved = false;
       }
@@ -277,6 +297,25 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
               sx={{ overflowY: 'auto', m: 0, p: 0.5, listStyle: 'none', overscrollBehavior: 'contain' }}
             >
               {visible.map((option) => {
+                const id = `${listId}-${resultId(option)}`;
+                if (option.kind === 'individual') {
+                  const { area } = option;
+                  const selectedTarget = individual?.selected?.kind === area.kind && individual.selected.id === area.id;
+                  return <Box component="li" key={id} id={id} role="option" aria-selected={selectedTarget}
+                    data-highlighted={option === active} onMouseDown={event => event.preventDefault()}
+                    onMouseMove={() => setActiveId(resultId(option))} onClick={() => void pick(option)}
+                    sx={{ display: 'flex', gap: 1, minHeight: 44, px: 1, py: 0.75, alignItems: 'center',
+                      borderRadius: 0.5, cursor: 'pointer', '&[data-highlighted="true"]': { bgcolor: 'action.selected' } }}>
+                    <IndividualPlantIcon fontSize="small" sx={{ flexShrink: 0, color: 'text.secondary' }} />
+                    <Box sx={{ minWidth: 0, flex: 1, overflowWrap: 'anywhere' }}>
+                      <Typography variant="body2">{t(area.kind === 'bed' ? 'fields:individualPlants.inBed' : 'fields:individualPlants.onParcel')}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        <SearchHighlightedText text={[area.locationName, area.fieldName, area.kind === 'bed' ? area.name : ''].filter(Boolean).join(BED_PATH_SEPARATOR)} />
+                      </Typography>
+                    </Box>
+                    {selectedTarget && <CheckIcon sx={{ fontSize: 18, flexShrink: 0 }} color="success" />}
+                  </Box>;
+                }
                 const bed = option.kind === 'bed';
                 const suggestion = bed ? suggestionsByBed.get(option.id) : undefined;
                 const reason = conflictReason(suggestion);
@@ -297,7 +336,6 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
                   bed && scope.fieldId === null ? option.fieldName : '',
                 ].filter(Boolean).join(BED_PATH_SEPARATOR);
                 const Icon = icons[option.kind];
-                const id = `${listId}-${resultId(option)}`;
                 return (
                   <Box
                     component="li"
@@ -357,14 +395,14 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
                 );
               })}
             </Box>
-            {(!hasBeds || visible.length === 0) && (
+            {((!hasBeds && !individual) || visible.length === 0) && (
               <Box sx={{ px: 1.5, py: 0.75 }}>
                 <Typography variant="body2" role="status">
-                  {!hasBeds ? t('bedPicker.emptyTitle')
+                  {!hasBeds && !individual ? t('bedPicker.emptyTitle')
                     : scopeOption ? t('bedPicker.noScopedMatches', { name: scopeOption.name })
                       : t('bedPicker.noMatches')}
                 </Typography>
-                {!hasBeds && (
+                {!hasBeds && !individual && (
                   <Link component={RouterLink} to="/app/fields-beds" sx={{ minHeight: 44, display: 'inline-flex', alignItems: 'center' }}>
                     {t('bedPicker.openGrowingAreas')}
                   </Link>

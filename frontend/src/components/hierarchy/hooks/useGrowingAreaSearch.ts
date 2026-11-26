@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Bed, Field, Location } from '../../../api/types';
+import type { IndividualHierarchyRow } from '../utils/individualHierarchyRows';
 import {
   EMPTY_GROWING_AREA_FILTERS,
   getActiveGrowingAreaFilterGroups,
@@ -59,7 +60,7 @@ export interface GrowingAreaSearchControls extends GrowingAreaSearchResult {
 
 export function useGrowingAreaSearch(
   projectId: number | null,
-  entities: { locations: Location[]; fields: Field[]; beds: Bed[] },
+  entities: { locations: Location[]; fields: Field[]; beds: Bed[]; individualRows?: readonly IndividualHierarchyRow[] },
 ): GrowingAreaSearchControls {
   const [initialState] = useState(() => readStoredState(projectId));
   const [query, setQueryState] = useState(initialState.query);
@@ -81,10 +82,10 @@ export function useGrowingAreaSearch(
     writeStoredState(projectId, { query: appliedQuery, filters });
   }, [appliedQuery, filters, projectId]);
 
-  const { locations, fields, beds } = entities;
+  const { locations, fields, beds, individualRows } = entities;
   const result = useMemo(
-    () => searchGrowingAreas({ locations, fields, beds }, appliedQuery, filters),
-    [appliedQuery, beds, fields, filters, locations],
+    () => searchGrowingAreas({ locations, fields, beds, individualRows }, appliedQuery, filters),
+    [appliedQuery, beds, fields, filters, locations, individualRows],
   );
 
   const clearSearch = useCallback((): void => {

@@ -45,6 +45,7 @@ import { RotationCheckPanel, type RotationAcceptanceControls } from "./rotation/
 import { useHarvestOverlapCheck, useTimingWindowCheck } from "./rotation/useRotationQueries";
 import { TimingWindowAlert } from "./TimingWindowInfo";
 import { HarvestOverlapAlert } from "./HarvestOverlapInfo";
+import { readIndividualPlacementChoice } from '../../pages/individualPlantGeometry';
 
 export interface MobilePlanRotationProps {
   /** The edited plan, excluded from its own bed history; null when creating. */
@@ -64,7 +65,7 @@ interface MobilePlanFormDialogProps {
   /** Optional fix-it action shown inside the error alert. */
   errorAction?: ReactNode;
   cropOptions: SearchableSelectOption[];
-  bedOptions: SearchableSelectOption[];
+  bedOptions: { value: string | number; label: string }[];
   cultivationTypeOptions: CultivationTypeSelectOption[];
   numberLocale: string;
   /** Shown under the planting-date field to signal the active season's range. */
@@ -87,6 +88,7 @@ interface MobilePlanFormDialogProps {
   rotation?: MobilePlanRotationProps;
   onClose: () => void;
   onSubmit: () => void;
+  submitting?: boolean;
 }
 
 /**
@@ -115,8 +117,9 @@ export function MobilePlanFormDialog({
   rotation,
   onClose,
   onSubmit,
+  submitting = false,
 }: MobilePlanFormDialogProps) {
-  const { t } = useTranslation(["plantingPlans", "common"]);
+  const { t } = useTranslation(["plantingPlans", "common", "fields"]);
   const plantingDatePickerRef = useRef<HTMLInputElement | null>(null);
   const sowingDatePickerRef = useRef<HTMLInputElement | null>(null);
   const [isSuggestionsOpen, setIsSuggestionsOpen] = useState(false);
@@ -137,7 +140,8 @@ export function MobilePlanFormDialog({
     cultivationType: form.cultivation_type,
     areaSqm: toAreaNumericValue(form.area_m2, numberLocale),
   };
-  const showSuggestions = Boolean(rotation) && isSuggestionsOpen;
+  const individual = Boolean(readIndividualPlacementChoice(form.bed));
+  const showSuggestions = Boolean(rotation) && !individual && isSuggestionsOpen;
   const harvestOverlapCheck = useHarvestOverlapCheck(rotationInput);
   const sowingPickerValue = toIsoDateString(parseGermanDateText(form.sowing_date)) ?? "";
   const timingWindowCheck = useTimingWindowCheck(
@@ -184,7 +188,7 @@ export function MobilePlanFormDialog({
   };
 
   return (
-    <Dialog open={open} onClose={onClose} fullWidth maxWidth={showSuggestions ? "md" : "sm"}>
+    <Dialog open={open} onClose={submitting ? undefined : onClose} fullWidth maxWidth={showSuggestions ? "md" : "sm"}>
       <DialogTitle>
         {isEdit ? t("plantingPlans:mobile.editTitle") : t("plantingPlans:mobile.createTitle")}
       </DialogTitle>
@@ -244,15 +248,19 @@ export function MobilePlanFormDialog({
               fullWidth
               value={form.bed}
               label={t("plantingPlans:columns.bed")}
-              onChange={(event) =>
-                setForm((previous) => ({ ...previous, bed: String(event.target.value) }))
-              }
+              onChange={(event) => {
+                const bed = String(event.target.value);
+                const nextIndividual = Boolean(readIndividualPlacementChoice(bed));
+                setForm(previous => ({ ...previous, bed,
+                  ...(nextIndividual !== individual ? { area_m2: '', plants_count: '' } : {}),
+                }));
+              }}
             >
               {bedOptions.map((option) => (
                 <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
               ))}
             </Select>
-            {rotation ? (
+            {rotation && !individual ? (
               <Link
                 component="button"
                 type="button"
@@ -403,6 +411,7 @@ export function MobilePlanFormDialog({
               type="text"
               inputMode="decimal"
               label={t("plantingPlans:columns.areaM2")}
+              disabled={individual}
               value={form.area_m2}
               onChange={(event) => {
                 const nextArea = event.target.value;
@@ -425,14 +434,14 @@ export function MobilePlanFormDialog({
                 onLinkedFieldEdited("area_m2");
               }}
               placeholder={t("plantingPlans:placeholders.maxKeyword")}
-              helperText={t("plantingPlans:tooltips.areaAutoMax")}
+              helperText={individual ? undefined : t("plantingPlans:tooltips.areaAutoMax")}
               slotProps={{ htmlInput: { inputMode: "decimal" } }}
               sx={compactFieldSx}
             />
             <TextField
               type="text"
               inputMode="numeric"
-              label={t("plantingPlans:columns.plantsCount")}
+              label={t(individual ? 'fields:individualPlants.countOrMax' : 'plantingPlans:columns.plantsCount')}
               value={form.plants_count}
               onChange={(event) => {
                 const nextPlants = event.target.value;
@@ -442,7 +451,7 @@ export function MobilePlanFormDialog({
                   ...previous,
                   plants_count: nextPlants,
                   area_m2:
-                    plantsPerSqm && parsedPlants !== null
+                    !individual && plantsPerSqm && parsedPlants !== null
                       ? formatLocalizedNumberForInput(parsedPlants / plantsPerSqm, numberLocale, {
                           maximumFractionDigits: 2,
                         })
@@ -450,7 +459,7 @@ export function MobilePlanFormDialog({
                 }));
                 onLinkedFieldEdited("plants_count");
               }}
-              slotProps={{ htmlInput: { inputMode: "numeric" } }}
+              slotProps={{ htmlInput: { inputMode: individual ? 'text' : 'numeric' } }}
               sx={compactFieldSx}
             />
           </Box>
@@ -461,7 +470,7 @@ export function MobilePlanFormDialog({
             sowingDate={form.planned_sowing_date || sowingPickerValue || form.planned_propagation_start_date}
           />
           <TimingWindowAlert findings={timingWindowCheck.data?.timing_window_findings} />
-          {rotation ? (
+          {rotation && !individual ? (
             <RotationCheckPanel
               input={rotationInput}
               bedLabel={rotation.bedLabel}
@@ -494,7 +503,7 @@ export function MobilePlanFormDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{t("common:actions.cancel")}</Button>
-        <Button onClick={onSubmit} variant="contained">
+        <Button onClick={onSubmit} disabled={submitting} variant="contained">
           {isEdit ? t("common:actions.save") : t("common:actions.add")}
         </Button>
       </DialogActions>

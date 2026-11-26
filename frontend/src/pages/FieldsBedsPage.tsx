@@ -42,6 +42,9 @@ import LoadRetryButton from '../components/LoadRetryButton';
 import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls';
 import type { GraphicalCameraState } from './graphicalFieldsGeometry';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
+import type { IndividualCreationTarget } from '../planting-plans/individualPlantActions';
+import { useGrowingAreaIndividualPlans } from '../components/hierarchy/hooks/useGrowingAreaIndividualPlans';
+import { indexIndividualHierarchy } from '../components/hierarchy/utils/individualHierarchyRows';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
@@ -81,6 +84,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const location = useLocation();
   const query = new URLSearchParams(location.search);
   const requestedIndividualPlan = Number(query.get('individualPlan')) || undefined;
+  const requestedIndividualLocation = requestedIndividualPlan ? Number(query.get('locationId')) || null : null;
+  const editRequestedIndividualPlan = query.get('editIndividualPlan') === 'true';
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
     return requestedIndividualPlan || stored === 'graphical' ? 'graphical' : 'table';
@@ -129,6 +134,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const compactWorkspace = outletContext?.topbarWorkspaceNarrow ?? false;
   const activeSeason = outletContext?.activeSeason ?? undefined;
+  const individualList = useGrowingAreaIndividualPlans(effectiveViewMode === 'table' ? projectId : null, activeSeason?.id);
+  const individualHierarchy = useMemo(() => indexIndividualHierarchy(individualList.plans, fields, beds, locations.length > 0),
+    [individualList.plans, fields, beds, locations.length]);
   const preferenceKey = `growingAreas.graphic.displayMode:user:${userId ?? 'guest'}`;
   const [displayPreference, setDisplayPreference] = useState(() => ({
     key: preferenceKey, mode: savedDisplayMode(preferenceKey),
@@ -163,7 +171,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const setTopbarTitleActions = outletContext?.setTopbarTitleActions;
   const [locationSelection, setLocationSelection] = useState(() => {
-    let id: number | null = requestedIndividualPlan ? Number(query.get('locationId')) || null : null;
+    let id = requestedIndividualLocation;
     try { const stored = Number(sessionStorage.getItem(`graphicalLocation.${projectId}`)); id ??= stored > 0 ? stored : null; }
     catch { /* Storage may be disabled. */ }
     return { locations, id };
@@ -193,6 +201,30 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     setIsEditingGraphic(false);
     try { sessionStorage.setItem(`graphicalLocation.${projectId}`, String(id)); } catch { /* Storage may be disabled. */ }
   }, [projectId]);
+  useEffect(() => {
+    if (!requestedIndividualPlan || !requestedIndividualLocation) return;
+    selectLocation(requestedIndividualLocation);
+    showGraphicalView();
+  }, [requestedIndividualPlan, requestedIndividualLocation, editRequestedIndividualPlan, selectLocation, showGraphicalView]);
+  const showTableView = useCallback(() => {
+    setIsEditingGraphic(false);
+    setViewMode('table');
+    if (requestedIndividualPlan) {
+      const next = new URLSearchParams(location.search);
+      next.delete('individualPlan');
+      next.delete('editIndividualPlan');
+      next.delete('locationId');
+      void navigate({ search: next.toString() }, { replace: true });
+    }
+  }, [requestedIndividualPlan, location.search, navigate]);
+  const [individualCreationTarget, setIndividualCreationTarget] = useState<IndividualCreationTarget | null>(null);
+  const openIndividualCreation = useCallback((target: IndividualCreationTarget) => {
+    selectLocation(target.locationId);
+    setIndividualCreationTarget(target);
+    showGraphicalView();
+  }, [selectLocation, showGraphicalView]);
+  const finishIndividualCreationRequest = useCallback(() => setIndividualCreationTarget(null), []);
+  const onAddIndividualPlants = activeProjectMembership && activeSeason ? openIndividualCreation : undefined;
   const saveLocationPathSpacing = useCallback(async (id: number, spacing: LocationPathSpacing): Promise<void> => {
     const { data } = await locationAPI.updatePathSpacing(id, spacing);
     setLocations(current => current.map(item => item.id === id
@@ -213,10 +245,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       keys: { key: 'l' },
       contextTags: ['areas'],
       isEnabled: () => effectiveViewMode !== 'table',
-      action: () => {
-        setIsEditingGraphic(false);
-        setViewMode('table');
-      },
+      action: showTableView,
     },
     {
       id: 'areas.showGraphicalView',
@@ -229,7 +258,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       isEnabled: () => effectiveViewMode !== 'graphical',
       action: showGraphicalView,
     },
-  ], [t, effectiveViewMode, showGraphicalView]);
+  ], [t, effectiveViewMode, showGraphicalView, showTableView]);
 
   useRegisterCommands('areas-view-switch', commands);
 
@@ -392,7 +421,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     {
       id: 'fields-view-mode-list',
       label: t('fields:representation.table'),
-      onClick: () => { setIsEditingGraphic(false); setViewMode('table'); },
+      onClick: showTableView,
       active: effectiveViewMode === 'table',
       groupId: 'fields-view-mode',
     },
@@ -403,7 +432,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       active: effectiveViewMode === 'graphical',
       groupId: 'fields-view-mode',
     },
-  ]), [effectiveViewMode, showGraphicalView, t]);
+  ]), [effectiveViewMode, showGraphicalView, showTableView, t]);
 
   const contextActions = useMemo<TopbarContextAction[]>(() => (
     shouldShowProjectRequiredState
@@ -539,6 +568,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             {globalActionSuccess}
           </Alert>
         ) : null}
+        {individualList.failed && <Alert severity="error" sx={{ mb: 2 }}
+          action={<LoadRetryButton onClick={individualList.refresh} />}>{t('fields:individualPlants.loadFailed')}</Alert>}
         {!shouldShowProjectRequiredState && areaDataError ? (
           <Alert
             severity="error"
@@ -608,6 +639,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             closeDisplayLegend={() => setDisplayLegendAnchor(null)}
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}
+            editRequestedIndividualPlan={editRequestedIndividualPlan}
+            individualCreationTarget={individualCreationTarget}
+            onIndividualCreationHandled={finishIndividualCreationRequest}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
             onOpenDetails={openGraphicalDetails}
             canCompleteTasks={Boolean(activeProjectMembership)}
@@ -625,6 +659,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               projectId={projectId}
               bedDefaults={bedDefaults}
               graphicalRotations={cameraState.rotations}
+              onAddIndividualPlants={onAddIndividualPlants}
+              individualHierarchy={individualHierarchy}
             />
           ) : (
             <FieldsBedsHierarchy
@@ -638,6 +674,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               bedDefaults={bedDefaults}
               graphicalRotations={cameraState.rotations}
               userId={userId}
+              onAddIndividualPlants={onAddIndividualPlants}
+              individualHierarchy={individualHierarchy}
             />
           )}</PageContainer>
         ) : null}
