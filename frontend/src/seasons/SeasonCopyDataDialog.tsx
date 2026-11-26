@@ -20,6 +20,7 @@ import { showGlobalSnackbar } from '../utils/globalSnackbar';
 import { SeasonCopyRotationSummary } from './SeasonCopyRotationSummary';
 import { ParcelRotationCopyPreview, ParcelRotationCopyToggle } from './ParcelRotationCopyPreview';
 import { SeasonCopyCheckbox, SeasonCopyPreviewSection } from './SeasonCopyPreviewSection';
+import { seasonCopyDialogActionsSx, seasonCopyDialogContentSx, seasonCopyDialogSlotProps, seasonCopyDialogTitleSx } from './seasonCopyDialogLayout';
 import { SeasonCopyTotals } from './SeasonCopyTotals';
 
 interface SeasonCopyDataDialogProps {
@@ -180,9 +181,9 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
   };
 
   return (
-    <Dialog open onClose={submitting ? undefined : onClose} fullWidth maxWidth="sm">
-      <DialogTitle>{t('navigation:seasonSwitcher.copyDialog.title')}</DialogTitle>
-      <DialogContent>
+    <Dialog open onClose={submitting ? undefined : onClose} fullWidth maxWidth="sm" scroll="paper" slotProps={seasonCopyDialogSlotProps}>
+      <DialogTitle sx={seasonCopyDialogTitleSx}>{t('navigation:seasonSwitcher.copyDialog.title')}</DialogTitle>
+      <DialogContent sx={seasonCopyDialogContentSx}>
         <Stack component="dl" spacing={0.5} sx={{ mt: 0, mb: 2, overflowWrap: 'anywhere' }}>
           <Typography component="dt" variant="subtitle2">{t('navigation:seasonSwitcher.copyDialog.targetLabel')}</Typography>
           <Typography component="dd" variant="body2" sx={{ m: 0 }}>{targetSeason.label}</Typography>
@@ -245,7 +246,9 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
             {preview && <ParcelRotationCopyPreview report={preview.parcel_rotation} checked={rotateParcels} />}
             {findings && hasRotationFindings ? (
               <SeasonCopyRotationSummary preview={findings} mode={rotationMode}
-                parcelRotation={rotateParcels} disabled={submitting} onModeChange={setRotationMode} />
+                parcelRotation={rotateParcels} disabled={submitting}
+                remainingConflicts={preview ? (rotationMode === 'keep' ? conflicts : 0) : undefined}
+                onModeChange={setRotationMode} />
             ) : null}
             {previewLoading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
             {preview && copyCount !== null ? (
@@ -275,7 +278,7 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
         )}
         {error ? <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert> : null}
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={seasonCopyDialogActionsSx}>
         <DisabledActionTooltip title={submitting ? t('common:disabledReasons.busy') : ''}>
           <Button onClick={onClose} disabled={submitting}>{t('common:actions.cancel')}</Button>
         </DisabledActionTooltip>

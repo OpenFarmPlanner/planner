@@ -9,6 +9,7 @@
 import { describe, expect, it } from 'vitest';
 
 import i18n from '../i18n/config';
+import { SUPPORTED_LANGUAGES } from '../i18n/languages';
 
 const COUNTS = [0, 1, 2, 1_000_000] as const;
 
@@ -69,5 +70,19 @@ describe('plural texts', () => {
     const t = i18n.getFixedT(language, 'hierarchy');
     expect(t('dialogs.bulkCreateBeds.layoutGraphic', { count: 1 }).endsWith(one)).toBe(true);
     expect(t('dialogs.bulkCreateBeds.layoutGraphic', { count: 2 }).endsWith(other)).toBe(true);
+  });
+
+  it.each(SUPPORTED_LANGUAGES.map(({ code }) => code))('localizes the season preview counts in %s', language => {
+    const hierarchy = i18n.getFixedT(language, 'hierarchy');
+    const navigation = i18n.getFixedT(language, 'navigation');
+    const assignments = COUNTS.slice(1).map(count => hierarchy('parcelRotation.mappingCount', {
+      count, formatted: new Intl.NumberFormat(language).format(count),
+    }));
+    const warnings = COUNTS.map(count => navigation('seasonSwitcher.copyDialog.rotation.remainingConflictCount', { count }));
+    expect(assignments[0]).toContain('1');
+    expect(assignments[1]).toContain('2');
+    expect(assignments[0].replace('1', '')).not.toBe(assignments[1].replace('2', ''));
+    expect(assignments[2]).toContain(new Intl.NumberFormat(language).format(1_000_000));
+    warnings.forEach((label, index) => expect(label).toContain(String(COUNTS[index])));
   });
 });

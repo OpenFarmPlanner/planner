@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react';
 import { Box, Checkbox, Divider, FormControlLabel, Stack, Typography } from '@mui/material';
 import { FieldInfoIcon } from '../crops/FieldInfoIcon';
+import { Disclosure } from '../components/Disclosure';
 import { useTranslation } from '../i18n';
 
 interface SeasonCopyCheckboxProps {
@@ -37,5 +38,34 @@ export function SeasonCopyPreviewSection({ children }: { children: ReactNode }) 
       </Typography>
       {children}
     </Stack>
+  );
+}
+
+/** Scroll through long lists with the same keyboard and touch behavior in both dialogs. */
+export function SeasonCopyDetails({ label, children, inAlert = false }: {
+  label: string;
+  children: ReactNode;
+  inAlert?: boolean;
+}) {
+  return (
+    <Disclosure label={label} buttonProps={{
+      color: inAlert ? 'inherit' : undefined,
+      sx: { textAlign: 'start', justifyContent: 'space-between', overflowWrap: 'anywhere',
+        '@media (pointer: coarse)': { minHeight: 44 } },
+    }}>
+      <Stack
+        component="ul"
+        spacing={0.75}
+        aria-label={label}
+        tabIndex={0}
+        sx={{
+          m: 0, pl: 2.5, pr: 0.75, minWidth: 0, maxHeight: 'min(16rem, 34dvh)',
+          overflowY: 'auto', overflowWrap: 'anywhere',
+          '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: -2 },
+        }}
+      >
+        {children}
+      </Stack>
+    </Disclosure>
   );
 }

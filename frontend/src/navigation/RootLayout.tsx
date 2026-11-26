@@ -104,6 +104,7 @@ import { NavEmojiIcon } from '../navigation/NavEmojiIcon';
 import ImportExportIcon from '@mui/icons-material/ImportExport';
 import { useActiveSeason } from '../seasons/useActiveSeason';
 import { SeasonCreateSuggestionDialog, SeasonSwitcher } from '../seasons/SeasonSwitcher';
+import { SeasonCopyDataDialog } from '../seasons/SeasonCopyDataDialog';
 import { SeasonSetupDialog } from '../seasons/SeasonSetupDialog';
 import { useSeasonSetupPrompt } from '../seasons/useSeasonSetupPrompt';
 import { PanelLeft } from 'lucide-react';
@@ -215,6 +216,11 @@ function RootLayout() {
     button?.click();
   }, []);
   const [seasonSuggestionDialogOpen, setSeasonSuggestionDialogOpen] = useState(false);
+  // The topbar switches between desktop and phone layouts. Keep the open
+  // copy dialog and its preview outside those layouts so rotating a device
+  // cannot discard its source, treatment, or expanded lists.
+  const [seasonCopyTargetId, setSeasonCopyTargetId] = useState<number | null>(null);
+  const seasonCopyTarget = activeSeason.seasons.find(season => season.id === seasonCopyTargetId);
   const requestSeasonCreation = useCallback(() => {
     setSeasonSuggestionDialogOpen(true);
   }, []);
@@ -1398,6 +1404,7 @@ function RootLayout() {
               controller={activeSeason}
               onOpenProjectSettings={handleOpenProjectSettings}
               onOpenCreateSuggestion={requestSeasonCreation}
+              onOpenCopyData={setSeasonCopyTargetId}
               isPhone={isPhone}
               buttonPx={TOPBAR_STATUS_BUTTON_PX}
             />
@@ -1747,6 +1754,7 @@ function RootLayout() {
                     controller={activeSeason}
                     onOpenProjectSettings={handleOpenProjectSettings}
                     onOpenCreateSuggestion={requestSeasonCreation}
+                    onOpenCopyData={setSeasonCopyTargetId}
                     isPhone={isPhone}
                   />
                 ) : null}
@@ -2068,6 +2076,16 @@ function RootLayout() {
           navigate('/app/project-settings#season-pattern');
         }}
       />
+
+      {seasonCopyTarget && (
+        <SeasonCopyDataDialog
+          key={seasonCopyTarget.id}
+          targetSeason={seasonCopyTarget}
+          seasons={activeSeason.seasons}
+          onClose={() => setSeasonCopyTargetId(null)}
+          onConfirm={activeSeason.copyDataInto}
+        />
+      )}
 
       <ProjectHistoryDialog
         open={projectHistory.open}
