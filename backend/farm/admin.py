@@ -38,7 +38,13 @@ from .models import (
     Supplier,
     Task,
 )
-from .services.activity_trends import DEFAULT_PERIOD, PERIODS, SERIES, build_activity_trends
+from .services.activity_trends import (
+    DEFAULT_PERIOD,
+    DEFAULT_SERIES,
+    PERIODS,
+    SERIES,
+    build_activity_trends,
+)
 from .services.crop_library_usage import build_crop_library_operations
 from .services.engagement_dashboard import (
     PROJECT_SORT_FIELDS,
@@ -141,7 +147,7 @@ class ProjectAdmin(admin.ModelAdmin):
         raw_period = request.GET.get('period', '')
         period = {str(days): days for days in PERIODS}.get(raw_period, DEFAULT_PERIOD)
         series = request.GET.get('series', '')
-        return period, series if series in SERIES else 'active_users'
+        return period, series if series in SERIES else DEFAULT_SERIES
 
     @staticmethod
     def _dashboard_url(params: dict[str, str], **updates: str) -> str:

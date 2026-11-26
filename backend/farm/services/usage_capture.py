@@ -9,7 +9,7 @@ from typing import Any
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import F, Q
 from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
@@ -17,7 +17,13 @@ from django.utils import timezone
 from accounts.demo_access import is_active_guest_demo_user
 from crops.agent_api.authentication import header_carries_crop_library_token
 from farm.agent_api.authentication import header_carries_api_token
-from farm.models import EntityRevision, ProjectActiveUserDay, ProjectChangeDay
+from farm.models import (
+    CountedActionOperation,
+    EntityRevision,
+    ProjectActionDay,
+    ProjectActiveUserDay,
+    ProjectChangeDay,
+)
 
 ACTIVITY_RETENTION_DAYS = 90
 Category = ProjectChangeDay.Category
@@ -60,6 +66,8 @@ class RevisionChanges:
     created_at: datetime
     entities: list[Change]
     cascaded_deletions: Counter[tuple[int, Category]] = field(default_factory=Counter)
+    # The history batch shared by every request of one multi-request operation.
+    batch_id: int | None = None
 
 
 type PendingChanges = dict[int, RevisionChanges]
@@ -99,7 +107,7 @@ def observe_entity_revision(revision: EntityRevision, *, measure_usage: bool) ->
             action = DELETED if revision.snapshot.get('deleted_at') else RESTORED
     pending[revision.pk] = RevisionChanges(revision.created_at, [
         (revision.project_id, entity_type, revision.object_id, action),
-    ])
+    ], batch_id=revision.batch_operation_id)
 
 
 def observe_cascaded_deletions(
@@ -117,7 +125,9 @@ def observe_cascaded_deletions(
         if category is not None and count > 0:
             children[revision.project_id, category] += count
     if children:
-        event = pending.setdefault(revision.pk, RevisionChanges(revision.created_at, []))
+        event = pending.setdefault(revision.pk, RevisionChanges(
+            revision.created_at, [], batch_id=revision.batch_operation_id,
+        ))
         event.cascaded_deletions.update(children)
 
 
@@ -147,7 +157,9 @@ def observe_restored_state(checkpoint: EntityRevision, before: State, after: Sta
             if action := _snapshot_action(old.get(pk), new.get(pk)):
                 changes.append((checkpoint.project_id, category, int(pk), action))
     if changes:
-        pending[checkpoint.pk] = RevisionChanges(checkpoint.created_at, changes)
+        pending[checkpoint.pk] = RevisionChanges(
+            checkpoint.created_at, changes, batch_id=checkpoint.batch_operation_id,
+        )
 
 
 def _committed_changes(pending: PendingChanges) -> Iterator[RevisionChanges]:
@@ -178,10 +190,10 @@ def _completed_action(actions: list[str]) -> str | None:
     return UPDATED
 
 
-def _completed_totals(changes: Iterator[RevisionChanges]) -> dict[tuple[int, Category], Counter]:
+def _completed_totals(events: list[RevisionChanges]) -> dict[tuple[int, Category], Counter]:
     object_actions = defaultdict(list)
     totals = defaultdict(Counter)
-    for event in changes:
+    for event in events:
         for project_id, entity_type, pk, action in event.entities:
             object_actions[project_id, entity_type, pk].append(action)
         for key, count in event.cascaded_deletions.items():
@@ -192,8 +204,57 @@ def _completed_totals(changes: Iterator[RevisionChanges]) -> dict[tuple[int, Cat
     return totals
 
 
+def _event_projects(event: RevisionChanges) -> set[int]:
+    return {change[0] for change in event.entities} | {
+        project_id for project_id, _ in event.cascaded_deletions
+    }
+
+
+def _claim_operation(batch_id: int, day: date) -> bool:
+    """Whether this request is the first to count the batch; safe under concurrency."""
+    try:
+        with transaction.atomic():
+            CountedActionOperation.objects.create(batch_operation_id=batch_id, day=day)
+    except IntegrityError:
+        return False
+    return True
+
+
+def _primary_category(counts: dict[Category, int]) -> Category:
+    """The category with the most changed objects; ties follow the category order."""
+    order = list(Category)
+    return max(counts, key=lambda category: (counts[category], -order.index(category)))
+
+
+def _action_categories(
+    day: date, events: list[RevisionChanges], totals: dict[tuple[int, Category], Counter],
+) -> dict[int, Category]:
+    """One action per changed project, unless it only continues an already counted batch.
+
+    A request counts on its own once it commits a change outside any history
+    batch; otherwise each of its batches counts the first time it commits a
+    change, so the batched requests and retries of one import stay one action.
+    """
+    changed: dict[int, dict[Category, int]] = defaultdict(dict)
+    for (project_id, category), counts in totals.items():
+        changed[project_id][category] = sum(counts.values())
+    actions = {}
+    for project_id, counts in sorted(changed.items()):
+        batches = set()
+        unbatched = False
+        for event in events:
+            if project_id in _event_projects(event):
+                unbatched |= event.batch_id is None
+                batches.add(event.batch_id)
+        claimed = [_claim_operation(batch_id, day) for batch_id in sorted(batches - {None})]
+        if unbatched or any(claimed):
+            actions[project_id] = _primary_category(counts)
+    return actions
+
+
 def _save_totals(day: date, user_id: int, pending: PendingChanges) -> None:
-    totals = _completed_totals(_committed_changes(pending))
+    events = list(_committed_changes(pending))
+    totals = _completed_totals(events)
     for (project_id, category), counts in sorted(totals.items()):
         row, created = ProjectChangeDay.objects.get_or_create(
             day=day, project_id=project_id, category=category, defaults=counts,
@@ -202,6 +263,12 @@ def _save_totals(day: date, user_id: int, pending: PendingChanges) -> None:
             ProjectChangeDay.objects.filter(pk=row.pk).update(
                 **{action: F(action) + count for action, count in counts.items()},
             )
+    for project_id, category in _action_categories(day, events, totals).items():
+        row, created = ProjectActionDay.objects.get_or_create(
+            day=day, project_id=project_id, category=category, defaults={'count': 1},
+        )
+        if not created:
+            ProjectActionDay.objects.filter(pk=row.pk).update(count=F('count') + 1)
     ProjectActiveUserDay.objects.bulk_create(
         [ProjectActiveUserDay(day=day, user_id=user_id, project_id=project_id)
          for project_id in sorted({key[0] for key in totals})],

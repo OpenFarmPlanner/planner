@@ -10,13 +10,23 @@
   </nav>
   {% translate "Keine Daten" as unknown %}
   <dl class="usage-kpis">
+    <div><dt>{% translate "Nutzeraktionen" %}</dt><dd>{{ trends.user_actions|default_if_none:unknown }}</dd></div>
     <div><dt>{% translate "Aktive Nutzer" %}</dt><dd>{{ trends.active_users|default_if_none:unknown }}</dd></div>
     <div><dt>{% translate "Aktive Projekte" %}</dt><dd>{{ trends.active_projects|default_if_none:unknown }}</dd></div>
-    <div><dt>{% translate "Objektänderungen" %}</dt><dd>{{ trends.object_changes|default_if_none:unknown }}</dd></div>
     <div><dt>{% translate "Neue Registrierungen" %}</dt><dd>{{ trends.registrations }}</dd></div>
     <div><dt>{% translate "Neue Projekte" %}</dt><dd>{{ trends.new_projects }}</dd></div>
+    <div><dt>{% translate "Objektänderungen (Datenmenge)" %}</dt><dd>{{ trends.object_changes|default_if_none:unknown }}</dd></div>
   </dl>
   <p class="help">{% translate "UTC-Tage einschließlich heute. Als Aktivität zählt eine abgeschlossene Änderung in einer aufgeführten Kategorie durch eine angemeldete Person ohne Adminrechte. Nutzer und Projekte werden im gewählten Zeitraum jeweils einmal gezählt." %}</p>
+  <p class="help">{% translate "Eine Nutzeraktion ist ein erfolgreich abgeschlossener Schreibvorgang mit mindestens einer tatsächlichen Änderung, z. B. eine Bearbeitung, ein Sammellöschen oder ein ganzer Tabellenimport in mehreren Teilen. Objektänderungen zählen dagegen jedes geänderte Objekt. Vorschauen, Lesezugriffe und Hintergrundvorgänge zählen nicht." %}</p>
+  {% if trends.action_coverage_started_at %}
+    {% with start=trends.action_coverage_started_at|utc|date:"SHORT_DATE_FORMAT" %}
+    <p class="help">
+      {% blocktranslate %}Die Erfassung der Nutzeraktionen begann am {{ start }} (UTC); davor sind sie unbekannt.{% endblocktranslate %}
+      {% if trends.action_partial_coverage %}{% translate "Die Zahl der Nutzeraktionen umfasst den erfassten Teil des Zeitraums." %}{% endif %}
+    </p>
+    {% endwith %}
+  {% endif %}
   {% if trends.coverage_started_at %}
     {% with start=trends.coverage_started_at|utc|date:"SHORT_DATE_FORMAT" %}
     <p class="help">
@@ -48,6 +58,24 @@
     {% endfor %}
     </ol>
   </figure>
+  {% if trends.action_categories %}
+  <div class="usage-workflows" role="region" aria-labelledby="usage-actions-title" tabindex="0">
+    <table>
+      <caption id="usage-actions-title">{% translate "Nutzeraktionen nach Arbeitsbereich" %}</caption>
+      <thead><tr>
+        <th scope="col">{% translate "Arbeitsbereich" %}</th>
+        <th scope="col">{% translate "Nutzeraktionen" %}</th>
+      </tr></thead>
+      <tbody>
+        {% for category in trends.action_categories %}
+        <tr><th scope="row">{{ category.label }}</th><td>{{ category.actions }}</td></tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr><th scope="row">{% translate "Gesamt" %}</th><td>{{ trends.user_actions }}</td></tr></tfoot>
+    </table>
+  </div>
+  <p class="help">{% translate "Jede Aktion zählt einmal im Arbeitsbereich mit den meisten geänderten Objekten; eine Aktion in mehreren Projekten zählt je Projekt." %}</p>
+  {% endif %}
   {% if trends.categories %}
   <div class="usage-workflows" role="region" aria-labelledby="usage-workflows-title" tabindex="0">
     <table>

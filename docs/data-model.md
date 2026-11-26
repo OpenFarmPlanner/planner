@@ -554,6 +554,24 @@ powers project history and restore.
 - **`ProjectChangeDay`** stores counts of creations, updates, deletions and
   restores by UTC day, project and workflow category. The unique key is
   `(day, project, category)`. Project deletion removes its totals.
+- **`ProjectActionDay`** counts completed user actions by UTC day, project and
+  primary workflow category ([#1591](https://github.com/OpenFarmPlanner/planner/issues/1591)).
+  A user action is one successful signed-in write request that commits at
+  least one counted object change; it counts once per changed project, in the
+  category with the most changed objects (ties follow the category order).
+  Previews, reads, no-op, failed or rolled-back writes and background, agent,
+  staff and guest-demo writes never count, the same exclusions as above.
+- **`CountedActionOperation`** marks a history `BatchOperation` that already
+  counted as an action. Multi-request workflows (the batched crop spreadsheet
+  import, library imports) share one batch across all their requests and
+  retries, so they count once on the UTC day of their first committed change;
+  a request with any change outside a batch always counts. Deleted with its
+  batch or after the activity window.
+
+The admin dashboard shows user actions as the first KPI and default trend,
+with their own collection start (migration `0171_user_action_activity`);
+earlier periods are unknown, not zero. Object changes remain the separate
+data-volume measure.
 
 The records support Django admin aggregates. They contain day-level activity
 metadata and counts. `cleanup_history` retains 90 UTC dates of activity.
