@@ -1,0 +1,62 @@
+# OpenFarmPlanner history storage dashboard.
+msgid ""
+msgstr ""
+"Project-Id-Version: OpenFarmPlanner\n"
+"Language: it\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Nicht verfügbar"
+msgstr "Non disponibile"
+
+msgid "Speicherbedarf des Versionsverlaufs"
+msgstr "Spazio occupato dalla cronologia"
+
+msgid "Datenbankgröße"
+msgstr "Dimensione del database"
+
+msgid "Verlaufstabelle (inkl. Indizes)"
+msgstr "Tabella della cronologia (indici inclusi)"
+
+msgid "Ältester Verlaufseintrag"
+msgstr "Voce più vecchia della cronologia"
+
+msgid "Aufbewahrte Anker (älter als 30 Tage)"
+msgstr "Punti di ripristino conservati (più di 30 giorni)"
+
+msgid "Die Größen der gespeicherten Momentaufnahmen berücksichtigen die Datenbankkomprimierung. Speichergrößen sind nur mit PostgreSQL verfügbar."
+msgstr "Le dimensioni delle istantanee salvate tengono conto della compressione del database. Questi valori sono disponibili solo con PostgreSQL."
+
+msgid "Gespeicherte Momentaufnahmen"
+msgstr "Istantanee salvate"
+
+msgid "Verlauf"
+msgstr "Cronologia"
+
+msgid "Einträge"
+msgstr "Voci"
+
+msgid "Gespeicherte Größe"
+msgstr "Spazio occupato"
+
+msgid "Alle Verlaufseinträge"
+msgstr "Tutte le voci della cronologia"
+
+msgid "Davon vollständige Projektversionen"
+msgstr "Di cui versioni complete del progetto"
+
+msgid "Projekte mit den meisten Verlaufseinträgen"
+msgstr "Progetti con più voci nella cronologia"
+
+msgid "Projekte mit dem höchsten Speicherbedarf"
+msgstr "Progetti la cui cronologia occupa più spazio"
+
+msgid "Projekt-ID"
+msgstr "ID del progetto"
+
+msgid "Vollständige Versionen"
+msgstr "Versioni complete"
+
+msgid "Keine Verlaufseinträge vorhanden."
+msgstr "Nessuna voce nella cronologia."

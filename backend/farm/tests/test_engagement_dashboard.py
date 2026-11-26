@@ -4,17 +4,22 @@ from io import StringIO
 from unittest.mock import patch
 from uuid import uuid4
 
+import pytest
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.core.management import call_command
-from django.db import transaction
+from django.core.management.base import CommandError
+from django.db import connection, transaction
 from django.http import HttpRequest, HttpResponse
-from django.test import RequestFactory, TestCase
+from django.test import RequestFactory, TestCase, override_settings
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.translation import gettext
 
 from accounts.models import AccountDeletionRequest, GuestDemoSession, GuestDemoUsageDay
-from farm.history.records import revision_batch
+from farm.history.project_restore import CHECKPOINT_KEY
+from farm.history.records import HISTORY_RETENTION_DAYS, revision_batch
 from farm.models import (
     BatchOperation,
     Bed,
@@ -56,6 +61,7 @@ from farm.services.engagement_dashboard import (
     build_engagement_dashboard,
     sort_project_rows,
 )
+from farm.services.history_storage import build_history_storage
 from farm.services.usage_capture import ACTIVITY_RETENTION_DAYS, ProjectUsageMiddleware
 
 
@@ -152,6 +158,37 @@ class EngagementDashboardTests(TestCase):
         response = self.client.get(reverse('admin:farm_project_engagement'))
 
         self.assertEqual(response.status_code, 403)
+        self.assertNotContains(response, 'id="history-storage"', status_code=403)
+
+    def test_history_storage_renders_without_query_growth_or_snapshot_content(self) -> None:
+        self.client.force_login(self.superuser)
+        EntityRevision.objects.create(
+            project=self.active_project, entity_type='project', object_id=self.active_project.pk,
+            action='updated', snapshot={CHECKPOINT_KEY: {'private-note': 'fixture snapshot text'}},
+        )
+        url = reverse('admin:farm_project_engagement')
+        with CaptureQueriesContext(connection) as original_queries:
+            response = self.client.get(url)
+
+        self.assertContains(response, gettext('Speicherbedarf des Versionsverlaufs'))
+        if connection.vendor == 'sqlite':
+            self.assertContains(response, gettext('Nicht verfügbar'))
+        section = response.content.decode().split('id="history-storage"', 1)[1]
+        section = section.split('</div>', 1)[0]
+        project_url = reverse('admin:farm_project_change', args=[self.active_project.pk])
+        self.assertIn(f'href="{project_url}">{self.active_project.pk}</a>', section)
+        self.assertNotIn(self.active_project.name, section)
+        self.assertNotContains(response, 'fixture snapshot text')
+
+        for index in range(12):
+            project = Project.objects.create(name=f'History {index}', slug=f'history-{index}')
+            EntityRevision.objects.bulk_create([
+                EntityRevision(project=project, entity_type='crop', object_id=index,
+                               action='updated', snapshot={})
+                for _ in range(index + 1)
+            ])
+        with self.assertNumQueries(len(original_queries)):
+            self.assertEqual(self.client.get(url).status_code, 200)
 
     def test_the_projects_table_can_be_sorted_by_column(self) -> None:
         self.client.force_login(self.superuser)
@@ -181,6 +218,104 @@ class EngagementDashboardTests(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
+
+
+class HistoryStorageTests(TestCase):
+    def _add_revision(self, project: Project, *, entity_type='crop', snapshot=None,
+                      created_at=None) -> EntityRevision:
+        revision = EntityRevision.objects.create(
+            project=project, entity_type=entity_type, object_id=project.pk,
+            action='updated', snapshot={} if snapshot is None else snapshot,
+        )
+        if created_at is not None:
+            EntityRevision.objects.filter(pk=revision.pk).update(created_at=created_at)
+        return revision
+
+    def test_counts_cutoff_and_top_ten_without_materializing_revisions(self) -> None:
+        now = timezone.now()
+        cutoff = now - timedelta(days=HISTORY_RETENTION_DAYS)
+        first_project = Project.objects.create(name='First', slug='first-history')
+        oldest = cutoff - timedelta(microseconds=1)
+        self._add_revision(first_project, created_at=oldest)
+        self._add_revision(first_project, entity_type='project', created_at=cutoff)
+        self._add_revision(first_project, entity_type='project', snapshot={CHECKPOINT_KEY: {}})
+        self._add_revision(first_project, snapshot={CHECKPOINT_KEY: {}})
+        for index in range(11):
+            project = Project.objects.create(name=f'Farm {index}', slug=f'history-storage-{index}')
+            self._add_revision(project)
+        Project.objects.create(name='No history', slug='no-history-storage')
+
+        query_count = 3 if connection.vendor == 'postgresql' else 2
+        with self.assertNumQueries(query_count), patch.object(EntityRevision, 'from_db') as read:
+            report = build_history_storage(now)
+        read.assert_not_called()
+        self.assertEqual(report.oldest, oldest)
+        self.assertEqual(report.anchor_count, 1)
+        self.assertEqual(report.entry_count, 15)
+        self.assertEqual(report.checkpoint_count, 1)
+        self.assertEqual(len(report.projects), 10)
+        self.assertEqual(report.projects[0].project_id, first_project.pk)
+        self.assertEqual(report.projects[0].entry_count, 4)
+        self.assertEqual(report.projects[0].checkpoint_count, 1)
+        self.assertEqual([row.project_id for row in report.projects[1:]],
+                         list(range(first_project.pk + 1, first_project.pk + 10)))
+        if connection.vendor == 'sqlite':
+            self.assertIsNone(report.database_bytes)
+            self.assertIsNone(report.table_bytes)
+            self.assertIsNone(report.stored_bytes)
+            self.assertIsNone(report.checkpoint_bytes)
+            self.assertIsNone(report.projects[0].stored_bytes)
+
+    @pytest.mark.postgres
+    def test_postgres_sizes_match_native_storage_functions_and_rank_by_bytes(self) -> None:
+        if connection.vendor != 'postgresql':
+            self.skipTest('PostgreSQL storage functions are required')
+        large = Project.objects.create(name='Large payload', slug='large-history')
+        small = Project.objects.create(name='More rows', slug='small-history')
+        self._add_revision(large, entity_type='project', snapshot={CHECKPOINT_KEY: 'text' * 12000})
+        for _ in range(3):
+            self._add_revision(small)
+
+        with self.assertNumQueries(3):
+            report = build_history_storage(timezone.now())
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT pg_database_size(current_database()), "
+                           "pg_total_relation_size('farm_entityrevision')")
+            self.assertEqual((report.database_bytes, report.table_bytes), cursor.fetchone())
+            cursor.execute('SELECT SUM(pg_column_size(snapshot)), '
+                           'SUM(pg_column_size(snapshot)) FILTER (WHERE project_id = %s) '
+                           'FROM farm_entityrevision', [large.pk])
+            self.assertEqual((report.stored_bytes, report.checkpoint_bytes), cursor.fetchone())
+        self.assertEqual([row.project_id for row in report.projects], [large.pk, small.pk])
+        self.assertEqual(report.projects[0].stored_bytes, report.checkpoint_bytes)
+
+    @override_settings(DJANGO_ENV='development')
+    @patch.dict('os.environ', {'OFP_LOCAL_TEST_DATA': '1'})
+    def test_local_fixture_previews_isolated_retained_history_and_preserves_edits(self) -> None:
+        user = get_user_model().objects.create_superuser(username='history-storage-admin')
+        command = 'seed_history_storage_acceptance'
+        args = {'username': user.username, 'database_name': str(connection.settings_dict['NAME']),
+                'stdout': StringIO()}
+        projects = Project.objects.filter(slug=f'ofp-local-history-storage-{user.pk}')
+        call_command(command, **args)
+        self.assertFalse(projects.exists())
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, **{**args, 'database_name': 'wrong-target'}, apply=True)
+        self.assertFalse(projects.exists())
+
+        call_command(command, **args, apply=True)
+        project = projects.get()
+        self.assertEqual(project.entity_revisions.count(), 3)
+        report = build_history_storage(timezone.now())
+        self.assertEqual(report.checkpoint_count, 1)
+        self.assertEqual(report.anchor_count, 1)
+        crop = Crop.objects.get(project=project)
+        crop.notes = 'Keep manual edit'
+        crop.save()
+        call_command(command, **args, apply=True)
+        crop.refresh_from_db()
+        self.assertEqual(crop.notes, 'Keep manual edit')
+        self.assertEqual(project.entity_revisions.count(), 4)
 
 
 class EngagementDashboardSortingTests(TestCase):

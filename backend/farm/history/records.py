@@ -41,6 +41,7 @@ from farm.services.usage_capture import observe_entity_revision
 
 _internal_versions: ContextVar[bool] = ContextVar('internal_project_versions', default=False)
 PROMOTED_CROP_FIELD_CHANGES = '_promoted_crop_field_changes'
+HISTORY_RETENTION_DAYS = 30
 
 
 @contextmanager
