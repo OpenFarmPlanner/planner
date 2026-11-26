@@ -224,6 +224,9 @@ The floating canvas tools use the measured canvas width, including in
 fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,
 fullscreen, and layout warnings stay directly reachable. Pan and rotation move
 into More canvas tools below the `lg` breakpoint, alongside the secondary tools.
+The overflow slot shows a tool's own button when only one action remains,
+such as Individual plants on a wide canvas. It groups multiple actions in
+More canvas tools and disappears when there are none.
 
 Graphic shades reliable unoccupied location and parcel geometry by default.
 The footprint sweep clips children to the parent and counts their union once.
