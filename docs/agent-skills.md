@@ -7,10 +7,12 @@ Tracked relative directory symlinks at `.agents/skills/<name>` expose the same
 folders to Codex; Claude Code retains its existing discovery location. Edit the
 canonical files, not copied bodies or a user-scope installation.
 
-The nine skills are `django-migration`, `public-page`, `qa-sweep`,
+The ten skills are `django-migration`, `public-page`, `qa-sweep`, `qa-refresh`,
 `release-deploy`, `security-review-protocol`, `test-coverage-campaign`,
-`ui-text-i18n`, `visual-review` and `issue-and-queue`. The last one captures
-explicitly requested issue/queue operations; the execution order and worker
+`ui-text-i18n`, `visual-review` and `issue-and-queue`. `qa-refresh` builds new
+local QA dashboard cards for recently closed, merged queue work; `issue-and-queue`
+captures explicitly requested issue/queue operations and its `sync` mode removes
+the dashboard's Accepted rows from the queue. The execution order and worker
 handoff remain in [work-execution-queue.md](work-execution-queue.md).
 
 ## Discovery versus execution
@@ -47,14 +49,14 @@ and open screenshots with the available image viewer.
 
 In a fresh checkout, inspect `git ls-files -s .agents/skills`: every entry must
 have mode `120000` and a relative target `../../.claude/skills/<name>`. Resolve
-all nine `SKILL.md` files and supporting resources through both paths and compare
+all ten `SKILL.md` files and supporting resources through both paths and compare
 the canonical files. Validate frontmatter `name`/`description` and local links.
 Run `python3 .agents/skills/test-coverage-campaign/mutate.py --help` to exercise
 resource lookup without mutating application files.
 
-Use the installed skill-creator validator when available. The canonical new
-skill also has `agents/openai.yaml` UI metadata; it does not duplicate the
-instruction body. Validate the issue/queue examples with synthetic queue bodies
+Use the installed skill-creator validator when available. The `issue-and-queue`
+skill also has `agents/openai.yaml` UI metadata, separate from its instructions.
+Validate the issue/queue examples with synthetic queue bodies
 and existing parser tests, never test issues or live queue edits. The existing
 `node --test tests/test_codex_queue.cjs tests/test_work_queue_worker.cjs` uses
 fixtures and performs no GitHub writes. Application suites are unnecessary for

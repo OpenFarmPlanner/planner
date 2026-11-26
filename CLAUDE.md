@@ -91,7 +91,7 @@ exactly one section below; don't restate rules here.
    "Testing Rules".
 
 Recurring procedures (migration, release/deploy, public page, UI text in all supported
-languages, QA sweep, security review, visual review, test-coverage campaign)
+languages, QA sweep, QA refresh, security review, visual review, test-coverage campaign)
 are canonical skills under `.claude/skills/`, shared with Codex through relative
 directory symlinks in `.agents/skills/`; they apply the rules below step by step
 and never replace them. Discovery and environment requirements are documented in
