@@ -135,11 +135,10 @@
       "individualPlants": "Place trees and shrubs as individual plants with their canopy diameter"
     },
     "illustration": {
-      "ariaLabel": "Schematic area plan: a location with one parcel, four beds with paths between them and a fruit tree as an individual plant.",
+      "ariaLabel": "Schematic area plan: a location with one parcel, four beds and a fruit tree as an individual plant.",
       "location": "Location",
       "parcel": "Parcel",
       "bed": "Bed {{number}}",
-      "path": "Path",
       "tree": "Fruit tree"
     }
   },

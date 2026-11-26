@@ -139,11 +139,10 @@
       "individualPlants": "Placer arbres et arbustes comme plantes individuelles avec le diamètre du houppier"
     },
     "illustration": {
-      "ariaLabel": "Plan schématique : un site avec une parcelle, quatre planches séparées par des allées et un arbre fruitier en plante individuelle.",
+      "ariaLabel": "Plan schématique : un site avec une parcelle, quatre planches et un arbre fruitier en plante individuelle.",
       "location": "Site",
       "parcel": "Parcelle",
       "bed": "Planche {{number}}",
-      "path": "Allée",
       "tree": "Arbre fruitier"
     }
   },

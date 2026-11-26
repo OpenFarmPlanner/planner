@@ -139,11 +139,10 @@
       "individualPlants": "Colocar árvores e arbustos como plantas individuais com o diâmetro da copa"
     },
     "illustration": {
-      "ariaLabel": "Planta esquemática: uma exploração com uma parcela, quatro canteiros com caminhos entre eles e uma árvore de fruto como planta individual.",
+      "ariaLabel": "Planta esquemática: uma exploração com uma parcela, quatro canteiros e uma árvore de fruto como planta individual.",
       "location": "Exploração",
       "parcel": "Parcela",
       "bed": "Canteiro {{number}}",
-      "path": "Caminho",
       "tree": "Árvore de fruto"
     }
   },
