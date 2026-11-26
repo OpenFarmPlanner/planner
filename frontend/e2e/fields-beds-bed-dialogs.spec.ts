@@ -153,7 +153,7 @@ for (const mobile of [false, true]) {
       }
 
       await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-      await page.getByRole('combobox', { name: 'Standort', exact: true }).click();
+      await page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ }).click();
       await page.getByRole('option', { name: locationName, exact: true }).click();
       await page.reload();
       const shapes = () => page.evaluate(fields => {
@@ -163,7 +163,7 @@ for (const mobile of [false, true]) {
         const rects = stage.find('Rect');
         const read = (testId: string): Rect | undefined => {
           const shape = rects.find(rect => rect.getAttr('data-testid') === testId) as Konva.Rect | undefined;
-          return shape && { x: shape.x(), y: shape.y(), width: shape.width(), height: shape.height() };
+          return shape && { ...shape.getAbsolutePosition(stage), width: shape.width(), height: shape.height() };
         };
         return fields.map(({ fieldId, ids }) => ({ parcel: read(`field-usable-area-${fieldId}`),
           beds: ids.map(id => read(`bed-rect-${id}`)) }));

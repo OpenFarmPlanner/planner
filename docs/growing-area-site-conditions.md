@@ -113,6 +113,11 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
   are never filtered out.
 - The filters apply only to the list (desktop grid and mobile list), never to
   the graphical view.
+- The list toolbar keeps Search beside Filter and rotation management where
+  space allows. The toolbar's available width controls whether Filter, Columns
+  and rotation management show labels. Compact actions have localized names and
+  44 px targets. Planting Plans uses the same toolbar on its grid. Its mobile
+  filter sheet and the Cultures sidebar already use compact filter buttons.
 - Light, Moisture and Irrigation available are optional grid columns,
   hidden by default (`useColumnVisibility`'s `defaultHiddenFields`, persisted
   under `tableColumns.fieldsBedsHierarchy`). They show the effective value;
@@ -120,6 +125,15 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
   inline like the other cells; the first option, "Inherit (…)", is the inline
   reset. New, unsaved rows get their conditions after the first save. Soil type
   and the texts are edited on the detail page only.
+
+## Graphic workspace toolbar
+
+On narrow widths, the workspace row keeps the view switch, location and edit
+action beside the graphic menu. The menu keeps the four display choices and the
+legend, and also opens the existing Spacing dialog for project members. A crop
+reference date stays directly available in crop modes and wraps when needed.
+Wider workspaces put Spacing back beside Edit graphic. In-canvas tools use their
+own menu in every layout.
 
 ## Default bed dimensions
 

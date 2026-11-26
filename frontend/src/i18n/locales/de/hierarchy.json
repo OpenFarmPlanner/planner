@@ -34,6 +34,7 @@
     "issueCount_other": "Parzellenrotation nicht möglich: {{count}} Probleme",
     "showIssues": "Probleme anzeigen",
     "missingArea": "Gib die Flächen von {{source_bed}} und {{bed}} ein, um zu rotieren.",
+    "incompatiblePlacement": "Die Einzelpflanzen aus {{source_bed}} passen nicht in das Beet {{bed}}. Wähle die Kopie ohne Parzellenrotation.",
     "noCapacity": "Die kopierten Anbaupläne brauchen in {{bed}}, {{parcel}}, mehr Platz als verfügbar.",
     "areaChange": "Belegte Fläche {{old}} → {{next}} m²",
     "countChange": "Berechnete Pflanzenzahl {{old}} → {{next}}",

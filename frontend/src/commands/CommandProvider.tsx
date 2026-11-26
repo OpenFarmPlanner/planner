@@ -18,6 +18,7 @@ import { getRunnableCommands, getVisibleCommands } from './commands';
 import type { CommandContextTag, CommandSpec, CreateAction } from './types';
 import type { ShortcutSpec } from '../hooks/useKeyboardShortcuts';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { useTouchOnly } from '../hooks/useTouchOnly';
 import { useTranslation } from '../i18n';
 import { AlertSnackbar } from '../components/feedback/AlertSnackbar';
 import { CommandContext } from './commandContextShared';
@@ -252,6 +253,7 @@ export function CommandProvider({ children }: { children: React.ReactNode }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const [createChooserOpen, setCreateChooserOpen] = useState(false);
   const [hintOpen, setHintOpen] = useState(false);
+  const touchOnly = useTouchOnly();
   const [commandsByScope, setCommandsByScope] = useState<Record<string, CommandSpec[]>>({});
   const [createActionsByScope, setCreateActionsByScope] = useState<Record<string, CreateAction[]>>({});
   const [contextTagMap, setContextTagMap] = useState<Record<CommandContextTag, boolean>>({ global: true } as Record<CommandContextTag, boolean>);
@@ -271,10 +273,7 @@ export function CommandProvider({ children }: { children: React.ReactNode }) {
   }, [currentContextTags]);
 
   useEffect(() => {
-    if (localStorage.getItem(SHORTCUT_HINT_KEY) !== null || !hasVisitedFeaturePageRef.current) {
-      return;
-    }
-    if (typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches) {
+    if (touchOnly || localStorage.getItem(SHORTCUT_HINT_KEY) !== null || !hasVisitedFeaturePageRef.current) {
       return;
     }
 
@@ -322,7 +321,7 @@ export function CommandProvider({ children }: { children: React.ReactNode }) {
       cancelled = true;
       window.clearTimeout(timerId);
     };
-  }, [currentContextTags]);
+  }, [currentContextTags, touchOnly]);
 
   const openPalette = useCallback(() => {
     previouslyFocusedElementRef.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
@@ -586,7 +585,7 @@ export function CommandProvider({ children }: { children: React.ReactNode }) {
         </DialogContent>
       </Dialog>
       <AlertSnackbar
-        open={hintOpen}
+        open={hintOpen && !touchOnly}
         autoHideDuration={6000}
         onClose={() => setHintOpen(false)}
         message={<>💡 {t('commandPalette.shortcutHint')}</>}

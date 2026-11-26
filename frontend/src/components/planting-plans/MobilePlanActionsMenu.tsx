@@ -6,6 +6,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 
 import { useTranslation } from "../../i18n";
 import { ContextMenuActionItem } from "../contextMenu/ContextMenuActionItem";
+import { isIndividualPlacement } from "../../pages/individualPlantGeometry";
 import type { PlantingPlanRow } from "../../pages/plantingPlansUtils";
 
 export interface PlanMenuNavigationAction {
@@ -45,6 +46,8 @@ export function MobilePlanActionsMenu({
 }: MobilePlanActionsMenuProps) {
   const { t } = useTranslation(["plantingPlans", "common"]);
 
+  const showAreaPlanActions = row === null || (!row.carried_over && !isIndividualPlacement(row));
+
   return (
     <Menu
       id="planting-plan-mobile-actions-menu"
@@ -57,7 +60,7 @@ export function MobilePlanActionsMenu({
         icon={action.icon} disabled={Boolean(action.disabledReason)} disabledReason={action.disabledReason}
         onClick={() => { onClose(); action.activate(anchorEl); }} />)}
       {navigationActions.length > 0 && <Divider role="separator" />}
-      {!row?.carried_over && !row?.parcel && <ContextMenuActionItem
+      {showAreaPlanActions && <ContextMenuActionItem
         label={t("common:actions.edit")}
         icon={<EditIcon fontSize="small" />}
         onClick={() => {
@@ -67,7 +70,7 @@ export function MobilePlanActionsMenu({
           onClose();
         }}
       />}
-      {!row?.carried_over && !row?.parcel && <ContextMenuActionItem
+      {showAreaPlanActions && <ContextMenuActionItem
         label={t("common:actions.duplicate")}
         icon={<ContentCopyIcon fontSize="small" />}
         onClick={() => {

@@ -52,6 +52,7 @@ from .services.engagement_dashboard import (
     build_engagement_dashboard,
     sort_project_rows,
 )
+from .services.history_storage import build_history_storage
 
 
 @admin.register(Project)
@@ -125,6 +126,7 @@ class ProjectAdmin(admin.ModelAdmin):
                 for key, label in SERIES.items()
             ],
             'demo_usage': demo_usage,
+            'history_storage': build_history_storage(now),
             'crop_library_operations': build_crop_library_operations(
                 now, excluded_project_ids=dashboard.excluded_project_ids,
             ),

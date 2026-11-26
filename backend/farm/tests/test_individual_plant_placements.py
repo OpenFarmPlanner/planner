@@ -97,7 +97,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         parcel = Field.objects.create(project=other, location=location, name='Other plot')
         for invalid in (
             {'parcel': parcel.id}, {'bed': self.bed.id}, {'quantity': 12}, {'area_usage_sqm': 10},
-            {'crop': self.crop.id}, {'planting_date': None}, {'individual_positions': []},
+            {'placement_mode': 'area'}, {'planting_date': None}, {'individual_positions': []},
             {'individual_positions': [{'x_m': -1, 'y_m': 0}]},
             {'individual_positions': [{'x_m': 12.01, 'y_m': 4}]},
             {'individual_positions': [{'x_m': 'NaN', 'y_m': 5}]},
@@ -122,6 +122,119 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             PlantingPlan.objects.get(pk=created['id']).individual_positions,
             created['individual_positions'],
         )
+
+    def test_annual_individual_plans_share_a_bed_with_area_plans(self):
+        self.bed.width_m, self.bed.length_m = 2, 10
+        self.bed.save()
+        beans = Crop.objects.create(
+            project=self.project, name='Climbing beans', life_cycle='annual',
+            growth_duration_days=12, harvest_duration_days=5,
+        )
+        carrots = self.client.post(URL, {
+            'crop': self.crop.pk, 'bed': self.bed.pk, 'planting_date': '2026-04-18',
+            'area_usage_sqm': 8,
+        }, format='json')
+        self.assertEqual(carrots.status_code, 201, carrots.data)
+        self.assertEqual(carrots.data['placement_mode'], 'area')
+        bed_payload = {
+            'crop': beans.pk, 'parcel': None, 'bed': self.bed.pk,
+            'placement_mode': 'individual_bed',
+        }
+        placed = self.create_plan(**bed_payload).json()
+        second = self.create_plan(**bed_payload).json()
+        direct = self.create_plan(crop=beans.pk, placement_mode='individual_parcel').json()
+        self.assertEqual(placed['bed'], self.bed.pk)
+        self.assertIsNone(placed['parcel'])
+        self.assertIsNone(placed['area_usage_sqm'])
+        self.assertIsNone(placed['quantity'])
+        self.assertIsNone(placed['clearing_date'])
+        self.assertEqual(placed['plants_count'], 2)
+        self.assertEqual(placed['parcel_location_id'], self.location.pk)
+        self.assertEqual(direct['placement_mode'], 'individual_parcel')
+        self.assertIsNone(direct['clearing_date'])
+        self.assertTrue(
+            {stem['id'] for stem in placed['individual_positions']}.isdisjoint(
+                stem['id'] for stem in second['individual_positions']
+            )
+        )
+        results = self.client.get(URL, {'individual_location': self.location.pk}).json()['results']
+        self.assertEqual(
+            {plan['id'] for plan in results}, {placed['id'], second['id'], direct['id']},
+        )
+        detail = self.client.get(f"{URL}{placed['id']}/").json()
+        self.assertEqual(detail['field_name'], self.field.name)
+        self.assertEqual(detail['location_name'], self.location.name)
+        self.assertEqual(detail['bed_name'], self.bed.name)
+        demand = self.client.get('/openfarmplanner/api/young-plant-demand/').json()['results']
+        beans_demand = next(item for item in demand if item['crop_id'] == beans.pk)
+        self.assertEqual(beans_demand['plant_count'], 6)
+
+        capacity = self.client.get(f'{URL}remaining-area/', {
+            'bed_id': self.bed.pk, 'start_date': '2026-04-18', 'end_date': '2026-04-22',
+        }).json()
+        self.assertFalse(capacity['area_capacity_known'])
+        self.assertIsNone(capacity['remaining_area_sqm'])
+        self.assertEqual(capacity['overlapping_used_area_sqm'], 8.0)
+        self.assertEqual(capacity['unallocated_measured_area_sqm'], 12.0)
+        fits = self.client.post(URL, {
+            'crop': self.crop.pk, 'bed': self.bed.pk, 'planting_date': '2026-04-18',
+            'area_usage_sqm': 12,
+        }, format='json')
+        self.assertEqual(fits.status_code, 201, fits.data)
+
+    def test_undated_existing_placement_stays_editable_but_date_cannot_be_cleared_or_omitted(self):
+        created = self.create_plan().json()
+        PlantingPlan.objects.filter(pk=created['id']).update(planting_date=None)
+        detail = f"{URL}{created['id']}/"
+        stems = [{'id': created['individual_positions'][0]['id'], 'x_m': 3, 'y_m': 4}]
+        edited = self.client.patch(detail, {
+            'individual_positions': stems,
+            'placement_updated_at': self.client.get(detail).json()['updated_at'],
+        }, format='json')
+        self.assertEqual(edited.status_code, 200, edited.data)
+        cleared = self.client.patch(detail, {'planting_date': None}, format='json')
+        self.assertEqual(cleared.status_code, 400)
+        undated_payload = self.payload()
+        del undated_payload['planting_date']
+        omitted = self.client.post(URL, undated_payload, format='json')
+        self.assertEqual(omitted.status_code, 400)
+
+    def test_bed_placement_checks_dimensions_and_preserves_parent_on_updates(self):
+        self.bed.width_m, self.bed.length_m = 3, 10
+        self.bed.save()
+        base = {
+            'crop': self.crop.pk, 'parcel': None, 'bed': self.bed.pk,
+            'placement_mode': 'individual_bed',
+        }
+        other_bed = Bed.objects.create(
+            project=self.project, field=self.field, name='Unmeasured bed',
+        )
+        for invalid in (
+            {'parcel': self.field.pk}, {'bed': None}, {'bed': other_bed.pk},
+            {'placement_mode': 'individual_parcel'},
+            {'individual_positions': [{'x_m': 3.01, 'y_m': 4}]},
+        ):
+            with self.subTest(invalid=invalid):
+                result = self.client.post(URL, self.payload(**(base | invalid)), format='json')
+                self.assertEqual(result.status_code, 400, result.data)
+        self.assertFalse(PlantingPlan.objects.exists())
+
+        placed = self.create_plan(**base).json()
+        url = f"{URL}{placed['id']}/"
+        for invalid in (
+            {'bed': other_bed.pk}, {'placement_mode': 'area'}, {'parcel': self.field.pk},
+        ):
+            result = self.client.patch(url, invalid, format='json')
+            self.assertEqual(result.status_code, 400, result.data)
+        dimensions = f'/openfarmplanner/api/beds/{self.bed.pk}/'
+        changed = self.client.patch(dimensions, {'length_m': 8.9}, format='json')
+        self.assertEqual(changed.status_code, 409, changed.data)
+        self.assertEqual(changed.data['code'], 'bed_contains_individual_positions')
+        self.bed.refresh_from_db()
+        self.assertEqual(self.bed.length_m, 10)
+        after = PlantingPlan.objects.get(pk=placed['id'])
+        self.assertEqual(after.bed_id, self.bed.pk)
+        self.assertEqual(after.individual_positions, placed['individual_positions'])
 
     def test_parcel_dimension_changes_keep_all_saved_positions_inside(self):
         created = self.create_plan().json()
@@ -340,7 +453,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             width_m=12, length_m=20,
         )
         opposite_bed = Bed.objects.create(
-            project=self.project, field=opposite, name='Other bed', area_sqm=20,
+            project=self.project, field=opposite, name='Other bed', width_m=4, length_m=10,
         )
         created = self.client.post('/openfarmplanner/api/parcel-rotation-groups/', {
             'name': 'Rotation', 'parcels': [
@@ -349,7 +462,12 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             ],
         }, format='json')
         self.assertEqual(created.status_code, 201, created.data)
+        self.bed.width_m, self.bed.length_m = 3, 10
+        self.bed.save()
         orchard = self.create_plan(clearing_date='2026-12-31').json()
+        plants = self.create_plan(
+            crop=self.crop.pk, parcel=None, bed=self.bed.pk, placement_mode='individual_bed',
+        ).json()
         annual = PlantingPlan.objects.create(
             project=self.project, season=self.origin, crop=self.crop, bed=self.bed,
             planting_date=date(2026, 5, 1), area_usage_sqm=5,
@@ -362,13 +480,51 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             continuing_count=continuing,
         ).summary
         self.assertTrue(preview['enabled'])
-        self.assertEqual(len(preview['moves']), 1)
+        self.assertEqual(len(preview['moves']), 2)
+        position_move = next(
+            move for move in preview['moves'] if move['source_plan_id'] == plants['id']
+        )
+        self.assertIsNone(position_move['new_area_sqm'])
+        self.assertEqual(position_move['new_plant_count'], 2)
+
+        opposite_bed.width_m = 1
+        opposite_bed.save()
+        incompatible = preview_parcel_rotation(
+            self.origin, self.later, pairs, preceding=True, requested=True,
+            continuing_count=continuing,
+        ).summary
+        self.assertFalse(incompatible['available'])
+        issue_codes = {issue['code'] for issue in incompatible['issues']}
+        self.assertIn('bed_placement_incompatible', issue_codes)
+        api = f'/openfarmplanner/api/seasons/{self.later.pk}/copy-from/'
+        rejected = self.client.post(api, {
+            'source_season_id': self.origin.pk, 'rotate_parcels': True,
+            'parcel_rotation_fingerprint': preview['fingerprint'],
+        }, format='json')
+        self.assertEqual(rejected.status_code, 409, rejected.data)
+        self.assertFalse(PlantingPlan.objects.filter(season=self.later).exists())
+        opposite_bed.width_m = 4
+        opposite_bed.save()
+
         copies, _, _, _ = copy_planting_plans(
             source_season=self.origin, target_season=self.later,
             parcel_rotation_fingerprint=preview['fingerprint'],
         )
         by_source = {plan.copied_from_plan_id: plan for plan in copies}
         self.assertEqual(by_source[annual.id].bed_id, opposite_bed.id)
+        copied_bed_placement = by_source[plants['id']]
+        self.assertEqual(copied_bed_placement.placement_mode, 'individual_bed')
+        self.assertEqual(copied_bed_placement.bed_id, opposite_bed.pk)
+        self.assertIsNone(copied_bed_placement.area_usage_sqm)
+        self.assertEqual(
+            PlantingPlan.objects.get(pk=plants['id']).individual_positions,
+            plants['individual_positions'],
+        )
+        for before, after in zip(
+            plants['individual_positions'], copied_bed_placement.individual_positions, strict=True,
+        ):
+            self.assertNotEqual(before['id'], after['id'])
+            self.assertEqual((before['x_m'], before['y_m']), (after['x_m'], after['y_m']))
         trees = by_source[orchard['id']]
         self.assertEqual(trees.parcel_id, self.field.id)
         self.assertIsNone(trees.bed_id)

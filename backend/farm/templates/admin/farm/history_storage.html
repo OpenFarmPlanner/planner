@@ -1,0 +1,72 @@
+{% load i18n %}
+{% translate "Nicht verfügbar" as unavailable %}
+<div class="module" id="history-storage">
+  <table>
+    <caption>{% translate "Speicherbedarf des Versionsverlaufs" %}</caption>
+    <tbody>
+      <tr>
+        <th scope="row">{% translate "Datenbankgröße" %}</th>
+        <td>{% if history_storage.database_bytes is None %}{{ unavailable }}{% else %}{{ history_storage.database_bytes|filesizeformat }}{% endif %}</td>
+      </tr>
+      <tr>
+        <th scope="row">{% translate "Verlaufstabelle (inkl. Indizes)" %}</th>
+        <td>{% if history_storage.table_bytes is None %}{{ unavailable }}{% else %}{{ history_storage.table_bytes|filesizeformat }}{% endif %}</td>
+      </tr>
+      <tr>
+        <th scope="row">{% translate "Ältester Verlaufseintrag" %}</th>
+        <td>{{ history_storage.oldest|date:"SHORT_DATETIME_FORMAT"|default:"–" }}</td>
+      </tr>
+      <tr>
+        <th scope="row">{% translate "Aufbewahrte Anker (älter als 30 Tage)" %}</th>
+        <td>{{ history_storage.anchor_count }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="help">{% translate "Die Größen der gespeicherten Momentaufnahmen berücksichtigen die Datenbankkomprimierung. Speichergrößen sind nur mit PostgreSQL verfügbar." %}</p>
+  <table>
+    <caption>{% translate "Gespeicherte Momentaufnahmen" %}</caption>
+    <thead><tr>
+      <th scope="col">{% translate "Verlauf" %}</th>
+      <th scope="col">{% translate "Einträge" %}</th>
+      <th scope="col">{% translate "Gespeicherte Größe" %}</th>
+    </tr></thead>
+    <tbody>
+      <tr>
+        <th scope="row">{% translate "Alle Verlaufseinträge" %}</th>
+        <td>{{ history_storage.entry_count }}</td>
+        <td>{% if history_storage.stored_bytes is None %}{{ unavailable }}{% else %}{{ history_storage.stored_bytes|filesizeformat }}{% endif %}</td>
+      </tr>
+      <tr>
+        <th scope="row">{% translate "Davon vollständige Projektversionen" %}</th>
+        <td>{{ history_storage.checkpoint_count }}</td>
+        <td>{% if history_storage.checkpoint_bytes is None %}{{ unavailable }}{% else %}{{ history_storage.checkpoint_bytes|filesizeformat }}{% endif %}</td>
+      </tr>
+    </tbody>
+  </table>
+  <table>
+    <caption>
+      {% if history_storage.database_bytes is None %}
+        {% translate "Projekte mit den meisten Verlaufseinträgen" %}
+      {% else %}
+        {% translate "Projekte mit dem höchsten Speicherbedarf" %}
+      {% endif %}
+    </caption>
+    <thead><tr>
+      <th scope="col">{% translate "Projekt-ID" %}</th>
+      <th scope="col">{% translate "Einträge" %}</th>
+      <th scope="col">{% translate "Vollständige Versionen" %}</th>
+      <th scope="col">{% translate "Gespeicherte Größe" %}</th>
+    </tr></thead>
+    <tbody>
+      {% for row in history_storage.projects %}
+        <tr>
+          <th scope="row"><a href="{% url 'admin:farm_project_change' row.project_id %}">{{ row.project_id }}</a></th>
+          <td>{{ row.entry_count }}</td><td>{{ row.checkpoint_count }}</td>
+          <td>{% if row.stored_bytes is None %}{{ unavailable }}{% else %}{{ row.stored_bytes|filesizeformat }}{% endif %}</td>
+        </tr>
+      {% empty %}
+        <tr><td colspan="4">{% translate "Keine Verlaufseinträge vorhanden." %}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

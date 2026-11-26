@@ -52,7 +52,7 @@ export function GraphicalDisplayLegend({
         <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>{title}</Typography>
         {showCrops && <Stack spacing={0.5}>
           <Typography variant="subtitle2">{t('graphical.display.mode.crops')}</Typography>
-          <Typography variant="body2">{t('graphical.display.cropLegend')}</Typography>
+          <Typography variant="body2">{t(showTasks ? 'graphical.display.combinedCropLegend' : 'graphical.display.cropLegend')}</Typography>
           {cropLoading && <Typography role="status" variant="caption">{t('common:messages.loading')}</Typography>}
           {cropFailed && <Alert severity="error" action={<LoadRetryButton onClick={onRetryCrops} />}>
             {t('graphical.display.cropLoadError')}

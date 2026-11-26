@@ -125,6 +125,47 @@ describe('CommandProvider', () => {
     vi.useRealTimers();
   });
 
+  it('keeps the shortcut hint eligible on touch-only layouts and preserves the shortcut', () => {
+    vi.useFakeTimers();
+    localStorage.removeItem('ofp.shortcutHintSeen');
+    const touchQuery = new EventTarget() as MediaQueryList & { matches: boolean };
+    Object.assign(touchQuery, { matches: true });
+    vi.stubGlobal('matchMedia', (query: string) => query.includes('any-hover: none')
+      ? touchQuery : Object.assign(new EventTarget(), { matches: false }));
+
+    function FeaturePageFixture() {
+      useCommandContextTag('areas');
+      return <div>feature page</div>;
+    }
+
+    try {
+      render(<FocusManagerProvider><CommandProvider>
+        <RootCommandFixture />
+        <FeaturePageFixture />
+      </CommandProvider></FocusManagerProvider>);
+      act(() => { vi.advanceTimersByTime(3000); });
+      expect(localStorage.getItem('ofp.shortcutHintSeen')).toBeNull();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+
+      fireEvent.keyDown(window, { key: 'k', altKey: true });
+      expect(screen.getByRole('dialog')).toBeInTheDocument();
+      fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+      act(() => { vi.advanceTimersByTime(500); });
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+      act(() => {
+        touchQuery.matches = false;
+        touchQuery.dispatchEvent(new Event('change'));
+      });
+      act(() => { vi.advanceTimersByTime(3000); });
+      expect(localStorage.getItem('ofp.shortcutHintSeen')).toBe('1');
+      expect(screen.getByRole('alert')).toBeInTheDocument();
+    } finally {
+      vi.unstubAllGlobals();
+      vi.useRealTimers();
+    }
+  });
+
   it('defers the one-time shortcut hint while a dialog is open, instead of overlapping its buttons', () => {
     // Regression test: the hint used to fire on a fixed timer regardless of
     // what was on screen, and its Snackbar renders above any open MUI

@@ -5,14 +5,15 @@ import type {
   IndividualPlacementInput, PlantingPlan, PlanCultivationType, Season, StemCoordinates,
 } from '../api/types';
 import { formatDateToAPI } from '../utils/isoDate';
+import { planPlacementParent, type PlacementParent } from './individualPlantGeometry';
+import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
 
-export const MAX_INDIVIDUAL_POSITIONS = 1000;
 export type DraftStem = StemCoordinates & { id?: string; key: string };
 
 interface Draft {
   planId?: number;
   expectedUpdatedAt?: string;
-  parcel: number;
+  parent: PlacementParent;
   crop: number | null;
   date: string;
   cultivation: PlanCultivationType | '';
@@ -20,19 +21,25 @@ interface Draft {
   stems: DraftStem[];
 }
 
+export function readyForPlacement(draft: Draft, season: Season) {
+  return Boolean(draft.planId || (draft.crop && draft.cultivation
+    && draft.date >= season.start_date && draft.date <= season.end_date));
+}
+
 interface Editor {
   open: boolean;
-  parcel: number | null;
+  parent: PlacementParent | null;
+  choosingParent: boolean;
   planId: number | null;
   selectedKey: string | null;
   draft: Draft | null;
-  placing: 'add' | 'move' | null;
+  placing: 'add' | null;
   saving: boolean;
   error: 'saveFailed' | 'changedElsewhere' | null;
 }
 
 const initialEditor: Editor = {
-  open: false, parcel: null, planId: null, selectedKey: null,
+  open: false, parent: null, choosingParent: false, planId: null, selectedKey: null,
   draft: null, placing: null, saving: false, error: null,
 };
 
@@ -66,12 +73,14 @@ export function useIndividualPlants(
       setResult({ key, plans: results, failed: false });
       const requested = requestedPlan !== revealedPlan.current
         ? results.find(plan => plan.id === requestedPlan) : undefined;
-      if (!requested?.id || !requested.parcel) return;
-      revealedPlan.current = requested.id;
+      const parent = requested ? planPlacementParent(requested) : null;
+      const planId = requested?.id;
+      if (planId === undefined || !parent) return;
+      revealedPlan.current = planId;
       setState(value => value.scope === scope ? {
         scope, editor: {
-          ...initialEditor, open: true, planId: requested.id ?? null, parcel: requested.parcel ?? null,
-          selectedKey: requested.individual_positions?.[0]?.id ?? null,
+          ...initialEditor, open: true, planId, parent,
+          selectedKey: requested?.individual_positions?.[0]?.id ?? null,
         },
       } : value);
     }).catch(() => {
@@ -92,23 +101,23 @@ export function useIndividualPlants(
     draft: value.draft ? { ...value.draft, ...changes } : null, error: null,
   }));
 
-  const select = (planId: number | null, parcel: number | null, selectedKey: string | null = null) => {
+  const select = (planId: number | null, parent: PlacementParent | null, selectedKey: string | null = null) => {
     update(value => value.draft
       ? ((value.draft.planId ?? null) === planId ? { selectedKey } : {})
-      : { open: true, planId, parcel, selectedKey });
+      : { open: true, choosingParent: false, planId, parent, selectedKey });
   };
 
-  const startDraft = (parcel: number, plan?: PlantingPlan) => {
+  const startDraft = (parent: PlacementParent, plan?: PlantingPlan) => {
     // A direct move of this plan is still saving: a draft would start from a version about to change.
     if (!canEdit || !season || saving.current || (plan?.id && movingPlans.has(plan.id))) return;
     const today = formatDateToAPI(new Date());
     const defaultDate = today < season.start_date ? season.start_date
       : today > season.end_date ? season.end_date : today;
     update({
-      open: true, placing: null, error: null, parcel, planId: plan?.id ?? null,
+      open: true, choosingParent: false, placing: plan ? null : 'add', error: null, parent, planId: plan?.id ?? null,
       selectedKey: plan?.individual_positions?.[0]?.id ?? null,
       draft: {
-        planId: plan?.id, expectedUpdatedAt: plan?.updated_at, parcel,
+        planId: plan?.id, expectedUpdatedAt: plan?.updated_at, parent,
         crop: plan?.crop ?? null, date: plan?.planting_date ?? defaultDate,
         cultivation: plan?.cultivation_type ?? '',
         canopy: plan?.estimated_canopy_diameter_m,
@@ -117,16 +126,17 @@ export function useIndividualPlants(
     });
   };
 
-  const addStem = (point: StemCoordinates) => {
-    const stem = { ...point, key: `new-${nextStemId.current++}` };
+  const addStems = (points: readonly StemCoordinates[]) => {
+    const added = points.map(point => ({ ...point, key: `new-${nextStemId.current++}` }));
     update(value => {
-      if (!value.draft || value.draft.stems.length >= MAX_INDIVIDUAL_POSITIONS) return {};
+      if (!value.draft || !added.length || value.draft.stems.length + added.length > MAX_INDIVIDUAL_POSITIONS) return {};
       return {
-        draft: { ...value.draft, stems: [...value.draft.stems, stem] },
-        placing: null, selectedKey: stem.key, error: null,
+        draft: { ...value.draft, stems: [...value.draft.stems, ...added] },
+        selectedKey: added[added.length - 1].key, error: null,
       };
     });
   };
+  const addStem = (point: StemCoordinates) => addStems([point]);
 
   const changeStem = (stemKey: string, point: StemCoordinates | null) => update(value => {
     if (!value.draft) return {};
@@ -134,7 +144,7 @@ export function useIndividualPlants(
       ? value.draft.stems.map(stem => stem.key === stemKey ? { ...stem, ...point } : stem)
       : value.draft.stems.filter(stem => stem.key !== stemKey);
     return {
-      draft: { ...value.draft, stems }, error: null, placing: null,
+      draft: { ...value.draft, stems }, error: null,
       selectedKey: point ? stemKey : stems[0]?.key ?? null,
     };
   });
@@ -152,7 +162,10 @@ export function useIndividualPlants(
       const { data: plan } = draft.planId && draft.expectedUpdatedAt
         ? await plantingPlanAPI.saveIndividualPlacement(draft.planId, draft.expectedUpdatedAt, data)
         : await plantingPlanAPI.createIndividual({
-          ...data, parcel: draft.parcel, crop: draft.crop, planting_date: draft.date,
+          ...data, crop: draft.crop, planting_date: draft.date,
+          ...(draft.parent.kind === 'bed'
+            ? { placement_mode: 'individual_bed', bed: draft.parent.id }
+            : { placement_mode: 'individual_parcel', parcel: draft.parent.id }),
           cultivation_type: draft.cultivation,
         });
       setResult(value => value?.key === key ? {
@@ -210,7 +223,7 @@ export function useIndividualPlants(
   };
 
   return {
-    plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, changeStem, save,
+    plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, addStems, changeStem, save,
     moveSavedStem, movingPlans, moveError: Boolean(scope) && moveErrorScope === scope,
     loading: Boolean(scope) && !current, failed: current?.failed ?? false,
     refresh: () => setAttempt(value => value + 1),

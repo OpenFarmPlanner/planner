@@ -19,6 +19,7 @@ from farm.history.records import internal_project_versions
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location, PlantingPlan
 from farm.planning.individual_planting import (
     lock_individual_parcel,
+    validate_individual_bed_dimensions,
     validate_individual_parcel_dimensions,
 )
 from farm.project_context import get_active_project_or_400
@@ -286,6 +287,7 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
             pk=serializer.instance.pk, project_id=self.request.active_project.pk,
         )
         serializer.instance = bed
+        validate_individual_bed_dimensions(bed, serializer.validated_data)
         previous_snapshot = _serialize_instance(bed)
         destination = serializer.validated_data.get('field')
         if destination is not None and destination.pk != bed.field_id:

@@ -135,11 +135,10 @@
       "individualPlants": "Bäume und Sträucher als Einzelpflanzen mit Kronendurchmesser platzieren"
     },
     "illustration": {
-      "ariaLabel": "Schematischer Flächenplan: ein Standort mit einer Parzelle, vier Beeten mit Wegen dazwischen und einem Obstbaum als Einzelpflanze.",
+      "ariaLabel": "Schematischer Flächenplan: ein Standort mit einer Parzelle, vier Beeten und einem Obstbaum als Einzelpflanze.",
       "location": "Standort",
       "parcel": "Parzelle",
       "bed": "Beet {{number}}",
-      "path": "Weg",
       "tree": "Obstbaum"
     }
   },

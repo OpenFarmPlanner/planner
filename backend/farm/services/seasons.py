@@ -38,6 +38,7 @@ PLANTING_PLAN_COPY_FIELDS = (
     'crop_id',
     'bed_id',
     'parcel_id',
+    'individual_bed',
     'estimated_canopy_diameter_m',
     'cultivation_type',
     'planting_date',
@@ -284,7 +285,7 @@ def whole_year_offset_into_period(reference: date, start_date: date, end_date: d
 
 def _season_copy_fields(plan: PlantingPlan, crop_index: GeneralCropIndex | None) -> dict[str, Any]:
     fields = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
-    if plan.parcel_id is not None:
+    if plan.is_individual:
         fields['individual_positions'] = [
             {**position, 'id': str(uuid4())} for position in plan.individual_positions
         ]
@@ -441,7 +442,8 @@ def copy_planting_plans(
     `rotation_conflicts` decides what happens to copies that would break the
     crop rotation on their bed (see `farm.services.crop_rotation`): `keep`
     copies them onto the same bed (the conflict stays visible), `without_bed`
-    copies them as open assignments without a bed, and `skip` leaves them out.
+    copies area plans as open assignments and skips individual bed plans,
+    and `skip` leaves all conflicting plans out.
     Plans left out this way are not counted in the returned skipped count.
 
     Existing planting plans already in `target_season` are left untouched —
@@ -480,7 +482,7 @@ def copy_planting_plans(
         for (_, copy), result in zip(pairs, check_season_copies(service, pairs), strict=True):
             if not result.is_conflict:
                 new_plans.append(copy)
-            elif rotation_conflicts == COPY_CONFLICTS_WITHOUT_BED:
+            elif rotation_conflicts == COPY_CONFLICTS_WITHOUT_BED and not copy.individual_bed:
                 copy.bed = None
                 new_plans.append(copy)
     created = PlantingPlan.objects.bulk_create(new_plans)

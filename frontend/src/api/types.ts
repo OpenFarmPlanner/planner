@@ -1424,6 +1424,8 @@ export interface IndividualPlacementInput {
   estimated_canopy_diameter_m?: number | string | null;
 }
 
+export type PlantingPlanPlacementMode = 'area' | 'individual_bed' | 'individual_parcel';
+
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
   carried_over?: boolean;
@@ -1450,6 +1452,7 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   parcel?: number | null;
   parcel_name?: string | null;
   parcel_location_id?: number | null;
+  placement_mode?: PlantingPlanPlacementMode;
   individual_positions?: IndividualPlantPosition[];
   estimated_canopy_diameter_m?: number | string | null;
   recommended_plant_spacing_m?: number | null;
@@ -1700,6 +1703,7 @@ export interface BedSuggestion {
   bed_area_sqm: number | null;
   used_area_sqm: number;
   free_area_sqm: number | null;
+  has_unmeasured_placement?: boolean;
   /** False when the plan's area does not fit; always true without an area. */
   has_enough_area: boolean;
   is_partially_occupied: boolean;
@@ -1730,6 +1734,7 @@ export interface RotationQueryParams {
 export type SeasonCopyRotationMode = 'keep' | 'without_bed' | 'skip';
 
 export interface SeasonCopyPreviewItem {
+  requires_bed?: boolean;
   source_plan_id: number;
   crop_label: string;
   bed_id: number | null;
@@ -1758,6 +1763,7 @@ export interface ParcelRotationConfirmation {
 export type ParcelRotationIssue =
   | { code: 'unequal_bed_counts'; group: string; parcels: { name: string; count: number }[] }
   | { code: 'missing_bed_area'; bed: string; source_bed: string }
+  | { code: 'bed_placement_incompatible'; bed: string; source_bed: string }
   | { code: 'bed_capacity'; bed: string; parcel: string };
 
 export interface ParcelRotationSummary {
@@ -2069,9 +2075,11 @@ export interface RemainingAreaResponse {
   bed_area_sqm: number;
   /** False when the bed has no area recorded; the area check is skipped then. */
   has_bed_area: boolean;
+  area_capacity_known?: boolean;
+  unallocated_measured_area_sqm?: number | null;
   /** Peak area other plans occupy firmly during the plan's firm stage. */
   overlapping_used_area_sqm: number;
-  remaining_area_sqm: number;
+  remaining_area_sqm: number | null;
   start_date: string;
   end_date: string;
   harvest_start_date?: string | null;

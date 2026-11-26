@@ -5,6 +5,8 @@ from django.db.models import F, Window
 from django.db.models.functions import RowNumber
 from django.utils import timezone
 
+from farm.history.project_restore import CHECKPOINT_KEY
+from farm.history.records import HISTORY_RETENTION_DAYS
 from farm.models import (
     BatchOperation,
     CountedActionOperation,
@@ -30,7 +32,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         now = timezone.now()
-        cutoff = now - timedelta(days=30)
+        cutoff = now - timedelta(days=HISTORY_RETENTION_DAYS)
 
         older = EntityRevision.objects.filter(created_at__lt=cutoff)
         latest_ids = (
@@ -47,7 +49,7 @@ class Command(BaseCommand):
         checkpoint_ids = (
             older.filter(
                 entity_type="project",
-                snapshot__has_key="project_state_v1",
+                snapshot__has_key=CHECKPOINT_KEY,
             )
             .annotate(
                 position=Window(

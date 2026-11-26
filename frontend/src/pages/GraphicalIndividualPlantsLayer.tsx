@@ -2,8 +2,8 @@ import { useRef } from 'react';
 import { alpha, useTheme } from '@mui/material/styles';
 import { Circle, Ellipse, Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import type { Field, StemCoordinates } from '../api/types';
-import { canvasToStem, stemToCanvas } from './individualPlantGeometry';
+import type { StemCoordinates } from '../api/types';
+import { canvasToStem, stemToCanvas, type PlacementDimensions } from './individualPlantGeometry';
 import type { GraphicalRotation, Position, Rect as CanvasRect } from './graphicalLayoutUtils';
 
 export interface CanvasStem extends StemCoordinates {
@@ -21,9 +21,10 @@ const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
 };
 
 export function GraphicalIndividualPlantsLayer({
-  field, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
+  field, surfaceId, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
 }: {
-  field: Field;
+  field: PlacementDimensions;
+  surfaceId: string;
   surface: CanvasRect;
   pixelsPerMeter: Position;
   rotation: GraphicalRotation;
@@ -66,63 +67,66 @@ export function GraphicalIndividualPlantsLayer({
     const position = pointer && canvasToStem(pointer, field, surface, rotation);
     if (position) onAdd(position);
   });
-  const touchMove = (event: KonvaEventObject<TouchEvent>) => {
-    if (event.evt.touches.length !== 1) press.current = null;
+  const move = (event: Press) => {
+    const current = event.target.getStage()?.getPointerPosition();
+    const start = press.current?.position;
+    if (('touches' in event.evt && event.evt.touches.length !== 1)
+      || (start && current && Math.hypot(current.x - start.x, current.y - start.y) > 8)) {
+      press.current = null;
+    }
   };
 
   return (
     <Group>
+      {placing && <Rect {...surface} name="individual-placement-surface" fill={alpha(theme.palette.primary.light, 0.08)}
+        stroke={theme.palette.primary.main} strokeWidth={2} strokeScaleEnabled={false} dash={[6, 4]}
+        data-testid={surfaceId}
+        onMouseDown={beginPress} onMouseMove={move} onTouchStart={beginPress} onTouchMove={move}
+        onClick={place} onTap={place} />}
       {stems.map(stem => {
         const point = stemToCanvas(stem, field, surface, rotation);
         if (!point) return null;
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
         const ink = stem.selected ? theme.palette.primary.dark : theme.palette.text.primary;
-        return <Group key={stem.key}>
-          {stem.canopy > 0 && <Ellipse {...point} listening={false}
+        return <Group key={stem.key} {...point} draggable={canDrag} dragDistance={8}
+          // Only the listening stem hits this group. The canopy follows without intercepting gestures.
+          name={canDrag ? 'graphical-editable' : undefined}
+          onDragStart={event => { event.cancelBubble = true; press.current = null; }}
+          onDragMove={event => {
+            event.cancelBubble = true;
+            const { x, y } = event.currentTarget.position();
+            event.currentTarget.position({
+              x: Math.max(surface.x, Math.min(surface.x + surface.width, x)),
+              y: Math.max(surface.y, Math.min(surface.y + surface.height, y)),
+            });
+          }}
+          onDragEnd={event => {
+            event.cancelBubble = true;
+            const position = canvasToStem(event.currentTarget.position(), field, surface, rotation);
+            // Reset the shared drag transform. React applies the confirmed rounded position to both shapes.
+            event.currentTarget.position(point);
+            const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
+            if (position && !canceled) onMove(stem.key, position);
+          }}>
+          {stem.canopy > 0 && <Ellipse listening={false}
             radiusX={stem.canopy * pixelsPerMeter.x / 2} radiusY={stem.canopy * pixelsPerMeter.y / 2}
             data-testid={`individual-canopy-${stem.key}`}
             fill={alpha(theme.palette.success.main, 0.15)} stroke={alpha(theme.palette.success.dark, 0.36)}
             strokeWidth={1} strokeScaleEnabled={false} />}
-          <Circle {...point} radius={(stem.selected ? 6 : 4.5) / zoom} fill={ink}
+          <Circle radius={(stem.selected ? 6 : 4.5) / zoom} fill={ink}
             stroke={theme.palette.common.white} strokeWidth={2} strokeScaleEnabled={false}
             listening={Boolean(onSelect) || canDrag || Boolean(captureStems)} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
-            draggable={canDrag} dragDistance={8}
-            // Enrolls the stem in the graphic's Escape cancellation, like beds and parcels.
-            name={canDrag ? 'graphical-editable' : undefined}
             onMouseDown={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
             onTouchStart={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
-            onTouchMove={touchMove}
+            onTouchMove={move}
             onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
             onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
             onClick={event => click(event, () => onSelect?.(stem))}
-            onTap={event => click(event, () => onSelect?.(stem))}
-            onDragStart={event => { event.cancelBubble = true; press.current = null; }}
-            onDragMove={event => {
-              event.cancelBubble = true;
-              const point = event.target.position();
-              event.target.position({
-                x: Math.max(surface.x, Math.min(surface.x + surface.width, point.x)),
-                y: Math.max(surface.y, Math.min(surface.y + surface.height, point.y)),
-              });
-            }}
-            onDragEnd={event => {
-              event.cancelBubble = true;
-              const position = canvasToStem(event.target.position(), field, surface, rotation);
-              // Reset Konva's transient drag position. React then applies the confirmed rounded value.
-              event.target.position(point);
-              // Escape (stopDrag without an event) and an interrupted touch cancel the move.
-              const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
-              if (position && !canceled) onMove(stem.key, position);
-            }} />
+            onTap={event => click(event, () => onSelect?.(stem))} />
         </Group>;
       })}
-      {placing && <Rect {...surface} fill={alpha(theme.palette.primary.light, 0.08)}
-        stroke={theme.palette.primary.main} strokeWidth={2} strokeScaleEnabled={false} dash={[6, 4]}
-        data-testid={`individual-place-surface-${field.id}`}
-        onMouseDown={beginPress} onTouchStart={beginPress} onTouchMove={touchMove}
-        onClick={place} onTap={place} />}
     </Group>
   );
 }

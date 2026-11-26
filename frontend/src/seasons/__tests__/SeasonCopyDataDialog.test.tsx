@@ -170,6 +170,34 @@ describe('SeasonCopyDataDialog', () => {
     expect(onConfirm).toHaveBeenCalledWith(2, 1, 'skip', false);
   });
 
+  it('skips an individual bed placement when resolving conflicts without a bed', async () => {
+    copyPreviewMock.mockResolvedValue({
+      data: {
+        ...emptyPreview,
+        conflict_count: 2,
+        conflict_free_count: 1,
+        items: [
+          {
+            source_plan_id: 1, crop_label: 'Stangenbohne', bed_id: 5, bed_name: 'Beet 5',
+            status: 'conflict', requires_bed: true, findings: [conflictFinding],
+          },
+          {
+            source_plan_id: 2, crop_label: 'Karotte', bed_id: 6, bed_name: 'Beet 6',
+            status: 'conflict', findings: [conflictFinding],
+          },
+        ],
+      },
+    });
+    render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={targetSeason}
+      onClose={vi.fn()} onConfirm={vi.fn()} />);
+
+    const totals = await screen.findByTestId('season-copy-totals');
+    expect(totals).toHaveTextContent('0 bestehend + 2 neu = 2 Anbaupläne');
+    expect(totals).toHaveTextContent('1 davon ohne Beet');
+    expect(totals).toHaveTextContent('1 Konflikt wird nicht übernommen');
+    expect(screen.getByRole('button', { name: '2 Anbaupläne übernehmen' })).toBeEnabled();
+  });
+
   it('leaves the rotation section out when nothing conflicts', async () => {
     const user = userEvent.setup();
     const onConfirm = vi.fn().mockResolvedValue({ copied_count: 3, target_planting_plan_count: 3 });

@@ -2,7 +2,7 @@ import { Alert, Box, Stack, Typography } from '@mui/material';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
-import type { BedCultivationEntry, CropReference } from './graphicalCultivation';
+import { bedCropDisplayName, bedCropPhaseLabel, type BedCultivationEntry, type CropReference } from './graphicalCultivation';
 
 export interface CropPreviewData {
   reference: CropReference;
@@ -30,13 +30,14 @@ export function GraphicalCropPreview({ reference, entries, loading, failed, refr
         {t('graphical.display.cropLoadError')}
       </Alert> : null}
       {!loading && !failed && (entries.length ? <Box component="ul" sx={{ m: 0, pl: 2.25 }}>
-        {entries.map(({ plan, phase, recordedHarvest, harvest, recordedPeriods }) => {
-          const name = plan.name || t('ganttChart:taskNames.unknownCrop', { id: plan.crop ?? '' });
+        {entries.map(entry => {
+          const { plan, harvest, recordedPeriods } = entry;
+          const phase = bedCropPhaseLabel(entry, t);
           const period = interval(plan.start, plan.end);
           return <Box component="li" key={plan.id} sx={{ mb: 0.5, overflowWrap: 'anywhere' }}>
-            <Typography variant="body2">{plan.variety ? `${name} (${plan.variety})` : name}</Typography>
+            <Typography variant="body2">{bedCropDisplayName(plan, t)}</Typography>
             {phase && <Typography component="div" variant="caption" color="text.secondary">
-              {t(recordedHarvest ? 'graphical.display.recordedHarvest' : `graphical.display.phase.${phase}`)}
+              {phase}
               {harvest && ` · ${interval(harvest.start_date, harvest.end_date)}`}
             </Typography>}
             {plan.planted && <Typography component="div" variant="caption" color="text.secondary">

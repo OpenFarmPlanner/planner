@@ -361,7 +361,7 @@ async function activeCamera(page: Page) {
 }
 
 async function selectLocation(page: Page, name: string) {
-  await page.getByRole('combobox', { name: 'Standort', exact: true }).click();
+  await page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ }).click();
   await page.getByRole('option', { name, exact: true }).click();
   await expect(page.getByRole('region', { name: `Standort: ${name}`, exact: true })).toBeVisible();
   await page.waitForLoadState('networkidle');
@@ -379,6 +379,7 @@ test.describe('responsive canvas tools', () => {
     const toolbar = page.getByTestId('graphical-canvas-tools');
     const trigger = toolbar.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
     const menu = page.getByRole('menu', { name: 'Weitere Grafikwerkzeuge' });
+    const individualPlants = toolbar.getByRole('button', { name: 'Einzelpflanzen', exact: true });
     const rotate = 'Ansicht um 90° nach rechts drehen';
     const directRotation = toolbar.getByRole('button', { name: rotate, exact: true });
 
@@ -438,18 +439,54 @@ test.describe('responsive canvas tools', () => {
     await activateCanvasTool(page, 'Ansicht um 90° nach links drehen', 'touch');
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].width).toBe(originalWidth);
 
+    await trigger.press('Enter');
+    await expect(menu).toBeVisible();
     await page.setViewportSize({ width: 1600, height: 900 });
+    await expect(menu).toHaveCount(0);
+    await expect(individualPlants).toBeFocused();
     await expect(directRotation).toBeVisible();
-    await trigger.tap();
-    await expect(menu.getByRole('menuitem', { name: rotate })).toHaveCount(0);
-    await menu.getByRole('menuitem', { name: 'Einzelpflanzen' }).tap();
+    await expect(trigger).toHaveCount(0);
+    await expect(individualPlants).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(async () => {
+      const box = await individualPlants.boundingBox();
+      return Boolean(box && box.width >= 44 && box.height >= 44);
+    }).toBe(true);
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await expect(trigger).toBeFocused();
+    await expect(menu).toHaveCount(0);
+    await expect(individualPlants).toHaveCount(0);
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await individualPlants.press('Enter');
     const plants = page.getByRole('region', { name: 'Einzelpflanzen' });
     await expect(plants).toBeVisible();
     await expect(directRotation).toHaveCount(0);
+    await expect(plants).toBeFocused();
+    await trigger.tap();
+    await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveAttribute('aria-description', 'Aktiv');
+    await page.keyboard.press('Escape');
+    await expect(plants).toBeVisible();
     await plants.getByRole('button', { name: 'Schließen' }).tap();
-    await expect(trigger).toBeFocused();
+    await expect(individualPlants).toBeFocused();
     await expect(directRotation).toBeVisible();
+    await expect(trigger).toHaveCount(0);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('canvas-tools-wide.png'), animations: 'disabled' });
+
+    await page.setViewportSize({ width: 1920, height: 900 });
+    await individualPlants.tap();
+    await expect(individualPlants).toHaveAttribute('aria-pressed', 'true');
+    await expect(plants).toBeVisible();
+    await individualPlants.tap();
+    await expect(plants).toHaveCount(0);
+    await expect(individualPlants).toHaveAttribute('aria-pressed', 'false');
+    await toolbar.getByRole('button', { name: 'Vollbild öffnen' }).tap();
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+    await expect(individualPlants).toHaveCount(0);
+    await expect(trigger).toHaveCount(0);
+    await expect(directRotation).toBeVisible();
+    await expect(zoom).toBeVisible();
+    await toolbar.getByRole('button', { name: 'Vollbild schließen' }).tap();
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
 
     await page.setViewportSize({ width: 1024, height: 768 });
     await toolbar.getByRole('button', { name: 'Vollbild öffnen' }).tap();
@@ -556,16 +593,26 @@ test.describe('location spacing in a touch-capable browser', () => {
       await page.reload();
       const spacingButton = page.getByRole('button', { name: button, exact: true });
       const editButton = page.getByRole('button', { name: edit, exact: true });
+      const mode = page.getByRole('button', { name: displayLabel, exact: true });
       await expect(editButton).toBeVisible();
-      await expect(editButton.locator('[data-graphical-action-label]')).toBeHidden();
-      await expect(spacingButton.locator('[data-graphical-action-label]')).toBeHidden();
+      await expect(editButton.locator('[data-toolbar-action-label]')).toBeHidden();
+      await expect(spacingButton).toHaveCount(0);
       await expect.poll(async () => {
-        const [editBox, spacingBox] = await Promise.all([editButton.boundingBox(), spacingButton.boundingBox()]);
-        return editBox && spacingBox && [editBox, spacingBox].every(box => box.width >= 44 && box.height >= 44)
-          && spacingBox.x >= editBox.x + editBox.width - 1
-          && spacingBox.y < editBox.y + editBox.height && spacingBox.x + spacingBox.width <= 375;
+        const [editBox, menuBox] = await Promise.all([editButton.boundingBox(), mode.boundingBox()]);
+        return editBox && menuBox && [editBox, menuBox].every(box => box.width >= 44 && box.height >= 44)
+          && menuBox.x >= editBox.x + editBox.width - 1
+          && menuBox.y < editBox.y + editBox.height && menuBox.x + menuBox.width <= 375;
       }).toBe(true);
-      await spacingButton.tap();
+      await expect(mode.getByTestId('graphical-display-chevron')).toBeVisible();
+      await mode.tap();
+      await expect(page.getByRole('menuitemradio')).toHaveCount(4);
+      await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
+      const menuBox = (await page.getByRole('menu').boundingBox())!;
+      expect(menuBox.x).toBeGreaterThanOrEqual(0);
+      expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(375);
+      const spacingItem = page.getByRole('menuitem', { name: button, exact: true });
+      await expect.poll(async () => (await spacingItem.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+      await spacingItem.tap();
       const translated = page.getByRole('dialog', { name: title });
       await expect(translated).toBeVisible();
       await expect(translated.getByRole('textbox').first()).toBeFocused();
@@ -576,6 +623,18 @@ test.describe('location spacing in a touch-capable browser', () => {
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
       await page.screenshot({ path: testInfo.outputPath(`location-spacing-${locale}.png`), animations: 'disabled' });
       await page.keyboard.press('Escape');
+      await expect(mode).toBeFocused();
+      if (locale === 'de') {
+        expect(await page.evaluate(() => localStorage.getItem('ofp.shortcutHintSeen'))).toBeNull();
+        await mode.press('Enter');
+        await spacingItem.press('Enter');
+        await expect(translated.getByText(shift)).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(mode).toBeFocused();
+        await page.keyboard.press('Alt+k');
+        await expect(page.getByRole('textbox', { name: 'Aktionssuche' })).toBeVisible();
+        await page.keyboard.press('Escape');
+      }
       const locationTarget = page.locator('[data-graphical-object-target^="location:"]');
       await locationTarget.press('Enter');
       const objectPreview = page.getByTestId('graphical-object-preview');
@@ -583,13 +642,6 @@ test.describe('location spacing in a touch-capable browser', () => {
       await page.keyboard.press('Escape');
       await locationTarget.press('Shift+F10');
       await expect(page.getByRole('menuitem', { name: details })).toBeVisible();
-      await page.keyboard.press('Escape');
-      const mode = page.getByRole('button', { name: displayLabel, exact: true });
-      await expect(mode).toBeVisible();
-      expect((await mode.boundingBox())?.width).toBeGreaterThanOrEqual(44);
-      await mode.tap();
-      await expect(page.getByRole('menuitemradio')).toHaveCount(4);
-      await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
       await page.keyboard.press('Escape');
     }
   });
@@ -782,26 +834,49 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, longLocationName);
+  const contextHint = page.getByRole('note').filter({ hasText: /Kontextmenü öffnen|öffnet das Kontextmenü/ });
+  await expect(contextHint).toBeVisible();
   for (const viewport of [
     { width: 2240, height: 1080 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
     { width: 1200, height: 900 },
     { width: 1199, height: 900 }, { width: 1024, height: 768 }, { width: 768, height: 1024 },
-    { width: 375, height: 800 }, { width: 800, height: 375 },
+    { width: 320, height: 800 }, { width: 375, height: 800 }, { width: 800, height: 375 },
     { width: 1024, height: 500 },
   ]) {
     await page.setViewportSize(viewport);
     const edit = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
     const spacing = page.getByRole('button', { name: 'Abstände', exact: true });
+    const compact = viewport.width <= 375;
+    const display = graphicDisplayButton(page);
+    const location = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
+    if (compact) {
+      await expect(spacing).toHaveCount(0);
+      await display.press('Enter');
+      await page.getByRole('menuitem', { name: 'Abstände', exact: true }).press('Enter');
+      await expect(page.getByRole('dialog', { name: 'Abstände (Wege)' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(display).toBeFocused();
+      await expect(location).toHaveAccessibleName(`Standort · ${longLocationName}`);
+      await expect(location).toHaveText(longLocationName);
+      await expect.poll(async () => {
+        const targets = await Promise.all([
+          page.getByRole('button', { name: 'Liste', exact: true }),
+          page.getByRole('button', { name: 'Grafik', exact: true }), location, edit, display,
+        ].map(item => item.boundingBox()));
+        return targets.every(box => box && box.width >= 44 && box.height >= 44)
+          && targets.every(box => box && targets[0] && Math.abs(box.y - targets[0].y) <= 1);
+      }, { message: `Primary graphic controls fit at ${viewport.width}px` }).toBe(true);
+    }
     if (viewport.width === 1200) {
-      const label = edit.locator('[data-graphical-action-label]');
+      const label = edit.locator('[data-toolbar-action-label]');
       await expect(label).toBeHidden();
       await page.getByRole('button', { name: 'Sidebar einklappen' }).click();
       await expect(label).toBeVisible();
       await page.getByRole('button', { name: 'Sidebar ausklappen' }).click();
       await expect(label).toBeHidden();
     }
-    for (const button of [edit, spacing]) {
-      const label = button.locator('[data-graphical-action-label]');
+    for (const button of compact ? [edit] : [edit, spacing]) {
+      const label = button.locator('[data-toolbar-action-label]');
       if (viewport.width >= 1440) await expect(label).toBeVisible();
       if (viewport.width < 1200) await expect(label).toBeHidden();
       await expect.poll(async () => {
@@ -812,9 +887,10 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),
-        ...['Liste', 'Grafik', 'Grafik bearbeiten', 'Abstände'].map(name => page.getByRole('button', { name, exact: true })),
+        ...['Liste', 'Grafik', 'Grafik bearbeiten'].map(name => page.getByRole('button', { name, exact: true })),
+        compact ? display : spacing,
         page.getByRole('button', { name: /^Standort hinzufügen/ }),
-        page.getByRole('combobox', { name: 'Standort', exact: true }),
+        location,
       ].map(locator => locator.boundingBox()));
       return rects.every(rect => rect && rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= viewport.width + 1 && rect.y + rect.height <= viewport.height)
         && rects.every((rect, index) => rect && rects.slice(index + 1).every(other => other &&
@@ -824,13 +900,18 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
     // The mode and date controls can use the wrapped workspace row on a large desktop as well.
-    if (viewport.width === 2240) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
+    if (viewport.width === 2240) {
+      await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
+      await expect(display.locator('[data-display-label]')).toBeVisible();
+    }
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     if ([1440, 768, 375].includes(viewport.width)) {
       const canvas = page.locator('.konvajs-content');
-      const before = (await canvas.boundingBox())!;
+      await expect(canvas).toBeVisible();
+      const before = await canvas.boundingBox();
+      expect(before).not.toBeNull();
       if (viewport.width === 1440) {
         await edit.hover();
         await expect(page.getByRole('tooltip')).toContainText('Im Bearbeitungsmodus lassen sich Parzellen und Beete verschieben.');
@@ -843,7 +924,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       await expect(edit).toHaveClass(/MuiButton-colorSuccess\b/);
       await expect(page.getByRole('tooltip')).toHaveCount(0);
       await expect(page.getByText(/^Grafikbearbeitung aktiv:/)).toHaveCount(0);
-      await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before.y, height: before.height });
+      await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before?.y, height: before?.height });
       await page.screenshot({ path: testInfo.outputPath(`workspace-edit-${viewport.width}.png`), animations: 'disabled' });
       await edit.click();
       await expect(edit).toHaveAttribute('aria-pressed', 'false');
@@ -869,6 +950,21 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect(page.locator('.konvajs-content')).toHaveCount(1);
 
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await contextHint.getByRole('button', { name: 'Schließen' }).click();
+  await expect(contextHint).toHaveCount(0);
+  for (const width of [320, 1200, 768, 1440, 375]) {
+    await page.setViewportSize({ width, height: 800 });
+  }
+  await selectGraphicDisplay(page, 'Aufgaben');
+  await expect(page.getByRole('button', { name: /^Stichtag für Kulturen · / })).toHaveCount(0);
+  await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
+  await expect(page.getByRole('button', { name: /^Stichtag für Kulturen · / })).toBeVisible();
+  await expect(contextHint).toHaveCount(0);
+  await expect.poll(async () => {
+    const canvas = (await canvasRects(page, 'field-rect-'))[0];
+    return Boolean(canvas && canvas.stage.width <= 375 && canvas.container.y + canvas.stage.height <= 801);
+  }).toBe(true);
 });
 
 test('draws a sized location boundary and flags plots that cross it', async ({ page, request }, testInfo) => {
@@ -1153,6 +1249,13 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   const harvest = id('Erntebeet');
   const mixed = id('Misch- und Folgebeet');
   const free = id('Freies Beispielbeet');
+  const { results: growthPlans } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/planting-plans/?bed=${growth}`);
+  for (const plan of growthPlans) {
+    const { results: tasks } = await apiRequest<{ results: { id: number; status: string }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+    for (const task of tasks.filter(task => task.status === 'pending' || task.status === 'in_progress')) {
+      await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'completed' });
+    }
+  }
   const reads: URL[] = [];
   const writes: string[] = [];
   page.on('request', request => {
@@ -1170,10 +1273,11 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
 
   const shape = (id: number) => page.evaluate(id => {
-    const stage = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva.stages
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
       .find(item => item.container()?.isConnected);
     const bed = stage?.find('Rect').find(rect => rect.getAttr('data-testid') === `bed-rect-${id}`);
-    return { phase: bed?.getAttr('data-crop-phase') ?? null, urgency: bed?.getAttr('data-task-urgency') ?? null };
+    return { phase: bed?.getAttr('data-crop-phase') ?? null, urgency: bed?.getAttr('data-task-urgency') ?? null,
+      fill: bed?.getAttr('fill') ?? null };
   }, id);
   await expect.poll(async () => (await shape(growth)).phase).toBe('growth');
   await expect.poll(async () => (await shape(harvest)).phase).toBe('harvest');
@@ -1181,6 +1285,21 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await expect.poll(async () => (await shape(free)).phase).toBeNull();
   const harvestUrgency = (await shape(harvest)).urgency;
   expect(harvestUrgency).toBeTruthy();
+  const combinedHarvest = await shape(harvest);
+  const normalFill = (await shape(free)).fill;
+  expect(combinedHarvest.fill).not.toBe(normalFill);
+  expect((await shape(growth)).fill).toBe(normalFill);
+  const hover = page.getByRole('tooltip').filter({ hasText: 'Erntebeet' });
+  const harvestPoint = shapePoint((await canvasRects(page, `bed-rect-${harvest}`))[0]);
+  await page.mouse.move(harvestPoint.x, harvestPoint.y);
+  await expect(hover).toContainText('Erntereife prüfen');
+  await expect(hover).toContainText('Geplante Ernte');
+  await expect(hover).not.toContainText('Erntewerkzeug vorbereiten');
+  await expect(hover.getByRole('button')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-task-tooltip.png') });
+  await display.press('Enter');
+  await expect(hover).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   const preview = page.getByTestId('graphical-object-preview');
   const target = (id: number) => page.locator(`[data-graphical-object-target="bed:${id}"]`);
@@ -1212,12 +1331,29 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   expect(reads.filter(url => url.searchParams.get('location') === String(site.id))).toHaveLength(1);
   expect(reads.filter(url => url.searchParams.has('bed'))).toHaveLength(0);
 
+  await page.setViewportSize({ width: 375, height: 800 });
   await selectGraphicDisplay(page, 'Kulturen');
-  await expect(dateButton).toBeVisible();
+  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
   expect((await shape(harvest)).urgency).toBeNull();
+  expect((await shape(harvest)).fill).not.toBe(combinedHarvest.fill);
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen');
   await selectGraphicDisplay(page, 'Aufgaben');
   await expect(dateButton).toHaveCount(0);
   expect((await shape(harvest)).phase).toBeNull();
+  await expect.poll(async () => (await shape(harvest)).fill).toBe(combinedHarvest.fill);
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Aufgaben');
+  await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
+  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+  await expect.poll(() => shape(harvest)).toMatchObject(combinedHarvest);
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-combined-375.png') });
+  await display.press('Enter');
+  await expect(page.getByRole('menuitemradio', { name: 'Kulturen & Aufgaben' })).toHaveAttribute('aria-checked', 'true');
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-dropdown-375.png') });
+  await page.keyboard.press('Escape');
   await selectGraphicDisplay(page, 'Anbauflächen');
   await page.reload();
   await expect(display).toHaveAccessibleName('Darstellung der Grafik · Anbauflächen');

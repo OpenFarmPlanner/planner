@@ -48,8 +48,9 @@ function useIssueMessage() {
           .join(', '),
       });
     }
-    return issue.code === 'missing_bed_area'
-      ? t('parcelRotation.missingArea', issue) : t('parcelRotation.noCapacity', issue);
+    if (issue.code === 'missing_bed_area') return t('parcelRotation.missingArea', issue);
+    if (issue.code === 'bed_placement_incompatible') return t('parcelRotation.incompatiblePlacement', issue);
+    return t('parcelRotation.noCapacity', issue);
   };
 }
 

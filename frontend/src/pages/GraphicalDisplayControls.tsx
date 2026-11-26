@@ -1,9 +1,14 @@
 import { useId, useRef, useState } from 'react';
-import { Box, Button, IconButton, Menu, MenuItem, Popover, Stack, TextField, Typography } from '@mui/material';
+import { Box, Button, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Popover, Stack, TextField, Typography } from '@mui/material';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import CheckIcon from '@mui/icons-material/Check';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
 import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
+import StraightenIcon from '@mui/icons-material/Straighten';
+import { WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
+import { useContextMenuOpenRegistration } from '../components/contextMenu/contextMenuOpenState';
 import { useTranslation } from '../i18n';
 import { formatDateToAPI } from '../utils/isoDate';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
@@ -13,6 +18,7 @@ import {
   type CropDateSelection, type CropReference, type GraphicalDisplayMode,
 } from './graphicalCultivation';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
+import type { OpenGraphicalSpacing } from './GraphicalSpacingControl';
 
 interface DisplayControlsProps {
   mode: GraphicalDisplayMode;
@@ -21,17 +27,23 @@ interface DisplayControlsProps {
   reference?: CropReference;
   onDate: (date: CropDateSelection) => void;
   onOpenLegend: (anchor: HTMLButtonElement) => void;
+  compact?: boolean;
+  fullscreen?: boolean;
+  onOpenSpacing?: OpenGraphicalSpacing;
 }
 
 const touchTarget = { minHeight: 44, minWidth: 44 };
 
-export function GraphicalDisplayControls({ mode, onMode, season, reference, onDate, onOpenLegend }: DisplayControlsProps) {
+export function GraphicalDisplayControls({
+  mode, onMode, season, reference, onDate, onOpenLegend, compact = false, fullscreen = false, onOpenSpacing,
+}: DisplayControlsProps) {
   const { t, i18n } = useTranslation(['fields', 'common']);
   const menuId = useId();
   const dateId = useId();
   const [menuAnchor, setMenuAnchor] = useState<HTMLButtonElement | null>(null);
   const [dateAnchor, setDateAnchor] = useState<HTMLButtonElement | null>(null);
-  const nextLegend = useRef<HTMLButtonElement | null>(null);
+  useContextMenuOpenRegistration(Boolean(menuAnchor || dateAnchor));
+  const afterMenuClose = useRef<(() => void) | null>(null);
   const full = reference?.kind === 'season';
   const today = formatDateToAPI(new Date());
   const canChooseToday = Boolean(season && today >= season.start_date && today <= season.end_date);
@@ -44,18 +56,25 @@ export function GraphicalDisplayControls({ mode, onMode, season, reference, onDa
   const container = getGraphicalPortalContainer();
 
   return (
-    <Stack direction="row" spacing={1} sx={{ flexShrink: 0, maxWidth: '100%' }}>
-      <Button variant="outlined" aria-label={`${title} · ${modeLabel}`} title={modeLabel}
+    <Stack direction="row" useFlexGap spacing={1}
+      sx={{ display: compact ? 'contents' : 'flex', flexShrink: 0, maxWidth: '100%', flexWrap: fullscreen ? 'wrap' : undefined }}>
+      <Button variant="outlined" aria-label={`${title} · ${modeLabel}`}
+        aria-description={onOpenSpacing ? t('graphical.spacing.button') : undefined}
+        title={modeLabel}
+        data-testid="graphical-display-mode"
         aria-haspopup="menu" aria-expanded={Boolean(menuAnchor)} aria-controls={menuAnchor ? menuId : undefined}
         onClick={event => setMenuAnchor(event.currentTarget)} sx={{
-          ...touchTarget, px: 1, gap: 0.75,
+          ...touchTarget, px: compact ? 0.5 : 0.75, gap: compact ? 0 : 0.5, flexShrink: 0,
           '& [data-display-label]': { display: 'none' },
-          '@container workspace-topbar (min-width: 112rem)': { '& [data-display-label]': { display: 'inline' } },
+          ...(!compact && { [fullscreen ? '@media (min-width: 900px)' : WORKSPACE_TOOLBAR_LABEL_QUERY]: {
+            '& [data-display-label]': { display: 'inline' },
+          } }),
         }}>
-        <LayersOutlinedIcon fontSize="small" aria-hidden />
+        <LayersOutlinedIcon sx={{ fontSize: compact ? 18 : 20 }} aria-hidden />
         <Box component="span" data-display-label aria-hidden>{modeLabel}</Box>
+        <KeyboardArrowDownIcon sx={{ fontSize: 16 }} aria-hidden data-testid="graphical-display-chevron" />
       </Button>
-      {season && reference && includesCrops(mode) && <Button variant="outlined" sx={{ ...touchTarget, px: 1, gap: 0.75 }}
+      {season && reference && includesCrops(mode) && <Button variant="outlined" sx={{ ...touchTarget, px: 1, gap: 0.75, flexShrink: 0 }}
         aria-label={`${t('graphical.display.date')} · ${dateText}`} aria-haspopup="dialog"
         aria-expanded={Boolean(dateAnchor)} aria-controls={dateAnchor ? dateId : undefined}
         onClick={event => setDateAnchor(event.currentTarget)}>
@@ -70,20 +89,36 @@ export function GraphicalDisplayControls({ mode, onMode, season, reference, onDa
         slotProps={{
           list: { id: menuId, 'aria-label': title },
           transition: { onExited: () => {
-            const anchor = nextLegend.current;
-            nextLegend.current = null;
-            if (anchor) onOpenLegend(anchor);
+            const action = afterMenuClose.current;
+            afterMenuClose.current = null;
+            action?.();
           } },
         }}>
         {GRAPHICAL_DISPLAY_MODES.map(value => <MenuItem key={value} role="menuitemradio"
-          aria-checked={mode === value} selected={mode === value} sx={{ minHeight: 44 }}
+          aria-checked={mode === value} selected={mode === value}
+          sx={{ minHeight: 44, gap: 1, whiteSpace: 'normal', overflowWrap: 'anywhere' }}
           onClick={() => { onMode(value); setMenuAnchor(null); setDateAnchor(null); }}>
-          {t(`graphical.display.mode.${value}`)}
+          <ListItemText primary={t(`graphical.display.mode.${value}`)} />
+          {mode === value && <CheckIcon fontSize="small" aria-hidden />}
         </MenuItem>)}
         <MenuItem sx={{ minHeight: 44 }} onClick={() => {
-          nextLegend.current = menuAnchor;
+          if (menuAnchor) afterMenuClose.current = () => onOpenLegend(menuAnchor);
           setMenuAnchor(null);
         }}>{t('graphical.display.legend')}</MenuItem>
+        {onOpenSpacing && <Divider />}
+        {onOpenSpacing && <MenuItem aria-haspopup="dialog" sx={{ minHeight: 44 }} onClick={event => {
+          if (menuAnchor) {
+            const keyboard = event.detail === 0;
+            afterMenuClose.current = () => {
+              menuAnchor.focus({ preventScroll: true });
+              onOpenSpacing(menuAnchor, keyboard);
+            };
+          }
+          setMenuAnchor(null);
+        }}>
+          <ListItemIcon><StraightenIcon fontSize="small" /></ListItemIcon>
+          <ListItemText primary={t('graphical.spacing.button')} />
+        </MenuItem>}
       </Menu>
       {season && reference && includesCrops(mode) && (
         <Popover open={Boolean(dateAnchor)} anchorEl={dateAnchor} onClose={() => setDateAnchor(null)}

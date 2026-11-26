@@ -403,13 +403,13 @@ describe("GraphicalFields", async () => {
     const bed = screen.getByTestId("bed-rect-100");
     expect(Number(field.getAttribute("width"))).toBeGreaterThan(Number(field.getAttribute("height")));
     expect(Number(bed.getAttribute("width"))).toBeGreaterThan(Number(bed.getAttribute("height")));
-    const initial = mockKonvaNodes["bed-rect-100"].getPosition();
+    const initial = mockKonvaNodes["bed-group-100"].getPosition();
     const originalWidth = bed.getAttribute("width");
     for (let i = 0; i < 4; i += 1) {
       fireEvent.click(screen.getByRole("button", { name: "Ansicht um 90° nach rechts drehen" }));
       for (const label of screen.queryAllByTestId(/^bed-label-/)) expect(label).toHaveAttribute("rotation", "0");
     }
-    expect(mockKonvaNodes["bed-rect-100"].getPosition()).toEqual(initial);
+    expect(mockKonvaNodes["bed-group-100"].getPosition()).toEqual(initial);
     expect(screen.getByTestId("bed-rect-100")).toHaveAttribute("width", originalWidth);
     expect(saveByLocationMock).not.toHaveBeenCalled();
   });
@@ -439,7 +439,7 @@ describe("GraphicalFields", async () => {
     await waitFor(() => expect(saveByLocationMock).toHaveBeenCalledWith(1, {
       field_layouts: [expect.objectContaining({ field: 10, x: 1200 + dx, y: 800 + dy })], bed_layouts: [],
     }));
-    drag("bed-rect-100");
+    drag("bed-group-100");
     await waitFor(() => expect(saveByLocationMock.mock.calls.some(([, body]) => body.bed_layouts.length > 0)).toBe(true));
     const body = saveByLocationMock.mock.calls.findLast(([, body]) => body.bed_layouts.length > 0)![1];
     const saved = body.bed_layouts[0];
@@ -518,14 +518,14 @@ describe("GraphicalFields", async () => {
       fireEvent.click(screen.getByRole("button", { name: "Bearbeiten" }));
       const node = mockKonvaNodes["field-group-10"];
       const from = node.getPosition();
-      const bedOffset = mockKonvaNodes["bed-rect-100"].getPosition();
+      const bedOffset = mockKonvaNodes["bed-group-100"].getPosition();
       const target = { current: { ...from } };
       const drag = createKonvaTarget(target);
       for (const delta of [20, 40]) {
         target.current = { x: from.x + delta, y: from.y + delta };
         act(() => node.handlers.onDragMove?.({ evt: new Event("mousemove"), target: drag }));
         expect(target.current).not.toEqual(from);
-        expect(mockKonvaNodes["bed-rect-100"].getPosition()).toEqual(bedOffset);
+        expect(mockKonvaNodes["bed-group-100"].getPosition()).toEqual(bedOffset);
         expect(screen.getByTestId("field-group-10")).toContainElement(screen.getByTestId("bed-rect-100"));
         expect(saveByLocationMock).not.toHaveBeenCalled();
       }
@@ -536,7 +536,7 @@ describe("GraphicalFields", async () => {
 
       await act(async () => rejectSave(new Error("Save rejected")));
       expect(mockKonvaNodes["field-group-10"].getPosition()).toEqual(from);
-      expect(mockKonvaNodes["bed-rect-100"].getPosition()).toEqual(bedOffset);
+      expect(mockKonvaNodes["bed-group-100"].getPosition()).toEqual(bedOffset);
       expect(screen.getByText("Fehler beim Speichern der Parzelle")).toBeInTheDocument();
     } finally {
       log.mockRestore();
@@ -873,7 +873,7 @@ describe("GraphicalFields", async () => {
     const startX = Number(stage.getAttribute("data-x"));
     const startY = Number(stage.getAttribute("data-y"));
     const stageObject = {};
-    const nonStageTarget = { getStage: () => stageObject };
+    const nonStageTarget = { getStage: () => stageObject, hasName: () => false };
 
     act(() => {
       mockStageApi.setPointer(120, 140);
@@ -1068,7 +1068,7 @@ describe("GraphicalFields", async () => {
       } });
       await renderGraphic(<GraphicalFields />);
       await screen.findByTestId("location-boundary-1");
-      const offset = () => mockKonvaNodes["bed-rect-100"].getPosition();
+      const offset = () => mockKonvaNodes["bed-group-100"].getPosition();
       expect(screen.getByTestId("field-group-10")).toContainElement(screen.getByTestId("bed-rect-100"));
       const before = offset();
       enterEditMode();

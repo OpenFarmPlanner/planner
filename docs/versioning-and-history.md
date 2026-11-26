@@ -492,6 +492,12 @@ cutoff per project. These anchors are required to reconstruct a recent target
 when an entity changes both before and after it. Timestamp ties use the ID.
 Keeping only the newest revision overall would discard the pre-target state.
 
+The superuser **History storage** overview shows the oldest retained entry and
+counts entries before the same 30-day cutoff as cleanup. An older entry is an
+expected restore anchor after cleanup. The overview also reports full checkpoint
+counts separately and shows stored bytes on PostgreSQL. See [the local history
+storage fixture](#local-history-storage-fixture) for testing these figures.
+
 The same command expires daily crop-library counters beyond 30 UTC days and
 platform usage records beyond 90 UTC days. The usage dashboard reads
 daily totals and counts unique active accounts from per-project UTC-day keys.
@@ -515,6 +521,22 @@ checks both live crop references and attachment paths across projects before
 deleting expired files and their metadata.
 Cleanup and restore use the same project-first lock order. History anchors do
 not extend the file-byte retention window indefinitely.
+
+### Local history storage fixture
+
+From `backend/`, preview with an existing active local superuser and the exact
+database name, then repeat with `--apply` after checking the printed target.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_history_storage_acceptance \
+  --username LOCAL_SUPERUSER --database-name EXACT_LOCAL_DATABASE
+```
+
+In an isolated local database, open Django admin → Projects → Usage overview →
+History storage. Check for three entries, including one full checkpoint. The
+checkpoint is 31 days old and counts as a retained anchor. Follow the listed
+project ID to its admin page. PostgreSQL shows storage sizes. SQLite shows
+the counts and marks sizes unavailable. Repeating the command keeps any edits.
 
 ## Derived fields and legacy entity labels
 

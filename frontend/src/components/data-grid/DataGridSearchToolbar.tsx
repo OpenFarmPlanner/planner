@@ -1,9 +1,10 @@
-import { useId, type ReactNode, type Ref, type RefObject } from 'react';
+import { useId, useRef, type ReactNode, type Ref, type RefObject } from 'react';
 import { Badge, Box, Button, Divider, Popover, Stack, Typography } from '@mui/material';
 import FilterListIcon from '@mui/icons-material/FilterList';
 
 import { PageSearchField } from '../../search/PageSearchField';
 import { ColumnsPanelButton } from './ColumnsPanelButton';
+import { LIST_TOOLBAR_LABEL_QUERY, ResponsiveToolbarAction } from '../buttons/ResponsiveToolbarAction';
 
 export interface DataGridSearchToolbarLabels {
   searchPlaceholder: string;
@@ -75,9 +76,10 @@ export function DataGridSearchToolbar({
 }: DataGridSearchToolbarProps) {
   const panelId = useId();
   const panelTitleId = useId();
+  const panelTitleRef = useRef<HTMLHeadingElement>(null);
 
   return (
-    <Box sx={{ mb: 1 }} data-testid={testId}>
+    <Box sx={{ mb: 1, containerType: 'inline-size', containerName: 'list-toolbar' }} data-testid={testId}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
         <PageSearchField
           value={query}
@@ -88,38 +90,45 @@ export function DataGridSearchToolbar({
           clearLabel={labels.searchClear}
           inputRef={searchInputRef}
           shortcutHint="/"
-          sx={{ width: viewControls ? { xs: 272, lg: 340 } : 340, maxWidth: '100%' }}
+          sx={{
+            flex: '1 1 8rem', minWidth: 'min(8rem, 100%)', maxWidth: '100%',
+            '& .MuiInputBase-root': { minHeight: 44 },
+            '& .MuiIconButton-root': { minWidth: 44, minHeight: 44 },
+            [LIST_TOOLBAR_LABEL_QUERY]: { flex: '0 1 340px' },
+          }}
         />
-        <Badge
-          color="primary"
-          badgeContent={activeFilterCount}
-          invisible={activeFilterCount === 0}
-          overlap="rectangular"
-        >
-          <Button
-            ref={filterButtonRef}
-            variant="outlined"
-            color={activeFilterCount > 0 ? 'primary' : 'inherit'}
-            startIcon={<FilterListIcon fontSize="small" />}
-            aria-haspopup="dialog"
-            aria-expanded={isFilterPanelOpen}
-            aria-controls={isFilterPanelOpen ? panelId : undefined}
-            aria-label={activeFilterCount > 0 ? labels.filterButtonActiveAria : undefined}
-            onClick={() => onFilterPanelOpenChange(!isFilterPanelOpen)}
-            sx={{ minHeight: 40 }}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', maxWidth: '100%' }}>
+          <Badge
+            color="primary"
+            badgeContent={activeFilterCount}
+            invisible={activeFilterCount === 0}
+            overlap="rectangular"
           >
-            {labels.filterButton}
-          </Button>
-        </Badge>
-        {columnsPanelOpen !== undefined && onColumnsPanelOpenChange && labels.columnsButton ? (
-          <ColumnsPanelButton
-            ref={columnsButtonRef}
-            open={columnsPanelOpen}
-            onOpenChange={onColumnsPanelOpenChange}
-            label={labels.columnsButton}
-          />
-        ) : null}
-        {viewControls}
+            <ResponsiveToolbarAction
+              ref={filterButtonRef}
+              variant="outlined"
+              color={activeFilterCount > 0 ? 'primary' : 'inherit'}
+              label={labels.filterButton}
+              labelQuery={LIST_TOOLBAR_LABEL_QUERY}
+              icon={<FilterListIcon fontSize="small" />}
+              aria-haspopup="dialog"
+              aria-expanded={isFilterPanelOpen}
+              aria-controls={isFilterPanelOpen ? panelId : undefined}
+              aria-label={activeFilterCount > 0 ? labels.filterButtonActiveAria : undefined}
+              onClick={() => onFilterPanelOpenChange(!isFilterPanelOpen)}
+            />
+          </Badge>
+          {columnsPanelOpen !== undefined && onColumnsPanelOpenChange && labels.columnsButton ? (
+            <ColumnsPanelButton
+              ref={columnsButtonRef}
+              open={columnsPanelOpen}
+              onOpenChange={onColumnsPanelOpenChange}
+              label={labels.columnsButton}
+              labelQuery={LIST_TOOLBAR_LABEL_QUERY}
+            />
+          ) : null}
+          {viewControls}
+        </Box>
         {count ? <Box sx={{ ml: 'auto', pl: 1 }}>{count}</Box> : null}
       </Box>
       {hasFilters && activeFilterChips ? <Box sx={{ mt: 1 }}>{activeFilterChips}</Box> : null}
@@ -139,7 +148,8 @@ export function DataGridSearchToolbar({
           },
         }}
       >
-        <Typography id={panelTitleId} variant="subtitle1" component="h2" sx={{ px: 2, pt: 1.5, pb: 1 }}>
+        <Typography id={panelTitleId} ref={panelTitleRef} tabIndex={-1}
+          variant="subtitle1" component="h2" sx={{ px: 2, pt: 1.5, pb: 1 }}>
           {labels.filterPanelTitle}
         </Typography>
         <Box sx={{ px: 2, pb: 2, overflowY: 'auto' }}>
@@ -147,7 +157,10 @@ export function DataGridSearchToolbar({
         </Box>
         <Divider />
         <Stack direction="row" sx={{ px: 1, py: 1, alignItems: 'center', justifyContent: 'space-between' }}>
-          <Button onClick={onResetFilters} disabled={!hasFilters}>
+          <Button disabled={!hasFilters} onClick={() => {
+            panelTitleRef.current?.focus({ preventScroll: true });
+            onResetFilters();
+          }}>
             {labels.resetFilters}
           </Button>
           <Typography variant="body2" color="text.secondary" sx={{ pr: 1 }}>

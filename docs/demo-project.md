@@ -44,6 +44,13 @@ fills the available canvas. Select another, zoom/pan/rotate, then switch between
 List and Graphic: the selected location and its camera stay intact. Edit graphic
 in the same topbar applies to the selected location only; Add location remains
 available through the existing add action/menu. Fullscreen stays optional.
+Use the Graphic display dropdown in Pachtacker Lindenhof to compare all four
+modes. Crops shows phase colors. Tasks and Crops & tasks use the most urgent
+open task to color each bed. Crops & tasks also shows the crop and its phase
+when the bed has room for labels. Hover the harvest bed for its open task titles
+and dates, or select it by mouse, touch or keyboard to preview and complete a task.
+Change the crop reference date to compare phases, then reload after choosing a
+different mode to verify that the display choice is remembered.
 All three locations carry outer dimensions (Hofgarten 24 × 42 m, Acker am Bach
 20 × 50 m, Pachtacker Lindenhof 24 × 55 m), so the graphic draws each location's
 dashed boundary with free space around the saved plot positions and the list
@@ -230,15 +237,16 @@ May 15 of that year. This keeps fixture data independent of the day tests run.
 Stored example text follows the selected German, English, French or Spanish
 demo template.
 
-Open Farm Garden in the graphical Growing areas view. Choose **More canvas tools** →
-**Bed tasks** and enable **Show tasks**.
+Open Farm Garden in the graphical Growing areas view. Choose **Graphic display** →
+**Tasks**.
 Lettuce 1 is overdue, Tomato Row 1 is due soon, Lettuce 2 is due later,
 Herbs & Chard has open work without a date, and Cucumber Row is complete.
 Tomato Row 2 has no applicable tasks. The fence task on the leased North Plot
 stays on the task board. Open a bed's details to complete one of its tasks.
 
-In Farm Garden, choose **More canvas tools** → **Individual plants** and select
-the North Early Beds plot. Its three Topaz apple trees share one plan, with
+In Farm Garden, open **Individual plants** with the tree button on a wide canvas
+or from **More canvas tools** when actions are grouped. Select the North Early
+Beds plot. Its three Topaz apple trees share one plan, with
 an estimated canopy diameter of 3.8 m. Their stems retain their IDs as the
 planting continues into the following season. Select a stem to inspect its
 coordinates. While editing, the panel separates the planting plan from the

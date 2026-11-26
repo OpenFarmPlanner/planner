@@ -69,7 +69,9 @@ describe('HomePage feature overview (#1583)', () => {
     renderHomePage();
 
     const graphical = screen.getByRole('region', { name: 'Deine Flächen so planen, wie sie im Gelände liegen.' });
-    expect(within(graphical).getByRole('img', { name: /Schematischer Flächenplan/ })).toBeInTheDocument();
+    const illustration = within(graphical).getByRole('img', { name: /Schematischer Flächenplan/ });
+    expect(illustration).toBeInTheDocument();
+    expect(within(illustration).queryByText('Weg', { exact: true })).not.toBeInTheDocument();
     expect(within(graphical).getByText('Bäume und Sträucher als Einzelpflanzen mit Kronendurchmesser platzieren')).toBeInTheDocument();
 
     const overview = screen.getByRole('region', { name: 'Alles für deine Saison' });

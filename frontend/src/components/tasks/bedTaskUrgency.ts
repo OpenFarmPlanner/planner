@@ -20,6 +20,12 @@ export function bedTaskDateBounds(today: Date) {
   return { today: formatDateToAPI(today), upcomingEnd: formatDateToAPI(addDays(today, 7)) };
 }
 
+export function bedTaskDueUrgency(dueDate: Task['due_date'], bounds: ReturnType<typeof bedTaskDateBounds>) {
+  if (!dueDate) return 'undated';
+  if (dueDate < bounds.today) return 'overdue';
+  return dueDate <= bounds.upcomingEnd ? 'upcoming' : 'later';
+}
+
 export function linkTasksToBeds(
   tasks: readonly Task[], plans: readonly Pick<PlantingPlan, 'id' | 'bed'>[], includeCancelled = false,
 ) {
@@ -41,10 +47,7 @@ export function summarizeBedTasks(tasks: readonly Task[], bounds: ReturnType<typ
   for (const task of tasks) {
     if (task.status === 'completed') counts.completed += 1;
     if (!isOpenTask(task)) continue;
-    if (!task.due_date) counts.undated += 1;
-    else if (task.due_date < bounds.today) counts.overdue += 1;
-    else if (task.due_date <= bounds.upcomingEnd) counts.upcoming += 1;
-    else counts.later += 1;
+    counts[bedTaskDueUrgency(task.due_date, bounds)] += 1;
   }
   return {
     urgency: BED_TASK_URGENCIES.find(urgency => counts[urgency] > 0) ?? null,

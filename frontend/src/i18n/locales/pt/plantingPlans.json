@@ -33,6 +33,7 @@
   },
   "areaValidation": {
     "maxAreaApplied": "Área máxima disponível aplicada: {{area}}",
+    "maxAreaUnknown": "Introduza uma área. A área livre exata é desconhecida porque o canteiro contém plantas individuais.",
     "remainingLimitTitle": "A área indicada excede a área restante disponível neste canteiro.",
     "noRemainingTitle": "Não existe área livre neste canteiro durante o período selecionado.",
     "bedLimitTitle": "A área indicada excede a dimensão deste canteiro.",
@@ -393,7 +394,8 @@
     "capacity": {
       "partial": "{{free}} de {{total}} m² livres neste período",
       "insufficient": "Apenas {{free}} m² livres neste período ({{blockingCulture}} até {{date}}); são necessários {{needed}} m²",
-      "insufficientWithoutBlocker": "Apenas {{free}} m² livres neste período; são necessários {{needed}} m²"
+      "insufficientWithoutBlocker": "Apenas {{free}} m² livres neste período; são necessários {{needed}} m²",
+      "unknownIndividual": "Área livre desconhecida (plantas individuais no canteiro)"
     }
   },
   "harvestOverlap": {

@@ -44,7 +44,7 @@ from farm.models import (
     Task,
 )
 from farm.planning.individual_planting import (
-    check_placement_on_current_parcel,
+    check_placement_on_current_parent,
     lock_and_check_individual_crop,
 )
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
@@ -513,7 +513,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         if self.action == 'individual_placement':
             if season_id is None:
                 return queryset.none()
-            queryset = queryset.filter(parcel__isnull=False)
+            queryset = queryset.filter(PlantingPlan.individual_placements())
         if self.action == 'list':
             queryset = self._filter_by_growing_area(queryset)
         if self.action in {'list', 'retrieve', 'individual_placement'}:
@@ -551,6 +551,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             area_filter = Q(**{lookup: area_id})
             if name == 'field':
                 area_filter |= Q(parcel_id=area_id)
+            if name == 'individual_location':
+                area_filter |= Q(individual_bed=True, bed__field__location_id=area_id)
             queryset = queryset.filter(area_filter)
         return queryset
 
@@ -615,9 +617,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     @transaction.atomic
     def perform_create(self, serializer: PlantingPlanSerializer) -> None:
         data = serializer.validated_data
-        if data.get('parcel') is not None:
+        parent = data.get('bed') if data.get('individual_bed') else data.get('parcel')
+        if parent is not None:
             lock_and_check_individual_crop(data['crop'])
-            check_placement_on_current_parcel(data['parcel'], data['individual_positions'])
+            check_placement_on_current_parent(parent, data['individual_positions'])
         current_user = self.request.user if self.request.user.is_authenticated else None
         extra_fields = {}
         if 'season' not in serializer.validated_data:
@@ -666,10 +669,10 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         data = serializer.validated_data
         crop = data.get('crop')
         plan = serializer.instance
-        if plan.parcel_id and crop is not None and crop.pk != plan.crop_id:
+        if plan.is_individual and crop is not None and crop.pk != plan.crop_id:
             lock_and_check_individual_crop(crop)
-        if plan.parcel_id and 'individual_positions' in data:
-            check_placement_on_current_parcel(plan.parcel, data['individual_positions'])
+        if plan.is_individual and 'individual_positions' in data:
+            check_placement_on_current_parent(plan.placement_parent, data['individual_positions'])
         current_user = self.request.user if self.request.user.is_authenticated else None
         previous_snapshot = _serialize_instance(serializer.instance)
         actual_dates_only = serializer.is_actual_date_update(serializer.validated_data)
@@ -970,8 +973,15 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             'bed_id': bed.pk,
             'bed_area_sqm': float(capacity.bed_area_sqm or 0),
             'has_bed_area': capacity.bed_area_sqm is not None,
+            'area_capacity_known': free_area is not None,
             'overlapping_used_area_sqm': float(capacity.used_area_sqm),
-            'remaining_area_sqm': float(free_area if free_area is not None else 0),
+            'remaining_area_sqm': (
+                None if capacity.has_unmeasured_placement else float(free_area or 0)
+            ),
+            'unallocated_measured_area_sqm': (
+                float(capacity.unallocated_measured_area_sqm)
+                if capacity.bed_area_sqm is not None else None
+            ),
             'start_date': start_date.isoformat(),
             'end_date': end_date.isoformat(),
             'harvest_start_date': harvest_start_date.isoformat() if harvest_start_date else None,

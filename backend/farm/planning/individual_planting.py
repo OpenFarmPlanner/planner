@@ -9,8 +9,8 @@ from rest_framework import serializers
 from rest_framework.exceptions import APIException
 
 from farm.common.serializer_fields import _resolve_active_project_from_serializer
-from farm.models import Crop, Field, PlantingPlan
-from farm.services.crop_inheritance import get_general_crop, lock_crop_project, resolve_crop_field
+from farm.models import Bed, Crop, Field, PlantingPlan
+from farm.services.crop_inheritance import get_general_crop, lock_crop_project
 
 MAX_INDIVIDUAL_POSITIONS = 1000
 
@@ -53,6 +53,14 @@ class ParcelDimensionsConflict(APIException):
     }
 
 
+class BedDimensionsConflict(APIException):
+    status_code = 409
+    default_detail = {
+        'code': 'bed_contains_individual_positions',
+        'detail': 'The bed dimensions must contain all existing stem positions.',
+    }
+
+
 def suggested_canopy_diameter(crop: Crop) -> Decimal | None:
     if crop.estimated_canopy_diameter_m is not None:
         return crop.estimated_canopy_diameter_m
@@ -68,10 +76,14 @@ def _positions_fit(positions, width, length):
     )
 
 
-def _check_position_bounds(parcel, positions):
-    if not _positions_fit(positions, parcel.width_m, parcel.length_m):
+def positions_fit_parent(parent: Bed | Field, positions: list[dict]) -> bool:
+    return _positions_fit(positions, parent.width_m, parent.length_m)
+
+
+def _check_position_bounds(parent, positions):
+    if not positions_fit_parent(parent, positions):
         raise serializers.ValidationError({
-            'individual_positions': 'Stem positions must be within the measured parcel.',
+            'individual_positions': 'Stem positions must be within the measured growing area.',
         })
 
 
@@ -81,25 +93,42 @@ def lock_individual_parcel(parcel: Field) -> Field:
     )
 
 
-def check_placement_on_current_parcel(parcel: Field, positions: list[dict]) -> None:
-    """Recheck dimensions under the same lock as parcel dimension edits."""
-    _check_position_bounds(lock_individual_parcel(parcel), positions)
+def lock_placement_parent(parent: Bed | Field) -> Bed | Field:
+    if isinstance(parent, Field):
+        return lock_individual_parcel(parent)
+    return get_object_or_404(
+        Bed.objects.select_for_update(no_key=True), pk=parent.pk, project_id=parent.project_id,
+    )
+
+
+def check_placement_on_current_parent(parent: Bed | Field, positions: list[dict]) -> None:
+    """Recheck dimensions under the same lock as dimension edits."""
+    _check_position_bounds(lock_placement_parent(parent), positions)
 
 
 def validate_individual_parcel_dimensions(parcel: Field, attrs: dict) -> None:
-    width = attrs.get('width_m', parcel.width_m)
-    length = attrs.get('length_m', parcel.length_m)
-    if (width, length) == (parcel.width_m, parcel.length_m):
-        return
     placements = parcel.individual_planting_plans.filter(project_id=parcel.project_id)
+    _validate_parent_dimensions(parcel, attrs, placements, ParcelDimensionsConflict)
+
+
+def validate_individual_bed_dimensions(bed: Bed, attrs: dict) -> None:
+    placements = bed.planting_plans.filter(project_id=bed.project_id, individual_bed=True)
+    _validate_parent_dimensions(bed, attrs, placements, BedDimensionsConflict)
+
+
+def _validate_parent_dimensions(parent, attrs, placements, conflict) -> None:
+    width = attrs.get('width_m', parent.width_m)
+    length = attrs.get('length_m', parent.length_m)
+    if (width, length) == (parent.width_m, parent.length_m):
+        return
     for positions in placements.exclude(individual_positions=[]).values_list(
         'individual_positions', flat=True,
     ).iterator():
         if not _positions_fit(positions, width, length):
-            raise ParcelDimensionsConflict()
+            raise conflict()
 
 
-def _normalize_positions(positions, existing, parcel):
+def _normalize_positions(positions, existing, parent):
     previous_ids = {position['id'] for position in existing}
     seen = set()
     normalized = []
@@ -112,13 +141,8 @@ def _normalize_positions(positions, existing, parcel):
         seen.add(position_id)
         x_m, y_m = float(position['x_m']), float(position['y_m'])
         normalized.append({'id': position_id, 'x_m': x_m, 'y_m': y_m})
-    _check_position_bounds(parcel, normalized)
+    _check_position_bounds(parent, normalized)
     return normalized
-
-
-def _require_perennial(crop: Crop) -> None:
-    if resolve_crop_field(crop, 'life_cycle') != 'perennial':
-        raise serializers.ValidationError({'crop': 'Choose a perennial crop.'})
 
 
 def lock_and_check_individual_crop(crop: Crop) -> None:
@@ -126,18 +150,17 @@ def lock_and_check_individual_crop(crop: Crop) -> None:
     lock_crop_project(crop.project_id)
     current = Crop.objects.filter(pk=crop.pk, project_id=crop.project_id).first()
     if current is None:
-        raise serializers.ValidationError({'crop': 'Choose an active perennial crop.'})
-    _require_perennial(current)
+        raise serializers.ValidationError({'crop': 'Choose an active crop.'})
 
 
 def _validate_arrangement(attrs: dict, plan: PlantingPlan | None) -> Crop:
-    bed = attrs.get('bed', getattr(plan, 'bed', None))
     crop = attrs.get('crop', getattr(plan, 'crop', None))
-    if bed is not None or any(attrs.get(field) is not None for field in (
+    if any(attrs.get(field) is not None for field in (
         'area_usage_sqm', 'area_input_value', 'quantity',
     )):
         raise serializers.ValidationError({
-            'parcel': 'Individual plants use stem positions instead of bed area or a manual count.',
+            'placement_mode': 'Individual plants use stem positions instead of bed area '
+                              'or a manual count.',
         })
     if crop is None:
         raise serializers.ValidationError({'crop': 'Choose a crop for the individual plants.'})
@@ -146,7 +169,6 @@ def _validate_arrangement(attrs: dict, plan: PlantingPlan | None) -> Crop:
 
 def _apply_placement_defaults(attrs, plan, crop, positions, placement_updated_at):
     if plan is None:
-        _require_perennial(crop)
         if not positions:
             raise serializers.ValidationError({
                 'individual_positions': 'Add at least one stem position.',
@@ -154,30 +176,64 @@ def _apply_placement_defaults(attrs, plan, crop, positions, placement_updated_at
         if 'estimated_canopy_diameter_m' not in attrs:
             attrs['estimated_canopy_diameter_m'] = suggested_canopy_diameter(crop)
         return
-    if crop.pk != plan.crop_id:
-        _require_perennial(crop)
     updates_placement = {'individual_positions', 'estimated_canopy_diameter_m'} & attrs.keys()
     if updates_placement and placement_updated_at != plan.updated_at:
         raise PlacementConflict()
 
 
+def _resolve_placement_mode(
+    attrs: dict, plan: PlantingPlan | None, parcel: Field | None, bed: Bed | None,
+) -> str:
+    mode = attrs.pop('placement_mode', None)
+    if plan is None:
+        return mode or (
+            PlantingPlan.PLACEMENT_PARCEL if parcel is not None else PlantingPlan.PLACEMENT_AREA
+        )
+    mode = mode or plan.placement_mode
+    parent_changed = plan.is_individual and (parcel != plan.parcel or bed != plan.bed)
+    if mode != plan.placement_mode or parent_changed:
+        raise serializers.ValidationError({
+            'placement_mode': 'The individual placement parent and mode are fixed.',
+        })
+    return mode
+
+
 def validate_individual_planting(attrs: dict, plan: PlantingPlan | None) -> None:
     parcel = attrs.get('parcel', getattr(plan, 'parcel', None))
+    bed = attrs.get('bed', getattr(plan, 'bed', None))
+    mode = _resolve_placement_mode(attrs, plan, parcel, bed)
     positions = attrs.get('individual_positions')
     canopy = attrs.get('estimated_canopy_diameter_m')
     placement_updated_at = attrs.pop('placement_updated_at', None)
-    if plan is not None and parcel != plan.parcel:
-        raise serializers.ValidationError({'parcel': 'The direct parcel assignment is fixed.'})
-    if parcel is None:
+    if mode == PlantingPlan.PLACEMENT_AREA:
+        if parcel is not None:
+            raise serializers.ValidationError({
+                'parcel': 'A direct parcel requires individual parcel placement.',
+            })
         if positions or canopy is not None:
             raise serializers.ValidationError({
-                'parcel': 'Choose a parcel for the individual plants.',
+                'placement_mode': 'Choose an individual bed or parcel placement.',
             })
         return
 
+    parent = bed if mode == PlantingPlan.PLACEMENT_BED and parcel is None else None
+    if mode == PlantingPlan.PLACEMENT_PARCEL and bed is None:
+        parent = parcel
+    if parent is None:
+        raise serializers.ValidationError({
+            'placement_mode': 'Choose exactly the bed or parcel required by the placement mode.',
+        })
+    # Existing placements without a date stay editable unless the date is cleared explicitly.
+    if (plan is None or 'planting_date' in attrs) and attrs.get('planting_date') is None:
+        raise serializers.ValidationError({
+            'planting_date': 'Set a planting date for the individual plants.',
+        })
+
     crop = _validate_arrangement(attrs, plan)
+    if plan is None and mode == PlantingPlan.PLACEMENT_BED:
+        attrs['individual_bed'] = True
     _apply_placement_defaults(attrs, plan, crop, positions, placement_updated_at)
     if positions is not None:
         attrs['individual_positions'] = _normalize_positions(
-            positions, plan.individual_positions if plan else [], parcel,
+            positions, plan.individual_positions if plan else [], parent,
         )

@@ -688,6 +688,7 @@ def _capacity_payload(
         'bed_area_sqm': float(capacity.bed_area_sqm) if capacity.bed_area_sqm is not None else None,
         'used_area_sqm': float(capacity.used_area_sqm),
         'free_area_sqm': float(free) if free is not None else None,
+        **({'has_unmeasured_placement': True} if capacity.has_unmeasured_placement else {}),
         'has_enough_area': capacity.has_room_for(needed_area_sqm),
         'is_partially_occupied': capacity.is_partially_occupied,
         'blocking_plan': (
@@ -821,6 +822,7 @@ def preview_season_copy(
             'crop_label': service.rotation_crop(copy.crop).label if copy.crop is not None else '',
             'bed_id': copy.bed_id,
             'bed_name': copy.bed.name if copy.bed is not None else '',
+            **({'requires_bed': True} if copy.individual_bed else {}),
             'status': STATUS_CONFLICT if result.is_conflict else result.status,
             'findings': [finding.as_dict() for finding in result.findings],
         })

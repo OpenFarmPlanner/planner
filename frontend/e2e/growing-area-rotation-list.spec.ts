@@ -111,19 +111,67 @@ test('keeps parcel names clear of the row actions and moves rotation into a colu
     .getByRole('textbox', { name: 'Gruppenname' })).toHaveValue('Nord–Süd');
 });
 
-test('reaches rotation management from the phone list toolbar', async ({ page, request }, testInfo) => {
+test('fits search, active filters and rotation management in the compact list toolbar', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 375, height: 800 });
   await loginWithDeterministicProject(page, request, 'growing-area-rotation-phone', { loginAsAdmin: true });
   await seedRotation(page);
   await page.goto('/app/fields-beds');
 
-  const manage = page.getByTestId('growing-area-search-toolbar').getByRole('button', { name: 'Rotationsgruppen verwalten' });
-  await expect(manage).toBeInViewport();
-  expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
-  await testInfo.attach('rotation-list-375', {
-    body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
-  });
+  const toolbar = page.getByTestId('growing-area-search-toolbar');
+  const manage = toolbar.getByRole('button', { name: 'Rotationsgruppen verwalten' });
+  const filter = toolbar.getByRole('button', { name: 'Filter', exact: true });
+  const search = toolbar.getByRole('searchbox', { name: 'Anbauflächen durchsuchen' });
+  for (const viewport of [{ width: 320, height: 800 }, { width: 375, height: 800 },
+    { width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    await expect(manage).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
+    for (const action of [filter, manage]) {
+      const target = await box(action);
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
+      if (viewport.width <= 768) await expect(action.locator('[data-toolbar-action-label]')).toBeHidden();
+      if (viewport.width === 1440) await expect(action.locator('[data-toolbar-action-label]')).toBeVisible();
+    }
+    if ([375, 768].includes(viewport.width)) {
+      const [searchBounds, filterBounds, manageBounds] = await Promise.all([
+        box(search.locator('..')), box(filter), box(manage),
+      ]);
+      expect(searchBounds.width).toBeGreaterThanOrEqual(128);
+      expect(Math.abs(filterBounds.y - searchBounds.y)).toBeLessThanOrEqual(1);
+      expect(Math.abs(manageBounds.y - filterBounds.y)).toBeLessThanOrEqual(1);
+    }
+    await testInfo.attach(`rotation-list-${viewport.width}`, {
+      body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
+    });
+  }
+  await page.setViewportSize({ width: 375, height: 800 });
+  const count = toolbar.getByTestId('growing-area-search-count');
+  const originalCount = await count.innerText();
+  await search.fill('Nord');
+  await expect(count).not.toHaveText(originalCount);
+  await search.press('Escape');
+  await expect(count).toHaveText(originalCount);
+
+  await filter.press('Enter');
+  const filterDialog = page.getByRole('dialog', { name: 'Filter' });
+  await filterDialog.getByRole('button', { name: 'Rotationsgarten' }).click();
+  await page.keyboard.press('Escape');
+  const activeFilter = toolbar.getByRole('button', { name: 'Filter, 1 Filter aktiv' });
+  await expect(activeFilter).toBeFocused();
+  await expect(activeFilter).toHaveClass(/MuiButton-colorPrimary\b/);
+  await expect(toolbar.locator('.MuiBadge-badge')).toHaveText('1');
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
+  await activeFilter.press('Enter');
+  await filterDialog.getByRole('button', { name: 'Zurücksetzen' }).click();
+  await page.keyboard.press('Escape');
+  await expect(filter).toBeFocused();
+  await expect(count).toHaveText(originalCount);
+
   await manage.focus();
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' })).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(manage).toBeFocused();
+  await expect(page.getByRole('tooltip')).toHaveCount(0);
 });

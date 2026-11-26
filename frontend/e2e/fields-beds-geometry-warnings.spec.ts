@@ -2,10 +2,12 @@ import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import { activateCanvasTool, apiRequest, graphicDisplayButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
 
+test.use({ serviceWorkers: 'block' });
+
 async function findShape(page: Page, testId: string) {
   return page.evaluate(testId => {
-    const { stages } = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
-    const stage = stages.find(item => item.container()?.isConnected);
+    const konva = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva;
+    const stage = konva?.stages.find(item => item.container()?.isConnected);
     const node = stage?.find('Rect').find(shape => shape.getAttr('data-testid') === testId);
     if (!stage || !node) return null;
     const canvas = stage.container().getBoundingClientRect();
@@ -50,12 +52,123 @@ async function seedGeometry(page: Page) {
     field_layouts: fields.map((field, index) => ({ field: field.id, x: [40, 240, 490][index], y: 40 })),
     bed_layouts: beds.map((bed, index) => ({ bed: bed.id, x: [16, 52, 150, 0, 12][index], y: [12, 12, 80, 0, 12][index] })),
   });
-  return { bedId: beds[1].id, neighborId: beds[0].id, fieldId: fields[0].id, fullFieldId: fields[1].id, path };
+  return { bedId: beds[1].id, neighborId: beds[0].id, fieldId: fields[0].id,
+    fullBedId: beds[3].id, fullFieldId: fields[1].id, path };
 }
+
+test('shows scoped open task titles, dates and urgency as the task state and zoom change', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'graphical-bed-task-tooltip', { loginAsAdmin: true });
+  const { fullBedId: bedId, fullFieldId: fieldId } = await seedGeometry(page);
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+    start_date: '2026-01-01', end_date: '2026-12-31',
+  });
+  const plan = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', { bed: bedId, season: season.id });
+  for (const [title, due_date, status] of [
+    ['Werkzeug prüfen', '2026-05-14', 'in_progress'],
+    ['Pflanzen kontrollieren', '2026-05-22', 'pending'],
+    ['Mulch nachfüllen', '2026-05-23', 'pending'],
+    ['Etiketten vorbereiten', null, 'pending'],
+    ['Gießkanne holen', null, 'pending'],
+    ['Diese Aufgabe wurde erledigt', '2026-05-01', 'completed'],
+    ['Diese Aufgabe wurde abgebrochen', '2026-05-01', 'cancelled'],
+  ]) {
+    await apiRequest(page, 'POST', '/tasks/', { title, due_date, status, season: season.id, planting_plan: plan.id });
+  }
+  await apiRequest(page, 'POST', '/tasks/', { title: 'Nur Parzelle', season: season.id, field: fieldId });
+  await page.goto('/app/fields-beds');
+  const tasksUrl = (url: URL) => url.pathname === '/api/tasks/';
+  let rejectRead = () => {};
+  const triggerFailure = new Promise<void>(resolve => { rejectRead = resolve; });
+  await page.route(tasksUrl, async route => {
+    await triggerFailure;
+    await route.fulfill({ status: 503, json: {} });
+  }, { times: 1 });
+  let reads = 0;
+  page.on('request', request => {
+    if (request.method() === 'GET' && tasksUrl(new URL(request.url()))) reads += 1;
+  });
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  const getBed = () => findShape(page, `bed-rect-${bedId}`);
+  const hoverBed = async () => {
+    await expect.poll(getBed).not.toBeNull();
+    const { screen } = (await getBed())!;
+    const point = { x: screen.x + screen.width / 2, y: screen.y + screen.height / 2 };
+    await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('CANVAS');
+    await page.mouse.move(1, 1);
+    await page.mouse.move(point.x, point.y);
+  };
+  const tooltip = page.getByRole('tooltip').filter({ hasText: 'Vollbeet' });
+  await hoverBed();
+  await expect(tooltip).toContainText('Lädt...');
+  await expect(tooltip).not.toContainText('Keine offenen Aufgaben');
+  rejectRead();
+  await expect(tooltip).toContainText('Die Beetaufgaben konnten nicht geladen werden.');
+  await expect(tooltip).not.toContainText('Keine offenen Aufgaben');
+  await page.reload();
+  await expect.poll(async () => (await getBed())?.urgency).toBe('overdue');
+  const settledReads = reads;
+  await hoverBed();
+  await expect(tooltip).toContainText('5 offene Aufgaben');
+  await expect(tooltip.getByRole('listitem')).toHaveCount(3);
+  await expect(tooltip.getByRole('listitem').nth(0)).toContainText(/Werkzeug prüfen.*Überfällig.*14\.0?5\.2026/s);
+  await expect(tooltip.getByRole('listitem').nth(1)).toContainText(/Pflanzen kontrollieren.*22\.0?5\.2026/s);
+  await expect(tooltip.getByRole('listitem').nth(2)).toContainText(/Mulch nachfüllen.*23\.0?5\.2026/s);
+  await expect(tooltip).toContainText('+2 weitere Aufgaben');
+  await expect(tooltip).not.toContainText(/Nur Parzelle|Diese Aufgabe wurde/);
+  expect(reads).toBe(settledReads);
+
+  await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+  await hoverBed();
+  await expect(tooltip).toHaveCount(0);
+  await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+  await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
+  for (let step = 0; step < 6; step += 1) {
+    await page.getByRole('button', { name: 'Hineinzoomen', exact: true }).click();
+  }
+  const labels = () => page.evaluate(bedId => {
+    const stage = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva.stages
+      .find(item => item.container()?.isConnected);
+    return stage?.find<Konva.Text>('Text').filter(node => new RegExp(`^bed-(task-label|task-due|more-tasks-label)-${bedId}-`).test(node.getAttr('data-testid')))
+      .map(node => node.text()) ?? [];
+  }, bedId);
+  await expect.poll(labels).toEqual(expect.arrayContaining(['Werkzeug prüfen', expect.stringMatching(/14\.0?5\.2026/), '+3 weitere Aufgaben']));
+  const target = page.locator(`[data-graphical-object-target="bed:${bedId}"]`);
+  await target.focus();
+  await expect(target).toHaveAccessibleDescription('Überfällig · 5 offene Aufgaben');
+  await page.screenshot({ path: testInfo.outputPath('zoomed-rotated-bed-task-labels.png') });
+  await target.press('Enter');
+  const preview = page.getByTestId('graphical-object-preview');
+  await expect(preview).toHaveAccessibleName('Vollbeet');
+  const observedFills = [(await getBed())?.fill];
+  for (const [title, urgency] of [
+    ['Werkzeug prüfen', 'upcoming'], ['Pflanzen kontrollieren', 'later'], ['Mulch nachfüllen', 'undated'],
+  ]) {
+    await preview.getByRole('button', { name: `„${title}“ als erledigt markieren` }).click();
+    await expect.poll(async () => (await getBed())?.urgency).toBe(urgency);
+    observedFills.push((await getBed())?.fill);
+  }
+  expect(new Set(observedFills).size).toBe(4);
+  await page.keyboard.press('Escape');
+  await expect(preview).toHaveCount(0);
+  await activateCanvasTool(page, 'Alles einpassen');
+  await hoverBed();
+  await expect(tooltip).toContainText('2 offene Aufgaben');
+  await expect(tooltip).toContainText(/Ohne Datum|Ohne Termin/);
+  await selectGraphicDisplay(page, 'Aufgaben');
+  await hoverBed();
+  await expect(tooltip).toContainText('Etiketten vorbereiten');
+  await selectGraphicDisplay(page, 'Kulturen');
+  await expect(tooltip).toHaveCount(0);
+  await hoverBed();
+  await expect(tooltip).toBeVisible();
+  await expect(tooltip).not.toContainText('Etiketten vorbereiten');
+});
 
 for (const mobile of [false, true]) {
   test.describe(`bed tasks on ${mobile ? 'a phone' : 'desktop'}`, () => {
-    test.use({ hasTouch: mobile, serviceWorkers: 'block' });
+    test.use({ hasTouch: mobile });
 
     test('explains urgency independently of zoom and updates it after completing a task', async ({ page, request }, testInfo) => {
       await page.setViewportSize(mobile ? { width: 375, height: 800 } : { width: 1440, height: 900 });

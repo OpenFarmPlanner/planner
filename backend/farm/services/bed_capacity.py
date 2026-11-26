@@ -181,10 +181,17 @@ class BedCapacity:
     bed_area_sqm: Decimal | None
     used_area_sqm: Decimal
     occupying_plans: tuple[OccupyingPlan, ...] = ()
+    has_unmeasured_placement: bool = False
 
     @property
     def free_area_sqm(self) -> Decimal | None:
-        """Remaining area in m², never negative; ``None`` when the bed has no area."""
+        """Remaining area when every overlapping allocation is measured."""
+        if self.has_unmeasured_placement:
+            return None
+        return self.unallocated_measured_area_sqm
+
+    @property
+    def unallocated_measured_area_sqm(self) -> Decimal | None:
         if self.bed_area_sqm is None:
             return None
         return max(self.bed_area_sqm - self.used_area_sqm, ZERO_AREA)
@@ -195,7 +202,7 @@ class BedCapacity:
 
     def has_room_for(self, needed_area_sqm: Decimal | None) -> bool:
         """Whether a plan needing ``needed_area_sqm`` m² fits; the save check's rule."""
-        free = self.free_area_sqm
+        free = self.unallocated_measured_area_sqm
         if needed_area_sqm is None or needed_area_sqm <= ZERO_AREA or free is None:
             return True
         return needed_area_sqm <= free
@@ -262,12 +269,14 @@ def calculate_bed_capacities(
         rule = SuccessionRule.for_project_id(beds[0].project_id) if beds else SuccessionRule()
     firm_end = rule.firm_end(start, harvest_start, end)
     occupying: dict[int, list[BedOccupancy]] = defaultdict(list)
+    unmeasured_beds = set()
     crop_indexes: dict[int, GeneralCropIndex] = {}
     plans = _occupancy_candidates_in_period(
         bed_ids=[bed.pk for bed in beds], start=start, end=firm_end,
         exclude_plan_id=exclude_plan_id,
     ).select_related('crop').only(
-        'bed', 'project', 'crop', 'area_usage_sqm', 'planting_date', 'harvest_date',
+        'bed', 'project', 'crop', 'area_usage_sqm', 'individual_bed', 'individual_positions',
+        'planting_date', 'harvest_date',
         'harvest_end_date', 'clearing_date', 'cultivation_type', 'harvest_window_overrides',
         'actual_sowing_date', 'actual_transplanting_date', 'crop__project', 'crop__crop_species',
         'crop__variety', 'crop__life_cycle', 'crop__annual_harvest_window',
@@ -281,11 +290,16 @@ def calculate_bed_capacities(
             plan_id=plan.pk, crop_id=plan.crop_id,
         )
         if occupancy.firmly_overlaps(start, firm_end):
-            occupying[plan.bed_id].append(occupancy)
+            if plan.individual_bed:
+                if plan.individual_positions:
+                    unmeasured_beds.add(plan.bed_id)
+            else:
+                occupying[plan.bed_id].append(occupancy)
     return {
         bed.pk: BedCapacity(
             bed_id=bed.pk,
             bed_area_sqm=bed.area_sqm,
+            has_unmeasured_placement=bed.pk in unmeasured_beds,
             used_area_sqm=_peak_area(
                 occupying[bed.pk], start, firm_end, BedOccupancy.firmly_covers,
             ),

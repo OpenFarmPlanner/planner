@@ -4,8 +4,9 @@ import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
 import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
-import { GraphicalSpacingControl } from './GraphicalSpacingControl';
-import { GraphicalWorkspaceAction } from './GraphicalWorkspaceAction';
+import { GraphicalSpacingControl, type OpenGraphicalSpacing } from './GraphicalSpacingControl';
+import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
+import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
 import { GraphicalDisplayControls } from './GraphicalDisplayControls';
 import {
   GRAPHICAL_DISPLAY_MODES, getCropReference, type CropDateSelection, type GraphicalDisplayMode,
@@ -126,6 +127,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     beds,
   } = hierarchyData;
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
+  const compactWorkspace = outletContext?.topbarWorkspaceNarrow ?? false;
   const activeSeason = outletContext?.activeSeason ?? undefined;
   const preferenceKey = `growingAreas.graphic.displayMode:user:${userId ?? 'guest'}`;
   const [displayPreference, setDisplayPreference] = useState(() => ({
@@ -141,9 +143,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     [activeSeason, cropDate]);
   const [graphicFullscreen, setGraphicFullscreen] = useState(false);
   const [displayLegendAnchor, setDisplayLegendAnchor] = useState<HTMLButtonElement | null>(null);
-  const displayControls = useMemo(() => <GraphicalDisplayControls mode={displayMode} onMode={setDisplayMode}
-    season={activeSeason} reference={cropReference} onDate={setCropDate} onOpenLegend={setDisplayLegendAnchor} />,
-  [activeSeason, cropReference, displayMode, setDisplayMode]);
+  const displayControlProps = useMemo(() => ({
+    mode: displayMode, onMode: setDisplayMode, season: activeSeason, reference: cropReference,
+    onDate: setCropDate, onOpenLegend: setDisplayLegendAnchor,
+  }), [activeSeason, cropReference, displayMode, setDisplayMode]);
+  const displayControls = useMemo(() => <GraphicalDisplayControls {...displayControlProps} fullscreen />, [displayControlProps]);
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
   const rotation = useParcelRotationGroups({
     enabled: projectId != null, fields, beds, onChanged: () => { void reloadActiveSeason?.(); },
@@ -418,43 +422,64 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
 
   useTopbarContextActions(setTopbarContextActions, contextActions);
   useTopbarTitleActions(setTopbarTitleActions, viewModeActions);
-  const workspaceControls = useMemo(() => !shouldShowProjectRequiredState ? (
-    <>{effectiveViewMode === 'graphical' && selectedLocation ? <>
+  const workspaceControls = useMemo(() => {
+    if (shouldShowProjectRequiredState) return null;
+    // The list uses the shared workspace row for its view switch.
+    if (effectiveViewMode !== 'graphical' || !selectedLocation) return <></>;
+    const renderDisplayControls = (openSpacing?: OpenGraphicalSpacing) => !graphicFullscreen && (
+      <GraphicalDisplayControls {...displayControlProps} compact={compactWorkspace}
+        onOpenSpacing={compactWorkspace ? openSpacing : undefined} />
+    );
+    const locationLabel = t('fields:graphical.locationSelector');
+    const compactLocationSx = { flex: '1 1 6rem', minWidth: 'min(6rem, 100%)', maxWidth: '100%' };
+    return <>
       {graphicalLocations.length > 1 ? (
-        <TextField select label={t('fields:graphical.locationSelector')} value={selectedLocation.id}
+        <TextField select label={locationLabel} value={selectedLocation.id}
           onChange={event => selectLocation(Number(event.target.value))}
-          slotProps={{ select: { renderValue: () => <TruncatedTextWithTooltip text={selectedLocation.name} /> } }}
-          sx={{ width: { xs: 220, sm: 180, md: 220 }, maxWidth: '100%', flexShrink: 0 }}>
+          size={compactWorkspace ? 'small' : 'medium'}
+          slotProps={{ select: {
+            renderValue: () => <TruncatedTextWithTooltip text={selectedLocation.name} />,
+            SelectDisplayProps: compactWorkspace ? {
+              'aria-labelledby': undefined, 'aria-label': `${locationLabel} · ${selectedLocation.name}`,
+            } : undefined,
+          } }}
+          sx={compactWorkspace ? {
+            ...compactLocationSx,
+            '& .MuiSelect-select': { minHeight: 44, boxSizing: 'border-box', alignContent: 'center' },
+          } : { width: { xs: 220, sm: 180, md: 220 }, maxWidth: '100%', flexShrink: 0 }}>
           {graphicalLocations.map(item => (
             <MenuItem key={item.id} value={item.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
           ))}
         </TextField>
       ) : (
-        <Box sx={{ minWidth: 0, maxWidth: 260, typography: 'body2', fontWeight: 600 }}>
+        <Box sx={{ minWidth: 0, maxWidth: 260, typography: 'body2', fontWeight: 600,
+          ...(compactWorkspace ? compactLocationSx : {}) }}>
           <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
         </Box>
       )}
-      {!graphicFullscreen && displayControls}
-      <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 1, maxWidth: '100%' }}>
-        <GraphicalWorkspaceAction
-          label={t('fields:graphical.locationEditModeAction')}
-          icon={<EditOutlinedIcon fontSize="small" />}
-          help={t('fields:graphical.locationEditModeHelp')}
-          disabled={!hasSelectedGraphicalFields}
-          disabledReason={t('fields:graphical.noFields')}
-          variant={isEditingGraphic ? 'contained' : 'outlined'}
-          color="success"
-          aria-pressed={isEditingGraphic}
-          onClick={() => setIsEditingGraphic(value => !value)}
-        />
-        {activeProjectMembership ? (
-          <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation} onSave={saveLocationPathSpacing} />
-        ) : null}
-      </Box>
-    </> : null}
-    </>
-  ) : null, [activeProjectMembership, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
-    displayControls, graphicFullscreen, graphicalLocations, saveLocationPathSpacing, selectLocation, selectedLocation, shouldShowProjectRequiredState, t]);
+      <ResponsiveToolbarAction
+        label={t('fields:graphical.locationEditModeAction')}
+        labelQuery={WORKSPACE_TOOLBAR_LABEL_QUERY}
+        labelBreakpoint={ACTION_LABEL_BREAKPOINT}
+        icon={<EditOutlinedIcon fontSize="small" />}
+        help={t('fields:graphical.locationEditModeHelp')}
+        disabled={!hasSelectedGraphicalFields}
+        disabledReason={t('fields:graphical.noFields')}
+        variant={isEditingGraphic ? 'contained' : 'outlined'}
+        color="success"
+        aria-pressed={isEditingGraphic}
+        onClick={() => setIsEditingGraphic(value => !value)}
+      />
+      {activeProjectMembership ? (
+        <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation}
+          onSave={saveLocationPathSpacing} compact={compactWorkspace}>
+          {renderDisplayControls}
+        </GraphicalSpacingControl>
+      ) : renderDisplayControls()}
+    </>;
+  }, [activeProjectMembership, compactWorkspace, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
+    displayControlProps, graphicFullscreen, graphicalLocations, saveLocationPathSpacing, selectLocation,
+    selectedLocation, shouldShowProjectRequiredState, t]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 
@@ -503,7 +528,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         keep their own mb spacing for when they do render something.
       */}
       <Box>
-      <PageContainer variant="standard">
+      <PageContainer variant={effectiveViewMode === 'graphical' ? 'standard' : 'workspacePage'}>
         {globalActionError ? (
           <Alert severity="error" sx={{ mb: 2 }}>
             {globalActionError}
@@ -590,7 +615,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           />
         ) : null}
         {!shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy && effectiveViewMode !== 'graphical' ? (
-          <PageContainer variant="standard">{isMobileHierarchyLayout ? (
+          <PageContainer variant="workspacePage">{isMobileHierarchyLayout ? (
             <FieldsBedsHierarchyMobile
               showTitle={false}
               createFieldRequest={createFieldRequest}
