@@ -805,7 +805,6 @@ function RootLayout() {
     return <Navigate to="/app/project-selection" replace />;
   }
 
-  const fieldsListTitle = location.pathname === '/app/fields-beds' && !isFieldsBedsGraphicalViewActive;
   const primaryActionButton = (
     topbarPrimaryAction ? (
             topbarPrimaryAction.menuActions && topbarPrimaryAction.menuActions.length > 0 ? (
@@ -836,26 +835,16 @@ function RootLayout() {
                 </Button>
               </ButtonGroup>
             ) : (
-              <AppTooltip title={topbarPrimaryAction.tooltip ?? (isPhone || fieldsListTitle ? topbarPrimaryAction.label : '')}>
+              <AppTooltip title={topbarPrimaryAction.tooltip ?? (isPhone ? topbarPrimaryAction.label : '')}>
                 <Button
                   size="small"
                   variant="contained"
                   onClick={handleTopbarPrimaryAction}
                   aria-label={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}
                   startIcon={!isPhone ? <AddIcon fontSize="small" /> : undefined}
-                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', minWidth: isPhone ? 44 : 'auto', minHeight: isPhone ? 44 : 'auto', px: isPhone ? 0.75 : 1.25, flexShrink: 0,
-                    ...(fieldsListTitle ? {
-                      '@container workspace-topbar (max-width: 66rem)': {
-                        minWidth: 44, minHeight: 44,
-                        '& .MuiButton-startIcon': { m: 0 },
-                        '& [data-primary-action-label]': { display: 'none' },
-                      },
-                    } : {}),
-                  }}
+                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', minWidth: isPhone ? 44 : 'auto', minHeight: isPhone ? 44 : 'auto', px: isPhone ? 0.75 : 1.25, flexShrink: 0 }}
                 >
-                  {isPhone ? <AddIcon fontSize="small" /> : fieldsListTitle ? (
-                    <Box component="span" data-primary-action-label>{topbarPrimaryAction.label}</Box>
-                  ) : topbarPrimaryAction.label}
+                  {isPhone ? <AddIcon fontSize="small" /> : topbarPrimaryAction.label}
                 </Button>
               </AppTooltip>
             )
@@ -1072,7 +1061,7 @@ function RootLayout() {
         sx={{
           borderBottom: '1px solid', borderColor: 'surface.surfaceBorder',
           bgcolor: 'surface.topbarBackground', backdropFilter: 'saturate(120%) blur(2px)',
-          ...(topbarWorkspaceControls || fieldsListTitle ? { containerType: 'inline-size', containerName: 'workspace-topbar' } : {}),
+          ...(topbarWorkspaceControls ? { containerType: 'inline-size', containerName: 'workspace-topbar' } : {}),
         }}
       >
         <Toolbar

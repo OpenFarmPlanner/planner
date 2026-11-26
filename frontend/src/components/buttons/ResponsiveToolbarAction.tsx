@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode, type Ref } from 'react';
 import { Box, Button, type ButtonProps } from '@mui/material';
+import type { Breakpoint } from '@mui/material/styles';
 import { AppTooltip } from '../AppTooltip';
 import { getStandardActionButtonSx } from './segmentedControlStyles';
 
@@ -7,6 +8,7 @@ interface ResponsiveToolbarActionProps extends Omit<ButtonProps, 'children' | 's
   label: string;
   icon: ReactNode;
   labelQuery?: string;
+  labelBreakpoint?: Breakpoint;
   ref?: Ref<HTMLButtonElement>;
   help?: string;
   disabledReason?: string;
@@ -16,12 +18,13 @@ export const LIST_TOOLBAR_LABEL_QUERY = '@container list-toolbar (min-width: 52r
 export const WORKSPACE_TOOLBAR_LABEL_QUERY = '@container workspace-topbar (min-width: 70rem)';
 
 export function ResponsiveToolbarAction({
-  label, icon, labelQuery, help, disabledReason, onClick, ref, ...buttonProps
+  label, icon, labelQuery, labelBreakpoint, help, disabledReason, onClick, ref, ...buttonProps
 }: ResponsiveToolbarActionProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const activated = useRef(false);
   const suppressRestoredFocus = useRef(false);
   const description = buttonProps.disabled ? disabledReason : help;
+  const labelledSx = { px: 1.5, gap: 0.75, '& [data-toolbar-action-label]': { display: 'inline' } };
   const allowTooltip = () => { activated.current = false; };
 
   return (
@@ -51,7 +54,7 @@ export function ResponsiveToolbarAction({
             setTooltipOpen(false);
             onClick?.(event);
           }}
-          sx={{
+          sx={theme => ({
             ...getStandardActionButtonSx(true),
             minHeight: 44,
             minWidth: 44,
@@ -59,9 +62,9 @@ export function ResponsiveToolbarAction({
             whiteSpace: 'nowrap',
             ...(labelQuery ? {
               '& [data-toolbar-action-label]': { display: 'none' },
-              [labelQuery]: { px: 1.5, gap: 0.75, '& [data-toolbar-action-label]': { display: 'inline' } },
-            } : { px: 1.5, gap: 0.75 }),
-          }}
+              [labelQuery]: labelBreakpoint ? { [theme.breakpoints.up(labelBreakpoint)]: labelledSx } : labelledSx,
+            } : labelledSx),
+          })}
         >
           {icon}
           <Box component="span" data-toolbar-action-label aria-hidden="true">{label}</Box>

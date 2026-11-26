@@ -584,11 +584,15 @@ test.describe('location spacing in a touch-capable browser', () => {
       await page.keyboard.press('Escape');
       await expect(mode).toBeFocused();
       if (locale === 'de') {
+        expect(await page.evaluate(() => localStorage.getItem('ofp.shortcutHintSeen'))).toBeNull();
         await mode.press('Enter');
         await spacingItem.press('Enter');
         await expect(translated.getByText(shift)).toBeVisible();
         await page.keyboard.press('Escape');
         await expect(mode).toBeFocused();
+        await page.keyboard.press('Alt+k');
+        await expect(page.getByRole('textbox', { name: 'Aktionssuche' })).toBeVisible();
+        await page.keyboard.press('Escape');
       }
       const locationTarget = page.locator('[data-graphical-object-target^="location:"]');
       await locationTarget.press('Enter');
@@ -813,7 +817,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
         ].map(item => item.boundingBox()));
         return targets.every(box => box && box.width >= 44 && box.height >= 44)
           && targets.every(box => box && targets[0] && Math.abs(box.y - targets[0].y) <= 1);
-      }).toBe(true);
+      }, { message: `Primary graphic controls fit at ${viewport.width}px` }).toBe(true);
     }
     if (viewport.width === 1200) {
       const label = edit.locator('[data-toolbar-action-label]');

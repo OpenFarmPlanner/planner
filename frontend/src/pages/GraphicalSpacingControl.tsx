@@ -6,6 +6,7 @@ import { defaultLocationPathSpacing, getLocationPathSpacing } from '../component
 import { useTranslation } from '../i18n';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale, parseLocalizedNumber } from '../utils/numberLocalization';
 import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
+import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
 import { useTouchOnly } from '../hooks/useTouchOnly';
 
 export type OpenGraphicalSpacing = (anchor: HTMLButtonElement, keyboard: boolean) => void;
@@ -77,6 +78,7 @@ export function GraphicalSpacingControl({
         variant="outlined"
         label={t('graphical.spacing.button')}
         labelQuery={WORKSPACE_TOOLBAR_LABEL_QUERY}
+        labelBreakpoint={ACTION_LABEL_BREAKPOINT}
         icon={<StraightenIcon fontSize="small" />}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}

@@ -6,6 +6,7 @@ import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
 import { GraphicalSpacingControl, type OpenGraphicalSpacing } from './GraphicalSpacingControl';
 import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
+import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
 import { GraphicalDisplayControls } from './GraphicalDisplayControls';
 import {
   GRAPHICAL_DISPLAY_MODES, getCropReference, type CropDateSelection, type GraphicalDisplayMode,
@@ -422,13 +423,15 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   useTopbarContextActions(setTopbarContextActions, contextActions);
   useTopbarTitleActions(setTopbarTitleActions, viewModeActions);
   const workspaceControls = useMemo(() => {
-    if (shouldShowProjectRequiredState || effectiveViewMode !== 'graphical' || !selectedLocation) return null;
+    if (shouldShowProjectRequiredState) return null;
+    // The list uses the shared workspace row for its view switch.
+    if (effectiveViewMode !== 'graphical' || !selectedLocation) return <></>;
     const renderDisplayControls = (openSpacing?: OpenGraphicalSpacing) => !graphicFullscreen && (
       <GraphicalDisplayControls {...displayControlProps} compact={compactWorkspace}
         onOpenSpacing={compactWorkspace ? openSpacing : undefined} />
     );
     const locationLabel = t('fields:graphical.locationSelector');
-    const compactLocationSx = { flex: '1 1 7rem', minWidth: 'min(6rem, 100%)', maxWidth: '100%' };
+    const compactLocationSx = { flex: '1 1 6rem', minWidth: 'min(6rem, 100%)', maxWidth: '100%' };
     return <>
       {graphicalLocations.length > 1 ? (
         <TextField select label={locationLabel} value={selectedLocation.id}
@@ -457,6 +460,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       <ResponsiveToolbarAction
         label={t('fields:graphical.locationEditModeAction')}
         labelQuery={WORKSPACE_TOOLBAR_LABEL_QUERY}
+        labelBreakpoint={ACTION_LABEL_BREAKPOINT}
         icon={<EditOutlinedIcon fontSize="small" />}
         help={t('fields:graphical.locationEditModeHelp')}
         disabled={!hasSelectedGraphicalFields}
