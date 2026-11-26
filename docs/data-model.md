@@ -576,6 +576,16 @@ data-volume measure.
 The records support Django admin aggregates. They contain day-level activity
 metadata and counts. `cleanup_history` retains 90 UTC dates of activity.
 
+Next to those trends, the superuser usage overview shows database-wide
+**History storage** across `EntityRevision`, independent of the activity filters.
+PostgreSQL supplies the database and relation sizes via `pg_database_size` and
+`pg_total_relation_size`, including indexes and TOAST in the relation total.
+Stored snapshot sizes sum `pg_column_size(snapshot)` and reflect compression.
+The overview lists the ten largest projects by stored snapshot size, using
+project IDs and counts only. SQLite shows the same history counts and the ten
+projects with the most entries, with byte sizes unavailable. Both backends
+aggregate in SQL without loading snapshots into the dashboard.
+
 ## Unclear / needs check
 
 - The exact session lifecycle of `AgentLoginToken` (how `agent_mode` /

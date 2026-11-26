@@ -8,6 +8,7 @@
      instead of putting the whole admin page into horizontal scroll. */
   #content-main { min-width: 0; }
   #content-main .module { overflow-x: auto; }
+  #history-storage table { width: 100%; max-width: 42rem; }
   .usage-filters { display: flex; flex-wrap: wrap; gap: .5rem 1rem; align-items: baseline; }
   .usage-filters [aria-current="true"] { font-weight: 700; }
   .usage-trends .usage-filters, .usage-chart { margin: .75rem 0; padding-inline: .75rem; }
@@ -62,6 +63,7 @@
   </p>
 
   {% include "admin/farm/activity_trends.html" %}
+  {% include "admin/farm/history_storage.html" %}
 
   <div class="module">
     <table>

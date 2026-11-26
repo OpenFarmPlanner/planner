@@ -1,0 +1,62 @@
+# OpenFarmPlanner history storage dashboard.
+msgid ""
+msgstr ""
+"Project-Id-Version: OpenFarmPlanner\n"
+"Language: nl\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Nicht verfügbar"
+msgstr "Niet beschikbaar"
+
+msgid "Speicherbedarf des Versionsverlaufs"
+msgstr "Opslag van versiegeschiedenis"
+
+msgid "Datenbankgröße"
+msgstr "Databasegrootte"
+
+msgid "Verlaufstabelle (inkl. Indizes)"
+msgstr "Geschiedenistabel (inclusief indexen)"
+
+msgid "Ältester Verlaufseintrag"
+msgstr "Oudste geschiedenisitem"
+
+msgid "Aufbewahrte Anker (älter als 30 Tage)"
+msgstr "Bewaarde herstelpunten (ouder dan 30 dagen)"
+
+msgid "Die Größen der gespeicherten Momentaufnahmen berücksichtigen die Datenbankkomprimierung. Speichergrößen sind nur mit PostgreSQL verfügbar."
+msgstr "De grootte van opgeslagen momentopnamen houdt rekening met databasecompressie. Opslaggroottes zijn alleen beschikbaar met PostgreSQL."
+
+msgid "Gespeicherte Momentaufnahmen"
+msgstr "Opgeslagen momentopnamen"
+
+msgid "Verlauf"
+msgstr "Geschiedenis"
+
+msgid "Einträge"
+msgstr "Items"
+
+msgid "Gespeicherte Größe"
+msgstr "Opslaggrootte"
+
+msgid "Alle Verlaufseinträge"
+msgstr "Alle geschiedenisitems"
+
+msgid "Davon vollständige Projektversionen"
+msgstr "Waarvan volledige projectversies"
+
+msgid "Projekte mit den meisten Verlaufseinträgen"
+msgstr "Projecten met de meeste geschiedenisitems"
+
+msgid "Projekte mit dem höchsten Speicherbedarf"
+msgstr "Projecten met de grootste geschiedenisopslag"
+
+msgid "Projekt-ID"
+msgstr "Project-ID"
+
+msgid "Vollständige Versionen"
+msgstr "Volledige versies"
+
+msgid "Keine Verlaufseinträge vorhanden."
+msgstr "Geen geschiedenisitems."
