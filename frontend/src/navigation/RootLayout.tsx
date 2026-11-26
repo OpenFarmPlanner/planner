@@ -236,8 +236,9 @@ function RootLayout() {
   const [topbarContextActions, setTopbarContextActions] = useState<TopbarContextAction[]>([]);
   const [topbarTitleActions, setTopbarTitleActions] = useState<TopbarContextAction[]>([]);
   const [topbarWorkspaceControls, setTopbarWorkspaceControls] = useState<React.ReactNode>(null);
-  const { wrapped: workspaceControlsWrapped, toolbarRef: controlsToolbarRef, titleRef: controlsTitleRef,
-    controlsRef: workspaceControlsRef, pageActionsRef, globalControlsRef } = useResponsiveTopbarControls(Boolean(topbarWorkspaceControls), isCompactTopbar);
+  const { wrapped: workspaceControlsWrapped, narrow: topbarWorkspaceNarrow, toolbarRef: controlsToolbarRef,
+    titleRef: controlsTitleRef, controlsRef: workspaceControlsRef, pageActionsRef, globalControlsRef } =
+    useResponsiveTopbarControls(Boolean(topbarWorkspaceControls), isCompactTopbar, theme.breakpoints.values.sm);
   const [cropActionsMenuAnchor, setCropActionsMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileActionsOverflowAnchor, setMobileActionsOverflowAnchor] = useState<null | HTMLElement>(null);
   const [topbarPrimaryActionMenuAnchor, setTopbarPrimaryActionMenuAnchor] = useState<null | HTMLElement>(null);
@@ -937,7 +938,9 @@ function RootLayout() {
   const workspaceTitleGroup = topbarWorkspaceControls ? (
     <Box ref={workspaceControlsRef} role="toolbar" aria-label={currentPageTitle}
       data-testid="topbar-workspace-controls"
-      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: 'max-content', maxWidth: '100%', minWidth: 0 }}>
+      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap',
+        width: topbarWorkspaceNarrow && isFieldsBedsGraphicalViewActive ? '100%' : 'max-content',
+        maxWidth: '100%', minWidth: 0 }}>
       {titleActionButtons}{topbarWorkspaceControls}
       {workspaceControlsWrapped && !isCompactTopbar ? primaryActionButton : null}
     </Box>
@@ -2039,6 +2042,7 @@ function RootLayout() {
           setTopbarContextActions,
           setTopbarTitleActions,
           setTopbarWorkspaceControls,
+          topbarWorkspaceNarrow,
           activeSeasonYear,
           activeSeason: activeSeason.activeSeason,
           projectSeasons: activeSeason.seasons,
