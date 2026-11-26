@@ -23,7 +23,7 @@ async function configureBedPreview(page: Page) {
   await choose(page, dialog.getByRole('combobox', { name: 'Anzahl festlegen' }), 'Maximal mögliche Anzahl');
   await expect(dialog.getByTestId('individual-generation-preview')).toHaveAttribute('data-position-count', '8');
   await expect(dialog.getByText('Reihen 3 · Neue Pflanzen 8 · Insgesamt 8')).toBeVisible();
-  await expect(dialog.getByText('Übersprungene Positionen wegen vorhandener Stämme · 1')).toBeVisible();
+  await expect(dialog.getByText('1 Position liegt zu nah an vorhandenen Stämmen.')).toBeVisible();
   return dialog;
 }
 
