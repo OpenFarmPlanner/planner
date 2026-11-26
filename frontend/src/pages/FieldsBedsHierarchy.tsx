@@ -86,6 +86,7 @@ import {
   TableCopyMenuItems,
   useNotesEditor,
   NotesDrawer,
+  formatNotesCellExcerpt,
   getPlainExcerpt,
   useContextMenuHint,
   StableScrollbarTrack,
@@ -1822,7 +1823,13 @@ function FieldsBedsHierarchy({
       },
       length_m: { headerExtra: 24 },
       width_m: { headerExtra: 24 },
-      notes: { cell: row => ({ text: getPlainExcerpt(row.notes ?? '', 120), extra: 30 }) },
+      notes: {
+        cell: row => ({
+          text: row.type === 'individualPlan' ? '' : row.notes?.trim()
+            ? formatNotesCellExcerpt(getPlainExcerpt(row.notes, 120)) : t('common:notes.empty'),
+          extra: row.type === 'individualPlan' ? 0 : 32,
+        }),
+      },
     },
   }), [sizingRows, loading, individualHierarchyLoading, rotationStatus, gridLocale, activeSeasonId,
     showPersistentContextMenuButton, showInlineIndividualCount, isMobileViewport, t]);
@@ -1923,13 +1930,14 @@ function FieldsBedsHierarchy({
   );
   const { page: currentPage, pageSize } = hierarchyRowWindow;
   const paginationModel = useMemo(() => ({ page: currentPage, pageSize }), [currentPage, pageSize]);
-  const { widthReset } = columnSizing;
+  const { defaultsPending, widthReset } = columnSizing;
   const gridSlotProps = useMemo(() => ({
+    root: { 'aria-busy': defaultsPending },
     columnsManagement: { disableResetButton: true, widthReset },
     ...(columnsAnchorEl
       ? { panel: { target: columnsAnchorEl, placement: "bottom-start" as const } }
       : {}),
-  }), [columnsAnchorEl, widthReset]);
+  }), [columnsAnchorEl, defaultsPending, widthReset]);
   const getRowClassName = useCallback((params: GridRowParams<HierarchyRow>) => (
     params.id === highlightedRowId
       ? `ofp-hierarchy-row-${params.row.type} ofp-hierarchy-row-highlighted`
@@ -2161,7 +2169,6 @@ function FieldsBedsHierarchy({
             <GridColumnAutoFitContext.Provider value={columnSizing.autoFit}>
             <DataGrid
               rows={rows}
-              aria-busy={columnSizing.defaultsPending}
               columns={columnSizing.columns}
               onColumnWidthChange={columnSizing.onColumnWidthChange}
               slots={hierarchyGridSlots}

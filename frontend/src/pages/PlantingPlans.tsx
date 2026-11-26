@@ -1443,7 +1443,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         headerName: t("common:fields.notes"),
         width: 72,
         minWidth: 56,
-        maxWidth: 90,
         align: "center",
         headerAlign: "center",
         // Notes field will be overridden by NotesCell in EditableDataGrid
@@ -1859,30 +1858,37 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       cell: row => {
         const status = getTableRotationStatus(row.rotation_status, row.rotation_findings);
         const individual = isIndividualPlacement(row);
-        const readOnly = individual || row.carried_over;
+        const readOnly = individual || Boolean(row.carried_over);
         const { name } = getBedPath(row);
+        const label = getGridBedLabel(row);
         const showRotation = status === 'conflict' || status === 'info' || (!readOnly && status === 'accepted');
         const rotationWidth = showRotation ? (readOnly ? 16 : hasCoarsePointer ? 46 : 34) : 0;
         return {
-          text: getGridBedLabel(row) === '—' ? t('plantingPlans:placeholders.selectArea') : getGridBedLabel(row),
+          text: label === '—' ? t('plantingPlans:placeholders.selectArea') : label,
           fontWeight: name ? 500 : 400,
           extra: (individual ? 24 : 0) + rotationWidth
             + (row.carried_over && getRowHarvestOverlaps(row)?.length ? 16 : 0)
-            + (row.companion_findings?.length ? 16 : 0),
+            + (row.companion_findings?.some(finding => finding.kind === 'bad') ? 16 : 0),
         };
       },
       defaultMax: 320,
     };
-    measurements.notes = { cell: row => ({ text: getPlainExcerpt(row.notes ?? "", 120), extra: 30 }) };
+    measurements.notes = {
+      cell: row => {
+        const iconCount = Number(Boolean(row.notes?.trim())) + Number((row.note_attachment_count ?? 0) > 0);
+        return { text: iconCount ? '' : '—', extra: iconCount * 22 };
+      },
+      defaultMax: 90,
+    };
     const dateHeaders = {
-      sowing_date: { text: t('plantingPlans:tableHeaders.sowingDate'), extra: 22 },
-      planting_date: { text: t('plantingPlans:tableHeaders.plantingDate') },
-      harvest_date: { text: t('plantingPlans:tableHeaders.harvestStartDate'), extra: 22 },
-      harvest_end_date: { text: t('plantingPlans:tableHeaders.harvestEndDate'), extra: 22 },
+      sowing_date: t('plantingPlans:tableHeaders.sowingDate'),
+      planting_date: t('plantingPlans:tableHeaders.plantingDate'),
+      harvest_date: t('plantingPlans:tableHeaders.harvestStartDate'),
+      harvest_end_date: t('plantingPlans:tableHeaders.harvestEndDate'),
     };
     for (const field of PLANTING_PLAN_DATE_COLUMNS) {
       measurements[field] = {
-        header: { ...dateHeaders[field], fontWeight: 500 },
+        header: { text: dateHeaders[field] },
         cell: row => {
           const dates = getColumnDates(row, field);
           return {
@@ -1892,8 +1898,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         },
       };
     }
-    measurements.area_m2.headerExtra = 22;
-    measurements.plants_count.headerExtra = 22;
     return { rows: persistedRows, ready: !isPlansLoading && !isHierarchyLoading,
       scope: `${numberLocale}:${activeSeasonId ?? ''}:${displayDateMode}:${hasCoarsePointer}`, measurements };
   }, [activeSeasonId, clipboardColumns, displayDateMode, formatDateForDisplay, getBedPath, getColumnDates, getCropLabel,

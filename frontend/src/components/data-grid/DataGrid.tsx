@@ -2866,7 +2866,6 @@ export function EditableDataGrid<T extends EditableRow>({
               <GridColumnAutoFitContext.Provider value={columnSizing?.autoFit}>
               <DataGrid
           rows={rowsForGrid}
-          aria-busy={columnSizing?.defaultsPending}
           columns={columnsWithActions}
           onColumnWidthChange={columnSizing?.onColumnWidthChange}
           autosizeOptions={hasColumnSizing ? columnAutosizeOptions : undefined}
@@ -2905,6 +2904,7 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
           slotProps={{
+            root: { 'aria-busy': columnSizing?.defaultsPending },
             ...(getCellReadOnlyReason ? {
               cell: { resolveReadOnlyReason: (row, field) => getCellReadOnlyReason(row as T, field) },
             } : {}),

@@ -201,7 +201,7 @@ test('fits the crop split view without document scrolling and keeps both panes s
 // horizontal one, which then covered the last row once the columns overflowed.
 for (const bedCount of [4, 30]) {
   test(`keeps the last growing-area row above the horizontal scrollbar (${bedCount} beds)`, async ({ page, request }) => {
-    await page.setViewportSize({ width: 1350, height: 810 });
+    await page.setViewportSize({ width: 1024, height: 810 });
     await loginWithDeterministicProject(page, request, `scrollbar-hierarchy-last-row-${bedCount}`, { loginAsAdmin: true });
     const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Acker' });
     const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
@@ -287,10 +287,8 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   await page.mouse.down();
   await page.mouse.move(x + 430, y, { steps: 8 });
   await page.mouse.up();
-  // An oversized drag stops at the desktop column limit. It must still
-  // exceed the narrow viewport limit so the next resize exercises clamping.
-  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThanOrEqual(Math.min(720, before + 430) - 1);
-  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThan(680);
+  // A drag can exceed the automatic width limits.
+  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThanOrEqual(before + 429);
   const manualWidth = (await box(nameHeader)).width;
   await expect(horizontal).toBeVisible();
   await nameHeader.getByRole('button', { name: 'Eine Hierarchieebene ausblenden' }).click();
@@ -300,9 +298,11 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
 
   await page.setViewportSize({ width: 768, height: 900 });
-  await expect.poll(async () => (await box(nameHeader)).width).toBeLessThanOrEqual(680);
+  await expect.poll(async () => Math.abs((await box(nameHeader)).width - manualWidth)).toBeLessThanOrEqual(1);
+  await expect(horizontal).toBeVisible();
   const bedRow = grid.getByRole('row').filter({ hasText: 'Gründüngung Reserve' });
   const rowActions = bedRow.getByRole('button', { name: 'Aktionen', exact: true });
+  await rowActions.scrollIntoViewIfNeeded();
   await expect.poll(async () => {
     const actionBox = await box(rowActions);
     const gridBox = await box(grid);

@@ -19,13 +19,14 @@ export interface GridSizingContents<R extends GridValidRowModel> {
 
 const CELL_PADDING = 22;
 const HEADER_PADDING = 22;
-const SORT_CONTROL = 24;
+const SORT_CONTROL = 30;
 const MENU_CONTROL = 24;
 const AUTO_WIDTH_MAX = 250;
 
 export function createColumnTextMeasurer() {
   const body = typeof document === 'undefined' ? null : getComputedStyle(document.body);
   const font = body?.fontFamily || 'Roboto, Arial, sans-serif';
+  const letterSpacing = Number.parseFloat(body?.letterSpacing ?? '') || 0.15;
   const context = typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(1, 1).getContext('2d')
     : typeof CanvasRenderingContext2D === 'undefined' ? null : document.createElement('canvas').getContext('2d');
   const cache = new Map<string, number>();
@@ -36,8 +37,11 @@ export function createColumnTextMeasurer() {
     if (previous !== undefined) return previous;
     if (context) context.font = specification;
     const lines = text.split(/\r?\n/);
-    const width = lines.reduce((max, line) => Math.max(max,
-      context?.measureText(line).width ?? Array.from(line).length * fontSize * 0.58), 0);
+    const width = lines.reduce((max, line) => {
+      const length = Array.from(line).length;
+      const advance = context?.measureText(line).width ?? length * fontSize * 0.58;
+      return Math.max(max, advance + length * letterSpacing);
+    }, 0);
     cache.set(key, width);
     return width;
   };
@@ -62,8 +66,8 @@ export function measureGridColumn<R extends GridValidRowModel>(
   column: GridColDef<R>, rows: readonly R[], config: ColumnMeasurement<R> | undefined,
   measure: (part: ColumnText) => number, automatic: boolean,
 ): number {
-  const header = config?.header ?? { text: column.headerName ?? column.field, fontWeight: 500 };
-  const heading = Math.ceil(measure(header) + HEADER_PADDING + (header.extra ?? 0)
+  const header = config?.header ?? { text: column.headerName ?? column.field };
+  const heading = Math.ceil(measure({ fontWeight: 600, ...header }) + HEADER_PADDING + (header.extra ?? 0)
     + (column.sortable === false ? 0 : SORT_CONTROL) + (column.disableColumnMenu ? 0 : MENU_CONTROL)
     + (config?.headerExtra ?? 0));
   const min = column.minWidth ?? 72;

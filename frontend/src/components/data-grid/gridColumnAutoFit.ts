@@ -6,11 +6,12 @@ export const GridColumnAutoFitContext = createContext<AutoFitColumn | undefined>
 
 export function useGridColumnAutoFit(apiRef: RefObject<GridApi | null>, autoFit: AutoFitColumn | undefined) {
   useEffect(() => {
-    if (!autoFit) return;
-    return apiRef.current?.subscribeEvent('columnSeparatorDoubleClick', ({ field }, event) => {
+    const api = apiRef.current;
+    if (!autoFit || !api?.subscribeEvent) return;
+    return api.subscribeEvent('columnSeparatorDoubleClick', ({ field }, event) => {
       event.defaultMuiPrevented = true;
       const width = autoFit(field);
-      if (width !== undefined) apiRef.current?.setColumnWidth(field, width);
+      if (width !== undefined) api.setColumnWidth(field, width);
     }, { isFirst: true });
   }, [apiRef, autoFit]);
 }

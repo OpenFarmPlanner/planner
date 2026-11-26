@@ -19,7 +19,7 @@ describe('content-based grid column widths', () => {
   it('fits the displayed heading and controls even when the heading exceeds the automatic content limit', () => {
     const column = { field: 'sowing', headerName: 'Sowing date' };
     const header = { text: 'Datum für die erste Aussaat', extra: 20, fontWeight: 500 };
-    expect(measureGridColumn(column, [], { header, defaultMax: 250 }, measure, true)).toBe(360);
+    expect(measureGridColumn(column, [], { header, defaultMax: 250 }, measure, true)).toBe(366);
   });
 
   it('lets an explicit fit exceed both the default cap and the old manual ceiling', () => {
