@@ -54,9 +54,9 @@ the canonical files. Validate frontmatter `name`/`description` and local links.
 Run `python3 .agents/skills/test-coverage-campaign/mutate.py --help` to exercise
 resource lookup without mutating application files.
 
-Use the installed skill-creator validator when available. The canonical new
-skill also has `agents/openai.yaml` UI metadata; it does not duplicate the
-instruction body. Validate the issue/queue examples with synthetic queue bodies
+Use the installed skill-creator validator when available. The `issue-and-queue`
+skill also has `agents/openai.yaml` UI metadata, separate from its instructions.
+Validate the issue/queue examples with synthetic queue bodies
 and existing parser tests, never test issues or live queue edits. The existing
 `node --test tests/test_codex_queue.cjs tests/test_work_queue_worker.cjs` uses
 fixtures and performs no GitHub writes. Application suites are unnecessary for
