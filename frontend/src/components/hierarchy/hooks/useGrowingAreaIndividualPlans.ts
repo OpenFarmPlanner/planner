@@ -23,5 +23,6 @@ export function useGrowingAreaIndividualPlans(projectId: number | null, seasonId
   }, [scope]);
 
   const plans = result?.scope === scope ? result.plans : undefined;
-  return { plans: plans ?? EMPTY_PLANS, failed: plans === null, refresh: () => setRetry(previous => previous + 1) };
+  return { plans: plans ?? EMPTY_PLANS, loading: scope !== null && plans === undefined,
+    failed: plans === null, refresh: () => setRetry(previous => previous + 1) };
 }

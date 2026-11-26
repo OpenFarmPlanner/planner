@@ -36,6 +36,7 @@ import {
 import { gridEditRowsStateSelector } from '@mui/x-data-grid/internals';
 import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from './ResizableGridColumnControls';
 import { columnAutosizeOptions, resizableGridHeaderSx } from './useGridColumnSizing';
+import { GridColumnAutoFitContext, useGridColumnAutoFit } from './gridColumnAutoFit';
 import { dataGridSx, dataGridFooterSx, dataGridAddRowButtonSx, deleteIconButtonSx, EDITABLE_CELL_CLASS } from './styles';
 import { handleRowEditStop } from './handlers';
 import {
@@ -294,6 +295,7 @@ export function EditableDataGrid<T extends EditableRow>({
   pinCreatedRowsToTop = false,
 }: EditableDataGridProps<T>) {
   const gridApiRef = useGridApiRef();
+  useGridColumnAutoFit(gridApiRef, columnSizing?.autoFit);
   const createdRowPinning = useCreatedRowPinning();
   const { pinnedRowKeys: createdRowKeys } = createdRowPinning;
 
@@ -2861,6 +2863,7 @@ export function EditableDataGrid<T extends EditableRow>({
               <SelectEditCellContext.Provider value={selectEditCellContextValue}>
               <DialogEditCellContext.Provider value={dialogEditCellContextValue}>
               <GridRowSaveStatusContext.Provider value={showPendingRowSaves ? saveStatus : null}>
+              <GridColumnAutoFitContext.Provider value={columnSizing?.autoFit}>
               <DataGrid
           rows={rowsForGrid}
           columns={columnsWithActions}
@@ -2901,6 +2904,7 @@ export function EditableDataGrid<T extends EditableRow>({
           onRowSelectionModelChange={(nextModel) => setSelectedRowIds(Array.from(nextModel.ids))}
           slots={gridSlots}
           slotProps={{
+            root: { 'aria-busy': columnSizing?.defaultsPending },
             ...(getCellReadOnlyReason ? {
               cell: { resolveReadOnlyReason: (row, field) => getCellReadOnlyReason(row as T, field) },
             } : {}),
@@ -3120,6 +3124,7 @@ export function EditableDataGrid<T extends EditableRow>({
           localeText={gridLocaleText}
           apiRef={gridApiRef}
               />
+              </GridColumnAutoFitContext.Provider>
               </GridRowSaveStatusContext.Provider>
               </DialogEditCellContext.Provider>
               </SelectEditCellContext.Provider>

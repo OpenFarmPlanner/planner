@@ -118,3 +118,10 @@ export function getPlainExcerpt(markdown: string, maxLength: number = 120): stri
   // Truncate and add ellipsis
   return plain.substring(0, maxLength).trim() + '...';
 }
+
+/** Visible text beside the icon in a non-compact notes cell. */
+export function formatNotesCellExcerpt(excerpt: string): string {
+  const firstLine = excerpt.split('\n', 1)[0];
+  const preview = firstLine.length > 40 ? `${firstLine.slice(0, 37)}...` : firstLine;
+  return excerpt.length > firstLine.length || firstLine.length > 40 ? `${preview} ...` : preview;
+}

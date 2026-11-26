@@ -14,21 +14,12 @@ import {
 import { AppTooltip } from '../AppTooltip';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import { IndividualPlantIcon } from '../../planting-plans/individualPlantActions';
-import { formatLocalizedNumber, getActiveFormattingLocale } from '../../utils/numberLocalization';
+import {
+  hierarchyNameText, HIERARCHY_EXPAND_MARGIN_PX, HIERARCHY_EXPAND_SLOT_PX, HIERARCHY_NAME_GAP_PX,
+  HIERARCHY_NAME_INDENT_PX, HIERARCHY_TOUCH_ACTION_PX,
+} from './utils/hierarchyNameColumnWidth';
 
-const EXPAND_ICON_SLOT_SIZE = 32;
-const LEVEL_INDENT_PX = 24;
-// The expand slot's right margin (`mr: 1`).
-const EXPAND_ICON_SLOT_GAP_PX = 8;
-/**
- * Width kept free for the hover actions (add/plan, delete, more) at the end
- * of the name, so the name column's content width includes them (#1576).
- */
-export const HIERARCHY_ROW_ACTIONS_SLOT_PX = 96;
-
-/** Where the name text starts inside the cell, so the edit input can line up with it. */
-export const getHierarchyNameTextOffsetPx = (level: number): number =>
-  level * LEVEL_INDENT_PX + EXPAND_ICON_SLOT_SIZE + EXPAND_ICON_SLOT_GAP_PX;
+export { getHierarchyNameTextOffsetPx } from './utils/hierarchyNameColumnWidth';
 
 export function renderNameCell(
   params: GridRenderCellParams<HierarchyRow>,
@@ -37,7 +28,7 @@ export function renderNameCell(
   options: HierarchyColumnOptions,
 ) {
   const row = params.row;
-  const baseIndent = row.level * LEVEL_INDENT_PX;
+  const baseIndent = row.level * HIERARCHY_NAME_INDENT_PX;
   const hasChildren = row.hasChildren === true;
   const hasExpandToggle = hasChildren && (row.type === 'location' || row.type === 'field'
     || (row.type === 'bed' && row.individualPlantCount !== undefined));
@@ -49,8 +40,8 @@ export function renderNameCell(
         opacity: 1,
         pointerEvents: 'auto',
         flex: '0 0 auto',
-        width: 40,
-        height: 40,
+        width: HIERARCHY_TOUCH_ACTION_PX,
+        height: HIERARCHY_TOUCH_ACTION_PX,
         color: 'text.secondary',
         p: 1,
         '& .MuiSvgIcon-root': { fontSize: 20 },
@@ -62,22 +53,19 @@ export function renderNameCell(
         },
       })
     : null;
-  const count = row.individualPlantCount;
-  const countLabel = row.type === 'individualPlan' && options.showInlineIndividualCount && count !== undefined
-    ? t('fields:individualPlants.count', { count, formatted: formatLocalizedNumber(count, getActiveFormattingLocale()) }) : '';
-  const text = [String(params.value ?? ''), countLabel].filter(Boolean).join(' · ');
+  const text = hierarchyNameText(row, params.value, t, Boolean(options.showInlineIndividualCount));
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', pl: `${baseIndent}px`, width: '100%', minWidth: 0, gap: 0.5 }}>
+    <Box sx={{ display: 'flex', alignItems: 'center', pl: `${baseIndent}px`, width: '100%', minWidth: 0, gap: `${HIERARCHY_NAME_GAP_PX}px` }}>
       <Box
         sx={{
-          width: EXPAND_ICON_SLOT_SIZE,
-          minWidth: EXPAND_ICON_SLOT_SIZE,
-          height: EXPAND_ICON_SLOT_SIZE,
+          width: HIERARCHY_EXPAND_SLOT_PX,
+          minWidth: HIERARCHY_EXPAND_SLOT_PX,
+          height: HIERARCHY_EXPAND_SLOT_PX,
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          mr: 1,
+          mr: `${HIERARCHY_EXPAND_MARGIN_PX}px`,
           pointerEvents: hasExpandToggle ? 'auto' : 'none',
         }}
         data-testid="expand-icon-slot"
@@ -99,7 +87,7 @@ export function renderNameCell(
         ) : (
           <Box
             aria-hidden="true"
-            sx={{ width: EXPAND_ICON_SLOT_SIZE, height: EXPAND_ICON_SLOT_SIZE, visibility: 'hidden' }}
+            sx={{ width: HIERARCHY_EXPAND_SLOT_PX, height: HIERARCHY_EXPAND_SLOT_PX, visibility: 'hidden' }}
           >
             <ChevronRightIcon />
           </Box>

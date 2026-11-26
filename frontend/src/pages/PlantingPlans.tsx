@@ -40,6 +40,7 @@ import ArticleOutlinedIcon from "@mui/icons-material/ArticleOutlined";
 import GrassOutlinedIcon from "@mui/icons-material/GrassOutlined";
 import GridViewOutlinedIcon from "@mui/icons-material/GridViewOutlined";
 import { useGridColumnSizing } from "../components/data-grid/useGridColumnSizing";
+import type { ColumnMeasurement, GridSizingContents } from "../components/data-grid/gridContentWidths";
 import { useTranslation } from "../i18n";
 import {
   normalizeCultivationType,
@@ -155,7 +156,7 @@ import { useIndividualPlanGeneration } from '../planting-plans/useIndividualPlan
 import { IndividualPlanGenerationRequest } from '../planting-plans/IndividualPlanGenerationRequest';
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
-  getPlanDateReadOnlyReason, type PlantingPlanDateColumn, type PlantingPlanDateComparison,
+  getPlanDateReadOnlyReason, planDateDeviation, type PlantingPlanDateColumn, type PlantingPlanDateComparison,
 } from "../planting-plans/plantingPlanActualDates";
 import { usePlantingPlanDateMode } from "../planting-plans/usePlantingPlanDateMode";
 import { ActualPlanDateCell, DateComparisonTooltipText, PlantingPlanDateModeSelect, RecordedPlanDateCell, type ActualPlanDateDrafts } from "../planting-plans/PlantingPlanDateCells";
@@ -294,6 +295,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("lg"));
+  const hasCoarsePointer = useMediaQuery('(pointer: coarse)');
   const { columnVisibilityModel, setColumnVisibilityModel } = useColumnVisibility({
     tableKey: "plantingPlans",
     defaultHiddenFieldsOnSmallScreen: DEFAULT_HIDDEN_FIELDS_ON_SMALL_SCREEN,
@@ -1441,7 +1443,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         headerName: t("common:fields.notes"),
         width: 72,
         minWidth: 56,
-        maxWidth: 90,
         align: "center",
         headerAlign: "center",
         // Notes field will be overridden by NotesCell in EditableDataGrid
@@ -1781,8 +1782,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       : "—"
   );
 
-  const columnSizing = useGridColumnSizing(columns, "plantingPlans", userId, activeProjectId);
-
   const clipboardColumns = useMemo(() => [
     {
       field: "crop",
@@ -1849,6 +1848,62 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     formatDateForDisplay,
     t,
   ]);
+
+  const sizingContents = useMemo<GridSizingContents<PlantingPlanRow>>(() => {
+    const measurements: Record<string, ColumnMeasurement<PlantingPlanRow>> = Object.fromEntries(clipboardColumns.map(column => [
+      column.field, { cell: (row: PlantingPlanRow) => ({ text: column.getValue(row) }) },
+    ]));
+    measurements.crop = { cell: row => ({ text: getCropLabel(row), extra: row.carried_over ? 24 : 0 }), defaultMax: 280 };
+    measurements.bed = {
+      cell: row => {
+        const status = getTableRotationStatus(row.rotation_status, row.rotation_findings);
+        const individual = isIndividualPlacement(row);
+        const readOnly = individual || Boolean(row.carried_over);
+        const { name } = getBedPath(row);
+        const label = getGridBedLabel(row);
+        const showRotation = status === 'conflict' || status === 'info' || (!readOnly && status === 'accepted');
+        const rotationWidth = showRotation ? (readOnly ? 16 : hasCoarsePointer ? 46 : 34) : 0;
+        return {
+          text: label === '—' ? t('plantingPlans:placeholders.selectArea') : label,
+          fontWeight: name ? 500 : 400,
+          extra: (individual ? 24 : 0) + rotationWidth
+            + (row.carried_over && getRowHarvestOverlaps(row)?.length ? 16 : 0)
+            + (row.companion_findings?.some(finding => finding.kind === 'bad') ? 16 : 0),
+        };
+      },
+      defaultMax: 320,
+    };
+    measurements.notes = {
+      cell: row => {
+        const iconCount = Number(Boolean(row.notes?.trim())) + Number((row.note_attachment_count ?? 0) > 0);
+        return { text: iconCount ? '' : '—', extra: iconCount * 22 };
+      },
+      defaultMax: 90,
+    };
+    const dateHeaders = {
+      sowing_date: t('plantingPlans:tableHeaders.sowingDate'),
+      planting_date: t('plantingPlans:tableHeaders.plantingDate'),
+      harvest_date: t('plantingPlans:tableHeaders.harvestStartDate'),
+      harvest_end_date: t('plantingPlans:tableHeaders.harvestEndDate'),
+    };
+    for (const field of PLANTING_PLAN_DATE_COLUMNS) {
+      measurements[field] = {
+        header: { text: dateHeaders[field] },
+        cell: row => {
+          const dates = getColumnDates(row, field);
+          return {
+            text: formatDateForDisplay(getDisplayedDate(row, field)),
+            fontWeight: displayDateMode !== 'planned' && planDateDeviation(dates) ? 700 : 400,
+          };
+        },
+      };
+    }
+    return { rows: persistedRows, ready: !isPlansLoading && !isHierarchyLoading,
+      scope: `${numberLocale}:${activeSeasonId ?? ''}:${displayDateMode}:${hasCoarsePointer}`, measurements };
+  }, [activeSeasonId, clipboardColumns, displayDateMode, formatDateForDisplay, getBedPath, getColumnDates, getCropLabel,
+    getDisplayedDate, getGridBedLabel, getRowHarvestOverlaps, hasCoarsePointer, isHierarchyLoading, isPlansLoading,
+    numberLocale, persistedRows, t]);
+  const columnSizing = useGridColumnSizing<PlantingPlanRow>(columns, "plantingPlans", userId, activeProjectId, sizingContents);
 
   const getClipboardRowValues = useCallback((row: PlantingPlanRow): string[] => (
     clipboardColumns.map((column) => (

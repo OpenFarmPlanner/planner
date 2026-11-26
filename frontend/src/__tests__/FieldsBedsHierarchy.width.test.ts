@@ -1,35 +1,29 @@
 import { describe, expect, it } from 'vitest';
-import {
-  calculateHierarchyNameColumnWidth,
-  NAME_COLUMN_MEASUREMENT_RESERVE_PX,
-  type HierarchyNameMeasureEntry,
-} from '../components/hierarchy/utils/hierarchyNameColumnWidth';
+import type { TFunction } from 'i18next';
+import { measureGridColumn } from '../components/data-grid/gridContentWidths';
+import { measureHierarchyName } from '../components/hierarchy/utils/hierarchyNameColumnWidth';
+import type { HierarchyRow } from '../components/hierarchy/utils/types';
 import { getHierarchyGridHeight } from '../pages/fieldsBedsHierarchyStyles';
 
 describe('fields-beds hierarchy name column width', () => {
-  it('adds a small measurement reserve to the dynamic name width', () => {
-    const entries: HierarchyNameMeasureEntry[] = [
-      { name: 'Langer Name', level: 1, type: 'field' },
-    ];
+  const t = (() => '3 Einzelpflanzen') as unknown as TFunction;
+  const bed: HierarchyRow = { id: 'bed-1', name: 'Gründüngungsversuch', level: 2, type: 'bed', bedId: 1 };
+  const plan: HierarchyRow = { id: 'plan-1', name: 'Karotten', level: 3, type: 'individualPlan', individualPlantCount: 3 };
 
-    const width = calculateHierarchyNameColumnWidth(entries, () => 240);
-
-    expect(width).toBe(24 + 44 + 20 + 2 + 240 + NAME_COLUMN_MEASUREMENT_RESERVE_PX);
+  it('includes the reserved action slot in each row width, accounting for depth and row type', () => {
+    expect(measureHierarchyName(bed, t, false, false)).toMatchObject({ text: bed.name, extra: 194 });
+    expect(measureHierarchyName(bed, t, true, false)).toMatchObject({ text: bed.name, extra: 140 });
+    expect(measureHierarchyName(plan, t, false, true)).toMatchObject({ text: 'Karotten · 3 Einzelpflanzen', extra: 174 });
   });
 
-  it('keeps hover action icons out of the name width calculation', () => {
-    const entries: HierarchyNameMeasureEntry[] = [
-      { name: 'Langes Beet', level: 2, type: 'bed' },
-    ];
-    const textWidth = 220;
-    const assumedActionOverlayWidth = 64;
-
-    const width = calculateHierarchyNameColumnWidth(entries, () => textWidth);
-
-    expect(width).toBe(48 + 44 + 20 + 8 + 2 + textWidth + NAME_COLUMN_MEASUREMENT_RESERVE_PX);
-    expect(width).toBeLessThan(
-      48 + 44 + 20 + 8 + 2 + textWidth + NAME_COLUMN_MEASUREMENT_RESERVE_PX + assumedActionOverlayWidth,
-    );
+  it('caps defaults and uses the widest complete row for an explicit fit', () => {
+    const longPlan = { ...plan, name: 'Lang'.repeat(30) };
+    const withWideControls = { ...bed, level: 5 };
+    const column = { field: 'name', headerName: 'Name' };
+    const content = { cell: (row: HierarchyRow) => measureHierarchyName(row, t, false, false), defaultMax: 420 };
+    const measure = ({ text }: { text: string }) => text.length * 8;
+    expect(measureGridColumn(column, [withWideControls, longPlan], content, measure, true)).toBe(420);
+    expect(measureGridColumn(column, [withWideControls, longPlan], content, measure, false)).toBe(1156);
   });
 });
 

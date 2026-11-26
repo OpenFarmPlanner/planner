@@ -176,7 +176,8 @@ export interface EditableDataGridProps<T extends EditableRow> {
   scrollMode?: 'autoHeight' | 'continuous';
   /** Requested MUI header height before density scaling; defaults stay unchanged. */
   columnHeaderHeight?: number;
-  columnSizing?: Pick<ReturnType<typeof useGridColumnSizing>, 'onColumnWidthChange' | 'widthReset'>;
+  columnSizing?: Pick<ReturnType<typeof useGridColumnSizing>, 'onColumnWidthChange' | 'widthReset'>
+    & Partial<Pick<ReturnType<typeof useGridColumnSizing>, 'autoFit' | 'defaultsPending'>>;
   /**
    * Column visibility model. Pass `columnVisibilityModel` from
    * `useColumnVisibility`.

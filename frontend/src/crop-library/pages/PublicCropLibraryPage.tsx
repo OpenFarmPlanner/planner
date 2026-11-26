@@ -1935,6 +1935,7 @@ export default function PublicCropLibraryPage() {
                           isSpeciesView && editFormCrop ? (
                             <CropVarietiesOverview
                               key="varieties"
+                              publicLibrary
                               varieties={publicVarietyRows}
                               action={publicVarietyRows.length && varietyImportParent && !varietyImportParent.variety?.trim() ? <Button startIcon={<DownloadOutlinedIcon />} disabled={Boolean(varietyImport) || importingId !== null}
                                 onClick={() => setVarietyImport(varietyImportParent)}>{t('library.varietyImport.action')}</Button> : undefined}
