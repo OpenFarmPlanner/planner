@@ -29,6 +29,17 @@ uploads it with its `playwright-report-shard-N` artifact. Open it with
 `npx playwright show-trace <trace.zip>` to see every request, cookie and
 response of the failed test before calling a failure flaky.
 
+For the individual-plant editor, the plant count updates as soon as the draft
+changes. The #1612 investigation reproduced the old assertion failure by
+holding the placement PATCH until after the test's GET. That GET returned both
+original stems while the save was pending. After the same PATCH returned 200,
+the API and SQLite contained the one moved stem with its original ID. The
+[green full-release run](https://github.com/OpenFarmPlanner/planner/actions/runs/45612244572/job/139198494554)
+ran the same assertion in Chromium shard 2 and passed on its first attempt.
+The test now waits for the exact plan's placement response and the return to
+read mode, then checks persistence through an authenticated API request and
+a fresh browser reload.
+
 All jobs run concurrently, so the pipeline is as long as its slowest job.
 
 **Metadata-only pull requests (#1206).** A PR whose changed files are all

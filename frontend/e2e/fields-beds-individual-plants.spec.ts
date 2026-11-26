@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
+import type { LocationLayoutsResponse, PaginatedResponse, YoungPlantDemand } from '../src/api/types';
 import { apiRequest, loginWithDeterministicProject } from './utils';
 
 type Stem = { id: string; x_m: number; y_m: number };
 type Plan = {
   id: number; parcel: number; parcel_location_id: number; bed: null;
   individual_positions: Stem[]; plants_count: number; estimated_canopy_diameter_m: string;
+  season: number; updated_at: string;
 };
 
 async function shape(page: Page, testId: string) {
@@ -47,15 +49,31 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   const adjacentBed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
     field: plot.id, name: 'Gemüsebeet', width_m: 1.2, length_m: 6,
   });
-  await apiRequest(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
-  await apiRequest(page, 'POST', '/crops/', {
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+  const apple = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
     name: 'Apfel', life_cycle: 'perennial', standing_time_years: 15,
     distance_within_row_cm: 400, estimated_canopy_diameter_m: 3.8,
     cultivation_types: ['pre_cultivation'], light_requirement: ['full_sun'],
   });
-  await apiRequest(page, 'POST', '/crops/', {
+  const rhubarb = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
     name: 'Rhabarber', life_cycle: 'perennial', standing_time_years: 8, cultivation_types: ['pre_cultivation'],
   });
+  const otherPlan = await apiRequest<Plan>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: rhubarb.id, parcel: plot.id, planting_date: '2026-05-01',
+    cultivation_type: 'pre_cultivation', individual_positions: [{ x_m: 10, y_m: 15 }],
+  });
+  const projectId = await page.evaluate(() => localStorage.getItem('activeProjectId'));
+  expect(projectId).toBeTruthy();
+  // Share only the session cookie with the browser. Read from the API with explicit scope.
+  const readBackend = async <T>(path: string): Promise<T> => {
+    const response = await page.request.get(`/api${path}`, {
+      headers: { 'X-Project-Id': String(projectId), 'X-Season-Id': String(season.id) },
+    });
+    expect(response.ok(), `GET ${path} returned ${response.status()}`).toBeTruthy();
+    return response.json();
+  };
+  const appleDemand = async () => (await readBackend<PaginatedResponse<YoungPlantDemand>>('/young-plant-demand/'))
+    .results.find(row => row.crop_id === apple.id);
 
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
@@ -106,13 +124,35 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   const firstStem = draftStem!.screen;
   await page.mouse.click(firstStem.x + firstStem.width / 2, firstStem.y + firstStem.height / 2);
   await expect(panel.getByRole('combobox', { name: 'Stammposition' })).toContainText(/^Stamm 1 ·/);
-  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
-  await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
+  const saveButton = panel.getByRole('button', { name: 'Speichern', exact: true });
+  const editPositions = panel.getByRole('button', { name: 'Positionen bearbeiten' });
+  const [creation] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === 'POST'
+      && new URL(response.url()).pathname === '/api/planting-plans/'),
+    saveButton.click(),
+  ]);
+  expect(creation.status()).toBe(201);
+  await expect(editPositions).toBeVisible();
   await expect(panel.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
-  const [created] = await individualPlans(page, location.id);
-  expect(created).toMatchObject({ parcel: plot.id, bed: null, plants_count: 2 });
+  const { id: planId } = await creation.json() as Plan;
+  const planPath = `/planting-plans/${planId}/`;
+  const created = await readBackend<Plan>(planPath);
+  expect(created).toMatchObject({ id: planId, season: season.id, parcel: plot.id, bed: null, plants_count: 2 });
+  expect(created.individual_positions).toMatchObject([
+    { id: expect.any(String), x_m: 1.5, y_m: 3 },
+    { id: expect.any(String), x_m: 1.5, y_m: 6.4 },
+  ]);
+  expect(await appleDemand()).toMatchObject({ plant_count: 2, plans: [{ plan_id: planId, plant_count: 2 }] });
   const [first, second] = created.individual_positions;
   await expect.poll(() => shape(page, `individual-canopy-${first.id}`)).toMatchObject({ listened: false });
+  const fieldPath = `/fields/${plot.id}/`;
+  const bedPath = `/beds/${adjacentBed.id}/`;
+  const layoutsPath = `/locations/${location.id}/layouts/`;
+  const otherPlanPath = `/planting-plans/${otherPlan.id}/`;
+  const fieldBefore = await readBackend(fieldPath);
+  const bedBefore = await readBackend(bedPath);
+  const layoutsBefore = await readBackend<LocationLayoutsResponse>(layoutsPath);
+  const otherPlanBefore = await readBackend(otherPlanPath);
 
   // After saving, the next draft starts with the optional canopy disclosure collapsed again.
   await panel.getByRole('button', { name: 'Neuer Einzelpflanzenplan' }).click();
@@ -124,7 +164,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await panel.getByRole('combobox', { name: 'Anbauplan', exact: true }).click();
   await page.getByRole('option', { name: /^Apfel/ }).click();
 
-  await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
+  await editPositions.click();
   const beforeDrag = await shape(page, `individual-stem-${first.id}`);
   expect(beforeDrag).not.toBeNull();
   const { x, y, width, height } = beforeDrag!.screen;
@@ -132,16 +172,50 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await page.mouse.down();
   await page.mouse.move(x + width / 2 + 42, y + height / 2 + 25, { steps: 6 });
   await page.mouse.up();
-  await expect.poll(async () => (await shape(page, `individual-stem-${first.id}`))?.x_m).not.toBe(first.x_m);
+  await expect.poll(async () => (await shape(page, `individual-stem-${first.id}`))?.x_m ?? first.x_m).not.toBe(first.x_m);
+  const movedStem = await shape(page, `individual-stem-${first.id}`);
+  expect(movedStem).toMatchObject({ x_m: expect.any(Number), y_m: expect.any(Number) });
+  const { x_m, y_m } = movedStem!;
+  expect(x_m).not.toBe(first.x_m);
+  expect(y_m).not.toBe(first.y_m);
+  const expectedPositions = [{ id: first.id, x_m, y_m }];
   await panel.getByRole('combobox', { name: 'Stammposition' }).click();
   await page.getByRole('option', { name: /^Stamm 2 ·/ }).click();
   await panel.getByRole('button', { name: 'Position entfernen' }).click();
-  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+  // The count reflects the draft already. A failed save keeps the draft available for retry.
+  const placementPath = `/api${planPath}individual-placement/`;
+  await page.route(url => url.pathname === placementPath, route => route.fulfill({ status: 500, json: {} }), { times: 1 });
+  await saveButton.click();
+  await expect(panel.getByText('Die Einzelpflanzen konnten nicht gespeichert werden.')).toBeVisible();
+  await expect(saveButton).toBeEnabled();
   await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
-  const [saved] = await individualPlans(page, location.id);
-  expect(saved.individual_positions).toHaveLength(1);
-  expect(saved.individual_positions[0].id).toBe(first.id);
-  expect(saved.individual_positions[0].x_m).not.toBe(first.x_m);
+  expect(await readBackend<Plan>(planPath)).toMatchObject({
+    individual_positions: created.individual_positions, plants_count: 2, updated_at: created.updated_at,
+  });
+
+  const [placement] = await Promise.all([
+    page.waitForResponse(response => response.request().method() === 'PATCH'
+      && new URL(response.url()).pathname === placementPath),
+    saveButton.click(),
+  ]);
+  expect(placement.status()).toBe(200);
+  expect(placement.request().postDataJSON()).toMatchObject({
+    placement_updated_at: created.updated_at, individual_positions: expectedPositions,
+  });
+  await expect(editPositions).toBeVisible();
+  await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
+  const saved = await readBackend<Plan>(planPath);
+  const savedPlacement = {
+    id: planId, parcel: plot.id, season: season.id, plants_count: 1, individual_positions: expectedPositions,
+  };
+  expect(await placement.json()).toMatchObject(savedPlacement);
+  expect(saved).toMatchObject(savedPlacement);
+  expect(saved.updated_at).not.toBe(created.updated_at);
+  expect(await appleDemand()).toMatchObject({ plant_count: 1, plans: [{ plan_id: planId, plant_count: 1 }] });
+  expect(await readBackend(otherPlanPath)).toEqual(otherPlanBefore);
+  expect(await readBackend(fieldPath)).toEqual(fieldBefore);
+  expect(await readBackend(bedPath)).toEqual(bedBefore);
+  expect(await readBackend(layoutsPath)).toEqual(layoutsBefore);
   await expect.poll(() => shape(page, `individual-stem-${second.id}`)).toBeNull();
   await testInfo.attach('individual-plants-desktop', { body: await page.screenshot(), contentType: 'image/png' });
 
@@ -151,7 +225,10 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await expect(page.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
   await page.getByRole('link', { name: 'In der Grafik öffnen' }).click();
   await expect(page).toHaveURL(new RegExp(`individualPlan=${saved.id}`));
+  await page.reload();
   await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
+  await expect.poll(() => shape(page, `individual-stem-${first.id}`)).toMatchObject({ x_m, y_m });
+  await expect.poll(() => shape(page, `individual-stem-${second.id}`)).toBeNull();
   await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
   await expect(control).toBeFocused();
 
@@ -164,6 +241,8 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await page.mouse.move(start.x, start.y);
   await page.mouse.down();
   await page.mouse.move(start.x + 45, start.y + 35, { steps: 7 });
+  const layoutWrite = page.waitForResponse(response => response.request().method() === 'PUT'
+    && new URL(response.url()).pathname === `/api${layoutsPath}`);
   await page.mouse.up();
   await expect.poll(async () => (await shape(page, `field-rect-${plot.id}`))?.world).not.toEqual(root!.world);
   const moved = (await shape(page, `field-rect-${plot.id}`))!.world;
@@ -172,7 +251,12 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   expect(newStem.x - oldStem!.world.x).toBeCloseTo(moved.x - root!.world.x);
   expect(newStem.y - oldStem!.world.y).toBeCloseTo(moved.y - root!.world.y);
   expect(newBed.x - oldBed!.world.x).toBeCloseTo(moved.x - root!.world.x);
-  expect((await individualPlans(page, location.id))[0].individual_positions).toEqual(saved.individual_positions);
+  expect(newBed.y - oldBed!.world.y).toBeCloseTo(moved.y - root!.world.y);
+  expect((await layoutWrite).ok()).toBeTruthy();
+  const layoutsAfter = await readBackend<LocationLayoutsResponse>(layoutsPath);
+  expect(layoutsAfter.field_layouts).not.toEqual(layoutsBefore.field_layouts);
+  expect(layoutsAfter.bed_layouts).toEqual(layoutsBefore.bed_layouts);
+  expect((await readBackend<Plan>(planPath)).individual_positions).toEqual(saved.individual_positions);
 
   await page.goto('/app/gantt-chart');
   await expect(page.getByText('Einzelpflanzen', { exact: true })).toBeVisible();
@@ -214,7 +298,7 @@ test('drags a placed stem in graphic edit mode without moving the bed or parcel 
     name: 'Apfel', life_cycle: 'perennial', standing_time_years: 15,
     distance_within_row_cm: 400, estimated_canopy_diameter_m: 3.8, cultivation_types: ['pre_cultivation'],
   });
-  const created = await apiRequest<Plan & { updated_at: string }>(page, 'POST', '/planting-plans/', {
+  const created = await apiRequest<Plan>(page, 'POST', '/planting-plans/', {
     season: season.id, crop: crop.id, parcel: plot.id, planting_date: '2026-05-01', cultivation_type: 'pre_cultivation',
     estimated_canopy_diameter_m: 3.8, individual_positions: [{ x_m: 1, y_m: 1 }, { x_m: 2, y_m: 3 }],
   });
