@@ -40,24 +40,30 @@ function positive(value: unknown): number | null {
   return Number.isFinite(number) && number > 0 ? number : null;
 }
 
-function usePlacementCrops(enabled: boolean) {
-  const [crops, setCrops] = useState<Crop[] | null>(null);
-  const [failed, setFailed] = useState(false);
+function usePlacementCrops(source: 'all' | number | null) {
   const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<{
+    source: 'all' | number; attempt: number; crops: Crop[] | null;
+  } | null>(null);
   useEffect(() => {
-    if (!enabled) return;
+    if (source === null) return;
     const request = new AbortController();
-    void cropAPI.listAll(request.signal).then(({ results }) => {
-      if (!request.signal.aborted) setCrops(results.filter(crop => crop.id != null));
+    const load = source === 'all'
+      ? cropAPI.listAll(request.signal).then(({ results }) => results.filter(crop => crop.id != null))
+      : cropAPI.get(source).then(({ data }) => [data]);
+    void load.then(crops => {
+      if (!request.signal.aborted) setResult({ source, attempt, crops });
     }).catch(() => {
-      if (!request.signal.aborted) setFailed(true);
+      if (!request.signal.aborted) setResult({ source, attempt, crops: null });
     });
     return () => request.abort();
-  }, [enabled, attempt]);
+  }, [source, attempt]);
+  const current = result?.source === source && result.attempt === attempt ? result : null;
   return {
-    crops,
-    failed,
-    retry: () => { setFailed(false); setAttempt(value => value + 1); },
+    crops: current?.crops ?? null,
+    failed: current?.crops === null,
+    loading: source !== null && current === null,
+    retry: () => setAttempt(value => value + 1),
   };
 }
 
@@ -131,7 +137,9 @@ export function GraphicalIndividualPlantsPanel({
   const selected = stems.find(stem => stem.key === selectedKey);
   const creating = Boolean(draft && !draft.planId);
   const [generationOpen, setGenerationOpen] = useState(false);
-  const { crops, failed: cropsFailed, retry: retryCrops } = usePlacementCrops(Boolean(draft));
+  const { crops, failed: cropsFailed, loading: cropsLoading, retry: retryCrops } = usePlacementCrops(
+    creating ? 'all' : draft?.crop ?? null,
+  );
   const crop = crops?.find(item => item.id === draft?.crop);
   const cultivationTypes = getAllowedCultivationTypesForCrop(crop);
   const spacing = creating
@@ -273,7 +281,7 @@ export function GraphicalIndividualPlantsPanel({
               <Button variant="outlined" disabled={saving || !canAdd} onClick={armPlacement}>{tr('placeOnMap')}</Button>
             ))}
             {draft && measured && (
-              <Button variant="outlined" disabled={saving || !canAdd || (crops === null && !cropsFailed)}
+              <Button variant="outlined" disabled={saving || !canAdd || cropsLoading}
                 onClick={() => setGenerationOpen(true)}>{tr('generation.title')}</Button>
             )}
             {placing && <Alert role="status" severity="info">{tr(canAdd ? 'placeHint' : 'placementNeedsInputs')}</Alert>}

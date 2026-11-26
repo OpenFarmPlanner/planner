@@ -98,7 +98,7 @@ test('previews and saves the same bed grid alongside area and individual plans',
 test.describe('orchard generation on a phone', () => {
   test.use({ viewport: { width: 375, height: 800 }, hasTouch: true, isMobile: true });
 
-  test('uses inherited orchard spacing and enforces the cap before confirmation', async ({ page, request }, testInfo) => {
+  test('loads the orchard crop spacing and enforces the cap before confirmation', async ({ page, request }, testInfo) => {
     await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
     await loginWithDeterministicProject(page, request, 'generate-orchard-plants-phone', {
       demoProject: true, demoYear: 2026, loginAsAdmin: true,
@@ -109,7 +109,12 @@ test.describe('orchard generation on a phone', () => {
       page, 'GET', `/planting-plans/?individual_location=${site.id}`,
     );
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
-    await panel(page).getByRole('button', { name: 'Positionen bearbeiten' }).tap();
+    const [cropDetails] = await Promise.all([
+      page.waitForResponse(response => response.request().method() === 'GET'
+        && new URL(response.url()).pathname === `/api/crops/${orchard.crop}/`),
+      panel(page).getByRole('button', { name: 'Positionen bearbeiten' }).tap(),
+    ]);
+    expect(cropDetails.ok()).toBeTruthy();
     await panel(page).getByRole('button', { name: generationTitle }).tap();
     const dialog = page.getByRole('dialog', { name: generationTitle });
     const count = dialog.getByRole('textbox', { name: 'Zusätzliche Pflanzen' });
