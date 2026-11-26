@@ -17,6 +17,8 @@ interface Props {
   suggestedSpacing: Pick<RegularPlantInputs, 'plantSpacing' | 'rowSpacing'>;
   occupied: readonly StemCoordinates[];
   existingCount: number;
+  initialCount?: number | 'max' | null;
+  confirmLabel?: string;
   onConfirm: (positions: StemCoordinates[]) => void;
   onClose: () => void;
 }
@@ -75,15 +77,16 @@ function PositionPreview({
 
 /** Shared by graphical placement and the planting-plan creation flow. */
 export function IndividualPlantGenerationDialog({
-  dimensions, suggestedSpacing, occupied, existingCount, onConfirm, onClose,
+  dimensions, suggestedSpacing, occupied, existingCount, initialCount = null, confirmLabel, onConfirm, onClose,
 }: Props) {
   const { t } = useTranslation(['fields', 'common']);
   const tr = (key: string) => t(`fields:individualPlants.generation.${key}`);
   const title = useId();
   const [inputs, setInputs] = useState<RegularPlantInputs>({
-    count: null, marginWidth: 0, marginLength: 0, along: 'length', ...suggestedSpacing,
+    count: typeof initialCount === 'number' ? initialCount : null,
+    marginWidth: 0, marginLength: 0, along: 'length', ...suggestedSpacing,
   });
-  const [mode, setMode] = useState<'exact' | 'max'>('exact');
+  const [mode, setMode] = useState<'exact' | 'max'>(initialCount === 'max' ? 'max' : 'exact');
   const update = (change: Partial<RegularPlantInputs>) => setInputs(previous => ({ ...previous, ...change }));
   const preview = generateRegularPlants(dimensions, { ...inputs, count: mode === 'max' ? 'max' : inputs.count },
     occupied, existingCount);
@@ -151,7 +154,7 @@ export function IndividualPlantGenerationDialog({
       <DialogActions sx={{ flexWrap: 'wrap' }}>
         <Button onClick={onClose}>{t('common:actions.cancel')}</Button>
         <Button variant="contained" disabled={!preview.positions.length}
-          onClick={() => onConfirm(preview.positions)}>{tr('apply')}</Button>
+          onClick={() => onConfirm(preview.positions)}>{confirmLabel ?? tr('apply')}</Button>
       </DialogActions>
     </Dialog>
   );

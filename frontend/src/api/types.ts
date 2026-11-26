@@ -1426,6 +1426,10 @@ export interface IndividualPlacementInput {
 
 export type PlantingPlanPlacementMode = 'area' | 'individual_bed' | 'individual_parcel';
 
+export type IndividualPlantPlanSummary = Pick<PlantingPlan,
+  'id' | 'crop_name' | 'crop_display_name' | 'crop_variety' | 'bed' | 'parcel' | 'placement_mode' | 'carried_over'>
+  & { plants_count: number };
+
 export interface PlantingPlan extends PlantingPlanActualDates {
   id?: number;
   carried_over?: boolean;

@@ -10,7 +10,7 @@
 
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { Box, CircularProgress, Stack } from "@mui/material";
+import { Box, CircularProgress, ListItemIcon, Menu, MenuItem, Stack } from "@mui/material";
 import { useTranslation } from "../i18n";
 import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
 import { ParcelRotationManageButton } from "../components/hierarchy/rotation/ParcelRotationManageButton";
@@ -40,6 +40,8 @@ import {
   GrowingAreaSearchToolbar,
 } from "../components/hierarchy/search/GrowingAreaSearchToolbar";
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
+import { individualPlanRowActions, type IndividualCreationTarget } from '../planting-plans/individualPlantActions';
+import { EMPTY_INDIVIDUAL_HIERARCHY, type indexIndividualHierarchy } from '../components/hierarchy/utils/individualHierarchyRows';
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -51,6 +53,8 @@ interface FieldsBedsHierarchyMobileProps {
   projectId?: number | null;
   bedDefaults?: BedDimensions;
   graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
+  onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
+  individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
 }
 
 type SheetState =
@@ -66,6 +70,8 @@ function FieldsBedsHierarchyMobile({
   projectId = null,
   bedDefaults,
   graphicalRotations,
+  onAddIndividualPlants,
+  individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
 }: FieldsBedsHierarchyMobileProps) {
   const { manage: manageRotationGroups } = useContext(ParcelRotationContext);
   const { t } = useTranslation(["hierarchy", "common"]);
@@ -111,7 +117,7 @@ function FieldsBedsHierarchyMobile({
     return { field: firstSort.field, direction: firstSort.sort };
   }, [sortModel]);
 
-  const growingAreaSearch = useGrowingAreaSearch(projectId, { locations, fields, beds });
+  const growingAreaSearch = useGrowingAreaSearch(projectId, { locations, fields, beds, individualRows: individualHierarchy.rows });
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState(false);
   const { isActive: isSearchActive, visibleRowKeys, ancestorRowKeys } = growingAreaSearch;
@@ -121,7 +127,7 @@ function FieldsBedsHierarchyMobile({
     // Only when the matches change; a parent collapsed afterwards stays collapsed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSearchActive, ancestorRowKeys]);
-  const allRows = useMobileHierarchyRows(locations, fields, beds, hierarchySortConfig, expandedRows);
+  const allRows = useMobileHierarchyRows(locations, fields, beds, hierarchySortConfig, expandedRows, individualHierarchy);
   const rows = useMemo(
     () => (isSearchActive
       ? allRows.filter((row) => row.isNew === true || visibleRowKeys.has(row.id))
@@ -168,6 +174,7 @@ function FieldsBedsHierarchyMobile({
     onPendingDeletionCountChange,
     onBulkCreateBeds: setBulkCreateFieldId,
     onDuplicateField: openDuplicateField,
+    onAddIndividualPlants,
     t,
   });
 
@@ -190,7 +197,12 @@ function FieldsBedsHierarchyMobile({
     setSheetState({ mode: "create", nodeType, parentId });
   }, []);
 
-  const onOpenRow = useCallback((row: MobileHierarchyRow): void => {
+  const [individualMenu, setIndividualMenu] = useState<{ row: MobileHierarchyRow; anchor: HTMLButtonElement } | null>(null);
+  const onOpenRow = useCallback((row: MobileHierarchyRow, anchor: HTMLButtonElement): void => {
+    if (row.type === 'individualPlan') {
+      setIndividualMenu({ row, anchor });
+      return;
+    }
     setSelectedRowId(row.id);
     setSheetState({ mode: "edit", row });
   }, []);
@@ -311,7 +323,7 @@ function FieldsBedsHierarchyMobile({
     // usual discard confirmation first when the form has unsaved edits.
     return getHierarchyRowActions(sheetState.row, openCreateSheet).map((action) =>
       action.group === "destructive" || action.id === "duplicate-bed" || action.id === "duplicate-field"
-        || action.id === "bulk-create-beds"
+        || action.id === "bulk-create-beds" || action.id === 'add-individual-plants'
         ? { ...action, closeSheetBeforeRun: true }
         : action,
     );
@@ -353,6 +365,14 @@ function FieldsBedsHierarchyMobile({
           openRowId={selectedRowId}
         />
       )}
+      <Menu open={individualMenu !== null} anchorEl={individualMenu?.anchor} onClose={() => setIndividualMenu(null)}
+        slotProps={{ list: { 'aria-label': individualMenu?.row.name } }}>
+        {individualMenu && individualPlanRowActions(individualMenu.row, t, navigate, Boolean(onAddIndividualPlants)).map(action => (
+          <MenuItem key={action.id} onClick={() => { setIndividualMenu(null); action.onClick(); }} sx={{ minHeight: 44 }}>
+            <ListItemIcon>{action.icon}</ListItemIcon>{action.label}
+          </MenuItem>
+        ))}
+      </Menu>
 
       <HierarchyEditSheet
         open={sheetState !== null}

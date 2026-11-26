@@ -44,7 +44,8 @@ function renderSiteConditionCell(
   params: GridRenderCellParams<HierarchyRow>,
   field: InlineSiteConditionField,
   t: TFunction,
-): ReactElement {
+): ReactElement | null {
+  if (params.row.type === 'individualPlan') return null;
   const effective = params.row.effectiveSiteConditions?.[field];
   const inheritedFrom = getInheritedSourceLabel(t, effective, params.row.type);
   const label = effective?.value ? getSiteConditionValueLabel(t, field, effective.value) : '—';

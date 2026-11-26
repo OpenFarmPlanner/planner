@@ -118,9 +118,11 @@ export function usePlantingPlanGridAPI(scopeKey: string) {
         }
         return { data };
       },
-      create: async (data: PlantingPlan) => {
+      create: async ({ generatedPositions, ...data }: PlantingPlanRow) => {
         const scope = getActiveScope();
-        const response = await plantingPlanAPI.create(data);
+        const response = await (generatedPositions
+          ? plantingPlanAPI.createIndividual({ ...data, individual_positions: generatedPositions })
+          : plantingPlanAPI.create(data));
         if (response.data.id != null) refreshAfterWrite(scope, response.data.id, response.data);
         return response;
       },

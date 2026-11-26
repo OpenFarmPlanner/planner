@@ -4,11 +4,22 @@ import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rec
 export type PlacementDimensions = Pick<Field, 'width_m' | 'length_m'>;
 export type PlacementParent = { kind: 'field' | 'bed'; id: number };
 
+export function individualPlacementChoice(parent: PlacementParent): string {
+  return `individual:${parent.kind}:${parent.id}`;
+}
+
+export function readIndividualPlacementChoice(value: string): PlacementParent | null {
+  const match = /^individual:(bed|field):([1-9]\d*)$/.exec(value);
+  if (!match) return null;
+  const id = Number(match[2]);
+  return Number.isSafeInteger(id) ? { kind: match[1] === 'bed' ? 'bed' : 'field', id } : null;
+}
+
 export function isIndividualPlacement(plan: Pick<PlantingPlan, 'placement_mode' | 'parcel'>): boolean {
   return plan.placement_mode === 'individual_bed' || plan.parcel != null;
 }
 
-export function planPlacementParent(plan: PlantingPlan): PlacementParent | null {
+export function planPlacementParent(plan: Pick<PlantingPlan, 'placement_mode' | 'bed' | 'parcel'>): PlacementParent | null {
   if (plan.placement_mode === 'individual_bed' && plan.bed != null) return { kind: 'bed', id: plan.bed };
   return plan.parcel == null ? null : { kind: 'field', id: plan.parcel };
 }

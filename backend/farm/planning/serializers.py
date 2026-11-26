@@ -755,6 +755,20 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(e.message_dict) from e
 
 
+class IndividualPlantHierarchySerializer(PlantingPlanSerializer):
+    """One summary per planting plan for the Growing Areas hierarchy."""
+
+    class Meta:
+        model = PlantingPlan
+        fields = (
+            'id', 'crop_name', 'crop_display_name', 'crop_variety', 'bed', 'parcel',
+            'placement_mode', 'plants_count', 'carried_over',
+        )
+
+    def get_plants_count(self, obj: PlantingPlan) -> int:
+        return len(obj.individual_positions)
+
+
 class PlantingPlanDetailSerializer(PlantingPlanSerializer):
     field_name = serializers.SerializerMethodField()
     location_name = serializers.SerializerMethodField()

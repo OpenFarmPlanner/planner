@@ -8,6 +8,7 @@
 import type { Bed, EffectiveSiteConditions, Field, Location } from '../../../api/types';
 import { getPlainExcerpt } from '../../data-grid/markdown';
 import { textContainsTerm, tokenizeSearchQuery } from '../../../search/searchText';
+import type { IndividualHierarchyRow } from './individualHierarchyRows';
 import {
   buildSiteConditionChain,
   INLINE_SITE_CONDITION_FIELDS,
@@ -146,11 +147,18 @@ export interface GrowingAreaSearchResult {
 }
 
 export function searchGrowingAreas(
-  entities: { locations: Location[]; fields: Field[]; beds: Bed[] },
+  entities: { locations: Location[]; fields: Field[]; beds: Bed[]; individualRows?: readonly IndividualHierarchyRow[] },
   query: string,
   filters: GrowingAreaFilters,
 ): GrowingAreaSearchResult {
   const records = buildRecords(entities.locations, entities.fields, entities.beds);
+  if (entities.individualRows?.length) {
+    const areas = new Map(records.map(record => [record.rowKey, record]));
+    for (const row of entities.individualRows) {
+      const parent = areas.get(row.parentId);
+      if (parent) records.push({ ...parent, rowKey: row.id, parentKey: parent.rowKey, texts: [row.name, ...parent.texts] });
+    }
+  }
   const terms = tokenizeSearchQuery(query);
   const isActive = terms.length > 0 || getActiveGrowingAreaFilterGroups(filters).length > 0;
   const matchedRowKeys = new Set<HierarchyRowKey>();

@@ -98,6 +98,7 @@ from .serializers import (
     HarvestActualDateResultSerializer,
     HarvestActualDateUpdateSerializer,
     HarvestDateRangeSerializer,
+    IndividualPlantHierarchySerializer,
     PlantingPlanDetailSerializer,
     PlantingPlanSerializer,
     TaskFilterSerializer,
@@ -469,9 +470,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     )
     serializer_class = PlantingPlanSerializer
 
+    def _is_individual_hierarchy_read(self) -> bool:
+        return self.action == 'list' and self.request.query_params.get('individual_only') == 'true'
+
     def get_serializer_class(self):
         if self.action == 'retrieve':
             return PlantingPlanDetailSerializer
+        if self._is_individual_hierarchy_read():
+            return IndividualPlantHierarchySerializer
         return super().get_serializer_class()
 
     def get_serializer_context(self):
@@ -510,13 +516,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 queryset = queryset.filter(season_id=season_id)
         elif across_seasons:
             queryset = queryset.filter(season__deleted_at__isnull=True)
-        if self.action == 'individual_placement':
+        individual_hierarchy = self._is_individual_hierarchy_read()
+        if self.action == 'individual_placement' or individual_hierarchy:
             if season_id is None:
                 return queryset.none()
             queryset = queryset.filter(PlantingPlan.individual_placements())
         if self.action == 'list':
             queryset = self._filter_by_growing_area(queryset)
-        if self.action in {'list', 'retrieve', 'individual_placement'}:
+        if self.action in {'list', 'retrieve', 'individual_placement'} and not individual_hierarchy:
             allocations = HarvestAllocation.objects.filter(
                 project=self.request.active_project,
             ).select_related('harvest').only(

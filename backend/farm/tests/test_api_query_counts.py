@@ -802,6 +802,24 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             {('individual_parcel', self.location.pk), ('individual_bed', self.location.pk)},
         )
 
+    def test_individual_hierarchy_summaries_keep_query_count_constant(self):
+        url = '/openfarmplanner/api/planting-plans/?individual_only=true'
+        headers = {'HTTP_X_SEASON_ID': str(self.seasons[0].pk)}
+        for index in range(ROW_COUNT):
+            shared = {
+                'project': self.project, 'crop': self.crops[index], 'season': self.seasons[0],
+                'planting_date': date(2027, 4, 1),
+            }
+            PlantingPlan.objects.create(parcel=self.field, **shared)
+            PlantingPlan.objects.create(bed=self.bed, individual_bed=True, **shared)
+            if index == 0:
+                with CaptureQueriesContext(connection) as baseline:
+                    response = self.client.get(url, **headers)
+                self.assertEqual(response.data['count'], 2)
+        with self.assertNumQueries(len(baseline)):
+            response = self.client.get(url, **headers)
+        self.assertEqual(response.data['count'], 2 * ROW_COUNT)
+
     def test_planting_plans_list_query_count_with_carried_over_plans(self):
         """Carried-over plans resolve their origin season label from the joined
         `season`, so their count must not grow the queries."""

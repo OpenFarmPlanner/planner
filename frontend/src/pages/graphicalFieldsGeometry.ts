@@ -10,6 +10,7 @@ import type { GraphicalRotation } from "./graphicalLayoutUtils";
 import type { Season } from "../api/types";
 import type { CropReference, GraphicalDisplayMode } from "./graphicalCultivation";
 import type { HierarchyEntityType } from "../components/hierarchy/details/hierarchyDetailRoutes";
+import type { IndividualCreationTarget } from '../planting-plans/individualPlantActions';
 
 export interface Point {
   x: number;
@@ -66,6 +67,9 @@ export interface GraphicalFieldsProps {
   individualSeason?: Season;
   canEditIndividualPlants?: boolean;
   requestedIndividualPlan?: number;
+  editRequestedIndividualPlan?: boolean;
+  individualCreationTarget?: IndividualCreationTarget | null;
+  onIndividualCreationHandled?: () => void;
   onOpenBed?: (id: number) => void;
   onOpenDetails?: (type: HierarchyEntityType, id: number) => void;
   canCompleteTasks?: boolean;

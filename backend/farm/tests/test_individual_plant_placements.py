@@ -161,6 +161,11 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(
             {plan['id'] for plan in results}, {placed['id'], second['id'], direct['id']},
         )
+        summaries = self.client.get(URL, {'individual_only': 'true'}).json()['results']
+        self.assertEqual(
+            {plan['id'] for plan in summaries}, {placed['id'], second['id'], direct['id']},
+        )
+        self.assertTrue(all('individual_positions' not in plan for plan in summaries))
         detail = self.client.get(f"{URL}{placed['id']}/").json()
         self.assertEqual(detail['field_name'], self.field.name)
         self.assertEqual(detail['location_name'], self.location.name)
@@ -374,6 +379,13 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual([plan['id'] for plan in visible], [plan_id])
         self.assertTrue(visible[0]['carried_over'])
         self.assertEqual(visible[0]['individual_positions'], created['individual_positions'])
+        projected = self.client.get(URL, {'individual_only': 'true'}).json()['results']
+        self.assertEqual(
+            [(plan['id'], plan['plants_count'], plan['carried_over']) for plan in projected],
+            [(plan_id, 2, True)],
+        )
+        unscoped = self.client.get(URL, {'individual_only': 'true'}, HTTP_X_SEASON_ID='')
+        self.assertEqual(unscoped.json()['results'], [])
         self.assertTrue(eligible_harvest_plans(
             self.project.id, self.apple.id, date(2027, 8, 29),
         ).filter(id=plan_id).exists())
@@ -391,6 +403,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.client.defaults['HTTP_X_SEASON_ID'] = str(after_removal.id)
         after = self.client.get(f'{URL}?individual_location={self.location.id}')
         self.assertEqual(after.json()['results'], [])
+        self.assertEqual(self.client.get(URL, {'individual_only': 'true'}).json()['results'], [])
         denied = self.client.patch(f'{URL}{plan_id}/individual-placement/', {
             'estimated_canopy_diameter_m': 5, 'placement_updated_at': response.json()['updated_at'],
         }, format='json')

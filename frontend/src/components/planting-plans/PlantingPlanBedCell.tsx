@@ -11,7 +11,9 @@ import { isAnyContextMenuOpen } from '../contextMenu/contextMenuOpenState';
 import { useDialogEditCellOpenRequest } from '../data-grid/DialogEditCellContext';
 import { dismissGridTooltipForEdit, useGridTooltipScope } from '../data-grid/gridTooltipState';
 import { BED_PATH_SEPARATOR, type BedPickerOption, type BedPickerResult } from './bedPickerOptions';
-import { InlineBedPicker } from './InlineBedPicker';
+import { InlineBedPicker, type IndividualPickerChoices } from './InlineBedPicker';
+import { IndividualPlantIcon } from '../../planting-plans/individualPlantActions';
+import type { PlacementParent } from '../../pages/individualPlantGeometry';
 import { RotationCheckPanel } from './rotation/RotationCheckPanel';
 import { ReadOnlyRotationWarning, RotationStatusIcon } from './rotation/RotationStatusIcon';
 import { getMissingDataLines, getTableRotationStatus } from './rotation/rotationCopy';
@@ -34,11 +36,13 @@ interface PlantingPlanBedCellProps {
   onSelect: (bedId: number, freeAreaSqm: number | null) => Promise<boolean>;
   onAccept: (accepted: boolean) => Promise<void>;
   endAdornment?: ReactNode;
+  individualChoices?: IndividualPickerChoices;
+  placement?: PlacementParent | null;
 }
 
 export function PlantingPlanBedCell({
   rowId, field, hasFocus, readOnly, path, options, selected, rotation, numberLocale,
-  onSelect, onAccept, endAdornment,
+  onSelect, onAccept, endAdornment, individualChoices, placement,
 }: PlantingPlanBedCellProps) {
   const { t } = useTranslation('plantingPlans');
   const tooltipScope = useGridTooltipScope();
@@ -87,7 +91,8 @@ export function PlantingPlanBedCell({
   };
 
   const prefix = [path.locationName, path.fieldName].filter(Boolean).join(BED_PATH_SEPARATOR);
-  const tooltip = [prefix, path.name].filter(Boolean).join(BED_PATH_SEPARATOR);
+  const placementLabel = placement ? t(placement.kind === 'bed' ? 'fields:individualPlants.inBed' : 'fields:individualPlants.onParcel') : '';
+  const tooltip = [prefix, path.name, placementLabel].filter(Boolean).join(BED_PATH_SEPARATOR);
   const status = getTableRotationStatus(rotation.status, rotation.findings);
   const showRotation = !readOnly && !savingBed && (status === 'conflict' || status === 'accepted' || status === 'info');
   const label = showRotation ? t(`bedPicker.rotation.${status}`) : '';
@@ -119,6 +124,7 @@ export function PlantingPlanBedCell({
           numberLocale={numberLocale}
           onClose={closeEditor}
           onSelect={submitBed}
+          individual={individualChoices}
         />
       ) : (
         <>
@@ -142,6 +148,8 @@ export function PlantingPlanBedCell({
               }}
               sx={{ flex: 1, minWidth: 0, height: '100%', display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', outline: 'none' }}
             >
+              {placement && <IndividualPlantIcon fontSize="small" titleAccess={placementLabel}
+                sx={{ flexShrink: 0, mr: 0.5, color: 'text.secondary' }} />}
               {prefix && (
                 <Typography component="span" variant="body2" color="text.secondary" noWrap sx={{ minWidth: 0 }}>
                   <SearchHighlightedText text={prefix} />

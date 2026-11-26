@@ -13,6 +13,8 @@ import {
 } from './hierarchyColumnShared';
 import { AppTooltip } from '../AppTooltip';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
+import { IndividualPlantIcon } from '../../planting-plans/individualPlantActions';
+import { formatLocalizedNumber, getActiveFormattingLocale } from '../../utils/numberLocalization';
 
 const EXPAND_ICON_SLOT_SIZE = 32;
 const LEVEL_INDENT_PX = 24;
@@ -37,11 +39,11 @@ export function renderNameCell(
   const row = params.row;
   const baseIndent = row.level * LEVEL_INDENT_PX;
   const hasChildren = row.hasChildren === true;
-  const hasExpandToggle = (row.type === 'location' || row.type === 'field') && hasChildren;
+  const hasExpandToggle = hasChildren && (row.type === 'location' || row.type === 'field'
+    || (row.type === 'bed' && row.individualPlantCount !== undefined));
   const isStandaloneRender = params.api === undefined;
   const inlineActions = renderInlineActions(row, callbacks, t, options, isStandaloneRender);
-  const supportsContextMenu = row.type === 'location' || row.type === 'field' || row.type === 'bed';
-  const persistentContextMenuButton = supportsContextMenu && options.showPersistentContextMenuButton
+  const persistentContextMenuButton = options.showPersistentContextMenuButton
     ? renderMoreActionsButton(row, callbacks, t, true, {
         display: 'inline-flex',
         opacity: 1,
@@ -60,6 +62,10 @@ export function renderNameCell(
         },
       })
     : null;
+  const count = row.individualPlantCount;
+  const countLabel = row.type === 'individualPlan' && options.showInlineIndividualCount && count !== undefined
+    ? t('fields:individualPlants.count', { count, formatted: formatLocalizedNumber(count, getActiveFormattingLocale()) }) : '';
+  const text = [String(params.value ?? ''), countLabel].filter(Boolean).join(' · ');
 
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', pl: `${baseIndent}px`, width: '100%', minWidth: 0, gap: 0.5 }}>
@@ -114,8 +120,10 @@ export function renderNameCell(
           callbacks.onOpenContextMenu(event, row);
         }}
       >
+        {row.type === 'individualPlan' && <IndividualPlantIcon fontSize="small"
+          titleAccess={t('fields:individualPlants.title')} sx={{ flexShrink: 0, mr: 0.5, color: 'text.secondary' }} />}
         <TruncatedTextWithTooltip
-          text={String(params.value ?? '')}
+          text={text}
           data-testid="hierarchy-name-text"
           sx={{
             flex: '1 1 auto',

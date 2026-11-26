@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, type KeyboardEvent, type RefObject } from 'react';
-import { Box, Button, IconButton, MenuItem, Paper, Stack, Typography } from '@mui/material';
+import { Box, Button, IconButton, ListItemIcon, MenuItem, Paper, Stack, Typography } from '@mui/material';
+import { individualPlantCreationAction } from '../planting-plans/individualPlantActions';
 import CloseIcon from '@mui/icons-material/Close';
 import { ContextMenuHint } from '../components/data-grid/ContextMenuHint';
 import { CustomContextMenu } from '../components/contextMenu/CustomContextMenu';
@@ -118,6 +119,8 @@ export function GraphicalObjectOverlays({
   const hovered = interaction.hover ? objects.get(interaction.hover.key) : null;
   const menu = interaction.menu;
   const menuObject = menu ? objects.get(menu.key) : null;
+  const individualAction = menuObject && menuObject.type !== 'location' && onStartIndividualPlan
+    ? individualPlantCreationAction(t, () => onStartIndividualPlan(menuObject)) : null;
   const { close } = interaction;
   const closeMenu = () => {
     close();
@@ -332,6 +335,9 @@ export function GraphicalObjectOverlays({
         keyboardNavigation onClose={closeMenu} container={getGraphicalPortalContainer()} disableRestoreFocus
         listLabel={menuObject?.name}>
         <MenuItem onClick={() => { if (menuObject) openDetails(menuObject); }}>{detailsLabel}</MenuItem>
+        {individualAction && <MenuItem onClick={individualAction.onClick}>
+          <ListItemIcon>{individualAction.icon}</ListItemIcon>{individualAction.label}
+        </MenuItem>}
       </CustomContextMenu>
     </>
   );
