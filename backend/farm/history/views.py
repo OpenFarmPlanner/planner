@@ -28,6 +28,7 @@ from .project_restore import (
     ProjectRestorePreviewTooLarge,
     ensure_project_checkpoint,
     preview_project_restore,
+    project_restore_revisions,
     restore_project_version,
 )
 from .records import _current_actor_label
@@ -138,8 +139,8 @@ class ProjectHistoryListView(APIView):
 
 
 def _project_restore_revision(project, history_id):
-    revision = get_object_or_404(EntityRevision.objects.filter(project=project), id=history_id)
-    if revision.snapshot.get("_project_version_internal"):
+    revision = get_object_or_404(project_restore_revisions(project), id=history_id)
+    if revision.is_internal:
         return api_error_response(
             code="project_restore_conflict",
             detail="Select the completed crop action instead of an internal derived revision.",

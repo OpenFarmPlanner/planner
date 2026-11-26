@@ -20,6 +20,7 @@ from farm.history.project_restore import (
     ProjectRestoreConflict,
     ProjectState,
     _apply_recorded_parent_deletions,
+    _restore_history,
     _revision_overlay,
     capture_project_state,
     reconstruct_project_state,
@@ -105,7 +106,7 @@ def _rows_without_evidence(
 ) -> list[str]:
     """Name the live rows that neither the checkpoint nor a later revision accounts for."""
     try:
-        state, seen, checkpoint = _revision_overlay(project, revision)
+        state, seen, checkpoint = _revision_overlay(_restore_history(project, revision))
         for label, objects in (checkpoint or {}).items():
             state[label].update({pk: row for pk, row in objects.items() if (label, pk) not in seen})
         _apply_recorded_parent_deletions(state, seen)
