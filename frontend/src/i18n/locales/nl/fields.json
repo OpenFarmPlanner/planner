@@ -225,6 +225,8 @@
     "finishPlaceOnMap": "Plaatsing beëindigen",
     "placementNeedsInputs": "Kies een gewas, een teeltmethode en een plantdatum binnen het seizoen.",
     "positionIndex": "Stengel {{index}}",
+    "positionInPlan": "Plant {{index}} van {{total}}",
+    "noOpenTasks": "Geen openstaande taken voor dit teeltplan.",
     "bedDimensionsConflict": "Alle opgeslagen stengelposities moeten binnen het bed liggen.",
     "dimensionsRequired": "Vul de lengte en breedte van het perceel of bed in om posities toe te voegen.",
     "dimensionsConflict": "Alle opgeslagen stamposities moeten binnen het perceel blijven.",

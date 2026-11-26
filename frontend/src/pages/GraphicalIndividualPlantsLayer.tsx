@@ -1,8 +1,11 @@
 import { useRef } from 'react';
 import { alpha, useTheme } from '@mui/material/styles';
-import { Circle, Ellipse, Group, Rect } from 'react-konva';
+import { Circle, Ellipse, Group, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { StemCoordinates } from '../api/types';
+import type { BedTaskUrgency } from '../components/tasks/bedTaskUrgency';
+import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
+import type { BedCultivationEntry } from './graphicalCultivation';
 import { canvasToStem, stemToCanvas, type PlacementDimensions } from './individualPlantGeometry';
 import type { GraphicalRotation, Position, Rect as CanvasRect } from './graphicalLayoutUtils';
 
@@ -11,6 +14,11 @@ export interface CanvasStem extends StemCoordinates {
   planId: number | null;
   canopy: number;
   selected: boolean;
+  objectKey?: string;
+  urgency?: BedTaskUrgency;
+  phase?: BedCultivationEntry['phase'];
+  phaseColor?: string;
+  label?: { name: string; phase: string | null; x: number; y: number; width: number; height: number };
 }
 
 type Press = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -88,7 +96,14 @@ export function GraphicalIndividualPlantsLayer({
         if (!point) return null;
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
-        const ink = stem.selected ? theme.palette.primary.dark : theme.palette.text.primary;
+        const taskColors = stem.urgency ? bedTaskColors(theme, stem.urgency) : null;
+        const phaseInk = taskColors?.glyph ?? stem.phaseColor;
+        const ink = phaseInk ?? theme.palette.text.primary;
+        const neutralCanopy = theme.palette.success.main;
+        const canopyFill = taskColors?.fill ?? alpha(stem.phaseColor ?? neutralCanopy, 0.15);
+        const canopyOutline = alpha(phaseInk ?? theme.palette.success.dark, phaseInk ? 0.65 : 0.36);
+        const radius = stem.urgency || stem.selected ? 6 : 4.5;
+        const label = stem.label;
         return <Group key={stem.key} {...point} draggable={canDrag} dragDistance={8}
           // Only the listening stem hits this group. The canopy follows without intercepting gestures.
           name={canDrag ? 'graphical-editable' : undefined}
@@ -112,19 +127,33 @@ export function GraphicalIndividualPlantsLayer({
           {stem.canopy > 0 && <Ellipse listening={false}
             radiusX={stem.canopy * pixelsPerMeter.x / 2} radiusY={stem.canopy * pixelsPerMeter.y / 2}
             data-testid={`individual-canopy-${stem.key}`}
-            fill={alpha(theme.palette.success.main, 0.15)} stroke={alpha(theme.palette.success.dark, 0.36)}
+            fill={canopyFill} stroke={canopyOutline}
             strokeWidth={1} strokeScaleEnabled={false} />}
-          <Circle radius={(stem.selected ? 6 : 4.5) / zoom} fill={ink}
-            stroke={theme.palette.common.white} strokeWidth={2} strokeScaleEnabled={false}
-            listening={Boolean(onSelect) || canDrag || Boolean(captureStems)} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
+          <Circle radius={radius / zoom} fill={ink}
+            stroke={stem.selected ? theme.palette.primary.dark : theme.palette.common.white}
+            strokeWidth={2} strokeScaleEnabled={false}
+            listening={Boolean(stem.objectKey || onSelect || canDrag || captureStems)} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
+            data-graphical-object-key={stem.objectKey} data-task-urgency={stem.urgency} data-crop-phase={stem.phase ?? undefined}
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
             onMouseDown={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
             onTouchStart={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
             onTouchMove={move}
             onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
             onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
-            onClick={event => click(event, () => onSelect?.(stem))}
-            onTap={event => click(event, () => onSelect?.(stem))} />
+            onClick={onSelect && !stem.objectKey ? event => click(event, () => onSelect(stem)) : undefined}
+            onTap={onSelect && !stem.objectKey ? event => click(event, () => onSelect(stem)) : undefined} />
+          {stem.urgency && <Text x={-radius / zoom} y={-4 / zoom} width={radius * 2} height={8}
+            text={BED_TASK_SYMBOLS[stem.urgency]} fontSize={8} fontStyle="bold" align="center"
+            fill={theme.palette.common.white} listening={false} scaleX={1 / zoom} scaleY={1 / zoom} />}
+          {label && <Group x={label.x / zoom} y={label.y / zoom} scaleX={1 / zoom} scaleY={1 / zoom}
+            listening={false} data-testid={`individual-label-${stem.key}`}>
+            <Rect width={label.width} height={label.height} cornerRadius={3} fill={theme.palette.background.paper}
+              stroke={theme.palette.divider} strokeWidth={1} />
+            <Text x={5} y={3} width={label.width - 10} height={12} text={label.name} fontSize={11} fontFamily="Arial, sans-serif"
+              wrap="none" ellipsis fill={theme.palette.text.primary} />
+            {label.phase && <Text x={5} y={17} width={label.width - 10} height={12} text={label.phase} fontSize={11} fontFamily="Arial, sans-serif"
+              wrap="none" ellipsis fill={theme.palette.text.secondary} />}
+          </Group>}
         </Group>;
       })}
     </Group>

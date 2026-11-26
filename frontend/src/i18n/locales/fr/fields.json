@@ -231,6 +231,8 @@
     "finishPlaceOnMap": "Terminer le placement",
     "placementNeedsInputs": "Sélectionnez une culture, un mode de culture et une date de plantation dans la saison.",
     "positionIndex": "Tige {{index}}",
+    "positionInPlan": "Plant {{index}} sur {{total}}",
+    "noOpenTasks": "Aucune tâche ouverte pour ce plan de culture.",
     "bedDimensionsConflict": "Toutes les positions de tiges enregistrées doivent se trouver dans la planche.",
     "dimensionsRequired": "Renseignez la longueur et la largeur de la parcelle ou de la planche pour ajouter des positions.",
     "dimensionsConflict": "Toutes les positions de tronc enregistrées doivent rester dans la parcelle.",

@@ -43,6 +43,7 @@ import { useTopbarWorkspaceControls } from '../hooks/useTopbarWorkspaceControls'
 import type { GraphicalCameraState } from './graphicalFieldsGeometry';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
 import type { IndividualCreationTarget } from '../planting-plans/individualPlantActions';
+import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRoutes';
 import { useGrowingAreaIndividualPlans } from '../components/hierarchy/hooks/useGrowingAreaIndividualPlans';
 import { indexIndividualHierarchy } from '../components/hierarchy/utils/individualHierarchyRows';
 
@@ -644,6 +645,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             onIndividualCreationHandled={finishIndividualCreationRequest}
             onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
             onOpenDetails={openGraphicalDetails}
+            onOpenIndividualPlan={id => void navigate(plantingPlanDetailPath(id))}
+            onOpenIndividualCrop={id => void navigate(`/app/crops?cropId=${id}`)}
             canCompleteTasks={Boolean(activeProjectMembership)}
             hierarchyData={hierarchyData}
           />

@@ -17,10 +17,11 @@ interface BedTaskListProps {
   refresh: () => void;
   canComplete?: boolean;
   onOpenDetails?: () => void;
+  noOpenTasksLabel?: string;
 }
 
 export function BedTaskList({
-  tasks, loading, failed, refresh, canComplete = true, onOpenDetails,
+  tasks, loading, failed, refresh, canComplete = true, onOpenDetails, noOpenTasksLabel,
 }: BedTaskListProps) {
   const { t, i18n } = useTranslation(['fields', 'dashboard', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
@@ -93,7 +94,8 @@ export function BedTaskList({
       ) : null}
       {!loading && !failed && (
         <Typography role={compact ? 'status' : undefined} variant="body2" color="text.secondary">
-          {(compact ? open.length : ordered.length) === 0 ? t(compact ? 'graphical.objects.noOpenTasks' : 'graphical.taskLayer.none') : (
+          {(compact ? open.length : ordered.length) === 0
+            ? noOpenTasksLabel ?? t(compact ? 'graphical.objects.noOpenTasks' : 'graphical.taskLayer.none') : (
             <>
               {urgency ? `${bedTaskUrgencyLabel(urgency, t)} · ` : ''}
               {t('graphical.taskLayer.outstanding', { count: outstanding })}

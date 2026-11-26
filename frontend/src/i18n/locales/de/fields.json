@@ -225,6 +225,8 @@
     "finishPlaceOnMap": "Platzierung beenden",
     "placementNeedsInputs": "Wähle eine Kultur, eine Anbauart und einen Pflanztermin innerhalb der Saison.",
     "positionIndex": "Stamm {{index}}",
+    "positionInPlan": "Pflanze {{index}} von {{total}}",
+    "noOpenTasks": "Keine offenen Aufgaben für diesen Anbauplan.",
     "bedDimensionsConflict": "Alle gespeicherten Stammpositionen müssen innerhalb des Beets liegen.",
     "dimensionsRequired": "Gib Länge und Breite der Parzelle oder des Beets ein, um Positionen zu setzen.",
     "dimensionsConflict": "Alle gespeicherten Stammpositionen müssen innerhalb der Parzelle liegen.",

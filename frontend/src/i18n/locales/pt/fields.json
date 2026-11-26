@@ -231,6 +231,8 @@
     "finishPlaceOnMap": "Concluir a colocação",
     "placementNeedsInputs": "Selecione uma cultura, um método de cultivo e uma data de plantação dentro da época.",
     "positionIndex": "Caule {{index}}",
+    "positionInPlan": "Planta {{index}} de {{total}}",
+    "noOpenTasks": "Não há tarefas em aberto para este plano de cultivo.",
     "bedDimensionsConflict": "Todas as posições de caules guardadas devem ficar dentro do canteiro.",
     "dimensionsRequired": "Indique o comprimento e a largura da parcela ou do canteiro para adicionar posições.",
     "dimensionsConflict": "Todas as posições de tronco guardadas têm de ficar dentro da parcela.",

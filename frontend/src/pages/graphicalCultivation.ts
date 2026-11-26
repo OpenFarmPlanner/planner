@@ -58,30 +58,34 @@ function harvestInterval(first?: string | null, last?: string | null): SeasonalH
   return start && end && start <= end ? [{ start_date: start, end_date: end }] : [];
 }
 
+export function cultivationPlan(plan: PlantingPlan & { id: number }): BedCultivationPlan {
+  const { isPreCultivation, isPurchasedTransplant } = getPlanPropagationInfo(plan, undefined);
+  const planted = (isPreCultivation || isPurchasedTransplant
+    ? plan.actual_transplanting_date : plan.actual_sowing_date) ?? null;
+  const recurring = plan.seasonal_harvest;
+  const perennial = plan.crop_life_cycle === 'perennial' || Boolean(recurring);
+  const recordedHarvest = plan.harvest_actual_occurrences?.flatMap(occurrence =>
+    harvestInterval(occurrence.actual_start_date, occurrence.actual_end_date))
+    ?? harvestInterval(recurring?.actual_start_date ?? plan.actual_harvest_start_date,
+      recurring?.actual_end_date ?? plan.recorded_harvest_end_date);
+  const estimatedHarvest = recurring?.periods ?? harvestInterval(plan.harvest_date, plan.harvest_end_date);
+  // A plan with only a planting date has no reliable end. The serialized
+  // occupancy end falls back to that same date for older incomplete plans.
+  const explicitEnd = plan.clearing_date ?? plan.harvest_end_date ?? plan.harvest_date;
+  const end = explicitEnd ? plan.occupancy_end_date ?? explicitEnd : null;
+  return {
+    id: plan.id, crop: plan.crop, name: plan.crop_display_name || plan.crop_name || null,
+    variety: plan.crop_variety, color: plan.crop_display_color,
+    start: planted ?? recurring?.occupancy_start_date ?? plan.planting_date,
+    end, planted, estimatedHarvest, recordedHarvest, perennial,
+  };
+}
+
 export function indexBedCultivations(plans: readonly PlantingPlan[]): Map<number, BedCultivationPlan[]> {
   const result = new Map<number, BedCultivationPlan[]>();
   for (const plan of plans) {
     if (typeof plan.id !== 'number' || typeof plan.bed !== 'number') continue;
-    const { isPreCultivation, isPurchasedTransplant } = getPlanPropagationInfo(plan, undefined);
-    const planted = (isPreCultivation || isPurchasedTransplant
-      ? plan.actual_transplanting_date : plan.actual_sowing_date) ?? null;
-    const recurring = plan.seasonal_harvest;
-    const perennial = plan.crop_life_cycle === 'perennial' || Boolean(recurring);
-    const recordedHarvest = plan.harvest_actual_occurrences?.flatMap(occurrence =>
-      harvestInterval(occurrence.actual_start_date, occurrence.actual_end_date))
-      ?? harvestInterval(recurring?.actual_start_date ?? plan.actual_harvest_start_date,
-        recurring?.actual_end_date ?? plan.recorded_harvest_end_date);
-    const estimatedHarvest = recurring?.periods ?? harvestInterval(plan.harvest_date, plan.harvest_end_date);
-    // A plan with only a planting date has no reliable end. The serialized
-    // occupancy end falls back to that same date for older incomplete plans.
-    const explicitEnd = plan.clearing_date ?? plan.harvest_end_date ?? plan.harvest_date;
-    const end = explicitEnd ? plan.occupancy_end_date ?? explicitEnd : null;
-    const entry: BedCultivationPlan = {
-      id: plan.id, crop: plan.crop, name: plan.crop_display_name || plan.crop_name || null,
-      variety: plan.crop_variety, color: plan.crop_display_color,
-      start: planted ?? recurring?.occupancy_start_date ?? plan.planting_date,
-      end, planted, estimatedHarvest, recordedHarvest, perennial,
-    };
+    const entry = cultivationPlan({ ...plan, id: plan.id });
     const inBed = result.get(plan.bed);
     if (inBed) inBed.push(entry);
     else result.set(plan.bed, [entry]);

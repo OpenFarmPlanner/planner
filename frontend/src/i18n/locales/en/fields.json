@@ -225,6 +225,8 @@
     "finishPlaceOnMap": "Finish placing",
     "placementNeedsInputs": "Choose a crop, a cultivation method and a planting date within the season.",
     "positionIndex": "Stem {{index}}",
+    "positionInPlan": "Plant {{index}} of {{total}}",
+    "noOpenTasks": "No open tasks for this planting plan.",
     "bedDimensionsConflict": "The bed dimensions must contain every saved stem position.",
     "dimensionsRequired": "Set the length and width of the plot or bed to add positions.",
     "dimensionsConflict": "The plot dimensions must contain every saved stem position.",

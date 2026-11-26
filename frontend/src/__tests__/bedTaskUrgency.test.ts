@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Task } from '../api/types';
-import { bedTaskDateBounds, linkTasksToBeds, summarizeBedTasks } from '../components/tasks/bedTaskUrgency';
+import { bedTaskDateBounds, linkTasksToBeds, linkTasksToPlans, summarizeBedTasks } from '../components/tasks/bedTaskUrgency';
 
 const bounds = bedTaskDateBounds(new Date(2026, 10, 25));
 
@@ -50,5 +50,16 @@ describe('bed task urgency', () => {
       [first, succession, neighboringBed, unassignedPlan, orphan, parcelOnly, canceled], plans,
     )).toEqual(new Map([[27, [first, succession]], [28, [neighboringBed]]]));
     expect(linkTasksToBeds([canceled, orphan, parcelOnly], plans, true)).toEqual(new Map([[27, [canceled]]]));
+  });
+
+  it('only projects explicitly linked tasks to the plan, including parcel-direct plans', () => {
+    const annual = task(1, { due_date: '2026-11-24' });
+    const orchard = task(2, { planting_plan: 41, field: null });
+    const completed = task(3, { status: 'completed' });
+    const parcelOnly = task(4, { planting_plan: null });
+    const cancelled = task(5, { status: 'cancelled' });
+    expect(linkTasksToPlans([annual, orchard, completed, parcelOnly, cancelled])).toEqual(new Map([
+      [40, [annual, completed]], [41, [orchard]],
+    ]));
   });
 });

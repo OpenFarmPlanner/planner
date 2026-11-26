@@ -12,13 +12,14 @@ interface Props {
   taskFailed: boolean;
   taskBounds: ReturnType<typeof bedTaskDateBounds>;
   taskLimit?: number;
+  noOpenTasksLabel?: string;
   crops?: readonly BedCultivationEntry[];
   cropLoading: boolean;
   cropFailed: boolean;
 }
 
 export function GraphicalBedHoverDetails({
-  tasks, taskLoading, taskFailed, taskBounds, taskLimit = 3, crops, cropLoading, cropFailed,
+  tasks, taskLoading, taskFailed, taskBounds, taskLimit = 3, noOpenTasksLabel, crops, cropLoading, cropFailed,
 }: Props) {
   const { t, i18n } = useTranslation(['fields', 'dashboard', 'common', 'ganttChart']);
   const locale = resolveSeasonDateLocale(i18n);
@@ -36,7 +37,7 @@ export function GraphicalBedHoverDetails({
       {taskFailed && <Typography variant="caption" color="error.main">{t('graphical.taskLayer.loadError')}</Typography>}
       {!taskLoading && !taskFailed && (
         <Typography variant="caption" sx={{ fontWeight: 600 }}>
-          {tasks.length ? t('graphical.taskLayer.outstanding', { count: tasks.length }) : t('graphical.objects.noOpenTasks')}
+          {tasks.length ? t('graphical.taskLayer.outstanding', { count: tasks.length }) : noOpenTasksLabel ?? t('graphical.objects.noOpenTasks')}
         </Typography>
       )}
       {tasks.length > 0 && <Stack component="ul" spacing={0.25} sx={{ m: 0, p: 0, listStyle: 'none' }}>

@@ -231,6 +231,8 @@
     "finishPlaceOnMap": "Termina il posizionamento",
     "placementNeedsInputs": "Seleziona una coltura, un metodo di coltivazione e una data di impianto nella stagione.",
     "positionIndex": "Fusto {{index}}",
+    "positionInPlan": "Pianta {{index}} di {{total}}",
+    "noOpenTasks": "Nessuna attività aperta per questo piano colturale.",
     "bedDimensionsConflict": "Tutte le posizioni salvate dei fusti devono trovarsi all’interno dell’aiuola.",
     "dimensionsRequired": "Imposta la lunghezza e la larghezza della parcella o dell’aiuola per aggiungere posizioni.",
     "dimensionsConflict": "Tutte le posizioni dei tronchi salvate devono rientrare nella parcella.",

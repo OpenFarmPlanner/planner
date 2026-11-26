@@ -17,30 +17,31 @@ import { useHierarchyData } from "../components/hierarchy/hooks/useHierarchyData
 import { getLocationPathSpacing } from "../components/hierarchy/utils/locationPathSpacing";
 import {
   layoutAPI,
-  type PlantingPlan,
   type BedLayoutEntry,
   type FieldLayoutEntry,
   type LocationBoundaryOrigin,
 } from "../api/api";
 import { isTypingInEditableElement, useKeyboardShortcuts } from "../hooks/useKeyboardShortcuts";
 import { useTranslation } from "../i18n";
-import { GraphicalObjectHint, GraphicalObjectOverlays, type GraphicalObject } from "./GraphicalObjectOverlays";
+import { GraphicalObjectHint, GraphicalObjectOverlays, type GraphicalAreaObject, type GraphicalObject } from "./GraphicalObjectOverlays";
 import { graphicalObjectKey, useGraphicalObjectInteraction } from "./useGraphicalObjectInteraction";
 import { useContextMenuHint } from "../components/data-grid/useContextMenuHint";
 import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
 import { GraphicalDisplayLegend } from "./GraphicalDisplayLegend";
 import { GraphicalBedLabels } from "./GraphicalBedLabels";
 import { getGanttPhaseColors } from "../utils/colorContrast";
-import { includesCrops, includesTasks, indexBedCultivations, projectBedCultivation } from "./graphicalCultivation";
+import { bedCropDisplayName, bedCropPhaseLabel, includesCrops, includesTasks, indexBedCultivations, projectBedCultivation } from "./graphicalCultivation";
 import { GraphicalCanvasTools } from "./GraphicalCanvasTools";
 import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
-import { getDirectlyDraggableStemPlans, readyForPlacement, useIndividualPlants } from "./useIndividualPlants";
-import { getIndividualPlantFrames, individualPlacementPeriod, MAX_INDIVIDUAL_POSITIONS } from "./individualPlantGeneration";
-import { matchesPlacementParent, parcelMeters, planPlacementParent, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
+import { getDirectlyDraggableStemPlans, readyForPlacement, useIndividualPlants, type IndividualPlacementAction } from "./useIndividualPlants";
+import { getIndividualPlantFrames, MAX_INDIVIDUAL_POSITIONS } from "./individualPlantGeneration";
+import { matchesPlacementParent, parcelMeters, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
+import { getIndividualPlantLabels, individualPlantObjectKey, placeIndividualPlantObjects, projectIndividualPlants,
+  type GraphicalIndividualPlant } from "./graphicalIndividualPlants";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
@@ -123,13 +124,15 @@ export default function GraphicalFields({
   onIndividualCreationHandled,
   onOpenBed,
   onOpenDetails,
+  onOpenIndividualPlan,
+  onOpenIndividualCrop,
   canCompleteTasks = false,
   hierarchyData,
   selectedLocationId,
   cameraState: controlledCameraState,
   onCameraStateChange,
 }: GraphicalFieldsProps) {
-  const { t } = useTranslation(["fields", "common"]);
+  const { t } = useTranslation(["fields", "common", "ganttChart"]);
   const theme = useTheme();
   const getOutlineProps = (kind: OutlineKind | undefined, color: string, width: number) => {
     switch (kind) {
@@ -147,24 +150,15 @@ export default function GraphicalFields({
     activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan, editRequestedIndividualPlan,
   );
   const showCrops = includesCrops(displayMode);
-  const referenceDate = showCrops && cropReference?.kind === 'date' ? cropReference.date : null;
+  const plantCropReference = showCrops ? cropReference : undefined;
   const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
-  const plansByParent = useMemo(() => {
-    const grouped = new Map<string, PlantingPlan[]>();
-    for (const plan of individualPlants.plans) {
-      const parent = planPlacementParent(plan);
-      if (!parent) continue;
-      if (referenceDate && plan.id !== focusedPlanId) {
-        const period = individualPlacementPeriod(plan.planting_date ?? '', undefined, plan);
-        if (period && (referenceDate < period.start || referenceDate > period.end)) continue;
-      }
-      const key = graphicalObjectKey(parent.kind, parent.id);
-      const group = grouped.get(key);
-      if (group) group.push(plan);
-      else grouped.set(key, [plan]);
-    }
-    return grouped;
-  }, [individualPlants.plans, referenceDate, focusedPlanId]);
+  const plansByParent = useMemo(() => projectIndividualPlants(individualPlants.plans, plantCropReference, individualSeason, focusedPlanId),
+    [individualPlants.plans, plantCropReference, individualSeason, focusedPlanId]);
+  const measurePlantText = useMemo(() => {
+    const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
+    if (context) context.font = '11px Arial, sans-serif';
+    return (value: string) => context?.measureText(value).width ?? Array.from(value).length * 6.5;
+  }, []);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -206,6 +200,7 @@ export default function GraphicalFields({
   };
   const objectInteractionEnabled = Boolean(activeLocationId && !loading && !error && layoutReady && !layoutFailed
     && !globalEditMode && editableLocationId !== activeLocationId && !individualPlants.editor.placing);
+  const browseIndividualPlants = objectInteractionEnabled && !individualPlants.editor.draft && !individualPlants.editor.choosingParent;
   const chooseIndividualParent = (parent: PlacementParent) => {
     const item = (parent.kind === 'bed' ? beds : fields).find(item => item.id === parent.id);
     if (!item || !individualPlants.canEdit) return;
@@ -220,11 +215,12 @@ export default function GraphicalFields({
     return true;
   });
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
+  const selectedPlantKey = objects.selection?.startsWith('plant:') ? objects.selection : null;
   const showTasks = includesTasks(displayMode);
   const loadLocationPlans = showCrops || showTasks;
   const locationPlans = useAreaPlantingPlans('location', loadLocationPlans ? activeLocationId : null, activeSeasonId);
   const selectedPlans = useAreaPlantingPlans('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId);
-  const bedTasks = useBedTasks('location', showTasks || (showCrops && selectedBedId !== null) ? activeLocationId : null,
+  const bedTasks = useBedTasks('location', showTasks || selectedPlantKey || (showCrops && selectedBedId !== null) ? activeLocationId : null,
     activeSeasonId, { sharedPlans: locationPlans });
   const selectedBedTasks = useBedTasks('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId, { sharedPlans: selectedPlans });
   const previewTasks = loadLocationPlans ? bedTasks : selectedBedTasks;
@@ -239,6 +235,8 @@ export default function GraphicalFields({
   const { today, upcomingEnd } = bedTaskDateBounds(new Date());
   const taskSummaries = useMemo(() => new Map(Array.from(bedTasks.tasksByBed,
     ([id, tasks]) => [id, summarizeBedTasks(tasks, { today, upcomingEnd })])), [bedTasks.tasksByBed, today, upcomingEnd]);
+  const plantTaskSummaries = useMemo(() => new Map(Array.from(bedTasks.tasksByPlan,
+    ([id, tasks]) => [id, summarizeBedTasks(tasks, { today, upcomingEnd })])), [bedTasks.tasksByPlan, today, upcomingEnd]);
   const cropPreview = cropReference && selectedBedId !== null ? {
     reference: cropReference,
     entries: cropsByBed.get(selectedBedId) ?? [],
@@ -489,13 +487,13 @@ export default function GraphicalFields({
     );
   }, [activeLayout, activeScene, geometryPreview]);
 
-  const objectModel = useMemo(() => {
-    if (!activeLayout || !activeScene || !geometry || activeLocationId === null) return new Map<string, GraphicalObject>();
+  const areaObjects = useMemo(() => {
+    if (!activeLayout || !activeScene || !geometry || activeLocationId === null) return new Map<string, GraphicalAreaObject>();
     const { location, boundary } = activeLayout;
     const { parcels } = activeScene;
     const locationId = activeLocationId;
     const locationKey = graphicalObjectKey('location', locationId);
-    const model = new Map<string, GraphicalObject>([[locationKey, {
+    const model = new Map<string, GraphicalAreaObject>([[locationKey, {
       key: locationKey, type: 'location', id: locationId, name: location.name,
       metrics: location, rect: boundary, coverage: geometry.locationReport.coverage,
     }]]);
@@ -512,6 +510,38 @@ export default function GraphicalFields({
     }
     return model;
   }, [activeLayout, activeScene, activeLocationId, bedsById, geometry]);
+
+  const plantObjects = useMemo(() => {
+    const result = new Map<string, GraphicalIndividualPlant>();
+    if (!activeLayout || !activeScene || !browseIndividualPlants) return result;
+    const add = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect) => {
+      const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
+      for (const projection of parentPlans) {
+        const name = bedCropDisplayName(projection.crop.plan, t);
+        const phase = bedCropPhaseLabel(projection.crop, t);
+        for (const plant of placeIndividualPlantObjects(projection, dimensions, surface, activeLayout.rotation, name, phase)) {
+          result.set(plant.key, plant);
+        }
+      }
+    };
+    for (const { field, rect, layout } of activeScene.parcels) {
+      const { usableArea, bedRects } = layout;
+      if (layout.pixelsPerMeter) add({ kind: 'field', id: rect.id }, field,
+        { ...usableArea, x: rect.x + usableArea.x, y: rect.y + usableArea.y });
+      for (const bed of bedRects) {
+        const area = areaObjects.get(graphicalObjectKey('bed', bed.id));
+        const entity = bedsById.get(bed.id);
+        if (area?.rect && entity) add({ kind: 'bed', id: bed.id }, entity, area.rect);
+      }
+    }
+    return result;
+  }, [activeLayout, activeScene, areaObjects, bedsById, browseIndividualPlants, plansByParent, t]);
+  const objectModel = useMemo(() => new Map<string, GraphicalObject>([...areaObjects, ...plantObjects]), [areaObjects, plantObjects]);
+  const closeObjectOverlays = objects.close;
+  const activePlantKey = objects.menu?.key.startsWith('plant:') ? objects.menu.key : selectedPlantKey;
+  useEffect(() => {
+    if (activePlantKey && !plantObjects.has(activePlantKey)) queueMicrotask(closeObjectOverlays);
+  }, [activePlantKey, plantObjects, closeObjectOverlays]);
 
   const focusIndividualParent = (parent: PlacementParent) => {
     if (activeLocationId === null) return;
@@ -1072,9 +1102,16 @@ export default function GraphicalFields({
             );
           const visibility = getVisibleElements(viewport.scale);
           const locationKey = graphicalObjectKey('location', locationId);
-          const details = (object: GraphicalObject) => onOpenDetails?.(object.type, object.id);
+          const details = (object: GraphicalObject) => {
+            if (object.type === 'plant') onOpenIndividualPlan?.(object.id);
+            else onOpenDetails?.(object.type, object.id);
+          };
           const overlayKey = objects.menu?.key ?? objects.selection;
-          const highlight = overlayKey ? objectModel.get(overlayKey)?.rect : null;
+          const highlight = overlayKey ? areaObjects.get(overlayKey)?.rect : null;
+          const plantLabels = showCrops && plantObjects.size
+            ? getIndividualPlantLabels([...plantObjects.values()], [...areaObjects.values()].flatMap(object =>
+              object.type === 'bed' && object.rect ? [object.rect] : []), viewport,
+              { width: stageWidth, height: stageHeight }, measurePlantText) : null;
           const showFallbackLocationLabel = !boundary || viewport.x + (boundary.x + boundary.width) * viewport.scale < 0
             || viewport.x + boundary.x * viewport.scale > stageWidth - 100
             || viewport.y + boundary.y * viewport.scale < 60 || viewport.y + boundary.y * viewport.scale > stageHeight;
@@ -1086,17 +1123,42 @@ export default function GraphicalFields({
               y: stageHeight / 2 - (rect.y + rect.height / 2) * viewport.scale,
             } }));
           };
+          const canEditPlant = (plant: GraphicalIndividualPlant) => individualPlants.canEdit && Boolean(plant.plan.updated_at)
+            && !individualPlants.editor.draft && !individualPlants.movingPlans.has(plant.id);
+          const editPlant = (plant: GraphicalIndividualPlant, action: IndividualPlacementAction) => {
+            if (!canEditPlant(plant)) return;
+            const start = () => {
+              objects.close();
+              individualPlants.startDraft(plant.parent, plant.plan, { action, stemId: plant.stemId });
+              focusIndividualParent(plant.parent);
+            };
+            if (fullscreenLocationId === locationId) void toggleFullscreen(locationId).then(start);
+            else start();
+          };
           const renderPlacement = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect) => {
             const measured = parcelMeters(dimensions);
             if (!measured) return null;
             const draft = matchesPlacementParent(stemDraft?.parent, parent) ? stemDraft : null;
             const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
-            const stems: CanvasStem[] = parentPlans.flatMap(plan => (
-              plan.id !== draft?.planId
-                ? (plan.individual_positions ?? []).map(stem => ({ ...stem, key: stem.id, planId: plan.id ?? null,
-                  canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
-                  selected: Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey })) : []
-            ));
+            const stems: CanvasStem[] = parentPlans.flatMap(({ plan, crop }) => {
+              if (plan.id === draft?.planId) return [];
+              const summary = showTasks && !locationIsEditable ? plantTaskSummaries.get(plan.id) : undefined;
+              const urgency = summary?.outstanding ? summary.urgency ?? undefined : undefined;
+              const phase = showCrops && !locationIsEditable ? crop.phase : undefined;
+              const color = crop.plan.color;
+              const phaseColors = phase && !showTasks
+                ? getGanttPhaseColors(color && /^#[\da-f]{6}$/i.test(color) ? color : theme.palette.success.main) : null;
+              const phaseColor = phaseColors?.[phase === 'harvest' ? 'harvest' : 'growth'];
+              return (plan.individual_positions ?? []).map(stem => {
+                const key = individualPlantObjectKey(stem.id);
+                const object = plantObjects.get(key);
+                const label = plantLabels?.get(stem.id);
+                return { ...stem, key: stem.id, planId: plan.id, phase, phaseColor, urgency,
+                  objectKey: object?.key, canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
+                  label: label && object ? { ...label, name: object.name, phase: object.phase } : undefined,
+                  selected: key === overlayKey || Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey };
+              });
+            });
             if (draft) stems.push(...draft.stems.map(stem => ({ ...stem, planId: draft.planId ?? null,
               canopy: Number(draft.canopy ?? 0), selected: stem.key === individualPlants.editor.selectedKey })));
             const placing = Boolean(draft && individualSeason && individualPlants.editor.placing
@@ -1121,7 +1183,7 @@ export default function GraphicalFields({
                 const plan = individualPlants.plans.find(item => item.individual_positions?.some(stem => stem.id === key));
                 if (plan?.id) void individualPlants.moveSavedStem(plan.id, key, position);
               }}
-              onSelect={!locationIsEditable && fullscreenLocationId !== locationId
+              onSelect={draft && !locationIsEditable && fullscreenLocationId !== locationId
                 ? stem => individualPlants.select(stem.planId, parent, stem.key) : undefined} />;
           };
 
@@ -1286,7 +1348,10 @@ export default function GraphicalFields({
                     onTap={objects.releaseStage}
                     onContextMenu={objects.contextStage}
                     onWheel={(event) => handleStageWheel(locationId, event)}
-                    onDblTap={() => handleStageDoubleTap(locationId)}
+                    onDblTap={() => {
+                      // A finished long press must not also trigger Konva's double-tap zoom.
+                      if (!objects.didLongPress()) handleStageDoubleTap(locationId);
+                    }}
                     onDblClick={() => handleStageDoubleTap(locationId)}
                     onTouchStart={(event) =>
                       handleStageTouchStart(locationId, viewport, event)
@@ -1480,7 +1545,8 @@ export default function GraphicalFields({
                   </Stage>
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
-                    openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks} cropPreview={cropPreview}
+                    openDetails={details} onOpenCrop={onOpenIndividualCrop} onFocusObject={focusArea}
+                    canEditPlant={canEditPlant} onEditPlant={editPlant} bedTasks={previewTasks} plantTasks={bedTasks} cropPreview={cropPreview}
                     onStartIndividualPlan={individualSeason && individualPlants.canEdit && !individualPlants.editor.draft ? object => {
                       if (object.type === 'location') return;
                       const parent = { kind: object.type, id: object.id };
@@ -1491,7 +1557,7 @@ export default function GraphicalFields({
                       }
                     } : undefined}
                     hoverTaskData={showTasks && activeSeasonId !== undefined ? {
-                      byBed: openTasksByBed, summaries: taskSummaries, bounds: { today, upcomingEnd },
+                      byBed: openTasksByBed, summaries: taskSummaries, plantSummaries: plantTaskSummaries, bounds: { today, upcomingEnd },
                       crops: showCrops ? cropsByBed : undefined, cropLoading: showCrops && locationPlans.loading,
                       cropFailed: showCrops && locationPlans.failed,
                     } : undefined}

@@ -231,6 +231,8 @@
     "finishPlaceOnMap": "Terminar la colocación",
     "placementNeedsInputs": "Selecciona un cultivo, un método de cultivo y una fecha de plantación dentro de la temporada.",
     "positionIndex": "Tallo {{index}}",
+    "positionInPlan": "Planta {{index}} de {{total}}",
+    "noOpenTasks": "No hay tareas pendientes para este plan de cultivo.",
     "bedDimensionsConflict": "Todas las posiciones de los tallos guardadas deben quedar dentro del bancal.",
     "dimensionsRequired": "Indica la longitud y la anchura de la parcela o del bancal para añadir posiciones.",
     "dimensionsConflict": "Todas las posiciones de tronco guardadas deben quedar dentro de la parcela.",
