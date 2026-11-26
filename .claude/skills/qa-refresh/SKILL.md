@@ -14,9 +14,10 @@ half — adding cards for work finished since the last refresh.
 
 ## 1. Find candidates
 
-1. Read the launcher's candidate manifest when supplied. Otherwise fetch the
-   live queue #1058 rows via `node scripts/ci/agent_task_context.cjs 1058` from
-   the trusted main checkout.
+1. When the launcher supplies a manifest, use its `entries` as the complete
+   candidate list for this run. Recheck those entries against live state before
+   acting. Without a manifest, select candidates from the live #1058 rows via
+   `node scripts/ci/agent_task_context.cjs 1058` from the trusted main checkout.
 2. For every unchecked row without a `PR #N` gate, check live state with
    `gh api repos/OpenFarmPlanner/planner/issues/<n>` using `state` and
    `state_reason`. Check implementation PRs and merge commits using
@@ -49,7 +50,9 @@ half — adding cards for work finished since the last refresh.
   `python3 scripts/local_qa/start.py update` from the trusted checkout. Confirm
   the dashboard (4174), app (5274) and backend (8274) respond. Verify that the
   app and backend report the same commit using the documented version endpoints,
-  and that the commit is reachable from `origin/main`.
+  that the commit is reachable from `origin/main`, and that it contains each
+  implementation to be tested. If a candidate's merge has yet to reach the QA
+  release, record its tests as blocked and continue with the other candidates.
 - Run tests at that commit. If your checkout differs or has local changes, use
   `git worktree add --detach <scratch-path> <qa-commit>` in a fresh directory.
 - Prepare the dependencies in the test checkout. Check for a compatible backend
@@ -146,7 +149,6 @@ After writing:
 
 List each new card with its status and a one-line reason. Surface every
 `problems`/contradiction prominently — don't bury a found regression in a
-card's detail fields without also saying so in your summary. If the queue
-advanced again while you were reviewing (check again before finishing), treat
-the newly closed rows as more candidates in the same pass rather than a
-separate run, and say so in the report.
+card's detail fields without also saying so in your summary. If a live check
+shows more issues closed during the refresh, list them as candidates for the
+next run. Keep the current run within its original candidate list.
