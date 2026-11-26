@@ -1,6 +1,6 @@
 """Central project version definition."""
 
-VERSION = "1.221.0"
+VERSION = "1.222.0"
 
 
 def get_version() -> str:
