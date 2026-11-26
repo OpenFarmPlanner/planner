@@ -93,8 +93,8 @@ the checked-out tree as arguments.
      local-only deterministic failure that contradicts a green nightly run on
      the same code is still worth reporting, but flag the contradiction
      explicitly rather than asserting a shipped regression.
-3. Capture 2-4 targeted screenshots (not a full responsive matrix) that show
-   the issue's specific new behavior, against the deployed QA app
+3. When the change has a relevant visual flow, capture 2-4 targeted screenshots
+   that show the new behavior on the deployed QA app
    (`http://127.0.0.1:5274`). Use the workspace's synthetic reviewer credentials
    only on that local app origin. Keep credentials out of commands printed to
    output, screenshot evidence and card data.
@@ -102,6 +102,8 @@ the checked-out tree as arguments.
    update the release during a check. Repeat any check affected by a change.
    Canvas/graphical UI renders via Konva, not DOM nodes — click by coordinate,
    not by test-id locator.
+   For nonvisual changes, use focused test or other implementation evidence
+   and leave `screenshots` empty.
 4. Never implement a fix, file an issue, or comment on GitHub from this skill.
    A reproducible defect found here follows the same rule as any other QA
    finding: record it fully (repro, evidence, contradiction if any) and tell
@@ -121,6 +123,11 @@ criterion fails, is blocked or remains unchecked. Record the affected criteria
 and their reasons in `problems`.
 
 Before writing:
+- Re-fetch the trusted live queue and recheck GitHub eligibility and verified
+  implementation for the original candidates immediately before applying the
+  refresh. Take queue metadata from that latest read. Skip a pending card write
+  when eligibility changed or the tested implementation no longer matches the
+  candidate. Reconcile an existing card only after verifying its current state.
 - Archive the current `results.json`/`decisions.json` under
   `.qa-review/archive/pre-refresh-<id>-<date>/`, consistent with sync's
   archival rule. Re-read the latest cards and decision revisions before
@@ -147,7 +154,8 @@ After writing:
 
 ## 5. Report
 
-List each new card with its status and a one-line reason. Surface every
+List new, updated and archived cards with the outcome and a one-line reason.
+Report blocked checks and skipped writes. Surface every
 `problems`/contradiction prominently — don't bury a found regression in a
 card's detail fields without also saying so in your summary. If a live check
 shows more issues closed during the refresh, list them as candidates for the
