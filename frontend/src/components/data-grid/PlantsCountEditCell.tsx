@@ -17,15 +17,16 @@ export interface PlantsCountEditCellProps extends GridRenderEditCellParams {
   crops: Crop[];
   onLastEditedFieldChange: (field: 'plants_count', value: string) => void;
   placeholder?: string;
+  allowText?: boolean;
 }
 
 export function PlantsCountEditCell(props: PlantsCountEditCellProps) {
-  const { id, value, field, hasFocus, onLastEditedFieldChange, placeholder } = props;
+  const { id, value, field, hasFocus, onLastEditedFieldChange, placeholder, allowText } = props;
   const apiRef = useGridApiContext();
   const editCellNavigation = useEditCellNavigation();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [inputValue, setInputValue] = useState<string>(
-    typeof value === 'number' && !isNaN(value) ? value.toString() : ''
+    typeof value === 'string' ? value : typeof value === 'number' && !isNaN(value) ? value.toString() : ''
   );
   const displayedInputValue = hasFocus
     ? inputValue
@@ -62,7 +63,7 @@ export function PlantsCountEditCell(props: PlantsCountEditCellProps) {
   return (
     <TextField
       type="text"
-      inputMode="numeric"
+      inputMode={allowText ? 'text' : 'numeric'}
       inputRef={inputRef}
       value={displayedInputValue}
       onChange={handleChange}

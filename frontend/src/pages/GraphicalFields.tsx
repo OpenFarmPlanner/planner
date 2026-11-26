@@ -11,6 +11,7 @@ import {
 import { Group, Layer, Rect, Stage, Text, type KonvaNodeEvents } from "react-konva";
 import type Konva from "konva";
 import { alpha } from "@mui/material/styles";
+import useEventCallback from '@mui/utils/useEventCallback';
 import type { KonvaEventObject } from "konva/lib/Node";
 import { useHierarchyData } from "../components/hierarchy/hooks/useHierarchyData";
 import { getLocationPathSpacing } from "../components/hierarchy/utils/locationPathSpacing";
@@ -37,7 +38,7 @@ import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../componen
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
 import { getDirectlyDraggableStemPlans, readyForPlacement, useIndividualPlants } from "./useIndividualPlants";
-import { getIndividualPlantFrames, MAX_INDIVIDUAL_POSITIONS } from "./individualPlantGeneration";
+import { getIndividualPlantFrames, individualPlacementPeriod, MAX_INDIVIDUAL_POSITIONS } from "./individualPlantGeneration";
 import { matchesPlacementParent, parcelMeters, planPlacementParent, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
@@ -117,6 +118,9 @@ export default function GraphicalFields({
   individualSeason,
   canEditIndividualPlants = false,
   requestedIndividualPlan,
+  editRequestedIndividualPlan,
+  individualCreationTarget,
+  onIndividualCreationHandled,
   onOpenBed,
   onOpenDetails,
   canCompleteTasks = false,
@@ -140,20 +144,27 @@ export default function GraphicalFields({
   const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
     ?? locations.find(location => typeof location.id === 'number' && location.id > 0)?.id ?? null;
   const individualPlants = useIndividualPlants(
-    activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan,
+    activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan, editRequestedIndividualPlan,
   );
+  const showCrops = includesCrops(displayMode);
+  const referenceDate = showCrops && cropReference?.kind === 'date' ? cropReference.date : null;
+  const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
   const plansByParent = useMemo(() => {
     const grouped = new Map<string, PlantingPlan[]>();
     for (const plan of individualPlants.plans) {
       const parent = planPlacementParent(plan);
       if (!parent) continue;
+      if (referenceDate && plan.id !== focusedPlanId) {
+        const period = individualPlacementPeriod(plan.planting_date ?? '', undefined, plan);
+        if (period && (referenceDate < period.start || referenceDate > period.end)) continue;
+      }
       const key = graphicalObjectKey(parent.kind, parent.id);
       const group = grouped.get(key);
       if (group) group.push(plan);
       else grouped.set(key, [plan]);
     }
     return grouped;
-  }, [individualPlants.plans]);
+  }, [individualPlants.plans, referenceDate, focusedPlanId]);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -199,7 +210,7 @@ export default function GraphicalFields({
     const item = (parent.kind === 'bed' ? beds : fields).find(item => item.id === parent.id);
     if (!item || !individualPlants.canEdit) return;
     if (parcelMeters(item)) individualPlants.startDraft(parent);
-    else individualPlants.update({ open: true, parent, planId: null, choosingParent: true });
+    else individualPlants.update({ open: true, parent, planId: null, choosingParent: false });
   };
   const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId, displayMode, key => {
     if (!individualPlants.editor.choosingParent) return false;
@@ -209,7 +220,6 @@ export default function GraphicalFields({
     return true;
   });
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
-  const showCrops = includesCrops(displayMode);
   const showTasks = includesTasks(displayMode);
   const loadLocationPlans = showCrops || showTasks;
   const locationPlans = useAreaPlantingPlans('location', loadLocationPlans ? activeLocationId : null, activeSeasonId);
@@ -502,6 +512,41 @@ export default function GraphicalFields({
     }
     return model;
   }, [activeLayout, activeScene, activeLocationId, bedsById, geometry]);
+
+  const focusIndividualParent = (parent: PlacementParent) => {
+    if (activeLocationId === null) return;
+    const rect = objectModel.get(graphicalObjectKey(parent.kind, parent.id))?.rect;
+    const bounds = rect ? getContentBoundsFromRects([rect]) : null;
+    if (!bounds) return;
+    const next = fitBoundsToStage(bounds, { width: stageWidth, height: stageHeight },
+      getFitViewportPadding(stageWidth, stageHeight));
+    setViewportByLocation(previous => ({ ...previous, [activeLocationId]: next }));
+    locationCanvasRefs.current[activeLocationId]?.scrollIntoView({ block: 'nearest' });
+  };
+
+  const startTargetedIndividualPlan = useEventCallback((parent: PlacementParent) => {
+    objects.close();
+    chooseIndividualParent(parent);
+    focusIndividualParent(parent);
+  });
+  const focusRequestedIndividualPlan = useEventCallback(focusIndividualParent);
+  const focusedRequest = useRef<string | null>(null);
+  useEffect(() => {
+    if (!individualCreationTarget || !individualSeason || !canEditIndividualPlants || loading || !layoutReady
+      || layoutFailed || activeLocationId !== individualCreationTarget.locationId) return;
+    startTargetedIndividualPlan(individualCreationTarget.parent);
+    onIndividualCreationHandled?.();
+  }, [individualCreationTarget, activeLocationId, individualSeason, canEditIndividualPlants, loading, layoutReady,
+    layoutFailed, onIndividualCreationHandled, startTargetedIndividualPlan]);
+  useEffect(() => {
+    const { parent, planId, open } = individualPlants.editor;
+    if (!requestedIndividualPlan || planId !== requestedIndividualPlan || !parent || !open || !layoutReady || layoutFailed) return;
+    const request = `${activeLocationId}:${requestedIndividualPlan}:${editRequestedIndividualPlan}`;
+    if (focusedRequest.current === request) return;
+    focusedRequest.current = request;
+    focusRequestedIndividualPlan(parent);
+  }, [activeLocationId, requestedIndividualPlan, editRequestedIndividualPlan, individualPlants.editor, layoutReady, layoutFailed,
+    focusRequestedIndividualPlan]);
 
   const getContentBoundsForLocation = (locationId: number): ContentBounds => {
     const layout = locationLayouts.find((item) => item.location.id === locationId);
@@ -1436,9 +1481,14 @@ export default function GraphicalFields({
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
                     openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks} cropPreview={cropPreview}
-                    onStartIndividualPlan={individualSeason && individualPlants.canEdit && !stemDraft && fullscreenLocationId !== locationId ? object => {
-                      if (object.type !== 'location') chooseIndividualParent({ kind: object.type, id: object.id });
-                      objects.close();
+                    onStartIndividualPlan={individualSeason && individualPlants.canEdit && !individualPlants.editor.draft ? object => {
+                      if (object.type === 'location') return;
+                      const parent = { kind: object.type, id: object.id };
+                      if (fullscreenLocationId === locationId) {
+                        void toggleFullscreen(locationId).then(() => startTargetedIndividualPlan(parent));
+                      } else {
+                        startTargetedIndividualPlan(parent);
+                      }
                     } : undefined}
                     hoverTaskData={showTasks && activeSeasonId !== undefined ? {
                       byBed: openTasksByBed, summaries: taskSummaries, bounds: { today, upcomingEnd },
@@ -1457,15 +1507,7 @@ export default function GraphicalFields({
                       return getIndividualPlantFrames([field], beds, layoutsByBed).get(field.id);
                     }}
                     onClose={() => canvasToolsRefs.current[locationId]?.focus({ preventScroll: true })}
-                    onFocusParent={({ kind, id }) => {
-                      const rect = objectModel.get(graphicalObjectKey(kind, id))?.rect;
-                      const bounds = rect ? getContentBoundsFromRects([rect]) : null;
-                      if (!bounds) return;
-                      const next = fitBoundsToStage(bounds, { width: stageWidth, height: stageHeight },
-                        getFitViewportPadding(stageWidth, stageHeight));
-                      setViewportByLocation(previous => ({ ...previous, [locationId]: next }));
-                      locationCanvasRefs.current[locationId]?.scrollIntoView({ block: "nearest" });
-                    }} />
+                    onFocusParent={focusIndividualParent} />
                 )}
                 </Box>
             </Box>

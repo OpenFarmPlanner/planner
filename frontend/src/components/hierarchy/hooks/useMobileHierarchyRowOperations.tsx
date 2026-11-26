@@ -16,6 +16,7 @@ import { useBedOperations } from "./useBedOperations";
 import { useHierarchyDelete } from "./useHierarchyDelete";
 import type { HierarchyRow } from "../utils/types";
 import type { MobileHierarchyRow } from "./useMobileHierarchyRows";
+import { individualPlantCreationForRow, type IndividualCreationTarget } from '../../../planting-plans/individualPlantActions';
 
 export interface HierarchyRowAction {
   id: string;
@@ -54,6 +55,7 @@ interface UseMobileHierarchyRowOperationsParams {
   onPendingDeletionCountChange?: (count: number) => void;
   onBulkCreateBeds: (fieldId: number) => void;
   onDuplicateField: (fieldId: number) => void;
+  onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
   t: TFunction;
 }
 
@@ -79,6 +81,7 @@ export function useMobileHierarchyRowOperations({
   onPendingDeletionCountChange,
   onBulkCreateBeds,
   onDuplicateField,
+  onAddIndividualPlants,
   t,
 }: UseMobileHierarchyRowOperationsParams) {
   const navigate = useNavigate();
@@ -144,6 +147,7 @@ export function useMobileHierarchyRowOperations({
       row: HierarchyRow | MobileHierarchyRow,
       openCreateSheet: (request: MobileCreateSheetRequest) => void,
     ): HierarchyRowAction[] => {
+      const addIndividuals = individualPlantCreationForRow(row, t, onAddIndividualPlants);
       const createActions: HierarchyRowAction[] = [];
       const detailPath = row.isNew ? null : getHierarchyDetailPath(row);
       const detailActions: HierarchyRowAction[] = detailPath ? [{
@@ -183,6 +187,7 @@ export function useMobileHierarchyRowOperations({
           onClick: () => onBulkCreateBeds(row.fieldId!),
           icon: <PlaylistAddIcon fontSize="small" />,
         });
+        if (addIndividuals) createActions.push(addIndividuals);
         createActions.push({
           id: "duplicate-field",
           label: t("actions.duplicateField"),
@@ -212,6 +217,7 @@ export function useMobileHierarchyRowOperations({
           icon: <AgricultureIcon fontSize="small" />,
           onClick: () => handleCreatePlantingPlan(row.bedId!),
         });
+        if (addIndividuals) createActions.push(addIndividuals);
       }
 
       const destructiveActions: HierarchyRowAction[] = [{
@@ -228,7 +234,7 @@ export function useMobileHierarchyRowOperations({
       return [...detailActions, ...createActions, ...destructiveActions];
     },
     [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, handleDuplicateBed,
-      navigate, onBulkCreateBeds, onDuplicateField, t],
+      navigate, onAddIndividualPlants, onBulkCreateBeds, onDuplicateField, t],
   );
 
   return {

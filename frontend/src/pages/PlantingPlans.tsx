@@ -146,8 +146,12 @@ import { CropSpacingEditAction } from "../components/planting-plans/CropSpacingE
 import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../components/planting-plans/MobilePlanActionsMenu";
 import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
 import { isPlantingPlanDetailPath, plantingPlanDetailPath, PLANTING_PLANS_PATH } from "../planting-plans/plantingPlanDetailRoutes";
-import { isIndividualPlacement } from "./individualPlantGeometry";
+import {
+  individualPlacementChoice, isIndividualPlacement, parcelMeters, planPlacementParent, readIndividualPlacementChoice,
+  type PlacementParent,
+} from "./individualPlantGeometry";
 import { individualPlantGraphicPath } from "../planting-plans/individualPlantRoutes";
+import { useIndividualPlanGeneration } from '../planting-plans/useIndividualPlanGeneration';
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
   getPlanDateReadOnlyReason, type PlantingPlanDateColumn, type PlantingPlanDateComparison,
@@ -284,7 +288,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     },
     [seasonBounds],
   );
-  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId, userId } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId, activeProjectMembership, userId } = useProjectRequirement();
   const [dateMode, setDateMode] = usePlantingPlanDateMode(userId);
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("md"));
@@ -322,6 +326,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const bedPickerOptionsById = useMemo(() => new Map(
     bedPickerOptions.filter((option) => option.kind === "bed").map((option) => [option.id, option]),
   ), [bedPickerOptions]);
+  const mobilePlacementOptions = useMemo(() => [...bedOptions, ...bedPickerOptions.flatMap(area => {
+    if (area.kind === 'location' || !parcelMeters((area.kind === 'bed' ? bedById.get(area.id) : fieldById.get(area.id)) ?? {})) return [];
+    const label = t(area.kind === 'bed' ? 'fields:individualPlants.inBed' : 'fields:individualPlants.onParcel');
+    const path = [area.locationName, area.fieldName, area.kind === 'bed' ? area.name : ''].filter(Boolean).join(BED_PATH_SEPARATOR);
+    return [{ value: individualPlacementChoice({ kind: area.kind, id: area.id }), label: `${label} · ${path}` }];
+  })], [bedOptions, bedPickerOptions, bedById, fieldById, t]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   // State (not a ref) because it feeds EditableDataGrid's slotProps during
@@ -338,6 +348,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const gridCommandApiRef = useRef<EditableDataGridCommandApi | null>(null);
   const { api: plantingPlanGridAPI, getRowHarvestOverlaps } = usePlantingPlanGridAPI(
     `${userId}:${activeProjectId}:${activeSeasonId}`,
+  );
+  const { confirmGeneration, dialog: individualGenerationDialog } = useIndividualPlanGeneration(
+    `${userId}:${activeProjectId}:${activeSeasonId}:${detailOpen}`,
   );
   const getRowTimingWindowFindings = useCallback(
     (row: PlantingPlanRow | undefined): TimingWindowFinding[] | undefined => (
@@ -385,6 +398,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     () => createEmptyMobileCreateForm(),
   );
   const [mobileCreateError, setMobileCreateError] = useState("");
+  const [savingMobileIndividual, setSavingMobileIndividual] = useState(false);
+  const mobileIndividualSave = useRef(false);
   const [mobileCreateErrorAction, setMobileCreateErrorAction] = useState<{ message: string; action: ReactNode } | null>(null);
   const [mobileEditId, setMobileEditId] = useState<number | null>(null);
   const [mobileLastEditedField, setMobileLastEditedField] = useState<
@@ -598,6 +613,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       // save check accepts the picked bed; with nothing free,
       // the area stays empty.
       const autofillArea = freeAreaSqm ?? selectedBed?.area_sqm;
+      const changingFromIndividual = Boolean(row.isNew && isIndividualPlacement(row));
+      if (changingFromIndividual) lastEditedFieldRef.current = null;
       // Only the hierarchy fields the selection actually changes are written
       // back. `normalizeSelectionAfterBedChange` returns a whole row, and
       // handing that to the grid would push every other field of a
@@ -615,6 +632,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         location_id,
         field_id,
         bed,
+        ...(row.isNew ? { placement_mode: 'area', parcel: null } : {}),
+        ...(changingFromIndividual ? { plants_count: undefined } : {}),
         // The stored assessment belongs to the saved bed. The save response
         // supplies a new assessment, and a draft has none until it is saved.
         rotation_status: undefined,
@@ -626,6 +645,44 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     },
     [bedById, beds, fields],
   );
+
+  const applyIndividualSelection = useCallback(async (rowId: GridRowId, parent: PlacementParent): Promise<boolean> => {
+    const bed = parent.kind === 'bed' ? bedById.get(parent.id) : undefined;
+    const field = fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
+    if (!field || !parcelMeters(parent.kind === 'bed' ? bed ?? {} : field)) return false;
+    lastEditedFieldRef.current = null;
+    return gridCommandApiRef.current?.applyDialogEditValues(rowId, {
+      placement_mode: parent.kind === 'bed' ? 'individual_bed' : 'individual_parcel',
+      parcel: parent.kind === 'field' ? parent.id : null,
+      bed: bed?.id ?? null, field_id: field.id, location_id: field.location,
+      field_name: field.name, location_name: locationById.get(field.location)?.name, bed_name: bed?.name ?? '',
+      area_m2: undefined, area_usage_sqm: undefined, plants_count: undefined,
+      rotation_status: undefined, rotation_findings: undefined,
+    }) ?? false;
+  }, [bedById, fieldById, locationById]);
+
+  const getPlantingDateToSave = (row: PlantingPlanRow, crop: Crop | undefined) => {
+    const sowing = toIsoDateString(row.sowing_date);
+    return sowing && !getExplicitPropagationStart(row, crop) && lastEditedDateFieldRef.current === 'sowing_date'
+      && row.cultivation_type !== PURCHASED_TRANSPLANT
+      ? getPlantingDateFromSowingDate(sowing, row, crop) : toIsoDateString(row.planting_date);
+  };
+
+  const generateIndividualPositions = (
+    parent: PlacementParent, crop: Crop, date: string, countValue: unknown,
+  ) => {
+    const bed = parent.kind === 'bed' ? bedById.get(parent.id) : undefined;
+    const field = fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
+    const dimensions = parcelMeters((parent.kind === 'bed' ? bed : field) ?? {});
+    if (!field || !dimensions) {
+      setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.dimensionsRequired') });
+      return Promise.resolve(null);
+    }
+    const text = typeof countValue === 'string' ? countValue.trim() : '';
+    const count = text && (text.toLowerCase() === 'max' || isAutoAreaRequest(text, t('plantingPlans:placeholders.maxKeyword')))
+      ? 'max' : toAreaNumericValue(countValue, numberLocale);
+    return confirmGeneration({ parent, field, beds, crop, date, dimensions, count });
+  };
 
   const saveRotationAcceptance = useCallback(async (id: number, accepted: boolean): Promise<void> => {
     const { data } = await plantingPlanAPI.patch(id, { rotation_conflict_accepted: accepted });
@@ -1057,23 +1114,27 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         },
         renderCell: (params) => {
           const row = params.row as PlantingPlanRow;
-          if (row.parcel) {
-            return <Typography variant="inherit" noWrap>{getGridBedLabel(row)}</Typography>;
-          }
           const bedId = resolveBedCellValue(params.value, row);
           const isEditing = params.api?.getRowMode?.(params.id) === "edit";
           const hasDraft = row.isNew || isEditing;
           const draft = isEditing
             ? params.api.getRowWithUpdatedValues(params.id, params.field) as PlantingPlanRow
             : row;
+          const placement = planPlacementParent(row);
           return (
             <PlantingPlanBedCell
               path={getBedPath(row)}
               options={bedPickerOptions}
-              selected={bedPickerOptionsById.get(bedId)}
+              selected={placement ? undefined : bedPickerOptionsById.get(bedId)}
+              placement={placement}
+              individualChoices={row.isNew && draft.crop ? {
+                selected: placement,
+                canChoose: area => Boolean(parcelMeters((area.kind === 'bed' ? bedById.get(area.id) : fieldById.get(area.id)) ?? {})),
+                onSelect: parent => applyIndividualSelection(params.id, parent),
+              } : undefined}
               numberLocale={numberLocale}
               hasFocus={params.hasFocus}
-              readOnly={Boolean(row.carried_over)}
+              readOnly={Boolean(row.carried_over || (placement && !row.isNew))}
               rowId={params.id}
               field={params.field}
               onSelect={(nextBedId, freeAreaSqm) => applyBedSelection(params.id, row, nextBedId, freeAreaSqm)}
@@ -1246,6 +1307,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         },
         renderEditCell: (params) => {
           const row = params.row as PlantingPlanRow;
+          if (isIndividualPlacement(row)) return null;
           const derivedArea = getDerivedAreaFromRow(row);
 
           return (
@@ -1263,7 +1325,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             />
           );
         },
-        valueFormatter: (value) => {
+        valueFormatter: (value, row) => {
+          if (isIndividualPlacement(row as PlantingPlanRow)) return '';
           const numericValue = Number(value);
           if (!Number.isNaN(numericValue)) {
             return formatAreaM2(numericValue, numberLocale);
@@ -1281,6 +1344,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         width: dynamicWidths.plants,
         editable: true,
         type: "number",
+        valueParser: (value, row) => row?.isNew && isIndividualPlacement(row)
+          ? value : value === '' ? null : Number(value),
         renderHeader: () => (
           <GridHeaderHelp label={t("plantingPlans:columns.plantsCount")}
             description={t("plantingPlans:tooltips.plantsFromSpacing")} />
@@ -1292,23 +1357,26 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           }
           return params.props;
         },
-        renderEditCell: (params) => (
-          <PlantsCountEditCell
+        renderEditCell: (params) => {
+          const individual = Boolean(params.row.isNew && isIndividualPlacement(params.row));
+          return <PlantsCountEditCell
             {...params}
             crops={crops}
-            placeholder={t("plantingPlans:placeholders.plantsCount")}
+            placeholder={t(individual ? 'fields:individualPlants.countOrMax' : 'plantingPlans:placeholders.plantsCount')}
+            allowText={individual}
             onLastEditedFieldChange={(field, value) => {
               lastEditedFieldRef.current = field;
               setAreaNotice(null);
-              void applyLinkedAreaPlantsValue(params, field, value);
+              if (!individual) void applyLinkedAreaPlantsValue(params, field, value);
             }}
-          />
-        ),
+          />;
+        },
         valueFormatter: (value, row) => {
           if (typeof value === "number" && !isNaN(value)) {
             if (isIndividualPlacement(row as PlantingPlanRow)) return formatLocalizedNumber(value, numberLocale);
             return `≈ ${Math.round(value)}`;
           }
+          if (typeof value === 'string' && row?.isNew && isIndividualPlacement(row)) return value;
           return "—";
         },
         cellClassName: (params) => getLinkedPartnerHighlightClassName(params),
@@ -1381,6 +1449,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   },
     [
       applyBedSelection,
+      applyIndividualSelection,
+      bedById,
+      fieldById,
       bedColumnLabel,
       bedLabelById,
       bedOptions,
@@ -1705,7 +1776,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
   const getPlantsCountLabel = (row: PlantingPlanRow): string => (
     typeof row.plants_count === "number" && !Number.isNaN(row.plants_count)
-      ? `≈ ${Math.round(row.plants_count)}`
+      ? isIndividualPlacement(row) ? formatLocalizedNumber(row.plants_count, numberLocale) : `≈ ${Math.round(row.plants_count)}`
       : "—"
   );
 
@@ -1895,8 +1966,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         activate: () => { if (cropId) void navigate(`/app/crops?cropId=${cropId}`); },
       },
       ...(planId && isIndividualPlacement(row) && row.parcel_location_id ? [{
-        id: 'plan-placement', label: t('fields:individualPlants.openGraphic'), icon: <GridViewOutlinedIcon fontSize="small" />,
-        activate: () => { if (row.parcel_location_id) void navigate(individualPlantGraphicPath(planId, row.parcel_location_id)); },
+        id: 'plan-placement', label: t(activeProjectMembership ? 'fields:individualPlants.editPlants' : 'fields:individualPlants.openGraphic'),
+        icon: <GridViewOutlinedIcon fontSize="small" />,
+        activate: () => {
+          if (row.parcel_location_id) void navigate(individualPlantGraphicPath(planId, row.parcel_location_id, Boolean(activeProjectMembership)));
+        },
       }] : [{
         id: 'plan-bed', label: t('plantingPlans:details.openBed'), icon: <GridViewOutlinedIcon fontSize="small" />,
         disabledReason: bedId ? undefined : t('plantingPlans:details.missingBed'),
@@ -2074,6 +2148,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   );
 
   const validateMobileForm = (): boolean => {
+    const individual = readIndividualPlacementChoice(mobileCreateForm.bed);
     if (!mobileCreateForm.crop || !mobileCreateForm.bed || !mobileCreateForm.planting_date) {
       setMobileCreateError(t("plantingPlans:validation.requiredFields", {
         fields: [
@@ -2108,7 +2183,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       return false;
     }
     if (
-      mobileCreateForm.area_m2.trim() !== "" &&
+      !individual && mobileCreateForm.area_m2.trim() !== "" &&
       mobileCreateForm.area_m2.trim().toLowerCase() !== t("plantingPlans:placeholders.maxKeyword").toLowerCase() &&
       parseLocalizedNumber(mobileCreateForm.area_m2, numberLocale) === null
     ) {
@@ -2116,7 +2191,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       return false;
     }
     if (
-      mobileCreateForm.plants_count.trim() !== "" &&
+      !individual && mobileCreateForm.plants_count.trim() !== "" &&
       parseLocalizedNumber(mobileCreateForm.plants_count, numberLocale) === null
     ) {
       setMobileCreateError(t("plantingPlans:errors.save"));
@@ -2144,7 +2219,42 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   }, [mobileListRows]);
 
   const handleMobileCreate = async (): Promise<void> => {
-    if (!validateMobileForm()) {
+    if (mobileIndividualSave.current || !validateMobileForm()) {
+      return;
+    }
+    const parent = readIndividualPlacementChoice(mobileCreateForm.bed);
+    if (parent) {
+      const cropId = Number(mobileCreateForm.crop);
+      const crop = cropById.get(cropId);
+      const date = toIsoDateString(parseGermanDateText(mobileCreateForm.planting_date));
+      if (!date || !crop || !mobileCreateForm.cultivation_type || !activeSeasonId) {
+        setMobileCreateError(t('fields:individualPlants.completePlanBeforeGeneration'));
+        return;
+      }
+      mobileIndividualSave.current = true;
+      setSavingMobileIndividual(true);
+      try {
+        const positions = await generateIndividualPositions(parent, crop, date, mobileCreateForm.plants_count);
+        if (!positions) return;
+        const { data } = await plantingPlanAPI.createIndividual({
+          crop: cropId, placement_mode: parent.kind === 'bed' ? 'individual_bed' : 'individual_parcel',
+          bed: parent.kind === 'bed' ? parent.id : null, parcel: parent.kind === 'field' ? parent.id : null,
+          planting_date: date, cultivation_type: mobileCreateForm.cultivation_type, notes: mobileCreateForm.notes,
+          ...getSupplementalPlannedDates(mobileCreateForm), ...getMobilePropagationChange(mobileCreateForm),
+          individual_positions: positions,
+        });
+        closeMobileCreateDialog();
+        await reloadPlans();
+        if (data.id) {
+          pinCreatedPlan(data.id);
+          revealCreatedMobileCard(data.id);
+        }
+      } catch (error) {
+        showMobileSaveError(error);
+      } finally {
+        mobileIndividualSave.current = false;
+        setSavingMobileIndividual(false);
+      }
       return;
     }
     const normalizedMobileArea = mobileCreateForm.area_m2.trim().toLowerCase();
@@ -2350,7 +2460,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const hasPlans = mobileRows.length > 0;
   const firstMissingRequirement = getFirstMissingCultivationPlanRequirement({
     hasFields,
-    hasBeds,
+    hasBeds: hasBeds || fields.some(field => parcelMeters(field)),
     hasCrops,
   });
   const canCreatePlan = firstMissingRequirement === null && !isMissingActiveSeason;
@@ -2570,7 +2680,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                     sowingDate={item.planned_sowing_date ?? getRowSowingSchedule(item)?.sowingDate}
                   />
                   <Typography variant="body2"><strong>{t("plantingPlans:columns.cultivationType")}:</strong> <SearchHighlightedText text={getCultivationTypeLabel(item) || "—"} /></Typography>
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.bed")}:</strong> <SearchHighlightedText text={getBedLabelForRow(item)} /></Typography>
+                  <Typography variant="body2"><strong>{t(item.parcel ? 'fields:individualPlants.onParcel'
+                    : isIndividualPlacement(item) ? 'fields:individualPlants.inBed' : 'plantingPlans:columns.bed')}:</strong>{' '}
+                    <SearchHighlightedText text={isIndividualPlacement(item) ? getGridBedLabel(item) : getBedLabelForRow(item)} />
+                  </Typography>
                   {PLANTING_PLAN_DATE_COLUMNS.map(field => {
                     const dates = getColumnDates(item, field);
                     const displayed = displayedPlanDates(dates, 'planned');
@@ -2580,7 +2693,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                       <SearchHighlightedText text={displayed.map(formatDateForDisplay).join(' · ')} />
                     </Typography>;
                   })}
-                  <Typography variant="body2"><strong>{t("plantingPlans:columns.areaM2")}:</strong> {getDisplayArea(item)}</Typography>
+                  {!isIndividualPlacement(item) && <Typography variant="body2"><strong>{t("plantingPlans:columns.areaM2")}:</strong> {getDisplayArea(item)}</Typography>}
                   <Typography variant="body2">
                     <strong>{t("plantingPlans:columns.plantsCount")}:</strong>{' '}
                     {typeof item.plants_count === "number"
@@ -2690,7 +2803,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             api={plantingPlanGridAPI}
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
             isStandaloneEditCell={isActualDateEditor}
-            getCellReadOnlyReason={(row, field) => isIndividualPlacement(row) && ['bed', 'area_m2', 'plants_count'].includes(field)
+            getCellReadOnlyReason={(row, field) => isIndividualPlacement(row) && (field === 'area_m2'
+              || (!row.isNew && ['bed', 'plants_count'].includes(field)))
               ? t('fields:individualPlants.editInGraphic') : getDateReadOnlyReason(row, field)}
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
@@ -2761,8 +2875,6 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           mapToApiData={async (row) => {
             // Bed and planting date may still be unset — the row can be
             // saved as a draft, so send null rather than blocking on them.
-            let plantingDate = toIsoDateString(row.planting_date);
-
             // Ensure crop and bed are numeric IDs, not label strings
             // DataGrid singleSelect can sometimes provide the label instead of value
             let cropId: number | null;
@@ -2790,14 +2902,9 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             // pair below picks its payload from lastEditedFieldRef rather
             // than trusting the grid's own row assembly.
             const crop = crops.find((item) => item.id === row.crop);
+            const plantingDate = row.generatedPositions ? toIsoDateString(row.planting_date) : getPlantingDateToSave(row, crop);
             const explicitPropagationStart = getExplicitPropagationStart(row, crop);
             const propagationStart = explicitPropagationStart ? toIsoDateString(row.sowing_date) : null;
-            if (!explicitPropagationStart && lastEditedDateFieldRef.current === "sowing_date" && row.cultivation_type !== PURCHASED_TRANSPLANT) {
-              const sowingDateIso = toIsoDateString(row.sowing_date);
-              if (sowingDateIso) {
-                plantingDate = getPlantingDateFromSowingDate(sowingDateIso, row, crop);
-              }
-            }
             lastEditedDateFieldRef.current = null;
 
             if (typeof row.bed === "number" && row.bed !== 0) {
@@ -2819,12 +2926,17 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               ...(row.isNew ? getSupplementalPlannedDates(row) : {}),
               ...(propagationStart && propagationStart !== explicitPropagationStart
                 ? { planned_propagation_start_date: propagationStart } : {}),
-              quantity: row.quantity,
+              quantity: isIndividualPlacement(row) ? undefined : row.quantity,
               notes: row.notes || "",
               cultivation_type: row.cultivation_type ?? "",
             };
             if (isIndividualPlacement(row)) {
               lastEditedFieldRef.current = null;
+              if (row.isNew) {
+                if (!row.generatedPositions?.length) throw new Error(t('fields:individualPlants.generation.count'));
+                return { ...apiData, placement_mode: row.placement_mode, parcel: row.parcel ?? null,
+                  generatedPositions: row.generatedPositions };
+              }
               return apiData;
             }
             // Determine which field to send based on last edit
@@ -2891,6 +3003,17 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           onBeforeSaveRow={async (row, original) => {
             if (areaValidationDialogRef.current || suppressAreaValidationSaveRef.current) {
               return false;
+            }
+            if (row.isNew && isIndividualPlacement(row)) {
+              const parent = planPlacementParent(row);
+              const crop = cropById.get(row.crop ?? undefined);
+              const date = getPlantingDateToSave(row, crop);
+              if (!parent || !crop || !date || !seasonBounds || !isPlantingDateWithinSeason(date) || !row.cultivation_type) {
+                setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.completePlanBeforeGeneration') });
+                return false;
+              }
+              const generatedPositions = await generateIndividualPositions(parent, crop, date, row.plants_count);
+              return generatedPositions ? { generatedPositions, planting_date: date } : false;
             }
             if (original && !row.isNew &&
               DIRECT_PLAN_EDIT_FIELDS.every(field => row[field] === original[field]) &&
@@ -3060,7 +3183,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           mobileCreateErrorAction?.message === mobileCreateError ? mobileCreateErrorAction.action : undefined
         }
         cropOptions={cropOptions}
-        bedOptions={bedOptions}
+        bedOptions={!mobileEditId && mobileCreateForm.crop ? mobilePlacementOptions : bedOptions}
+        submitting={savingMobileIndividual}
         cultivationTypeOptions={cultivationTypeOptions}
         numberLocale={numberLocale}
         plantingDateHelperText={
@@ -3093,6 +3217,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           onCommit={commitAreaValidationDialogValue}
         />
       )}
+      {individualGenerationDialog}
 
       <NotesDrawer
         open={mobileNotesEditor.isOpen}

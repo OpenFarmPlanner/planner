@@ -12,6 +12,10 @@ export function buildHierarchySecondaryLine(
   t: TFunction,
   locale: string,
 ): string {
+  if (row.type === 'individualPlan') {
+    const count = row.individualPlantCount ?? 0;
+    return t('fields:individualPlants.count', { count, formatted: formatLocalizedNumber(count, locale) });
+  }
   if (row.type === "location") {
     const count = row.childCount;
     if (count === 0) {

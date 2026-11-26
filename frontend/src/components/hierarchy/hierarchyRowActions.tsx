@@ -206,5 +206,5 @@ export function renderInlineActions(
     );
   }
 
-  return null;
+  return renderMoreActionsButton(row, callbacks, t, isStandaloneRender);
 }

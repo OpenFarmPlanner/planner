@@ -110,6 +110,7 @@ export interface PlantingPlanRow extends PlantingPlan, EditableRow {
   area_m2?: number;
   plants_count?: number | null; // UI-only derived field
   note_attachment_count?: number;
+  generatedPositions?: import('../api/types').StemCoordinates[];
 }
 
 type SupplementalPlannedDates = Pick<

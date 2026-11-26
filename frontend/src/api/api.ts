@@ -529,6 +529,8 @@ export const plantingPlanAPI = {
     fetchAllPaginated<PlantingPlan>(`/planting-plans/?${type}=${id}`, signal),
   listIndividualAtLocation: (id: number, signal?: AbortSignal) =>
     fetchAllPaginated<PlantingPlan>(`/planting-plans/?individual_location=${id}`, signal),
+  listIndividualPlans: (signal?: AbortSignal) =>
+    fetchAllPaginated<import('./types').IndividualPlantPlanSummary>('/planting-plans/?individual_only=true', signal),
   get: (id: number) => http.get<PlantingPlan>(`/planting-plans/${id}/`),
   getAcrossSeasons: (id: number, signal?: AbortSignal, harvestYear?: number, recordSeasonId?: number) =>
     http.get<import('./types').PlantingPlanDetail>(`/planting-plans/${id}/`, {
@@ -539,7 +541,7 @@ export const plantingPlanAPI = {
     }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   createIndividual: (data: Pick<PlantingPlan, 'crop' | 'parcel' | 'planting_date' | 'cultivation_type' | 'placement_mode'>
-    & Partial<Pick<PlantingPlan, 'bed'>>
+    & Partial<Pick<PlantingPlan, 'bed' | 'quantity' | 'notes' | 'planned_propagation_start_date' | 'planned_sowing_date'>>
     & import('./types').IndividualPlacementInput) =>
     http.post<PlantingPlan>('/planting-plans/', data),
   saveIndividualPlacement: (id: number, placement_updated_at: string, data: import('./types').IndividualPlacementInput) =>

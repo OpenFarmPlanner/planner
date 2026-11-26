@@ -45,8 +45,19 @@ const initialEditor: Editor = {
 
 type PlanResult = { key: string; plans: PlantingPlan[]; failed: boolean };
 
+function placementDraft(parent: PlacementParent, season: Season, plan?: PlantingPlan): Draft {
+  const today = formatDateToAPI(new Date());
+  const defaultDate = today < season.start_date ? season.start_date : today > season.end_date ? season.end_date : today;
+  return {
+    planId: plan?.id, expectedUpdatedAt: plan?.updated_at, parent,
+    crop: plan?.crop ?? null, date: plan?.planting_date ?? defaultDate,
+    cultivation: plan?.cultivation_type ?? '', canopy: plan?.estimated_canopy_diameter_m,
+    stems: plan?.individual_positions?.map(stem => ({ ...stem, key: stem.id })) ?? [],
+  };
+}
+
 export function useIndividualPlants(
-  location: number | null, season: Season | undefined, canEdit: boolean, requestedPlan?: number,
+  location: number | null, season: Season | undefined, canEdit: boolean, requestedPlan?: number, requestedEdit = false,
 ) {
   const scope = location && season?.id ? `${location}:${season.id}` : '';
   const [attempt, setAttempt] = useState(0);
@@ -54,7 +65,7 @@ export function useIndividualPlants(
   const [result, setResult] = useState<PlanResult | null>(null);
   const [state, setState] = useState({ scope, editor: initialEditor });
   const nextStemId = useRef(0);
-  const revealedPlan = useRef<number | undefined>(undefined);
+  const revealedPlan = useRef<string | null>(null);
   // Bumped on every completed load: a direct move only writes into the load it started from.
   const loadGeneration = useRef(0);
   const saving = useRef(false);
@@ -65,29 +76,31 @@ export function useIndividualPlants(
   const plans = current?.plans ?? [];
 
   useEffect(() => {
-    if (!location || !scope) return;
+    if (!location || !scope || !season) return;
     const abort = new AbortController();
     void plantingPlanAPI.listIndividualAtLocation(location, abort.signal).then(({ results }) => {
       if (abort.signal.aborted) return;
       loadGeneration.current += 1;
       setResult({ key, plans: results, failed: false });
-      const requested = requestedPlan !== revealedPlan.current
+      const requestKey = requestedPlan ? `${scope}:${requestedPlan}:${requestedEdit}` : null;
+      const requested = requestKey && requestKey !== revealedPlan.current
         ? results.find(plan => plan.id === requestedPlan) : undefined;
       const parent = requested ? planPlacementParent(requested) : null;
       const planId = requested?.id;
       if (planId === undefined || !parent) return;
-      revealedPlan.current = planId;
+      revealedPlan.current = requestKey;
       setState(value => value.scope === scope ? {
         scope, editor: {
           ...initialEditor, open: true, planId, parent,
           selectedKey: requested?.individual_positions?.[0]?.id ?? null,
+          draft: requestedEdit && canEdit ? placementDraft(parent, season, requested) : null,
         },
       } : value);
     }).catch(() => {
       if (!abort.signal.aborted) setResult({ key, plans: [], failed: true });
     });
     return () => abort.abort();
-  }, [location, scope, key, requestedPlan]);
+  }, [location, scope, key, requestedPlan, requestedEdit, canEdit, season]);
 
   const update = (changes: Partial<Editor> | ((source: Editor) => Partial<Editor>)) => {
     setState(value => {
@@ -110,19 +123,10 @@ export function useIndividualPlants(
   const startDraft = (parent: PlacementParent, plan?: PlantingPlan) => {
     // A direct move of this plan is still saving: a draft would start from a version about to change.
     if (!canEdit || !season || saving.current || (plan?.id && movingPlans.has(plan.id))) return;
-    const today = formatDateToAPI(new Date());
-    const defaultDate = today < season.start_date ? season.start_date
-      : today > season.end_date ? season.end_date : today;
     update({
       open: true, choosingParent: false, placing: plan ? null : 'add', error: null, parent, planId: plan?.id ?? null,
       selectedKey: plan?.individual_positions?.[0]?.id ?? null,
-      draft: {
-        planId: plan?.id, expectedUpdatedAt: plan?.updated_at, parent,
-        crop: plan?.crop ?? null, date: plan?.planting_date ?? defaultDate,
-        cultivation: plan?.cultivation_type ?? '',
-        canopy: plan?.estimated_canopy_diameter_m,
-        stems: plan?.individual_positions?.map(stem => ({ ...stem, key: stem.id })) ?? [],
-      },
+      draft: placementDraft(parent, season, plan),
     });
   };
 

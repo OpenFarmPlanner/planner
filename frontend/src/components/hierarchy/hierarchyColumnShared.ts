@@ -35,6 +35,7 @@ export interface HierarchyColumnOptions {
   disableInlineHoverActions?: boolean;
   onOpenContextMenuFromButton?: (row: HierarchyRow, origin: HTMLElement) => void;
   showPersistentContextMenuButton?: boolean;
+  showInlineIndividualCount?: boolean;
   /**
    * When provided, renders the expand/collapse-one-level buttons directly in
    * the "Name" column header (see HierarchyLevelButtons) instead of the

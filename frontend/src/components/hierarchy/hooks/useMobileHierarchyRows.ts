@@ -7,6 +7,7 @@ import {
   type HierarchySortConfig,
 } from "../utils/hierarchyUtils";
 import type { HierarchyRow } from "../utils/types";
+import { EMPTY_INDIVIDUAL_HIERARCHY, projectIndividualHierarchyRows } from '../utils/individualHierarchyRows';
 
 export type MobileHierarchyRow = HierarchyRow & { childCount: number };
 
@@ -22,6 +23,7 @@ export function useMobileHierarchyRows(
   beds: Bed[],
   hierarchySortConfig: HierarchySortConfig | undefined,
   expandedRows: Set<string | number>,
+  individual = EMPTY_INDIVIDUAL_HIERARCHY,
 ): MobileHierarchyRow[] {
   const hierarchyIndex = useMemo(
     () => buildHierarchyIndex(locations, fields, beds, hierarchySortConfig ?? DEFAULT_HIERARCHY_SORT_CONFIG),
@@ -29,7 +31,8 @@ export function useMobileHierarchyRows(
   );
 
   return useMemo(() => {
-    const rows = buildHierarchyRowsFromIndex(hierarchyIndex, expandedRows);
+    const rows = projectIndividualHierarchyRows(buildHierarchyRowsFromIndex(hierarchyIndex, expandedRows),
+      individual, expandedRows, hierarchySortConfig);
     return rows.map((row): MobileHierarchyRow => {
       let childCount = 0;
       if (row.type === "location" && typeof row.locationId === "number") {
@@ -39,5 +42,5 @@ export function useMobileHierarchyRows(
       }
       return { ...row, childCount };
     });
-  }, [hierarchyIndex, expandedRows]);
+  }, [hierarchyIndex, expandedRows, individual, hierarchySortConfig]);
 }

@@ -149,6 +149,10 @@ import { HIGHLIGHT_FLASH_DURATION_MS } from "../components/feedback/highlightFla
 import type { CommandSpec } from "../commands/types";
 import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
 import { HIERARCHY_ROW_ACTIONS_SLOT_PX } from "../components/hierarchy/hierarchyNameCell";
+import { individualPlanRowActions, individualPlantCreationForRow, type IndividualCreationTarget } from '../planting-plans/individualPlantActions';
+import {
+  EMPTY_INDIVIDUAL_HIERARCHY, INDIVIDUAL_PLANT_COUNT_FIELD, type indexIndividualHierarchy, projectIndividualHierarchyRows,
+} from '../components/hierarchy/utils/individualHierarchyRows';
 import {
   createParcelRotationColumn,
   PARCEL_ROTATION_COLUMN_FIELD,
@@ -168,6 +172,8 @@ interface FieldsBedsHierarchyProps {
   userId?: number | null;
   bedDefaults?: BedDimensions;
   graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
+  onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
+  individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
 }
 
 interface HierarchyRowAction {
@@ -181,7 +187,7 @@ interface HierarchyRowAction {
   shortcutHint?: string;
 }
 
-const DEFAULT_HIDDEN_COLUMN_FIELDS = [PARCEL_ROTATION_COLUMN_FIELD, ...SITE_CONDITION_COLUMN_FIELDS];
+const DEFAULT_HIDDEN_COLUMN_FIELDS = [PARCEL_ROTATION_COLUMN_FIELD, ...SITE_CONDITION_COLUMN_FIELDS, INDIVIDUAL_PLANT_COUNT_FIELD];
 
 const hierarchyGridSlots = {
   row: GridRowWithSaveStatus,
@@ -201,6 +207,8 @@ function FieldsBedsHierarchy({
   userId,
   bedDefaults,
   graphicalRotations,
+  onAddIndividualPlants,
+  individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -278,7 +286,7 @@ function FieldsBedsHierarchy({
     fetchData,
     fetchGeneration,
   } = hierarchyData ?? internalHierarchyData;
-  const growingAreaSearch = useGrowingAreaSearch(projectId, { locations, fields, beds });
+  const growingAreaSearch = useGrowingAreaSearch(projectId, { locations, fields, beds, individualRows: individualHierarchy.rows });
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   const [columnsAnchorEl, setColumnsAnchorEl] = useState<HTMLButtonElement | null>(null);
@@ -397,12 +405,12 @@ function FieldsBedsHierarchy({
   // draft rows always stay so an edit in progress never disappears.
   const { isActive: isSearchActive, visibleRowKeys: searchVisibleRowKeys } = growingAreaSearch;
   const rows = useMemo<GridRowsProp<HierarchyRow>>(() => {
-    const projected = projectRows(expandedRows);
+    const projected = projectIndividualHierarchyRows(projectRows(expandedRows), individualHierarchy, expandedRows, hierarchySortConfig);
     if (!isSearchActive) {
       return projected;
     }
     return projected.filter((row) => row.isNew === true || searchVisibleRowKeys.has(row.id));
-  }, [projectRows, expandedRows, isSearchActive, searchVisibleRowKeys]);
+  }, [projectRows, individualHierarchy, expandedRows, hierarchySortConfig, isSearchActive, searchVisibleRowKeys]);
 
   const { ancestorRowKeys: searchAncestorRowKeys } = growingAreaSearch;
   useEffect(() => {
@@ -822,8 +830,8 @@ function FieldsBedsHierarchy({
       nodes.push({ id: bed.id, parentId: `field-${bed.field}` });
     });
 
-    return nodes;
-  }, [beds, fields, showsLocationRows, locations]);
+    return [...nodes, ...individualHierarchy.rows];
+  }, [beds, fields, showsLocationRows, locations, individualHierarchy.rows]);
 
   const hierarchyLevelToggle = useHierarchyLevelToggle(hierarchyTreeNodes, expandedRows, expandAll);
 
@@ -1041,10 +1049,11 @@ function FieldsBedsHierarchy({
   );
 
   const isHierarchyCellAction = useCallback((params: GridCellParams<HierarchyRow>): boolean => (
-    params.field === "notes"
+    params.field === "notes" && params.row.type !== 'individualPlan'
   ), []);
 
   const isCellEditable = useCallback((params: { row: HierarchyRow; field: string }) => {
+    if (params.row.type === 'individualPlan') return false;
     if ((SITE_CONDITION_COLUMN_FIELDS as readonly string[]).includes(params.field)) {
       return !params.row.isNew;
     }
@@ -1066,8 +1075,7 @@ function FieldsBedsHierarchy({
   }, []);
 
   const isHierarchyCellFocusable = useCallback((row: HierarchyRow, field: string): boolean => (
-    field === "notes"
-    || isCellEditable({ row, field })
+    row.type === 'individualPlan' ? field === 'name' : field === 'notes' || isCellEditable({ row, field })
   ), [isCellEditable]);
 
   // Stable ref so getHierarchyFocusableField doesn't change on every expand/collapse.
@@ -1083,6 +1091,7 @@ function FieldsBedsHierarchy({
     if (!row) {
       return null;
     }
+    if (row.type === 'individualPlan') return 'name';
 
     const visibleConditionFields = row.isNew
       ? []
@@ -1474,7 +1483,7 @@ function FieldsBedsHierarchy({
 
   const handleEditSelected = useCallback(() => {
     const row = rowsRef.current.find((r) => r.id === selectedRowIdRef.current);
-    if (!row) return;
+    if (!row || row.type === 'individualPlan') return;
     rememberRowSnapshot(row.id);
     setRowModesModel((previous) => ({
       ...previous,
@@ -1483,6 +1492,8 @@ function FieldsBedsHierarchy({
   }, [rememberRowSnapshot, rowsRef, selectedRowIdRef]);
 
   const getHierarchyRowActions = useCallback((row: HierarchyRow): HierarchyRowAction[] => {
+    if (row.type === 'individualPlan') return individualPlanRowActions(row, t, navigate, Boolean(onAddIndividualPlants));
+    const addIndividuals = individualPlantCreationForRow(row, t, onAddIndividualPlants);
     const createActions: HierarchyRowAction[] = [];
     const detailPath = row.isNew ? null : getHierarchyDetailPath(row);
     const detailActions: HierarchyRowAction[] = detailPath ? [{
@@ -1522,6 +1533,7 @@ function FieldsBedsHierarchy({
         onClick: () => setBulkCreateFieldId(row.fieldId!),
         icon: <PlaylistAddIcon fontSize="small" />,
       });
+      if (addIndividuals) createActions.push(addIndividuals);
       createActions.push({
         id: "duplicate-field",
         label: t("actions.duplicateField"),
@@ -1551,6 +1563,7 @@ function FieldsBedsHierarchy({
         icon: <AgricultureIcon fontSize="small" />,
         onClick: () => handleCreatePlantingPlan(row.bedId!),
       });
+      if (addIndividuals) createActions.push(addIndividuals);
     }
 
     const destructiveActions: HierarchyRowAction[] = [{
@@ -1572,6 +1585,7 @@ function FieldsBedsHierarchy({
     handleAddField,
     handleCreatePlantingPlan,
     handleDuplicateBed,
+    onAddIndividualPlants,
     openDuplicateField,
     t,
   ]);
@@ -1771,6 +1785,7 @@ function FieldsBedsHierarchy({
   const openNameCellMenu = useEventCallback(handleNameCellContextMenu);
   const expandOneLevel = useEventCallback(hierarchyLevelToggle.expandOneLevel);
   const collapseOneLevel = useEventCallback(hierarchyLevelToggle.collapseOneLevel);
+  const showInlineIndividualCount = columnVisibilityModel[INDIVIDUAL_PLANT_COUNT_FIELD] === false;
 
   /**
    * Create columns with callbacks
@@ -1795,6 +1810,7 @@ function FieldsBedsHierarchy({
         disableInlineHoverActions: showPersistentContextMenuButton,
         onOpenContextMenuFromButton: handleContextMenuButtonOpen,
         showPersistentContextMenuButton,
+        showInlineIndividualCount,
         // Embedded directly in the "Name" column header instead of a
         // dedicated row above the table (see HierarchyLevelButtons).
         // Desktop-only, matching the toggle's previous placement.
@@ -1830,6 +1846,7 @@ function FieldsBedsHierarchy({
     effectiveNameColumnWidth,
     nameColumnWidthLimit,
     showPersistentContextMenuButton,
+    showInlineIndividualCount,
     isMobileViewport,
     hierarchyLevelToggle.canExpand,
     hierarchyLevelToggle.canCollapse,
@@ -2059,7 +2076,8 @@ function FieldsBedsHierarchy({
     return formatHierarchyValue(row.area_sqm);
   }, [formatHierarchyValue]);
 
-  const getHierarchyRowClipboardValues = useCallback((row: HierarchyRow): string[] => [
+  const getHierarchyRowClipboardValues = useCallback((row: HierarchyRow): string[] => row.type === 'individualPlan'
+    ? [row.name ?? '', '', '', '', ''] : [
     row.name ?? "",
     row.type === "location" ? "—" : formatHierarchyValue(row.length_m),
     row.type === "location" ? "—" : formatHierarchyValue(row.width_m),
