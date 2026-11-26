@@ -236,8 +236,9 @@ function RootLayout() {
   const [topbarContextActions, setTopbarContextActions] = useState<TopbarContextAction[]>([]);
   const [topbarTitleActions, setTopbarTitleActions] = useState<TopbarContextAction[]>([]);
   const [topbarWorkspaceControls, setTopbarWorkspaceControls] = useState<React.ReactNode>(null);
-  const { wrapped: workspaceControlsWrapped, toolbarRef: controlsToolbarRef, titleRef: controlsTitleRef,
-    controlsRef: workspaceControlsRef, pageActionsRef, globalControlsRef } = useResponsiveTopbarControls(Boolean(topbarWorkspaceControls), isCompactTopbar);
+  const { wrapped: workspaceControlsWrapped, narrow: topbarWorkspaceNarrow, toolbarRef: controlsToolbarRef,
+    titleRef: controlsTitleRef, controlsRef: workspaceControlsRef, pageActionsRef, globalControlsRef } =
+    useResponsiveTopbarControls(Boolean(topbarWorkspaceControls), isCompactTopbar, theme.breakpoints.values.sm);
   const [cropActionsMenuAnchor, setCropActionsMenuAnchor] = useState<null | HTMLElement>(null);
   const [mobileActionsOverflowAnchor, setMobileActionsOverflowAnchor] = useState<null | HTMLElement>(null);
   const [topbarPrimaryActionMenuAnchor, setTopbarPrimaryActionMenuAnchor] = useState<null | HTMLElement>(null);
@@ -804,6 +805,7 @@ function RootLayout() {
     return <Navigate to="/app/project-selection" replace />;
   }
 
+  const fieldsListTitle = location.pathname === '/app/fields-beds' && !isFieldsBedsGraphicalViewActive;
   const primaryActionButton = (
     topbarPrimaryAction ? (
             topbarPrimaryAction.menuActions && topbarPrimaryAction.menuActions.length > 0 ? (
@@ -834,16 +836,26 @@ function RootLayout() {
                 </Button>
               </ButtonGroup>
             ) : (
-              <AppTooltip title={topbarPrimaryAction.tooltip ?? (isPhone ? topbarPrimaryAction.label : '')}>
+              <AppTooltip title={topbarPrimaryAction.tooltip ?? (isPhone || fieldsListTitle ? topbarPrimaryAction.label : '')}>
                 <Button
                   size="small"
                   variant="contained"
                   onClick={handleTopbarPrimaryAction}
                   aria-label={topbarPrimaryAction.tooltip ?? topbarPrimaryAction.label}
                   startIcon={!isPhone ? <AddIcon fontSize="small" /> : undefined}
-                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', minWidth: isPhone ? 44 : 'auto', minHeight: isPhone ? 44 : 'auto', px: isPhone ? 0.75 : 1.25, flexShrink: 0 }}
+                  sx={{ textTransform: 'none', whiteSpace: 'nowrap', minWidth: isPhone ? 44 : 'auto', minHeight: isPhone ? 44 : 'auto', px: isPhone ? 0.75 : 1.25, flexShrink: 0,
+                    ...(fieldsListTitle ? {
+                      '@container workspace-topbar (max-width: 66rem)': {
+                        minWidth: 44, minHeight: 44,
+                        '& .MuiButton-startIcon': { m: 0 },
+                        '& [data-primary-action-label]': { display: 'none' },
+                      },
+                    } : {}),
+                  }}
                 >
-                  {isPhone ? <AddIcon fontSize="small" /> : topbarPrimaryAction.label}
+                  {isPhone ? <AddIcon fontSize="small" /> : fieldsListTitle ? (
+                    <Box component="span" data-primary-action-label>{topbarPrimaryAction.label}</Box>
+                  ) : topbarPrimaryAction.label}
                 </Button>
               </AppTooltip>
             )
@@ -937,7 +949,9 @@ function RootLayout() {
   const workspaceTitleGroup = topbarWorkspaceControls ? (
     <Box ref={workspaceControlsRef} role="toolbar" aria-label={currentPageTitle}
       data-testid="topbar-workspace-controls"
-      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', width: 'max-content', maxWidth: '100%', minWidth: 0 }}>
+      sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap',
+        width: topbarWorkspaceNarrow && isFieldsBedsGraphicalViewActive ? '100%' : 'max-content',
+        maxWidth: '100%', minWidth: 0 }}>
       {titleActionButtons}{topbarWorkspaceControls}
       {workspaceControlsWrapped && !isCompactTopbar ? primaryActionButton : null}
     </Box>
@@ -1058,7 +1072,7 @@ function RootLayout() {
         sx={{
           borderBottom: '1px solid', borderColor: 'surface.surfaceBorder',
           bgcolor: 'surface.topbarBackground', backdropFilter: 'saturate(120%) blur(2px)',
-          ...(topbarWorkspaceControls ? { containerType: 'inline-size', containerName: 'workspace-topbar' } : {}),
+          ...(topbarWorkspaceControls || fieldsListTitle ? { containerType: 'inline-size', containerName: 'workspace-topbar' } : {}),
         }}
       >
         <Toolbar
@@ -2039,6 +2053,7 @@ function RootLayout() {
           setTopbarContextActions,
           setTopbarTitleActions,
           setTopbarWorkspaceControls,
+          topbarWorkspaceNarrow,
           activeSeasonYear,
           activeSeason: activeSeason.activeSeason,
           projectSeasons: activeSeason.seasons,

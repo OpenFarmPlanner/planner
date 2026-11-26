@@ -1,11 +1,12 @@
 import { forwardRef } from 'react';
-import { Button } from '@mui/material';
 import ViewColumnIcon from '@mui/icons-material/ViewColumn';
+import { ResponsiveToolbarAction } from '../buttons/ResponsiveToolbarAction';
 
 interface ColumnsPanelButtonProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   label: string;
+  labelQuery?: string;
 }
 
 /**
@@ -19,13 +20,15 @@ interface ColumnsPanelButtonProps {
  * back to anchoring the panel at the grid's own top-right corner.
  */
 export const ColumnsPanelButton = forwardRef<HTMLButtonElement, ColumnsPanelButtonProps>(
-  function ColumnsPanelButton({ open, onOpenChange, label }, ref) {
+  function ColumnsPanelButton({ open, onOpenChange, label, labelQuery }, ref) {
     return (
-      <Button
+      <ResponsiveToolbarAction
         ref={ref}
         variant="outlined"
         color="inherit"
-        startIcon={<ViewColumnIcon fontSize="small" />}
+        icon={<ViewColumnIcon fontSize="small" />}
+        label={label}
+        labelQuery={labelQuery}
         aria-haspopup="dialog"
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
@@ -38,10 +41,7 @@ export const ColumnsPanelButton = forwardRef<HTMLButtonElement, ColumnsPanelButt
             event.stopPropagation();
           }
         }}
-        sx={{ minHeight: 40 }}
-      >
-        {label}
-      </Button>
+      />
     );
   },
 );

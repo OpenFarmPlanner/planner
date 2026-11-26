@@ -9,18 +9,20 @@ function controlsWidth(element: HTMLElement | null): number {
 }
 
 /** Measures the shared title controls against actual page actions and global controls. */
-export function useResponsiveTopbarControls(enabled: boolean, compact: boolean) {
+export function useResponsiveTopbarControls(enabled: boolean, compact: boolean, compactWidth: number) {
   const toolbarRef = useRef<HTMLDivElement | null>(null);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
   const controlsRef = useRef<HTMLDivElement | null>(null);
   const pageActionsRef = useRef<HTMLDivElement | null>(null);
   const globalControlsRef = useRef<HTMLDivElement | null>(null);
   const [wrapped, setWrapped] = useState(true);
+  const [narrow, setNarrow] = useState(false);
 
   useLayoutEffect(() => {
     if (!enabled || !toolbarRef.current) return;
     const toolbar = toolbarRef.current;
     const measure = () => {
+      setNarrow(toolbar.clientWidth < compactWidth);
       const style = getComputedStyle(toolbar);
       const padding = (Number.parseFloat(style.paddingLeft) || 0) + (Number.parseFloat(style.paddingRight) || 0);
       const gap = Number.parseFloat(style.columnGap) || 0;
@@ -41,5 +43,5 @@ export function useResponsiveTopbarControls(enabled: boolean, compact: boolean) 
     return () => { observer?.disconnect(); window.removeEventListener('resize', measure); };
   });
 
-  return { wrapped, toolbarRef, titleRef, controlsRef, pageActionsRef, globalControlsRef };
+  return { wrapped, narrow, toolbarRef, titleRef, controlsRef, pageActionsRef, globalControlsRef };
 }

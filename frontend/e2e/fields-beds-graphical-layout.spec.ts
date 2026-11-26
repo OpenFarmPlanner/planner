@@ -361,7 +361,7 @@ async function activeCamera(page: Page) {
 }
 
 async function selectLocation(page: Page, name: string) {
-  await page.getByRole('combobox', { name: 'Standort', exact: true }).click();
+  await page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ }).click();
   await page.getByRole('option', { name, exact: true }).click();
   await expect(page.getByRole('region', { name: `Standort: ${name}`, exact: true })).toBeVisible();
   await page.waitForLoadState('networkidle');
@@ -556,16 +556,22 @@ test.describe('location spacing in a touch-capable browser', () => {
       await page.reload();
       const spacingButton = page.getByRole('button', { name: button, exact: true });
       const editButton = page.getByRole('button', { name: edit, exact: true });
+      const mode = page.getByRole('button', { name: displayLabel, exact: true });
       await expect(editButton).toBeVisible();
-      await expect(editButton.locator('[data-graphical-action-label]')).toBeHidden();
-      await expect(spacingButton.locator('[data-graphical-action-label]')).toBeHidden();
+      await expect(editButton.locator('[data-toolbar-action-label]')).toBeHidden();
+      await expect(spacingButton).toHaveCount(0);
       await expect.poll(async () => {
-        const [editBox, spacingBox] = await Promise.all([editButton.boundingBox(), spacingButton.boundingBox()]);
-        return editBox && spacingBox && [editBox, spacingBox].every(box => box.width >= 44 && box.height >= 44)
-          && spacingBox.x >= editBox.x + editBox.width - 1
-          && spacingBox.y < editBox.y + editBox.height && spacingBox.x + spacingBox.width <= 375;
+        const [editBox, menuBox] = await Promise.all([editButton.boundingBox(), mode.boundingBox()]);
+        return editBox && menuBox && [editBox, menuBox].every(box => box.width >= 44 && box.height >= 44)
+          && menuBox.x >= editBox.x + editBox.width - 1
+          && menuBox.y < editBox.y + editBox.height && menuBox.x + menuBox.width <= 375;
       }).toBe(true);
-      await spacingButton.tap();
+      await mode.tap();
+      await expect(page.getByRole('menuitemradio')).toHaveCount(4);
+      await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
+      const spacingItem = page.getByRole('menuitem', { name: button, exact: true });
+      await expect.poll(async () => (await spacingItem.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
+      await spacingItem.tap();
       const translated = page.getByRole('dialog', { name: title });
       await expect(translated).toBeVisible();
       await expect(translated.getByRole('textbox').first()).toBeFocused();
@@ -576,6 +582,14 @@ test.describe('location spacing in a touch-capable browser', () => {
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
       await page.screenshot({ path: testInfo.outputPath(`location-spacing-${locale}.png`), animations: 'disabled' });
       await page.keyboard.press('Escape');
+      await expect(mode).toBeFocused();
+      if (locale === 'de') {
+        await mode.press('Enter');
+        await spacingItem.press('Enter');
+        await expect(translated.getByText(shift)).toBeVisible();
+        await page.keyboard.press('Escape');
+        await expect(mode).toBeFocused();
+      }
       const locationTarget = page.locator('[data-graphical-object-target^="location:"]');
       await locationTarget.press('Enter');
       const objectPreview = page.getByTestId('graphical-object-preview');
@@ -583,13 +597,6 @@ test.describe('location spacing in a touch-capable browser', () => {
       await page.keyboard.press('Escape');
       await locationTarget.press('Shift+F10');
       await expect(page.getByRole('menuitem', { name: details })).toBeVisible();
-      await page.keyboard.press('Escape');
-      const mode = page.getByRole('button', { name: displayLabel, exact: true });
-      await expect(mode).toBeVisible();
-      expect((await mode.boundingBox())?.width).toBeGreaterThanOrEqual(44);
-      await mode.tap();
-      await expect(page.getByRole('menuitemradio')).toHaveCount(4);
-      await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
       await page.keyboard.press('Escape');
     }
   });
@@ -786,22 +793,38 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     { width: 2240, height: 1080 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
     { width: 1200, height: 900 },
     { width: 1199, height: 900 }, { width: 1024, height: 768 }, { width: 768, height: 1024 },
-    { width: 375, height: 800 }, { width: 800, height: 375 },
+    { width: 320, height: 800 }, { width: 375, height: 800 }, { width: 800, height: 375 },
     { width: 1024, height: 500 },
   ]) {
     await page.setViewportSize(viewport);
     const edit = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
     const spacing = page.getByRole('button', { name: 'Abstände', exact: true });
+    const compact = viewport.width <= 375;
+    const display = graphicDisplayButton(page);
+    const location = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
+    if (compact) {
+      await expect(spacing).toHaveCount(0);
+      await expect(location).toHaveAccessibleName(`Standort · ${longLocationName}`);
+      await expect(location).toHaveText(longLocationName);
+      await expect.poll(async () => {
+        const targets = await Promise.all([
+          page.getByRole('button', { name: 'Liste', exact: true }),
+          page.getByRole('button', { name: 'Grafik', exact: true }), location, edit, display,
+        ].map(item => item.boundingBox()));
+        return targets.every(box => box && box.width >= 44 && box.height >= 44)
+          && targets.every(box => box && targets[0] && Math.abs(box.y - targets[0].y) <= 1);
+      }).toBe(true);
+    }
     if (viewport.width === 1200) {
-      const label = edit.locator('[data-graphical-action-label]');
+      const label = edit.locator('[data-toolbar-action-label]');
       await expect(label).toBeHidden();
       await page.getByRole('button', { name: 'Sidebar einklappen' }).click();
       await expect(label).toBeVisible();
       await page.getByRole('button', { name: 'Sidebar ausklappen' }).click();
       await expect(label).toBeHidden();
     }
-    for (const button of [edit, spacing]) {
-      const label = button.locator('[data-graphical-action-label]');
+    for (const button of compact ? [edit] : [edit, spacing]) {
+      const label = button.locator('[data-toolbar-action-label]');
       if (viewport.width >= 1440) await expect(label).toBeVisible();
       if (viewport.width < 1200) await expect(label).toBeHidden();
       await expect.poll(async () => {
@@ -812,9 +835,10 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),
-        ...['Liste', 'Grafik', 'Grafik bearbeiten', 'Abstände'].map(name => page.getByRole('button', { name, exact: true })),
+        ...['Liste', 'Grafik', 'Grafik bearbeiten'].map(name => page.getByRole('button', { name, exact: true })),
+        compact ? display : spacing,
         page.getByRole('button', { name: /^Standort hinzufügen/ }),
-        page.getByRole('combobox', { name: 'Standort', exact: true }),
+        location,
       ].map(locator => locator.boundingBox()));
       return rects.every(rect => rect && rect.x >= 0 && rect.y >= 0 && rect.x + rect.width <= viewport.width + 1 && rect.y + rect.height <= viewport.height)
         && rects.every((rect, index) => rect && rects.slice(index + 1).every(other => other &&
@@ -1212,12 +1236,16 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   expect(reads.filter(url => url.searchParams.get('location') === String(site.id))).toHaveLength(1);
   expect(reads.filter(url => url.searchParams.has('bed'))).toHaveLength(0);
 
+  await page.setViewportSize({ width: 375, height: 800 });
   await selectGraphicDisplay(page, 'Kulturen');
-  await expect(dateButton).toBeVisible();
+  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
   expect((await shape(harvest)).urgency).toBeNull();
   await selectGraphicDisplay(page, 'Aufgaben');
   await expect(dateButton).toHaveCount(0);
   expect((await shape(harvest)).phase).toBeNull();
+  await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
+  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-combined-375.png') });
   await selectGraphicDisplay(page, 'Anbauflächen');
   await page.reload();
   await expect(display).toHaveAccessibleName('Darstellung der Grafik · Anbauflächen');

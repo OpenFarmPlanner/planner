@@ -84,6 +84,9 @@ implementations).
   (`keys: [{ ctrl: true, key: 'k' }, { alt: true, key: 'k' }]`) — used for
   the command palette, which now opens on **Ctrl+K** (the convention used by
   VS Code, Slack, Linear, GitHub) as well as the app's original **Alt+K**.
+  The one-time shortcut notification appears only when the available input can
+  hover or the layout is otherwise keyboard-oriented. A touch-only layout keeps
+  the notification eligible for later and leaves both shortcuts available.
 - Punctuation keys (`?`, `/`) match regardless of the Shift key's actual
   state, since whether they need Shift depends on keyboard layout (e.g. `/`
   is Shift+7 on a German keyboard) — see `isShiftInsensitiveKey` in

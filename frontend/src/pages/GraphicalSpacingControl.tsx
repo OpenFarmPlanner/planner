@@ -1,11 +1,14 @@
-import { useId, useState, type FormEvent, type MouseEvent } from 'react';
-import { Alert, Box, Button, Checkbox, FormControlLabel, Popover, Stack, TextField, Typography, useMediaQuery } from '@mui/material';
+import { useId, useState, type FormEvent, type ReactNode } from 'react';
+import { Alert, Box, Button, Checkbox, FormControlLabel, Popover, Stack, TextField, Typography } from '@mui/material';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import type { Location, LocationPathSpacing } from '../api/types';
 import { defaultLocationPathSpacing, getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { useTranslation } from '../i18n';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale, parseLocalizedNumber } from '../utils/numberLocalization';
-import { GraphicalWorkspaceAction } from './GraphicalWorkspaceAction';
+import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
+import { useTouchOnly } from '../hooks/useTouchOnly';
+
+export type OpenGraphicalSpacing = (anchor: HTMLButtonElement, keyboard: boolean) => void;
 
 interface SpacingDraft {
   bed: string;
@@ -23,15 +26,17 @@ const isValidSpacing = (value: number | null): value is number =>
   value !== null && Number.isFinite(value) && value >= 0;
 
 export function GraphicalSpacingControl({
-  location, onSave,
+  location, onSave, compact, children,
 }: {
   location: Location;
   onSave: (id: number, spacing: LocationPathSpacing) => Promise<void>;
+  compact: boolean;
+  children: (openSpacing: OpenGraphicalSpacing) => ReactNode;
 }) {
   const { t } = useTranslation('fields');
   const locale = getActiveFormattingLocale();
   const id = useId();
-  const touchOnly = useMediaQuery('(any-pointer: coarse) and (any-hover: none)');
+  const touchOnly = useTouchOnly();
   const [openedByKeyboard, setOpenedByKeyboard] = useState(false);
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [draft, setDraft] = useState<SpacingDraft>(() => toDraft(getLocationPathSpacing(location), locale));
@@ -40,11 +45,11 @@ export function GraphicalSpacingControl({
   const bed = parseLocalizedNumber(draft.bed, locale);
   const parcel = parseLocalizedNumber(draft.parcel, locale);
 
-  const open = (event: MouseEvent<HTMLButtonElement>): void => {
+  const open: OpenGraphicalSpacing = (trigger, keyboard) => {
     setDraft(toDraft(getLocationPathSpacing(location), locale));
     setSaveFailed(false);
-    setOpenedByKeyboard(event.detail === 0);
-    setAnchor(event.currentTarget);
+    setOpenedByKeyboard(keyboard);
+    setAnchor(trigger);
   };
 
   const submit = async (event: FormEvent<HTMLFormElement>): Promise<void> => {
@@ -68,15 +73,17 @@ export function GraphicalSpacingControl({
 
   return (
     <>
-      <GraphicalWorkspaceAction
+      {!compact && <ResponsiveToolbarAction
         variant="outlined"
         label={t('graphical.spacing.button')}
+        labelQuery={WORKSPACE_TOOLBAR_LABEL_QUERY}
         icon={<StraightenIcon fontSize="small" />}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
         aria-controls={anchor ? id : undefined}
-        onClick={open}
-      />
+        onClick={event => open(event.currentTarget, event.detail === 0)}
+      />}
+      {children(open)}
       <Popover
         open={Boolean(anchor)}
         anchorEl={anchor}
