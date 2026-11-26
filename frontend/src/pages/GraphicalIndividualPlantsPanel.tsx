@@ -1,4 +1,4 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   Alert, Box, Button, Divider, IconButton, MenuItem, Paper, Stack, TextField, Typography,
 } from '@mui/material';
@@ -131,7 +131,7 @@ export function GraphicalIndividualPlantsPanel({
     ? positive(getEffectiveCropValue(crop, 'distance_within_row_cm')) ?? positive(getEffectiveCropValue(crop, 'row_spacing_cm'))
     : null;
   const recommended = spacing === null ? positive(plan?.recommended_plant_spacing_m) : spacing / 100;
-  const { pairs, closest } = useMemo(() => shortStemSpacing(stems, recommended), [stems, recommended]);
+  const { pairs, closest } = shortStemSpacing(stems, recommended);
   const canopy = draft ? draft.canopy : plan?.estimated_canopy_diameter_m;
   const [invalidCanopy, setInvalidCanopy] = useState(false);
   // Shown directly when a crop suggestion or a saved value exists; otherwise behind an optional disclosure.

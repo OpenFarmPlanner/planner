@@ -54,17 +54,21 @@ export function canvasToStem(
 }
 
 export function shortStemSpacing(stems: readonly StemCoordinates[], recommended: number | null) {
-  const result = { pairs: 0, closest: null as number | null };
-  if (!recommended) return result;
+  if (!recommended) return { pairs: 0, closest: null };
+  const threshold = recommended * recommended;
+  let pairs = 0;
+  let closestSquared = threshold;
   stems.forEach((stem, index) => {
     for (let previous = 0; previous < index; previous += 1) {
       const peer = stems[previous];
-      const distance = Math.hypot(stem.x_m - peer.x_m, stem.y_m - peer.y_m);
-      if (distance < recommended) {
-        result.pairs += 1;
-        result.closest = Math.min(result.closest ?? distance, distance);
+      const dx = stem.x_m - peer.x_m;
+      const dy = stem.y_m - peer.y_m;
+      const squared = dx * dx + dy * dy;
+      if (squared < threshold) {
+        pairs += 1;
+        closestSquared = Math.min(closestSquared, squared);
       }
     }
   });
-  return result;
+  return { pairs, closest: pairs > 0 ? Math.sqrt(closestSquared) : null };
 }
