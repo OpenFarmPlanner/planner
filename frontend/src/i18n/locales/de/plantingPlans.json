@@ -384,7 +384,8 @@
     "capacity": {
       "partial": "{{free}} von {{total}} m² frei im Zeitraum",
       "insufficient": "Nur {{free}} m² frei im Zeitraum ({{blockingCulture}} bis {{date}}), benötigt {{needed}} m²",
-      "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²"
+      "insufficientWithoutBlocker": "Nur {{free}} m² frei im Zeitraum, benötigt {{needed}} m²",
+      "unknownIndividual": "Freie Fläche unbekannt (Einzelpflanzen im Beet)"
     }
   },
   "harvestOverlap": {

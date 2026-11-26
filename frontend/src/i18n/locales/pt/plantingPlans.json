@@ -393,7 +393,8 @@
     "capacity": {
       "partial": "{{free}} de {{total}} m² livres neste período",
       "insufficient": "Apenas {{free}} m² livres neste período ({{blockingCulture}} até {{date}}); são necessários {{needed}} m²",
-      "insufficientWithoutBlocker": "Apenas {{free}} m² livres neste período; são necessários {{needed}} m²"
+      "insufficientWithoutBlocker": "Apenas {{free}} m² livres neste período; são necessários {{needed}} m²",
+      "unknownIndividual": "Área livre desconhecida (plantas individuais no canteiro)"
     }
   },
   "harvestOverlap": {

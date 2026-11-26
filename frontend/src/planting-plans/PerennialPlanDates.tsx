@@ -44,7 +44,7 @@ export function PerennialPlanDates({ plan, editable, onSaved, onDirtyChange }: P
           bed_id: plan.bed, start_date: plan.planting_date, clearing_date: draft,
           crop_id: plan.crop ?? undefined, exclude_plan_id: plan.id,
         });
-        if (capacity.has_bed_area && capacity.remaining_area_sqm < area) {
+        if (capacity.has_bed_area && (capacity.unallocated_measured_area_sqm ?? capacity.remaining_area_sqm ?? 0) < area) {
           setSaveError(t('perennial.insufficientArea'));
           return;
         }

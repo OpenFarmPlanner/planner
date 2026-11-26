@@ -34,6 +34,7 @@
     "issueCount_other": "Perceelrotatie niet mogelijk: {{count}} problemen",
     "showIssues": "Problemen tonen",
     "missingArea": "Vul de oppervlaktes van {{source_bed}} en {{bed}} in om de rotatie toe te passen.",
+    "incompatiblePlacement": "De individuele planten uit {{source_bed}} passen niet in {{bed}}. Kopieer zonder perceelrotatie.",
     "noCapacity": "De vrije ruimte in {{bed}} op {{parcel}} is onvoldoende voor de gekopieerde teeltplannen.",
     "areaChange": "Bezette oppervlakte {{old}} → {{next}} m²",
     "countChange": "Berekend aantal planten {{old}} → {{next}}",

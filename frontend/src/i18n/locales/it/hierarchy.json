@@ -37,6 +37,7 @@
     "issueCount_other": "Rotazione tra appezzamenti non possibile: {{count}} problemi",
     "showIssues": "Mostra problemi",
     "missingArea": "Inserisci le superfici di {{source_bed}} e {{bed}} per applicare la rotazione.",
+    "incompatiblePlacement": "Le piante singole di {{source_bed}} non entrano in {{bed}}. Copia senza rotazione delle parcelle.",
     "noCapacity": "La superficie libera di {{bed}}, in {{parcel}}, è insufficiente per i piani copiati.",
     "areaChange": "Superficie occupata {{old}} → {{next}} m²",
     "countChange": "Numero di piante calcolato {{old}} → {{next}}",

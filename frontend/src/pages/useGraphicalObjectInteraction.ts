@@ -27,7 +27,9 @@ function eventPoint(event: MouseEvent | TouchEvent): Point | undefined {
   return pointer && { x: pointer.clientX, y: pointer.clientY };
 }
 
-export function useGraphicalObjectInteraction(enabled: boolean, scope: number | null, mode: GraphicalDisplayMode) {
+export function useGraphicalObjectInteraction(
+  enabled: boolean, scope: number | null, mode: GraphicalDisplayMode, onSelect?: (key: string) => boolean,
+) {
   const [selection, setSelection] = useState<{ key: string; scope: number | null } | null>(null);
   const [hover, setHover] = useState<{ key: string; point: Point; mode: GraphicalDisplayMode; menuSequence: number } | null>(null);
   const { open: contextMenuOpen, openSequence: menuSequence } = useContextMenuOpenSnapshot();
@@ -63,6 +65,10 @@ export function useGraphicalObjectInteraction(enabled: boolean, scope: number | 
     cancelTap();
     setMenu(null);
     setHover(null);
+    if (onSelect?.(key)) {
+      setSelection(null);
+      return;
+    }
     setSelection({ key, scope });
   };
 

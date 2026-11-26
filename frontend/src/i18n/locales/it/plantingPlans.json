@@ -393,7 +393,8 @@
     "capacity": {
       "partial": "{{free}} di {{total}} m² liberi in questo periodo",
       "insufficient": "Solo {{free}} m² liberi in questo periodo ({{blockingCulture}} fino al {{date}}), necessari {{needed}} m²",
-      "insufficientWithoutBlocker": "Solo {{free}} m² liberi in questo periodo, necessari {{needed}} m²"
+      "insufficientWithoutBlocker": "Solo {{free}} m² liberi in questo periodo, necessari {{needed}} m²",
+      "unknownIndividual": "Superficie libera sconosciuta (piante singole nell’aiuola)"
     }
   },
   "harvestOverlap": {

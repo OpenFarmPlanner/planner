@@ -82,6 +82,7 @@ export function buildBedCapacityTimelines(
   for (const plan of plans) {
     const events = plan.bed === null ? undefined : eventsByBed.get(plan.bed);
     if (!events || (plan.id !== undefined && seenPlans.has(plan.id))) continue;
+    if (plan.placement_mode === 'individual_bed' && plan.individual_positions?.length === 0) continue;
     const planted = calendarDay(plan.seasonal_harvest?.occupancy_start_date ?? plan.planting_date);
     // Same inclusive last-day contract as PlantingPlan.occupancy_end_date.
     const occupiedUntil = calendarDay(

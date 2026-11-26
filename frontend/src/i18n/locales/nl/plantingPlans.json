@@ -384,7 +384,8 @@
     "capacity": {
       "partial": "{{free}} van {{total}} m² vrij in deze periode",
       "insufficient": "Slechts {{free}} m² vrij in deze periode ({{blockingCulture}} tot {{date}}), {{needed}} m² nodig",
-      "insufficientWithoutBlocker": "Slechts {{free}} m² vrij in deze periode, {{needed}} m² nodig"
+      "insufficientWithoutBlocker": "Slechts {{free}} m² vrij in deze periode, {{needed}} m² nodig",
+      "unknownIndividual": "Vrije oppervlakte onbekend (individuele planten in het bed)"
     }
   },
   "harvestOverlap": {

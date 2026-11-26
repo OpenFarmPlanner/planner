@@ -1,7 +1,23 @@
-import type { Field, StemCoordinates } from '../api/types';
+import type { Field, PlantingPlan, StemCoordinates } from '../api/types';
 import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
 
-export function parcelMeters(field: Pick<Field, 'width_m' | 'length_m'>) {
+export type PlacementDimensions = Pick<Field, 'width_m' | 'length_m'>;
+export type PlacementParent = { kind: 'field' | 'bed'; id: number };
+
+export function isIndividualPlacement(plan: Pick<PlantingPlan, 'placement_mode' | 'parcel'>): boolean {
+  return plan.placement_mode === 'individual_bed' || plan.parcel != null;
+}
+
+export function planPlacementParent(plan: PlantingPlan): PlacementParent | null {
+  if (plan.placement_mode === 'individual_bed' && plan.bed != null) return { kind: 'bed', id: plan.bed };
+  return plan.parcel == null ? null : { kind: 'field', id: plan.parcel };
+}
+
+export function matchesPlacementParent(a: PlacementParent | null | undefined, b: PlacementParent) {
+  return a?.kind === b.kind && a.id === b.id;
+}
+
+export function parcelMeters(field: PlacementDimensions) {
   const width = field.width_m ?? 0;
   const height = field.length_m ?? 0;
   return Number.isFinite(width) && Number.isFinite(height) && width > 0 && height > 0
@@ -9,7 +25,7 @@ export function parcelMeters(field: Pick<Field, 'width_m' | 'length_m'>) {
 }
 
 export function stemToCanvas(
-  stem: StemCoordinates, field: Field, surface: Rect, rotation: GraphicalRotation,
+  stem: StemCoordinates, field: PlacementDimensions, surface: Rect, rotation: GraphicalRotation,
 ): Position | null {
   const dimensions = parcelMeters(field);
   if (!dimensions) return null;
@@ -24,7 +40,7 @@ export function roundMeters(value: number): number {
 }
 
 export function canvasToStem(
-  point: Position, field: Field, surface: Rect, rotation: GraphicalRotation,
+  point: Position, field: PlacementDimensions, surface: Rect, rotation: GraphicalRotation,
 ): StemCoordinates | null {
   const dimensions = parcelMeters(field);
   if (!dimensions || !surface.width || !surface.height) return null;

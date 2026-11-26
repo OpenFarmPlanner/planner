@@ -30,7 +30,7 @@ def compute_plan_plant_count(
     general_crop_index: GeneralCropIndex | None = None,
 ) -> PlantCountResult:
     """Count confirmed stems, or derive the count for an area-based plan."""
-    if plan.parcel_id is not None:
+    if plan.is_individual:
         return PlantCountResult(count=len(plan.individual_positions))
     blockers: list[str] = []
     area = Decimal(str(plan.area_usage_sqm)) if plan.area_usage_sqm else Decimal('0')

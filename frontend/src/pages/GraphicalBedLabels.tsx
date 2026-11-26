@@ -7,7 +7,6 @@ import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import type { BedViewModel } from './graphicalFieldsGeometry';
-import { FIELD_INNER_OFFSET_X, FIELD_INNER_OFFSET_Y } from './graphicalFieldsGeometry';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
 import { bedCropDisplayName, bedCropPhaseLabel, includesCrops, includesTasks, type BedCultivationEntry, type GraphicalDisplayMode } from './graphicalCultivation';
 import { getBedLabelLayout } from './graphicalViewport';
@@ -27,7 +26,7 @@ export function GraphicalBedLabels({ bed, scale, mode, detailedArea, crops, task
   const theme = useTheme();
   const width = bed.width * scale;
   const height = bed.height * scale;
-  const origin = { x: FIELD_INNER_OFFSET_X + bed.x, y: FIELD_INNER_OFFSET_Y + bed.y };
+  const origin = { x: 0, y: 0 };
   const showTasks = includesTasks(mode) && tasks.length > 0 && urgency && urgency !== 'completed';
   const badge = showTasks ? BED_TASK_SYMBOLS[urgency] : null;
   const colors = showTasks ? bedTaskColors(theme, urgency) : null;

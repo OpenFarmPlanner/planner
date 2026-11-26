@@ -16,6 +16,7 @@ import { useHierarchyData } from "../components/hierarchy/hooks/useHierarchyData
 import { getLocationPathSpacing } from "../components/hierarchy/utils/locationPathSpacing";
 import {
   layoutAPI,
+  type PlantingPlan,
   type BedLayoutEntry,
   type FieldLayoutEntry,
   type LocationBoundaryOrigin,
@@ -35,7 +36,8 @@ import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
-import { getDirectlyDraggableStemPlans, useIndividualPlants } from "./useIndividualPlants";
+import { getDirectlyDraggableStemPlans, MAX_INDIVIDUAL_POSITIONS, readyForPlacement, useIndividualPlants } from "./useIndividualPlants";
+import { matchesPlacementParent, parcelMeters, planPlacementParent, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
@@ -139,6 +141,18 @@ export default function GraphicalFields({
   const individualPlants = useIndividualPlants(
     activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan,
   );
+  const plansByParent = useMemo(() => {
+    const grouped = new Map<string, PlantingPlan[]>();
+    for (const plan of individualPlants.plans) {
+      const parent = planPlacementParent(plan);
+      if (!parent) continue;
+      const key = graphicalObjectKey(parent.kind, parent.id);
+      const group = grouped.get(key);
+      if (group) group.push(plan);
+      else grouped.set(key, [plan]);
+    }
+    return grouped;
+  }, [individualPlants.plans]);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -150,7 +164,8 @@ export default function GraphicalFields({
   >({});
   const [layoutAttempt, setLayoutAttempt] = useState(0);
   const [layoutLoad, setLayoutLoad] = useState({ locationId: null as number | null, attempt: -1, error: false });
-  const [fieldSaveErrorLocation, setFieldSaveErrorLocation] = useState<number | null>(null);
+  const latestSavedBedLayouts = useRef(new Map<number, BedLayoutEntry>());
+  const [layoutSaveErrorLocation, setLayoutSaveErrorLocation] = useState<number | null>(null);
   const layoutReady = activeLocationId === null || (layoutLoad.locationId === activeLocationId && layoutLoad.attempt === layoutAttempt);
   const layoutFailed = activeLocationId !== null && layoutReady && layoutLoad.error;
   const [activeGuides, setActiveGuides] = useState<GuideLine[]>([]);
@@ -179,7 +194,19 @@ export default function GraphicalFields({
   };
   const objectInteractionEnabled = Boolean(activeLocationId && !loading && !error && layoutReady && !layoutFailed
     && !globalEditMode && editableLocationId !== activeLocationId && !individualPlants.editor.placing);
-  const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId, displayMode);
+  const chooseIndividualParent = (parent: PlacementParent) => {
+    const item = (parent.kind === 'bed' ? beds : fields).find(item => item.id === parent.id);
+    if (!item || !individualPlants.canEdit) return;
+    if (parcelMeters(item)) individualPlants.startDraft(parent);
+    else individualPlants.update({ open: true, parent, planId: null, choosingParent: true });
+  };
+  const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId, displayMode, key => {
+    if (!individualPlants.editor.choosingParent) return false;
+    const [kind, value] = key.split(':');
+    if (kind !== 'bed' && kind !== 'field') return false;
+    chooseIndividualParent({ kind, id: Number(value) });
+    return true;
+  });
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
   const showCrops = includesCrops(displayMode);
   const showTasks = includesTasks(displayMode);
@@ -289,6 +316,7 @@ export default function GraphicalFields({
         const { data } = await layoutAPI.listByLocation(activeLocationId);
         if (!active) return;
 
+        data.bed_layouts.forEach(layout => latestSavedBedLayouts.current.set(layout.bed, layout));
         setLayoutsByBed((prev) => {
           const next = { ...prev };
           data.bed_layouts.forEach((layout) => { next[layout.bed] = layout; });
@@ -357,10 +385,21 @@ export default function GraphicalFields({
   );
 
   const saveBedLayout = (locationId: number, payload: BedLayoutEntry): void => {
-    void saveTrackedBedLayout(locationId, payload.bed, () => layoutAPI.saveByLocation(locationId, {
-      bed_layouts: [payload],
-      field_layouts: [],
-    })).catch((saveError: unknown) => {
+    setLayoutSaveErrorLocation(null);
+    setLayoutsByBed(previous => ({ ...previous, [payload.bed]: payload }));
+    void saveTrackedBedLayout(locationId, payload.bed, async () => {
+      await layoutAPI.saveByLocation(locationId, { bed_layouts: [payload], field_layouts: [] });
+      latestSavedBedLayouts.current.set(payload.bed, payload);
+    }).catch((saveError: unknown) => {
+      const saved = latestSavedBedLayouts.current.get(payload.bed);
+      setLayoutsByBed(previous => {
+        if (previous[payload.bed] !== payload) return previous;
+        const restored = { ...previous };
+        if (saved) restored[payload.bed] = saved;
+        else delete restored[payload.bed];
+        return restored;
+      });
+      setLayoutSaveErrorLocation(locationId);
       console.error("Failed to save bed layout", saveError);
     });
   };
@@ -371,7 +410,7 @@ export default function GraphicalFields({
     boundaryOrigin: LocationBoundaryOrigin | null,
   ): void => {
     const previousLayout = layoutsByField[payload.field];
-    setFieldSaveErrorLocation(null);
+    setLayoutSaveErrorLocation(null);
     setLayoutsByField((prev) => ({ ...prev, [payload.field]: payload }));
     if (boundaryOrigin) {
       setBoundaryOriginByLocation((prev) => ({ ...prev, [locationId]: boundaryOrigin }));
@@ -394,7 +433,7 @@ export default function GraphicalFields({
         setBoundaryOriginByLocation((prev) => prev[locationId] === boundaryOrigin
           ? { ...prev, [locationId]: null } : prev);
       }
-      setFieldSaveErrorLocation(locationId);
+      setLayoutSaveErrorLocation(locationId);
       console.error("Failed to save field layout", saveError);
     });
   };
@@ -576,7 +615,7 @@ export default function GraphicalFields({
   };
 
   const handleStageDoubleTap = (locationId: number): void => {
-    handleZoom(locationId, ZOOM_STEP);
+    if (!individualPlants.editor.placing) handleZoom(locationId, ZOOM_STEP);
   };
 
   const canStartPanSession = (
@@ -584,7 +623,7 @@ export default function GraphicalFields({
   ): boolean => {
     const target = event.target;
     const stage = target?.getStage?.();
-    if (!stage || (target !== stage && !objects.isObjectTarget(event))) {
+    if (!stage || (target !== stage && !target.hasName("individual-placement-surface") && !objects.isObjectTarget(event))) {
       return false;
     }
     if ("button" in event.evt && event.evt.button !== 0) {
@@ -817,7 +856,6 @@ export default function GraphicalFields({
         const nextLayout: BedLayoutEntry = {
           ...layoutsByBed[bedVm.id], bed: bedVm.id, location: locationId, x: stored.x, y: stored.y, version: 1,
         };
-        setLayoutsByBed(prev => ({ ...prev, [bedVm.id]: nextLayout }));
         saveBedLayout(locationId, nextLayout);
       },
     };
@@ -853,6 +891,9 @@ export default function GraphicalFields({
             .some(node => node.isDragging())) {
             event.preventDefault();
             stopKonvaDragging();
+          } else if (individualPlants.editor.placing || individualPlants.editor.choosingParent) {
+            event.preventDefault();
+            individualPlants.update({ placing: null, choosingParent: false });
           }
           break;
         case "ArrowUp":
@@ -879,13 +920,18 @@ export default function GraphicalFields({
     const handleKeyUp = (event: KeyboardEvent): void => {
       if (event.key === "Shift" && !event.shiftKey) areaDrag.preview(false);
     };
+    const captureEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") handleKeyDown(event);
+    };
+    window.addEventListener("keydown", captureEscape, true);
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
     return () => {
+      window.removeEventListener("keydown", captureEscape, true);
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [areaDrag, effectiveActivePanLocationId, handlePanByOffset, layoutFailed, layoutReady]);
+  }, [areaDrag, effectiveActivePanLocationId, handlePanByOffset, individualPlants, layoutFailed, layoutReady]);
 
   if (loading || !layoutReady) {
     return (
@@ -994,13 +1040,51 @@ export default function GraphicalFields({
               y: stageHeight / 2 - (rect.y + rect.height / 2) * viewport.scale,
             } }));
           };
+          const renderPlacement = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect) => {
+            const measured = parcelMeters(dimensions);
+            if (!measured) return null;
+            const draft = matchesPlacementParent(stemDraft?.parent, parent) ? stemDraft : null;
+            const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
+            const stems: CanvasStem[] = parentPlans.flatMap(plan => (
+              plan.id !== draft?.planId
+                ? (plan.individual_positions ?? []).map(stem => ({ ...stem, key: stem.id, planId: plan.id ?? null,
+                  canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
+                  selected: Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey })) : []
+            ));
+            if (draft) stems.push(...draft.stems.map(stem => ({ ...stem, planId: draft.planId ?? null,
+              canopy: Number(draft.canopy ?? 0), selected: stem.key === individualPlants.editor.selectedKey })));
+            const placing = Boolean(draft && individualSeason && individualPlants.editor.placing
+              && readyForPlacement(draft, individualSeason) && draft.stems.length < MAX_INDIVIDUAL_POSITIONS);
+            if (!placing && !stems.length) return null;
+            const transposed = rotation === 90 || rotation === 270;
+            const pixelsPerMeter = {
+              x: surface.width / (transposed ? measured.height : measured.width),
+              y: surface.height / (transposed ? measured.width : measured.height),
+            };
+            return <GraphicalIndividualPlantsLayer field={dimensions} surface={surface}
+              surfaceId={`individual-place-surface-${parent.kind === 'bed' ? 'bed-' : ''}${parent.id}`}
+              pixelsPerMeter={pixelsPerMeter} rotation={rotation} zoom={viewport.scale} stems={stems}
+              placing={placing} editablePlanId={draft && !individualPlants.editor.saving ? draft.planId ?? null : undefined}
+              onAdd={individualPlants.addStem} draggablePlanIds={draggableStemPlans}
+              captureStems={locationIsEditable && individualPlants.canEdit}
+              onMove={(key, position) => {
+                if (draft?.stems.some(stem => stem.key === key)) {
+                  individualPlants.changeStem(key, position);
+                  return;
+                }
+                const plan = individualPlants.plans.find(item => item.individual_positions?.some(stem => stem.id === key));
+                if (plan?.id) void individualPlants.moveSavedStem(plan.id, key, position);
+              }}
+              onSelect={!locationIsEditable && fullscreenLocationId !== locationId
+                ? stem => individualPlants.select(stem.planId, parent, stem.key) : undefined} />;
+          };
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
                 {locationIsEditable && individualPlants.moveError ? (
                   <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:individualPlants.saveFailed")}</Alert>
                 ) : null}
-                {fieldSaveErrorLocation === locationId ? (
+                {layoutSaveErrorLocation === locationId ? (
                   <Alert severity="error" sx={{ mb: 1.5 }}>{t("fields:errors.save")}</Alert>
                 ) : null}
                 <Box sx={{
@@ -1050,7 +1134,9 @@ export default function GraphicalFields({
                       outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />}
                     individualPlants={individualSeason && !locationIsEditable && fullscreenLocationId !== locationId ? {
                       active: Boolean(showIndividualPanel),
-                      toggle: () => individualPlants.update({ open: !showIndividualPanel, placing: null }),
+                      toggle: () => individualPlants.update({ open: !showIndividualPanel,
+                        choosingParent: !showIndividualPanel && individualPlants.canEdit && !individualPlants.editor.planId
+                          && !individualPlants.editor.draft, placing: null }),
                     } : undefined}
                   />
                   {fullscreenLocationId === locationId && fullscreenDisplayControls && (
@@ -1217,21 +1303,6 @@ export default function GraphicalFields({
                         const baseRect = { field, width: fieldSize.width, height: fieldSize.height };
                         const parcelReport = geometry.parcelReports.get(fieldId);
                         const bedWarnings = getGeometryOutlines(parcelReport?.issues ?? []);
-                        const canvasStems: CanvasStem[] = individualPlants.plans.flatMap(plan => (
-                          plan.parcel === fieldId && plan.id !== stemDraft?.planId
-                            ? (plan.individual_positions ?? []).map(stem => ({
-                              ...stem, key: stem.id, planId: plan.id ?? null,
-                              canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
-                              selected: Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey,
-                            })) : []
-                        ));
-                        if (stemDraft?.parcel === fieldId) {
-                          canvasStems.push(...stemDraft.stems.map(stem => ({
-                            ...stem, planId: stemDraft.planId ?? null,
-                            canopy: Number(stemDraft.canopy ?? 0),
-                            selected: stem.key === individualPlants.editor.selectedKey,
-                          })));
-                        }
                         const bedSpacing = pixelsPerMeter
                           ? { centimeters: pathSpacing.bed_path_spacing_cm, pixelsPerMeter }
                           : undefined;
@@ -1307,8 +1378,10 @@ export default function GraphicalFields({
                                 scaleY={1 / viewport.scale}
                               />
                             ) : null}
-                            {visibility.showBeds
-                              ? bedRects.map((bedVm) => {
+                            {bedRects.filter(bedVm => visibility.showBeds
+                              || matchesPlacementParent(stemDraft?.parent, { kind: 'bed', id: bedVm.id })
+                              || plansByParent.has(graphicalObjectKey('bed', bedVm.id))
+                            ).map((bedVm) => {
                                 const shownMode = locationIsEditable ? 'areas' : displayMode;
                                 const entries = showCrops && !locationIsEditable ? cropsByBed.get(bedVm.id) ?? [] : [];
                                 const tasks = showTasks && !locationIsEditable ? openTasksByBed.get(bedVm.id) ?? [] : [];
@@ -1321,11 +1394,15 @@ export default function GraphicalFields({
                                 const cropFill = phaseColors ? alpha(phaseColors[phase === 'harvest' ? 'harvest' : 'growth'], 0.45)
                                   : entries.length ? alpha(theme.palette.grey[700], 0.22) : undefined;
                                 const fill = includesTasks(shownMode) ? taskColors?.fill : cropFill;
+                                const bed = bedsById.get(bedVm.id);
                                 return (
-                                  <Group key={bedVm.id}>
+                                  <Group key={bedVm.id} name="graphical-editable"
+                                    x={FIELD_INNER_OFFSET_X + bedVm.x} y={FIELD_INNER_OFFSET_Y + bedVm.y}
+                                    {...getBedInteractionProps(
+                                      bedVm, currentFieldRect, fieldUsableArea, bedRects, locationId, storedUsableArea,
+                                      rotation, { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
+                                    )}>
                                     <Rect
-                                      x={FIELD_INNER_OFFSET_X + bedVm.x}
-                                      y={FIELD_INNER_OFFSET_Y + bedVm.y}
                                       width={bedVm.width}
                                       height={bedVm.height}
                                       fill={fill ?? theme.palette.info.light}
@@ -1333,57 +1410,18 @@ export default function GraphicalFields({
                                       data-geometry-issue={bedWarnings.get(bedVm.id)}
                                       data-task-urgency={urgency}
                                       data-crop-phase={phase ?? (entries.length > 1 ? 'mixed' : undefined)}
-                                      name="graphical-editable"
                                       data-testid={`bed-rect-${bedVm.id}`}
                                       data-graphical-object-key={graphicalObjectKey('bed', bedVm.id)}
-                                      {...getBedInteractionProps(
-                                        bedVm,
-                                        currentFieldRect,
-                                        fieldUsableArea,
-                                        bedRects,
-                                        locationId,
-                                        storedUsableArea,
-                                        rotation,
-                                        { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
-                                      )}
                                     />
                                     {visibility.showBedLabels && <GraphicalBedLabels bed={bedVm} scale={viewport.scale}
                                       mode={shownMode} detailedArea={visibility.showDetailedBedLabels}
                                       crops={entries} tasks={tasks} urgency={urgency} />}
+                                    {bed && renderPlacement({ kind: 'bed', id: bedVm.id }, bed,
+                                      { x: 0, y: 0, width: bedVm.width, height: bedVm.height })}
                                   </Group>
                                 );
-                              })
-                              : null}
-                            {pixelsPerMeter && (
-                              <GraphicalIndividualPlantsLayer field={field} surface={fieldUsableArea}
-                                pixelsPerMeter={pixelsPerMeter} rotation={rotation} zoom={viewport.scale}
-                                stems={canvasStems}
-                                placing={stemDraft?.parcel === fieldId && Boolean(individualPlants.editor.placing)}
-                                editablePlanId={stemDraft?.parcel === fieldId && !individualPlants.editor.saving
-                                  ? stemDraft.planId ?? null : undefined}
-                                onAdd={position => {
-                                  const { placing, selectedKey } = individualPlants.editor;
-                                  if (placing === "move" && selectedKey) individualPlants.changeStem(selectedKey, position);
-                                  if (placing === "add") individualPlants.addStem(position);
-                                  const panel = containerRef.current?.querySelector<HTMLElement>("[data-individual-plants-panel]");
-                                  panel?.focus({ preventScroll: true });
-                                  panel?.scrollIntoView({ block: "nearest" });
-                                }}
-                                draggablePlanIds={draggableStemPlans}
-                                captureStems={locationIsEditable && individualPlants.canEdit}
-                                onMove={(key, position) => {
-                                  if (stemDraft?.parcel === fieldId) {
-                                    individualPlants.changeStem(key, position);
-                                    return;
-                                  }
-                                  const plan = individualPlants.plans.find(item => (
-                                    item.individual_positions?.some(stem => stem.id === key)));
-                                  if (plan?.id) void individualPlants.moveSavedStem(plan.id, key, position);
-                                }}
-                                onSelect={!locationIsEditable && fullscreenLocationId !== locationId
-                                  ? stem => individualPlants.select(stem.planId, fieldId, stem.key)
-                                  : undefined} />
-                            )}
+                              })}
+                            {pixelsPerMeter && renderPlacement({ kind: 'field', id: fieldId }, field, fieldUsableArea)}
                           </Group>
                         );
                       })}
@@ -1397,6 +1435,10 @@ export default function GraphicalFields({
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
                     openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks} cropPreview={cropPreview}
+                    onStartIndividualPlan={individualSeason && individualPlants.canEdit && !stemDraft && fullscreenLocationId !== locationId ? object => {
+                      if (object.type !== 'location') chooseIndividualParent({ kind: object.type, id: object.id });
+                      objects.close();
+                    } : undefined}
                     hoverTaskData={showTasks && activeSeasonId !== undefined ? {
                       byBed: openTasksByBed, summaries: taskSummaries, bounds: { today, upcomingEnd },
                       crops: showCrops ? cropsByBed : undefined, cropLoading: showCrops && locationPlans.loading,
@@ -1405,12 +1447,12 @@ export default function GraphicalFields({
                     seasonId={activeSeasonId} canComplete={canCompleteTasks} showLocationLabel={showFallbackLocationLabel} />}
                 </Box>
                 {showIndividualPanel && (
-                  <GraphicalIndividualPlantsPanel fields={parcels.map(({ field }) => field)}
+                  <GraphicalIndividualPlantsPanel fields={parcels.map(({ field }) => field)} beds={beds}
                     season={individualSeason} controller={individualPlants}
                     onClose={() => canvasToolsRefs.current[locationId]?.focus({ preventScroll: true })}
-                    onFocusParcel={fieldId => {
-                      const field = fieldRectsById.get(fieldId);
-                      const bounds = field ? getContentBoundsFromRects([field]) : null;
+                    onFocusParent={({ kind, id }) => {
+                      const rect = objectModel.get(graphicalObjectKey(kind, id))?.rect;
+                      const bounds = rect ? getContentBoundsFromRects([rect]) : null;
                       if (!bounds) return;
                       const next = fitBoundsToStage(bounds, { width: stageWidth, height: stageHeight },
                         getFitViewportPadding(stageWidth, stageHeight));

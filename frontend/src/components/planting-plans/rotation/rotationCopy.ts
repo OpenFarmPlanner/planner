@@ -284,6 +284,7 @@ export function getBedCapacityText(
   numberLocale: string,
   language: string,
 ): string {
+  if (suggestion.has_unmeasured_placement) return t('plantingPlans:rotation.capacity.unknownIndividual');
   const free = suggestion.free_area_sqm;
   if (!suggestion.has_enough_area && free !== null && neededAreaSqm) {
     const values = {

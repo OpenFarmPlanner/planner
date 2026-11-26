@@ -85,9 +85,8 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         help_text='Direct parcel assignment for individual plants.',
     )
     parcel_name = serializers.CharField(source='parcel.name', read_only=True, allow_null=True)
-    parcel_location_id = serializers.IntegerField(
-        source='parcel.location_id', read_only=True, allow_null=True,
-    )
+    parcel_location_id = serializers.SerializerMethodField()
+    placement_mode = serializers.ChoiceField(choices=PlantingPlan.PLACEMENT_MODES, required=False)
     individual_positions = IndividualPlantPositionSerializer(
         many=True, required=False, max_length=MAX_INDIVIDUAL_POSITIONS,
     )
@@ -182,8 +181,12 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     def get_bed_name(self, obj: PlantingPlan) -> str | None:
         return obj.bed.name if obj.bed else None
 
+    def get_parcel_location_id(self, obj: PlantingPlan) -> int | None:
+        parent = obj.growing_area_parcel if obj.is_individual else None
+        return parent.location_id if parent is not None else None
+
     def get_recommended_plant_spacing_m(self, obj: PlantingPlan) -> float | None:
-        if obj.parcel_id is None or obj.crop_id is None:
+        if not obj.is_individual or obj.crop_id is None:
             return None
         for field in ('distance_within_row_m', 'row_spacing_m'):
             value = self._effective_crop_value(obj, field)
@@ -442,7 +445,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        exclude = ['copied_from_plan_id', 'harvest_window_overrides', 'harvest_occurrence_actuals']
+        exclude = ['copied_from_plan_id', 'harvest_window_overrides', 'harvest_occurrence_actuals', 'individual_bed']
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',

@@ -129,7 +129,11 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
   const rotationPending = rotateParcels && !preview?.parcel_rotation?.fingerprint;
   const hasRotationFindings = Boolean(findings && (findings.conflict_count > 0 || findings.hint_count > 0));
   const conflicts = preview?.conflict_count ?? 0;
-  const copyCount = preview && (rotationMode === 'skip' ? preview.conflict_free_count : preview.total);
+  const skippedConflicts = rotationMode === 'skip' ? conflicts
+    : rotationMode === 'without_bed'
+      ? preview?.items.filter(item => item.status === 'conflict' && item.requires_bed).length ?? 0
+      : 0;
+  const copyCount = preview && preview.total - skippedConflicts;
 
   const refreshPreview = (sourceId: number, useActualDates: boolean, rotate = options.rotateParcels) => {
     setError(null);
@@ -248,8 +252,8 @@ export function SeasonCopyDataDialog({ targetSeason, seasons, onClose, onConfirm
               <SeasonCopyTotals
                 existing={targetSeason.planting_plan_count}
                 added={copyCount}
-                withoutBed={rotationMode === 'without_bed' ? conflicts : 0}
-                skippedConflicts={rotationMode === 'skip' ? conflicts : 0}
+                withoutBed={rotationMode === 'without_bed' ? conflicts - skippedConflicts : 0}
+                skippedConflicts={skippedConflicts}
               />
             ) : null}
             {preview && preview.skipped_count > 0 && (

@@ -31,6 +31,8 @@ export function AreaValidationDialog({
   onCommit,
 }: AreaValidationDialogProps) {
   const { t } = useTranslation(["plantingPlans", "common"]);
+  const showRemainingArea = dialog.mode !== "bedLimit" && dialog.areaCapacityKnown !== false;
+  const canApply = dialog.mode === "bedLimit" || (showRemainingArea && dialog.mode !== "noRemainingArea");
 
   return (
     <Dialog
@@ -65,8 +67,11 @@ export function AreaValidationDialog({
               })}
             </Typography>
           ) : null}
-          {dialog.mode !== "bedLimit" && (
+          {showRemainingArea && (
             <Typography sx={{ whiteSpace: "nowrap" }}>{t("plantingPlans:areaValidation.availableArea", { area: formatAreaM2(dialog.availableArea, numberLocale) })}</Typography>
+          )}
+          {dialog.areaCapacityKnown === false && (
+            <Typography>{t("plantingPlans:rotation.capacity.unknownIndividual")}</Typography>
           )}
           <Typography sx={{ whiteSpace: "nowrap" }}>{t("plantingPlans:areaValidation.bedArea", { area: formatAreaM2(dialog.bedArea, numberLocale) })}</Typography>
           {dialog.mode !== "bedLimit" && (
@@ -75,7 +80,7 @@ export function AreaValidationDialog({
           {dialog.mode !== "noRemainingArea" && (
             <Typography sx={{ whiteSpace: "nowrap" }}>{t("plantingPlans:areaValidation.requestedArea", { area: formatAreaM2(dialog.requestedArea, numberLocale) })}</Typography>
           )}
-          {dialog.mode !== "noRemainingArea" && (
+          {canApply && (
             <Typography sx={{ whiteSpace: "nowrap", fontWeight: 700 }}>
               {t("plantingPlans:areaValidation.acceptedArea", {
                 area: formatAreaM2(
@@ -91,7 +96,7 @@ export function AreaValidationDialog({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose}>{t("common:actions.cancel")}</Button>
-        {dialog.mode !== "noRemainingArea" && (
+        {canApply && (
           <Button
             variant="contained"
             color="success"

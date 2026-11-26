@@ -37,6 +37,7 @@
     "issueCount_other": "Rotation entre parcelles impossible : {{count}} problèmes",
     "showIssues": "Afficher les problèmes",
     "missingArea": "Renseignez les surfaces de {{source_bed}} et de {{bed}} pour appliquer la rotation.",
+    "incompatiblePlacement": "Les plants individuels de {{source_bed}} ne tiennent pas dans {{bed}}. Copiez sans rotation des parcelles.",
     "noCapacity": "La surface libre de {{bed}}, dans {{parcel}}, est insuffisante pour les plans copiés.",
     "areaChange": "Surface occupée {{old}} → {{next}} m²",
     "countChange": "Nombre de plants calculé {{old}} → {{next}}",

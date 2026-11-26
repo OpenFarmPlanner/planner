@@ -20,6 +20,7 @@ export interface AreaValidationDialogState {
   rowId: number;
   requestedArea: number;
   availableArea: number;
+  areaCapacityKnown?: boolean;
   bedArea: number;
   occupiedArea: number;
   cropId?: number;

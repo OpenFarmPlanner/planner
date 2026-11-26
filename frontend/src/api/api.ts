@@ -538,7 +538,8 @@ export const plantingPlanAPI = {
       }, signal,
     }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
-  createIndividual: (data: Pick<PlantingPlan, 'crop' | 'parcel' | 'planting_date' | 'cultivation_type'>
+  createIndividual: (data: Pick<PlantingPlan, 'crop' | 'parcel' | 'planting_date' | 'cultivation_type' | 'placement_mode'>
+    & Partial<Pick<PlantingPlan, 'bed'>>
     & import('./types').IndividualPlacementInput) =>
     http.post<PlantingPlan>('/planting-plans/', data),
   saveIndividualPlacement: (id: number, placement_updated_at: string, data: import('./types').IndividualPlacementInput) =>
