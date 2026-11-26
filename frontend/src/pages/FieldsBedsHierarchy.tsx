@@ -19,7 +19,9 @@ import React, {
 } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { ResizableGridColumnMenu, ResizableGridColumnsManagement } from "../components/data-grid/ResizableGridColumnControls";
-import { columnAutosizeOptions, resizableGridHeaderSx, useGridColumnSizing } from "../components/data-grid/useGridColumnSizing";
+import { resizableGridHeaderSx, useGridColumnSizing } from "../components/data-grid/useGridColumnSizing";
+import { GridColumnAutoFitContext, useGridColumnAutoFit } from "../components/data-grid/gridColumnAutoFit";
+import type { GridSizingContents } from "../components/data-grid/gridContentWidths";
 import { useTranslation } from "../i18n";
 import {
   DataGrid,
@@ -127,12 +129,7 @@ import {
   createHierarchyColumns,
 } from "../components/hierarchy/HierarchyColumns";
 import type { HierarchyRow } from "../components/hierarchy/utils/types";
-import {
-  calculateHierarchyNameColumnWidth,
-  getHierarchyNameMeasureKey,
-  measureHierarchyNameTextWidths,
-  type HierarchyNameMeasureEntry,
-} from "../components/hierarchy/utils/hierarchyNameColumnWidth";
+import { measureHierarchyName } from "../components/hierarchy/utils/hierarchyNameColumnWidth";
 import {
   isCompletelyEmptyNewHierarchyRow,
   isPartiallyFilledNamelessNewHierarchyRow,
@@ -148,7 +145,6 @@ import {
 import { HIGHLIGHT_FLASH_DURATION_MS } from "../components/feedback/highlightFlashStyles";
 import type { CommandSpec } from "../commands/types";
 import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
-import { HIERARCHY_ROW_ACTIONS_SLOT_PX } from "../components/hierarchy/hierarchyNameCell";
 import { individualPlanRowActions, individualPlantCreationForRow, type IndividualCreationTarget } from '../planting-plans/individualPlantActions';
 import {
   EMPTY_INDIVIDUAL_HIERARCHY, INDIVIDUAL_PLANT_COUNT_FIELD, type indexIndividualHierarchy, projectIndividualHierarchyRows,
@@ -174,6 +170,8 @@ interface FieldsBedsHierarchyProps {
   graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
   onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
   individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
+  individualHierarchyLoading?: boolean;
+  activeSeasonId?: number;
 }
 
 interface HierarchyRowAction {
@@ -209,6 +207,8 @@ function FieldsBedsHierarchy({
   graphicalRotations,
   onAddIndividualPlants,
   individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
+  individualHierarchyLoading = false,
+  activeSeasonId,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -228,9 +228,6 @@ function FieldsBedsHierarchy({
   const gridApiRef = useGridApiRef();
   const isTouchLikePointer = useMediaQuery("(pointer: coarse)");
   const isMobileViewport = useMediaQuery("(max-width:900px)");
-  const [viewportWidth, setViewportWidth] = useState(() => (
-    typeof window === "undefined" ? 1024 : window.innerWidth
-  ));
   const [rowModesModel, setRowModesModel] = useState<GridRowModesModel>({});
   const [saveStatus] = useState(createGridRowSaveStatus);
   const rowModesModelRef = useRef(rowModesModel);
@@ -238,13 +235,6 @@ function FieldsBedsHierarchy({
     rowModesModelRef.current = rowModesModel;
   }, [rowModesModel]);
 
-  useEffect(() => {
-    const handleResize = (): void => {
-      setViewportWidth(window.innerWidth);
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
   const [draftValidationWarning, setDraftValidationWarning] = useState("");
   const [unsavedRowDialogId, setUnsavedRowDialogId] = useState<GridRowId | null>(null);
   // Opening the confirm dialog over a row whose edit input still has DOM focus
@@ -1724,45 +1714,12 @@ function FieldsBedsHierarchy({
     onDuplicateShortcut: handleDuplicateShortcut,
   });
 
-  const nameColumnWidth = useMemo(() => {
-    const hierarchyEntries: HierarchyNameMeasureEntry[] = [];
-    if (hierarchyIndex.showsLocationRows) {
-      hierarchyIndex.sortedLocations.forEach((location) => {
-        hierarchyEntries.push({ name: location.name, level: 0, type: "location" });
-        const locationFields =
-          hierarchyIndex.fieldsByLocation.get(location.id!) ?? [];
-        locationFields.forEach((field) => {
-          hierarchyEntries.push({ name: field.name, level: 1, type: "field" });
-          const fieldBeds = hierarchyIndex.bedsByField.get(field.id!) ?? [];
-          fieldBeds.forEach((bed) => {
-            hierarchyEntries.push({ name: bed.name, level: 2, type: "bed" });
-          });
-        });
-      });
-    } else {
-      hierarchyIndex.sortedTopLevelFields.forEach((field) => {
-        hierarchyEntries.push({ name: field.name, level: 0, type: "field" });
-        const fieldBeds = hierarchyIndex.bedsByField.get(field.id!) ?? [];
-        fieldBeds.forEach((bed) => {
-          hierarchyEntries.push({ name: bed.name, level: 1, type: "bed" });
-        });
-      });
-    }
-
-    const measuredTextWidths = measureHierarchyNameTextWidths(hierarchyEntries);
-    return calculateHierarchyNameColumnWidth(
-      hierarchyEntries,
-      (row) => measuredTextWidths.get(getHierarchyNameMeasureKey(row)) ?? 0,
-    );
-  }, [hierarchyIndex]);
   const showPersistentContextMenuButton = isTouchLikePointer || isMobileViewport;
-  const nameColumnWidthLimit = showPersistentContextMenuButton ? Math.max(260, viewportWidth - 88) : Infinity;
-  // Keep the row actions within reach on narrow screens while retaining the
-  // user's preferred width for when the list has enough room again.
-  const effectiveNameColumnWidth = Math.min(
-    nameColumnWidth + (showPersistentContextMenuButton ? 0 : HIERARCHY_ROW_ACTIONS_SLOT_PX),
-    nameColumnWidthLimit,
-  );
+  const sizingRows = useMemo(() => {
+    const expanded = new Set(hierarchyTreeNodes.map(node => node.id));
+    const allRows = createHierarchyRowsProjector(hierarchyIndex)(expanded);
+    return projectIndividualHierarchyRows(allRows, individualHierarchy, expanded).filter(row => !row.isNew);
+  }, [hierarchyIndex, hierarchyTreeNodes, individualHierarchy]);
 
   const handleContextMenuButtonOpen = useEventCallback((row: HierarchyRow, origin: HTMLElement): void => {
     const rect = origin.getBoundingClientRect();
@@ -1805,7 +1762,7 @@ function FieldsBedsHierarchy({
       openNameCellMenu,
       openNotesFromColumn,
       t,
-      { name: effectiveNameColumnWidth },
+      undefined,
       {
         disableInlineHoverActions: showPersistentContextMenuButton,
         onOpenContextMenuFromButton: handleContextMenuButtonOpen,
@@ -1831,7 +1788,7 @@ function FieldsBedsHierarchy({
       ...baseColumns.slice(notesIndex),
     ];
     return orderedColumns.map(column => column.field === "name"
-      ? { ...column, minWidth: 152, maxWidth: Math.min(720, nameColumnWidthLimit) }
+      ? { ...column, minWidth: 152 }
       : column);
   }, [
     toggleExpand,
@@ -1843,8 +1800,6 @@ function FieldsBedsHierarchy({
     handleContextMenuButtonOpen,
     openNotesFromColumn,
     t,
-    effectiveNameColumnWidth,
-    nameColumnWidthLimit,
     showPersistentContextMenuButton,
     showInlineIndividualCount,
     isMobileViewport,
@@ -1855,7 +1810,24 @@ function FieldsBedsHierarchy({
     rotationMemberships,
     rotationStatus,
   ]);
-  const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId);
+  const sizingContents = useMemo<GridSizingContents<HierarchyRow>>(() => ({
+    rows: sizingRows,
+    ready: !loading && !individualHierarchyLoading && rotationStatus !== 'loading',
+    scope: `${gridLocale}:${activeSeasonId ?? ''}:${showPersistentContextMenuButton}:${showInlineIndividualCount}`,
+    measurements: {
+      name: {
+        cell: row => measureHierarchyName(row, t, showPersistentContextMenuButton, showInlineIndividualCount),
+        headerExtra: isMobileViewport ? 0 : 72,
+        defaultMax: 420,
+      },
+      length_m: { headerExtra: 24 },
+      width_m: { headerExtra: 24 },
+      notes: { cell: row => ({ text: getPlainExcerpt(row.notes ?? '', 120), extra: 30 }) },
+    },
+  }), [sizingRows, loading, individualHierarchyLoading, rotationStatus, gridLocale, activeSeasonId,
+    showPersistentContextMenuButton, showInlineIndividualCount, isMobileViewport, t]);
+  const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId, sizingContents);
+  useGridColumnAutoFit(gridApiRef, columnSizing.autoFit);
 
   const {
     handleCellClick: handleHierarchyCellClick,
@@ -2186,11 +2158,12 @@ function FieldsBedsHierarchy({
             onTouchCancel={handleGridTouchMove}
           >
             <GridRowSaveStatusContext.Provider value={saveStatus}>
+            <GridColumnAutoFitContext.Provider value={columnSizing.autoFit}>
             <DataGrid
               rows={rows}
+              aria-busy={columnSizing.defaultsPending}
               columns={columnSizing.columns}
               onColumnWidthChange={columnSizing.onColumnWidthChange}
-              autosizeOptions={columnAutosizeOptions}
               slots={hierarchyGridSlots}
               columnVisibilityModel={columnVisibilityModel}
               onColumnVisibilityModelChange={setColumnVisibilityModel}
@@ -2235,6 +2208,7 @@ function FieldsBedsHierarchy({
               localeText={gridLocaleText}
               apiRef={gridApiRef}
             />
+            </GridColumnAutoFitContext.Provider>
             </GridRowSaveStatusContext.Provider>
             {!isMobileViewport && (
               <StableScrollbarTrack

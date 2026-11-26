@@ -1179,24 +1179,33 @@ Kultur (Sorte) column, since the row can't be identified without it).
 
 ## Column sizing
 
-The Planting Plans grid and Growing Areas List share `useGridColumnSizing`
-with the native MUI resize divider and auto-fit. Drag a divider to set a width,
-or double-click it to fit rendered rows and the heading. **Auto-fit column
-width** is also available in each resizable column's keyboard-accessible
-header menu. **Reset column widths** at the bottom of Columns restores the
-current responsive defaults while preserving visibility and other preferences.
+Planting Plans, Growing Areas List, and the varieties comparison in Cultures
+and the public Crop Library share `useGridColumnSizing`. Defaults fit localized
+headings, controls and formatted cell text up to each column's automatic limit.
+The table leaves extra space to the right. Growing Areas measures each full
+name with its own indentation, icons and reserved row actions.
+
+Drag a divider to set a width or double-click it to fit that column to its full
+loaded content and heading. Manual widths and explicit auto-fit may exceed
+the automatic limit. **Auto-fit column width** is also available in each
+resizable grid column's header menu. In the varieties comparison, focus the
+divider and press Enter to auto-fit or an arrow key to resize.
 
 Widths are stored by stable field ID under
 `tableColumnWidths.<user>.<project>.<table>`, independently of column
-visibility. The key is shared across seasons in the same project. Widths are
-clamped to each column's current limits, including the Growing Areas name
-column's narrow-screen limit for keeping row actions reachable. When the sum
-of visible widths exceeds the viewport, use the grid's horizontal scroll.
+visibility. The key is shared across seasons in the same project. **Reset
+column widths** restores content-based defaults and preserves other preferences.
+When visible columns exceed the available space, the table scrolls horizontally.
 
-The Cultures and public Crop Library browsers use master-detail lists. Phone
-card views, short account-token grids without a Columns toolbar, and HTML
-report tables such as Seed Demand, Young Plant Demand, and Yield Comparison
-keep their existing layouts.
+Defaults are measured after fonts and the active dataset load, independently
+of scrolling, search, sort order, and hierarchy expansion. Measurement includes
+all rows already loaded for the active data scope, including collapsed
+descendants. Paginated or remote records beyond the loaded dataset require
+loading through the table's ordinary data path before auto-fit can include them.
+
+The Cultures and public Crop Library sidebar lists and compact phone cards
+have their own layouts. Account-token controls and HTML reports such as Seed
+Demand, Young Plant Demand, and Yield Comparison use their dedicated layouts.
 
 ## Page-owned filtering (`externalFilter`)
 

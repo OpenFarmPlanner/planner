@@ -1,4 +1,5 @@
 import { Box, Button, Divider } from '@mui/material';
+import { useContext } from 'react';
 import {
   GridColumnMenu,
   GridColumnsManagement,
@@ -10,6 +11,7 @@ import {
 } from '@mui/x-data-grid';
 import { useTranslation } from '../../i18n';
 import { columnAutosizeOptions } from './useGridColumnSizing';
+import { GridColumnAutoFitContext } from './gridColumnAutoFit';
 
 export function ResizableGridColumnsManagement({ widthReset, ...props }: GridSlotProps['columnsManagement']) {
   const { t } = useTranslation('common');
@@ -29,11 +31,17 @@ export function ResizableGridColumnsManagement({ widthReset, ...props }: GridSlo
 function AutoFitColumnMenuItem({ colDef, onClick }: GridColumnMenuItemProps) {
   const { t } = useTranslation('common');
   const apiRef = useGridApiContext();
+  const autoFit = useContext(GridColumnAutoFitContext);
   const { slots } = useGridRootProps();
   if (colDef.resizable === false) return null;
   const MenuItem = slots.baseMenuItem;
   return <MenuItem onClick={event => {
     onClick(event);
+    if (autoFit) {
+      const width = autoFit(colDef.field);
+      if (width !== undefined) apiRef.current.setColumnWidth(colDef.field, width);
+      return;
+    }
     void apiRef.current.autosizeColumns({ ...columnAutosizeOptions, columns: [colDef.field] });
   }}>{t('actions.autoFitColumnWidth')}</MenuItem>;
 }
