@@ -209,7 +209,8 @@ def validate_individual_planting(attrs: dict, plan: PlantingPlan | None) -> None
         parent = parcel
     if parent is None:
         raise serializers.ValidationError({'placement_mode': 'Choose exactly the bed or parcel required by the placement mode.'})
-    if attrs.get('planting_date', getattr(plan, 'planting_date', None)) is None:
+    # Existing placements without a date stay editable unless the date is cleared explicitly.
+    if (plan is None or 'planting_date' in attrs) and attrs.get('planting_date') is None:
         raise serializers.ValidationError({'planting_date': 'Set a planting date for the individual plants.'})
 
     crop = _validate_arrangement(attrs, plan)

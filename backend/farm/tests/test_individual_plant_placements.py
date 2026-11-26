@@ -179,6 +179,20 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         }, format='json')
         self.assertEqual(fits.status_code, 201, fits.data)
 
+    def test_undated_existing_placement_stays_editable_but_date_cannot_be_cleared_or_omitted(self):
+        created = self.create_plan().json()
+        PlantingPlan.objects.filter(pk=created['id']).update(planting_date=None)
+        detail = f"{URL}{created['id']}/"
+        stems = [{'id': created['individual_positions'][0]['id'], 'x_m': 3, 'y_m': 4}]
+        edited = self.client.patch(detail, {
+            'individual_positions': stems, 'placement_updated_at': self.client.get(detail).json()['updated_at'],
+        }, format='json')
+        self.assertEqual(edited.status_code, 200, edited.data)
+        cleared = self.client.patch(detail, {'planting_date': None}, format='json')
+        self.assertEqual(cleared.status_code, 400)
+        omitted = self.client.post(URL, {k: v for k, v in self.payload().items() if k != 'planting_date'}, format='json')
+        self.assertEqual(omitted.status_code, 400)
+
     def test_bed_placement_checks_dimensions_and_preserves_parent_on_updates(self):
         self.bed.width_m, self.bed.length_m = 3, 10
         self.bed.save()
