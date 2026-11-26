@@ -233,8 +233,8 @@ export function GraphicalIndividualPlantsPanel({
             <Button variant="outlined" disabled={controller.loading || controller.failed}
               onClick={() => update({ choosingParent: true, parent: null, planId: null })}>{tr('newPlan')}</Button>
           )}
+          {cropsFailed && <Alert severity="error" action={<LoadRetryButton onClick={retryCrops} />}>{tr('cropsFailed')}</Alert>}
           {creating && <>
-            {cropsFailed && <Alert severity="error" action={<LoadRetryButton onClick={retryCrops} />}>{tr('cropsFailed')}</Alert>}
             {crops?.length === 0 && <Alert severity="info">{tr('noCrops')}</Alert>}
             <TextField select size="small" label={t('plantingPlans:columns.crop')} disabled={saving || !crops?.length}
               value={draft?.crop ?? ''} slotProps={{ inputLabel: { shrink: true } }} onChange={event => selectCrop(Number(event.target.value))}>
@@ -281,7 +281,7 @@ export function GraphicalIndividualPlantsPanel({
               <Button variant="outlined" disabled={saving || !canAdd} onClick={armPlacement}>{tr('placeOnMap')}</Button>
             ))}
             {draft && measured && (
-              <Button variant="outlined" disabled={saving || !canAdd || cropsLoading}
+              <Button variant="outlined" disabled={saving || !canAdd || cropsLoading || cropsFailed}
                 onClick={() => setGenerationOpen(true)}>{tr('generation.title')}</Button>
             )}
             {placing && <Alert role="status" severity="info">{tr(canAdd ? 'placeHint' : 'placementNeedsInputs')}</Alert>}

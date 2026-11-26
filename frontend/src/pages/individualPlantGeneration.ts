@@ -87,7 +87,9 @@ export function individualPlacementPeriod(
     const end = new Date(start);
     const years = Number(getEffectiveCropValue(crop, 'standing_time_years'));
     if (Number.isFinite(years) && years > 0) {
-      end.setUTCFullYear(end.getUTCFullYear() + years);
+      // Match the backend's last-day clamp when the target month has fewer days.
+      end.setUTCFullYear(start.getUTCFullYear() + years, start.getUTCMonth() + 1, 0);
+      end.setUTCDate(Math.min(start.getUTCDate(), end.getUTCDate()));
       return { start: date, end: formatIsoDate(end) };
     }
   }

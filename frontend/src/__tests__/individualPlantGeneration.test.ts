@@ -114,6 +114,13 @@ describe('shared placement geometry and occupancy', () => {
     expect(generateRegularPlants(wholeBed, wideBedInputs, bedOccupied, 0).blockedSlots).toBeGreaterThan(0);
   });
 
+  it('uses the last day of February when perennial standing time starts on a leap day', () => {
+    const crop = { name: 'Apple', life_cycle: 'perennial', standing_time_years: 1 } as Crop;
+    expect(individualPlacementPeriod('2028-02-29', crop)).toEqual({
+      start: '2028-02-29', end: '2029-02-28',
+    });
+  });
+
   it('uses effective crop values for different in-row and between-row spacing', () => {
     const crop = {
       name: 'Bean', distance_within_row_cm: 25,

@@ -109,13 +109,20 @@ test.describe('orchard generation on a phone', () => {
       page, 'GET', `/planting-plans/?individual_location=${site.id}`,
     );
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
+    const cropPath = `/api/crops/${orchard.crop}/`;
+    await page.route(url => url.pathname === cropPath, route => route.fulfill({ status: 500, json: {} }), { times: 1 });
+    await panel(page).getByRole('button', { name: 'Positionen bearbeiten' }).tap();
+    const generate = panel(page).getByRole('button', { name: generationTitle });
+    const retry = panel(page).getByRole('button', { name: 'Erneut versuchen' });
+    await expect(panel(page).getByText('Kulturen konnten nicht geladen werden.')).toBeVisible();
+    await expect(generate).toBeDisabled();
     const [cropDetails] = await Promise.all([
       page.waitForResponse(response => response.request().method() === 'GET'
-        && new URL(response.url()).pathname === `/api/crops/${orchard.crop}/`),
-      panel(page).getByRole('button', { name: 'Positionen bearbeiten' }).tap(),
+        && new URL(response.url()).pathname === cropPath),
+      retry.tap(),
     ]);
     expect(cropDetails.ok()).toBeTruthy();
-    await panel(page).getByRole('button', { name: generationTitle }).tap();
+    await generate.tap();
     const dialog = page.getByRole('dialog', { name: generationTitle });
     const count = dialog.getByRole('textbox', { name: 'Zusätzliche Pflanzen' });
     await expect(dialog.getByRole('textbox', { name: 'Pflanzabstand in der Reihe (m)' })).toHaveValue('4');
