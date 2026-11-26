@@ -152,7 +152,12 @@ describe('SeasonCopyDataDialog', () => {
       />,
     );
 
-    expect(await screen.findByText('2 Fruchtfolgeverstöße · 1 Hinweis zur Nährstofffolge')).toBeVisible();
+    const warnings = await screen.findByRole('button', { name: '2 Fruchtfolgeverstöße · 1 Hinweis zur Nährstofffolge' });
+    expect(warnings).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Brokkoli · Beet 5')).not.toBeVisible();
+    expect(screen.getByText('0 Fruchtfolgeverstöße bleiben auf den zugewiesenen Beeten.')).toBeVisible();
+    await user.click(warnings);
+    expect(warnings).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getAllByText('Kreuzblütler · Zuletzt 2025 · Frühestens wieder 2030')).toHaveLength(2);
     expect(screen.getByText('Brokkoli · Beet 5')).toBeVisible();
     expect(screen.getByText('Was soll mit den 2 Konflikten passieren?')).toBeInTheDocument();
@@ -168,6 +173,28 @@ describe('SeasonCopyDataDialog', () => {
     await user.click(screen.getByRole('button', { name: '1 Anbauplan übernehmen' }));
 
     expect(onConfirm).toHaveBeenCalledWith(2, 1, 'skip', false);
+  });
+
+  it('keeps a single conflict collapsed and distinguishes the assigned-bed warning', async () => {
+    const user = userEvent.setup();
+    copyPreviewMock.mockResolvedValue({
+      data: { ...emptyPreview, conflict_count: 1, conflict_free_count: 2, items: [{
+        source_plan_id: 1, crop_label: 'Brokkoli', bed_id: 5, bed_name: 'Beet 5',
+        status: 'conflict', findings: [conflictFinding],
+      }] },
+    });
+    render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={targetSeason}
+      onClose={vi.fn()} onConfirm={vi.fn()} />);
+
+    const warnings = await screen.findByRole('button', { name: '1 Fruchtfolgeverstoß' });
+    expect(warnings).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Brokkoli · Beet 5')).not.toBeVisible();
+    expect(screen.getByRole('radio', { name: /Ohne Beet übernehmen/ })).toBeChecked();
+    await user.click(screen.getByRole('radio', { name: /dieselben Beete/ }));
+    expect(await screen.findByText('1 Fruchtfolgeverstoß bleibt auf den zugewiesenen Beeten.')).toBeVisible();
+    expect(warnings).toHaveAttribute('aria-expanded', 'false');
+    await user.click(warnings);
+    expect(screen.getByText('Kreuzblütler · Zuletzt 2025 · Frühestens wieder 2030')).toBeVisible();
   });
 
   it('skips an individual bed placement when resolving conflicts without a bed', async () => {
@@ -215,6 +242,7 @@ describe('SeasonCopyDataDialog', () => {
     await user.click(screen.getByRole('button', { name: confirmName }));
 
     expect(screen.queryByTestId('season-copy-rotation-summary')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Parzellenzuordnung/ })).not.toBeInTheDocument();
     expect(onConfirm).toHaveBeenCalledWith(2, 1, undefined, false);
   });
 
@@ -391,7 +419,7 @@ describe('SeasonCopyDataDialog', () => {
     const findings = { ...emptyPreview, total: 17, conflict_count: 17, conflict_free_count: 0, items } as SeasonCopyPreview;
     const rotation: ParcelRotationSummary = {
       available: true, eligible: true, enabled: true, fingerprint: 'b'.repeat(64), continuing_count: 0,
-      unchanged_count: 0, issues: [], moves: [], mappings: [{
+      unchanged_count: 4, issues: [], moves: [], mappings: [{
         group: 'Nord–Süd', source_parcel_id: 10, source_parcel: 'Nord', target_parcel_id: 11, target_parcel: 'Süd',
       }],
     };
@@ -407,16 +435,23 @@ describe('SeasonCopyDataDialog', () => {
     render(<SeasonCopyDataDialog seasons={eligibleSeasons} targetSeason={{ ...targetSeason, planting_plan_count: 20 }}
       onClose={vi.fn()} onConfirm={onConfirm} />);
 
-    expect(await screen.findByText('17 Fruchtfolgeverstöße')).toBeVisible();
+    const warnings = await screen.findByRole('button', { name: '17 Fruchtfolgeverstöße' });
+    const mappings = screen.getByRole('button', { name: '1 Parzellenzuordnung für kopierte Anbaupläne' });
+    expect(warnings).toHaveAttribute('aria-expanded', 'false');
+    expect(mappings).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('4 Anbaupläne bleiben auf ihren Beeten.')).toBeVisible();
     const totals = screen.getByTestId('season-copy-totals');
     expect(totals).toHaveTextContent('20 bestehend + 17 neu = 37 Anbaupläne');
     expect(totals).toHaveTextContent('17 davon ohne Beet');
     expect(totals).toHaveTextContent('Die 20 bestehenden Anbaupläne bleiben unverändert.');
     expect(screen.queryByTestId('parcel-rotation-issues')).not.toBeInTheDocument();
-    expect(screen.getByText('Kohl 3 · Beet 3')).toBeVisible();
-    expect(screen.getByText('Kohl 4 · Beet 4')).not.toBeVisible();
+    expect(screen.getByText('Nord → Süd')).not.toBeVisible();
+    expect(screen.getByText('Kohl 1 · Beet 1')).not.toBeVisible();
     expect(screen.getByText('Kohl 17 · Beet 17')).not.toBeVisible();
-    await user.click(screen.getByRole('button', { name: '14 weitere anzeigen' }));
+    await user.click(mappings);
+    expect(screen.getByText('Nord → Süd')).toBeVisible();
+    expect(warnings).toHaveAttribute('aria-expanded', 'false');
+    await user.click(warnings);
     expect(screen.getByText('Kohl 17 · Beet 17')).toBeVisible();
 
     await user.click(screen.getByRole('radio', { name: /Vorgeschlagene Beete beibehalten/ }));
@@ -426,6 +461,9 @@ describe('SeasonCopyDataDialog', () => {
     expect(screen.getByRole('button', { name: confirmName })).toBeDisabled();
     await act(async () => respondToKeep({ data: { ...findings, parcel_rotation: blocked } }));
     expect(screen.getByTestId('parcel-rotation-issues')).toHaveTextContent('Parzellenrotation nicht möglich: 5 Probleme');
+    expect(screen.getByRole('button', { name: 'Probleme anzeigen' })).toHaveAttribute('aria-expanded', 'false');
+    await user.click(screen.getByRole('button', { name: 'Probleme anzeigen' }));
+    expect(screen.getByRole('list', { name: 'Probleme anzeigen' }).children).toHaveLength(5);
     expect(screen.getByTestId('season-copy-totals')).toHaveTextContent('20 bestehend + 17 neu = 37 Anbaupläne');
 
     await user.click(screen.getByRole('radio', { name: /Nicht übernehmen/ }));

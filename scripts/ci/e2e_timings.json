@@ -336,8 +336,8 @@
       "duration_ms": 41930
     },
     "e2e/season-copy-source.spec.ts": {
-      "tests": 5,
-      "duration_ms": 31000
+      "tests": 7,
+      "duration_ms": 65000
     },
     "e2e/specific-properties.spec.ts": {
       "tests": 9,
