@@ -1124,7 +1124,9 @@ list; the QA phase itself remains read-only on GitHub.
 `ofp-qa refresh --preview` shows both cleanup and refresh candidates without
 starting an assistant, updating services or changing GitHub or review state.
 Its refresh candidates reflect the current queue, before any cleanup.
-`ofp-qa sync --agent codex` remains available for cleanup alone.
+`ofp-qa sync --agent codex` remains available for cleanup alone. An agent
+asked for a refresh without the launcher follows the same order and checks
+through the shared `qa-refresh` skill (its section 0 is the sync).
 
 Codex sync sessions explicitly use `--ask-for-approval never` with the
 `workspace-write` sandbox and network access enabled. This avoids individual

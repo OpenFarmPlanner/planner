@@ -1,16 +1,69 @@
 ---
 name: qa-refresh
-description: Build new QA dashboard cards for recently closed, merged implementation work on OpenFarmPlanner's queue #1058, using the owner's local .qa-review dashboard. Use for the refresh phase of an owner-requested QA dashboard update.
+description: Update the owner's local .qa-review acceptance dashboard for OpenFarmPlanner's queue #1058 - first remove verified Accepted rows from the queue and archive their cards (sync), then build new cards for recently closed, merged implementation work (refresh). Use for an owner-requested QA dashboard refresh or sync.
 ---
 
 # QA refresh
 
 Rules: `CLAUDE.md` ("QA / Exploratory Testing") and `docs/testing-and-ci.md`
 ("Keeping a local acceptance dashboard on main"), which owns the standing
-pre-authorization for this workflow. This skill is read-only on GitHub: no
-issues, comments, labels or queue edits. Queue cleanup (removing Accepted
-rows) is the separate `issue-and-queue` skill's `sync` half; this is the other
-half — adding cards for work finished since the last refresh.
+pre-authorization for this workflow. A refresh has two phases, in this order:
+
+0. **Sync** — remove the queue rows whose dashboard decision is Accepted and
+   archive their cards (section 0). Its single verified queue edit is the only
+   GitHub write this skill makes.
+1. **Refresh** — add cards for work finished since the last refresh
+   (sections 1–5), read-only on GitHub: no issues, comments, labels or queue
+   edits.
+
+When the launcher runs `ofp-qa refresh`, it holds the sync in a separate
+session first and hands this session a refresh manifest: skip section 0 and
+keep GitHub read-only. Invoked directly without a manifest, run section 0
+first. For `ofp-qa sync` or a cleanup-only request, run section 0 alone. Do not
+confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
+**checked** in #1058; dashboard Accepted rows stay unchecked by design.
+
+## 0. Sync: remove Accepted rows
+
+1. Freeze a candidate manifest the way the launcher does: preview with
+   `python3 scripts/local_qa/start.py sync --preview`, then build the manifest
+   with `live_queue()`, `metadata()`, `references()`/`issue_links()` and
+   `plan('sync', …)` from `scripts/local_qa/rounds.py` (its `launch()` needs
+   a TTY). Save it as `.qa-review/runs/sync-<id>.json`. With a launcher
+   manifest, use that one. The manifest is an upper bound.
+2. For each candidate, verify live: the issue is closed and not
+   `NOT_PLANNED`. Its `decisions.json` status is Accepted at the manifest's
+   `decisionRevision`; compare with the manifest, since revisions above 1 are
+   normal. The card's reviewed PR is merged and its merge commit equals the
+   card's `commit` and is an ancestor of `origin/main`. Every
+   `closedByPullRequestsReferences` PR is merged, and no cross-referenced or
+   connected PR is open or closed unmerged (check `timelineItems`). The row has
+   no `PR #N` gate. Skip anything changed or uncertain and say why. Rows
+   already absent are local-only reconciliations.
+3. Show the eligible rows (with their manual hints), the skips and each
+   explicit QA follow-up. Follow-ups keep their own rows; never remove them
+   with the original.
+4. Apply directly under the standing authorization (no chat confirmation).
+   Immediately before writing, re-read decisions and the queue via the trusted
+   reader. Check its body is identical to `gh api repos/OpenFarmPlanner/planner/issues/1058`
+   (`.body`). Remove only the eligible lines under "Ordered work items" and
+   keep every other byte. Write the new body as JSON with
+   `gh api -X PATCH … --input <file>`, then re-fetch and compare byte-for-byte.
+   On any mismatch or concurrent change, stop and report; never retry blindly.
+5. Archive under `.qa-review/archive/review-<date>-sync-<id>/`, following the
+   previous sync folders: the removed cards (`results.json`), their decisions
+   (`decisions.json`, `accepted-decisions.json`), `sync-manifest.json`,
+   `queue-before.md`/`queue-after.md`, `queue-edit.json`,
+   `related-issues.json`, `linked-followups.json`, the pre-publication
+   `report.md`/`sync-preview.json`, `test-data/dist/qa-projects.json` as
+   `qa-projects.json`, and copies of the cards' screenshots and logs.
+   Originals stay in place so existing links keep working.
+6. Remove those cards and decisions from the active files. Re-read the live
+   decisions first and never write back an earlier snapshot. Set the remaining
+   cards' `position` from the new queue, update `issueCounts`/`summary`, and
+   write atomically. Rebuild with the dashboard's `build()` and
+   `project-links.py` as in section 4. Confirm
+   `start.py sync --preview` now prints "No changes to process".
 
 ## 1. Find candidates
 
@@ -41,7 +94,7 @@ half — adding cards for work finished since the last refresh.
 5. Exclude discovery/RFC-only rows (doc-only PRs, no app behavior — check the
    PR's changed files) the same way the existing `results.json` `exclusions`
    field already tracks them.
-6. List what you found before testing anything, the same way the sync skill
+6. List what you found before testing anything, the same way section 0
    previews before writing.
 
 ## 2. Prepare the environment
@@ -154,7 +207,8 @@ After writing:
 
 ## 5. Report
 
-List new, updated and archived cards with the outcome and a one-line reason.
+List rows removed by the sync (and skips), then new, updated and archived
+cards with the outcome and a one-line reason.
 Report blocked checks and skipped writes. Surface every
 `problems`/contradiction prominently — don't bury a found regression in a
 card's detail fields without also saying so in your summary. If a live check
