@@ -14,12 +14,17 @@ import { SiteSuitabilityHints } from '../components/planting-plans/rotation/Site
 import { formatCropDisplayName } from '../crops/cropDisplay';
 import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { useTranslation } from '../i18n';
+import { IndividualPlantGenerationDialog } from '../planting-plans/IndividualPlantGenerationDialog';
 import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRoutes';
 import { formatLocalizedNumber, resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import { formatSeasonDate } from '../seasons/formatSeasonDate';
 import { parcelMeters, planPlacementParent, roundMeters, shortStemSpacing, type PlacementDimensions, type PlacementParent } from './individualPlantGeometry';
 import { getAllowedCultivationTypesForCrop } from './plantingPlansUtils';
-import { MAX_INDIVIDUAL_POSITIONS, readyForPlacement, type IndividualPlantsController } from './useIndividualPlants';
+import {
+  collectOccupiedPlantPositions, individualCropSpacings, individualPlacementPeriod,
+  MAX_INDIVIDUAL_POSITIONS, type PlacementFrames,
+} from './individualPlantGeneration';
+import { readyForPlacement, type IndividualPlantsController } from './useIndividualPlants';
 
 const cultivationLabels = {
   direct_sowing: 'directSowing', pre_cultivation: 'preCultivation', purchased_transplant: 'purchasedTransplant',
@@ -92,12 +97,13 @@ function CoordinateEditor({
 const sectionTitleSx = { fontWeight: 600 } as const;
 
 export function GraphicalIndividualPlantsPanel({
-  fields, beds, season, controller, onFocusParent, onClose,
+  fields, beds, season, controller, getPlacementFrames, onFocusParent, onClose,
 }: {
   fields: Field[];
   beds: Bed[];
   season: Season;
   controller: IndividualPlantsController;
+  getPlacementFrames: (parent: PlacementParent) => PlacementFrames | undefined;
   onFocusParent: (parent: PlacementParent) => void;
   onClose: () => void;
 }) {
@@ -124,7 +130,8 @@ export function GraphicalIndividualPlantsPanel({
   const stems = draft?.stems ?? (plan?.individual_positions ?? []).map(stem => ({ ...stem, key: stem.id }));
   const selected = stems.find(stem => stem.key === selectedKey);
   const creating = Boolean(draft && !draft.planId);
-  const { crops, failed: cropsFailed, retry: retryCrops } = usePlacementCrops(creating);
+  const [generationOpen, setGenerationOpen] = useState(false);
+  const { crops, failed: cropsFailed, retry: retryCrops } = usePlacementCrops(Boolean(draft));
   const crop = crops?.find(item => item.id === draft?.crop);
   const cultivationTypes = getAllowedCultivationTypesForCrop(crop);
   const spacing = creating
@@ -265,6 +272,10 @@ export function GraphicalIndividualPlantsPanel({
             ) : (
               <Button variant="outlined" disabled={saving || !canAdd} onClick={armPlacement}>{tr('placeOnMap')}</Button>
             ))}
+            {draft && measured && (
+              <Button variant="outlined" disabled={saving || !canAdd || (crops === null && !cropsFailed)}
+                onClick={() => setGenerationOpen(true)}>{tr('generation.title')}</Button>
+            )}
             {placing && <Alert role="status" severity="info">{tr(canAdd ? 'placeHint' : 'placementNeedsInputs')}</Alert>}
             {recommended !== null && (
               <Typography variant="body2">{t('fields:individualPlants.spacing', { distance: number(recommended) })}</Typography>
@@ -338,6 +349,19 @@ export function GraphicalIndividualPlantsPanel({
           </Stack>
         )}
       </Stack>
+      {generationOpen && draft && measured && (
+        <IndividualPlantGenerationDialog dimensions={measured} suggestedSpacing={individualCropSpacings(crop)}
+          occupied={[...draft.stems, ...collectOccupiedPlantPositions({
+            frames: getPlacementFrames(draft.parent), parent: draft.parent, plans, planId: draft.planId,
+            period: individualPlacementPeriod(draft.date, crop, plan),
+          })]}
+          existingCount={draft.stems.length} onClose={() => setGenerationOpen(false)}
+          onConfirm={positions => {
+            controller.addStems(positions);
+            update({ placing: null });
+            setGenerationOpen(false);
+          }} />
+      )}
     </Paper>
   );
 }

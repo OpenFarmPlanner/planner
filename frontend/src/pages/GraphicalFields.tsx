@@ -36,7 +36,8 @@ import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
-import { getDirectlyDraggableStemPlans, MAX_INDIVIDUAL_POSITIONS, readyForPlacement, useIndividualPlants } from "./useIndividualPlants";
+import { getDirectlyDraggableStemPlans, readyForPlacement, useIndividualPlants } from "./useIndividualPlants";
+import { getIndividualPlantFrames, MAX_INDIVIDUAL_POSITIONS } from "./individualPlantGeneration";
 import { matchesPlacementParent, parcelMeters, planPlacementParent, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
@@ -1449,6 +1450,12 @@ export default function GraphicalFields({
                 {showIndividualPanel && (
                   <GraphicalIndividualPlantsPanel fields={parcels.map(({ field }) => field)} beds={beds}
                     season={individualSeason} controller={individualPlants}
+                    getPlacementFrames={parent => {
+                      const fieldId = parent.kind === 'bed' ? bedsById.get(parent.id)?.field : parent.id;
+                      const field = parcels.find(parcel => parcel.field.id === fieldId)?.field;
+                      if (!field || field.id === undefined) return undefined;
+                      return getIndividualPlantFrames([field], beds, layoutsByBed).get(field.id);
+                    }}
                     onClose={() => canvasToolsRefs.current[locationId]?.focus({ preventScroll: true })}
                     onFocusParent={({ kind, id }) => {
                       const rect = objectModel.get(graphicalObjectKey(kind, id))?.rect;
