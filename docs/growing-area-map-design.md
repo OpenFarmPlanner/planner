@@ -4,7 +4,7 @@ Decision record for [#915](https://github.com/OpenFarmPlanner/planner/issues/915
 
 ## Editor spike
 
-The [standalone spike](../frontend/spikes/growing-area-map/) uses the repository's React, Material UI and Vite with OpenLayers 10.11.0, which is BSD-2-Clause. Its synthetic site contains a parcel and 54 beds in a local metric coordinate plane. It has its own package lock, entry point and browser tests. The application build, router, demo and service worker do not load it. It uses no tiles, address lookups, accounts or project data. [OpenLayers license](https://github.com/openlayers/openlayers/blob/v10.11.0/LICENSE.md) · [Releases](https://github.com/openlayers/openlayers/releases).
+The [standalone spike](../frontend/spikes/growing-area-map/) uses the repository's React, Material UI and Vite with OpenLayers 10.11.0, which is BSD-2-Clause. Its synthetic site contains a parcel and 54 beds in a local metric coordinate plane. It has its own package lock, entry point and browser tests. The application build, router, demo, service worker and dev-server dependency scan (`optimizeDeps.entries`) do not load it. It uses no tiles, address lookups, accounts or project data. [OpenLayers license](https://github.com/openlayers/openlayers/blob/v10.11.0/LICENSE.md) · [Releases](https://github.com/openlayers/openlayers/releases).
 
 | Operation | Result |
 | --- | --- |
