@@ -1,5 +1,6 @@
 """Local test data must be explicit, isolated and safe to prepare repeatedly."""
 
+import json
 from datetime import date, timedelta
 from decimal import Decimal
 from io import StringIO
@@ -12,7 +13,7 @@ from django.db import connection
 from django.test import TestCase, override_settings
 
 from crops.models import CropSpecies
-from farm.history.project_restore import CHECKPOINT_KEY
+from farm.history.project_restore import CHECKPOINT_KEY, MAX_PREVIEW_HISTORY_BYTES
 from farm.models import (
     Crop,
     CropCompanion,
@@ -510,6 +511,33 @@ class LocalLibraryImportSeedTests(TestCase):
         crop.refresh_from_db()
         self.assertEqual(crop.notes, 'Preserve my manual edit')
         self.assertEqual(project.entity_revisions.count(), revisions)
+
+    def test_restore_history_budget_fixture_is_large_guarded_and_repeat_safe(self):
+        command = 'seed_restore_history_budget_acceptance'
+        arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}
+        projects = Project.objects.filter(slug=f'ofp-local-restore-history-budget-{self.user.pk}')
+        call_command(command, **arguments)
+        self.assertFalse(projects.exists())
+        with self.assertRaisesMessage(CommandError, 'does not match'):
+            call_command(command, **{**arguments, 'database_name': 'wrong-target'}, apply=True)
+        self.assertFalse(projects.exists())
+
+        call_command(command, apply=True, **arguments)
+        project = projects.get()
+        self.assertTrue(project.memberships.filter(user=self.user, role='admin').exists())
+        checkpoints = project.entity_revisions.filter(entity_type='project')
+        self.assertEqual(checkpoints.count(), 30)
+        sizes = [len(json.dumps(snapshot).encode()) for snapshot in
+                 checkpoints.values_list('snapshot', flat=True).iterator(chunk_size=1)]
+        self.assertGreater(sum(sizes), MAX_PREVIEW_HISTORY_BYTES)
+        self.assertLess(max(sizes), MAX_PREVIEW_HISTORY_BYTES)
+        marker = Crop.objects.get(project=project, name='Checkpoint marker')
+        marker.notes = 'Keep this manual edit'
+        marker.save()
+        call_command(command, apply=True, **arguments)
+        marker.refresh_from_db()
+        self.assertEqual(marker.notes, 'Keep this manual edit')
+        self.assertEqual(checkpoints.count(), 30)
 
     def test_variety_fixture_is_guarded_previewed_and_preserves_manual_edits(self):
         arguments = {key: value for key, value in self.arguments.items() if key != 'public_crop_id'}

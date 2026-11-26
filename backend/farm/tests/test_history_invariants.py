@@ -580,6 +580,55 @@ class ProjectRestorePreviewTests(HistoryInvariantTestCase):
                 capture.assert_not_called()
             self.assert_refusal_is_atomic(response.status_code, before, counts)
 
+    def test_preview_and_restore_with_more_than_24_mib_of_checkpoints(self):
+        crop = Crop.objects.create(project=self.project, name='History test crop')
+        notes = 'a' * (1024 * 1024)
+        for number in range(1, 31):
+            crop.notes = f'Checkpoint {number}: {notes}'
+            crop.save(record_history=False)
+            record_project_checkpoint(self.project, capture_project_state(self.project))
+        checkpoints = list(self.project.entity_revisions.filter(entity_type='project')
+                           .defer('snapshot').order_by('created_at', 'id'))
+        crop.notes = 'Current notes'
+        crop.save()
+
+        for index in (0, 14, 29):
+            with self.subTest(index=index):
+                response = self.preview(checkpoints[index])
+                self.assertEqual(response.status_code, 200, response.json())
+                self.assertEqual(response.json()['impact'][0]['changed']['count'], 1)
+
+        historical = checkpoints[14]
+        token = self.preview(historical).json()['token']
+        restored = self.confirm(historical, token)
+        self.assertEqual(restored.status_code, 200, restored.json())
+        crop.refresh_from_db()
+        self.assertEqual(crop.notes, f'Checkpoint 15: {notes}')
+
+    def test_replay_scope_uses_timestamp_and_id_and_preserves_future_evidence(self):
+        crop = Crop.objects.create(project=self.project, name='History test crop')
+        state = capture_project_state(self.project)
+        record_project_checkpoint(self.project, state)
+        record_project_checkpoint(self.project, state)
+        crop.notes = 'Selected notes'
+        crop.save()
+        target = latest_selectable_revision(self.project)
+        record_project_checkpoint(self.project, state)
+        crop.notes = 'Current notes'
+        crop.save()
+        self.project.entity_revisions.update(created_at=target.created_at)
+
+        # Only one checkpoint, the target edit, and the later crop evidence
+        # should count, even though all the revisions share a timestamp.
+        limit = 'farm.history.project_restore.MAX_PREVIEW_REVISIONS'
+        with patch(limit, 3):
+            response = self.preview(target)
+            self.assertEqual(response.status_code, 200, response.json())
+            token = response.json()['token']
+            self.assertEqual(self.confirm(target, token).status_code, 200)
+        crop.refresh_from_db()
+        self.assertEqual(crop.notes, 'Selected notes')
+
     def test_preview_limits_historical_storage_checks(self):
         image = self.write('upload', 'post', '/media-files/upload/', {'file': _png('preview.png')},
                            multipart=True)

@@ -258,8 +258,15 @@ per action. A change to a bed or field's visual layout counts toward that
 growing area. Internal timestamps and derived normalization fields are ignored
 in the counts. Unsafe or incomplete targets cannot be confirmed. Preview
 requests have per-user and per-IP rate limits. The synchronous preview also
-bounds project rows, stored revision data and storage checks. Projects beyond
-those limits display a size error and cannot be confirmed through the dialog.
+bounds both the current and reconstructed project rows and the number of
+storage checks. The 25,000-revision and 24 MiB snapshot limits cover the
+selected reconstruction. They include the nearest checkpoint at or before the
+target and subsequent revisions through the target. For targets other than a
+checkpoint, they also include later managed-entity revisions used to check
+legacy creation evidence. A checkpoint selected directly needs no later
+evidence. Unrelated older checkpoints and later project checkpoints do not
+consume the budget. A reconstruction beyond these limits returns
+`409 project_restore_preview_too_large` during preview or confirmation.
 
 `ProjectHistoryRestoreView` and the timestamp compatibility helper delegate to
 `history/project_restore.py`:
@@ -341,6 +348,21 @@ agent draft previews are excluded from baseline creation, including malformed
 preview requests.
 
 ## Local acceptance fixtures
+
+In a local checkout, preview the synthetic **Restore history budget acceptance**
+project using an existing active account and the exact local database name.
+After verifying the printed target, repeat with `--apply`.
+
+```bash
+DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_restore_history_budget_acceptance \
+  --username LOCAL_ACCOUNT --database-name EXACT_LOCAL_DATABASE
+```
+
+The project starts with 30 checkpoints whose combined snapshots exceed 24 MiB.
+In **Version history**, preview an early and a recent checkpoint. Each preview
+shows one changed crop. Confirm one and open **Checkpoint marker** in Cultures.
+Its notes show the chosen checkpoint number. Re-running the command preserves
+manual edits and any restores already performed in the fixture.
 
 `seed_import_history_acceptance` uses the existing development-only database
 guards: an existing active local account, `OFP_LOCAL_TEST_DATA=1`, exact database

@@ -2,6 +2,7 @@
 
 import json
 from contextlib import closing
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
@@ -11,6 +12,7 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.db import IntegrityError, connection, models, transaction
 from django.db.models import F, Q
 from django.db.models.deletion import Collector, ProtectedError
+from django.db.models.fields.json import KeyTransform
 from django.db.models.functions import Cast, Length
 from django.utils import timezone
 from django.utils.crypto import constant_time_compare
@@ -47,6 +49,7 @@ from .project_restore_impact import (
     valid_preview_token_for_revision,
 )
 from .records import (
+    _ENTITY_TYPE_LABELS,
     _RESTORABLE_ENTITY_TYPES,
     _canonical_entity_type,
     record_entity_revision,
@@ -73,6 +76,7 @@ for _model, _label in _RESTORABLE_ENTITY_TYPES:
             ]
         )
 _MODELS = dict((label, model) for model, label in PROJECT_STATE_MODELS)
+_RESTORABLE_REVISION_LABELS = _MODELS.keys() | _ENTITY_TYPE_LABELS.values()
 ProjectState = dict[str, dict[str, dict[str, Any]]]
 ValidatedRows = dict[type, dict[int, dict[str, Any]]]
 CHECKPOINT_KEY = "project_state_v1"
@@ -197,46 +201,66 @@ def reconstruct_project_state(
     current: ProjectState,
 ) -> ProjectState:
     """Reconstruct at an exact (timestamp, id); unknown is never inferred as absent."""
-    state, seen, checkpoint = _revision_overlay(project, revision)
+    history = _restore_history(project, revision)
+    return _reconstruct_project_state(project, revision, current, history)
+
+
+@dataclass(frozen=True)
+class _RestoreHistory:
+    baseline_id: int | None
+    replay: models.QuerySet[EntityRevision]
+    later_evidence: models.QuerySet[EntityRevision] | None
+
+
+def _restore_history(project: Project, revision: EntityRevision) -> _RestoreHistory:
+    revisions = EntityRevision.objects.filter(project=project)
+    through_target = revisions.filter(_through_revision(revision))
+    baseline = (
+        through_target.filter(entity_type="project", snapshot__has_key=CHECKPOINT_KEY)
+        .only("created_at")
+        .order_by("-created_at", "-id")
+        .first()
+    )
+    replay = through_target
+    if baseline is not None:
+        replay = replay.filter(
+            Q(created_at__gt=baseline.created_at)
+            | Q(created_at=baseline.created_at, id__gte=baseline.pk)
+        )
+    # A selected checkpoint proves absence. For other targets, only later
+    # revisions of managed entities can supply legacy creation evidence.
+    baseline_id = baseline.pk if baseline is not None else None
+    later_evidence = None
+    if baseline_id != revision.pk:
+        later_evidence = revisions.filter(entity_type__in=_RESTORABLE_REVISION_LABELS).exclude(
+            _through_revision(revision)
+        )
+    return _RestoreHistory(baseline_id, replay, later_evidence)
+
+
+def _reconstruct_project_state(
+    project: Project, revision: EntityRevision, current: ProjectState, history: _RestoreHistory,
+) -> ProjectState:
+    state, seen, checkpoint = _revision_overlay(history)
     if checkpoint is not None:
         for label, objects in checkpoint.items():
             state[label].update(
                 {pk: snapshot for pk, snapshot in objects.items() if (label, pk) not in seen}
             )
     _apply_recorded_parent_deletions(state, seen)
-    # A complete checkpoint records every managed row at one instant. Its
-    # omissions are authoritative even if a later restore recreated a row
-    # with an older creation timestamp. Replays to other revisions still
-    # need the conservative evidence checks.
-    if revision.entity_type != "project" or CHECKPOINT_KEY not in revision.snapshot:
-        _require_legacy_evidence(project, revision, current, seen, state)
+    if history.later_evidence is not None:
+        _require_legacy_evidence(project, revision, current, seen, state, history.later_evidence)
     return state
 
 
 def _revision_overlay(
-    project: Project, revision: EntityRevision
+    history: _RestoreHistory,
 ) -> tuple[ProjectState, set[tuple[str, str]], ProjectState | None]:
     state: ProjectState = {label: {} for label in _MODELS}
     seen: set[tuple[str, str]] = set()
-    baseline = (
-        EntityRevision.objects.filter(
-            project=project,
-            entity_type="project",
-            snapshot__has_key=CHECKPOINT_KEY,
-        )
-        .filter(_through_revision(revision))
-        .order_by("-created_at", "-id")
-        .first()
-    )
-    checkpoint = _checkpoint_state(baseline.snapshot) if baseline else None
-    rows = (
-        EntityRevision.objects.filter(project=project)
-        .filter(_through_revision(revision))
-        .order_by("-created_at", "-id")
-    )
-    if baseline:
-        rows = rows.exclude(_through_revision(baseline))
-    for row in rows.iterator(chunk_size=50):
+    for row in history.replay.order_by("-created_at", "-id").iterator(chunk_size=50):
+        if row.pk == history.baseline_id:
+            return state, seen, _checkpoint_state(row.snapshot)
         if row.entity_type == "project" and row.action == EntityRevision.ACTION_RESTORED:
             raise ProjectRestoreConflict("legacy restore has no resulting-state checkpoint")
         entity_type = _canonical_entity_type(row.entity_type)
@@ -258,7 +282,7 @@ def _revision_overlay(
         )
         if row.action != EntityRevision.ACTION_DELETED or soft_deleted:
             state[entity_type][key[1]] = row.snapshot
-    return state, seen, checkpoint
+    return state, seen, None
 
 
 def _references_recorded_absence(
@@ -297,6 +321,7 @@ def _require_legacy_evidence(
     current: ProjectState,
     seen: set[tuple[str, str]],
     state: ProjectState,
+    later_evidence: models.QuerySet[EntityRevision],
 ) -> None:
     for model, label in PROJECT_STATE_MODELS:
         unknown = {
@@ -322,11 +347,7 @@ def _require_legacy_evidence(
         ):
             raise ProjectRestoreConflict("incomplete historical evidence")
     future_keys: set[tuple[str, str]] = set()
-    for row in (
-        EntityRevision.objects.filter(project=project)
-        .exclude(_through_revision(revision))
-        .order_by("created_at", "id")
-    ):
+    for row in later_evidence.order_by("created_at", "id").iterator(chunk_size=50):
         entity_type = _canonical_entity_type(row.entity_type)
         key = (entity_type, str(row.object_id))
         if entity_type not in _MODELS or key in seen or key in future_keys:
@@ -656,12 +677,16 @@ def _validate_preview_removals_and_identities(
             raise ProjectRestoreConflict("historical identity belongs to another project")
 
 
+def project_restore_revisions(project: Project) -> models.QuerySet[EntityRevision]:
+    return EntityRevision.objects.filter(project=project).only("created_at", "project_id").annotate(
+        is_internal=KeyTransform("_project_version_internal", "snapshot"),
+    )
+
+
 def _locked_preview_revision(project: Project, revision_id: int) -> EntityRevision:
-    selected = EntityRevision.objects.select_for_update().filter(
-        project=project, pk=revision_id,
-    ).first()
+    selected = project_restore_revisions(project).select_for_update().filter(pk=revision_id).first()
     if (
-        selected is None or selected.snapshot.get("_project_version_internal")
+        selected is None or selected.is_internal
         or is_latest_project_revision(project, selected)
     ):
         raise ProjectRestorePreviewChanged("historical revision is no longer available")
@@ -675,9 +700,13 @@ def _bounded_row_count(queryset, limit: int) -> int:
     return observed
 
 
-def _check_preview_size(project: Project) -> None:
-    revisions = EntityRevision.objects.filter(project=project)
-    _bounded_row_count(revisions, MAX_PREVIEW_REVISIONS)
+def _check_preview_size(project: Project, history: _RestoreHistory) -> None:
+    querysets = [history.replay]
+    if history.later_evidence is not None:
+        querysets.append(history.later_evidence)
+    remaining_revisions = MAX_PREVIEW_REVISIONS
+    for revisions in querysets:
+        remaining_revisions -= _bounded_row_count(revisions, remaining_revisions)
     # Stop at the payload budget without importing snapshots into Python. Count
     # decoded bytes so large compressed snapshots still consume their full budget.
     size = (
@@ -689,12 +718,15 @@ def _check_preview_size(project: Project) -> None:
         if connection.vendor == "postgresql" else Length(Cast("snapshot", models.BinaryField()))
     )
     remaining_bytes = MAX_PREVIEW_HISTORY_BYTES
-    encoded_sizes = revisions.order_by().values_list(size, flat=True).iterator(chunk_size=50)
-    with closing(encoded_sizes) as sizes:
-        for snapshot_bytes in sizes:
-            remaining_bytes -= snapshot_bytes
-            if remaining_bytes < 0:
-                raise ProjectRestorePreviewTooLarge("historical snapshots are too large to preview")
+    for revisions in querysets:
+        encoded_sizes = revisions.order_by().values_list(size, flat=True).iterator(chunk_size=50)
+        with closing(encoded_sizes) as sizes:
+            for snapshot_bytes in sizes:
+                remaining_bytes -= snapshot_bytes
+                if remaining_bytes < 0:
+                    raise ProjectRestorePreviewTooLarge(
+                        "historical snapshots are too large to preview"
+                    )
     remaining = MAX_PREVIEW_ROWS
     for model, _label in PROJECT_STATE_MODELS:
         remaining -= _bounded_row_count(_model_manager(model).filter(project=project), remaining)
@@ -705,16 +737,26 @@ def _check_preview_target_size(state: ProjectState) -> None:
         raise ProjectRestorePreviewTooLarge("historical target has too many records")
 
 
+def _restore_states(
+    project: Project, revision: EntityRevision, *, lock: bool, bounded: bool,
+) -> tuple[ProjectState, ProjectState]:
+    history = _restore_history(project, revision)
+    if bounded:
+        _check_preview_size(project, history)
+    current = capture_project_state(project, lock=lock)
+    state = _reconstruct_project_state(project, revision, current, history)
+    if bounded:
+        _check_preview_target_size(state)
+    return current, state
+
+
 def preview_project_restore(project: Project, revision_id: int) -> dict:
     """Read and validate the same historical state the restore would apply."""
     try:
         with transaction.atomic():
             lock_crop_project(project.pk)
-            _check_preview_size(project)
             revision = _locked_preview_revision(project, revision_id)
-            current = capture_project_state(project)
-            state = reconstruct_project_state(project, revision, current)
-            _check_preview_target_size(state)
+            current, state = _restore_states(project, revision, lock=False, bounded=True)
             target = _validated_target(project, state, current)
             _validate_preview_removals_and_identities(project, current, target)
             _uploads_to_retain(state, current, max_checks=MAX_PREVIEW_STORAGE_CHECKS)
@@ -742,12 +784,10 @@ def restore_project_version(
         with transaction.atomic():
             lock_crop_project(project.pk)
             if preview_token is not None:
-                _check_preview_size(project)
                 revision = _locked_preview_revision(project, revision.pk)
-            current = capture_project_state(project, lock=True)
-            state = reconstruct_project_state(project, revision, current)
-            if preview_token is not None:
-                _check_preview_target_size(state)
+            current, state = _restore_states(
+                project, revision, lock=True, bounded=preview_token is not None,
+            )
             target = _validated_target(project, state, current)
             if preview_token is not None:
                 effective = _effective_target(state, current, target)
