@@ -6,8 +6,8 @@ import type {
 } from '../api/types';
 import { formatDateToAPI } from '../utils/isoDate';
 import { planPlacementParent, type PlacementParent } from './individualPlantGeometry';
+import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
 
-export const MAX_INDIVIDUAL_POSITIONS = 1000;
 export type DraftStem = StemCoordinates & { id?: string; key: string };
 
 interface Draft {
@@ -126,16 +126,17 @@ export function useIndividualPlants(
     });
   };
 
-  const addStem = (point: StemCoordinates) => {
-    const stem = { ...point, key: `new-${nextStemId.current++}` };
+  const addStems = (points: readonly StemCoordinates[]) => {
+    const added = points.map(point => ({ ...point, key: `new-${nextStemId.current++}` }));
     update(value => {
-      if (!value.draft || value.draft.stems.length >= MAX_INDIVIDUAL_POSITIONS) return {};
+      if (!value.draft || !added.length || value.draft.stems.length + added.length > MAX_INDIVIDUAL_POSITIONS) return {};
       return {
-        draft: { ...value.draft, stems: [...value.draft.stems, stem] },
-        selectedKey: stem.key, error: null,
+        draft: { ...value.draft, stems: [...value.draft.stems, ...added] },
+        selectedKey: added[added.length - 1].key, error: null,
       };
     });
   };
+  const addStem = (point: StemCoordinates) => addStems([point]);
 
   const changeStem = (stemKey: string, point: StemCoordinates | null) => update(value => {
     if (!value.draft) return {};
@@ -222,7 +223,7 @@ export function useIndividualPlants(
   };
 
   return {
-    plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, changeStem, save,
+    plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, addStems, changeStem, save,
     moveSavedStem, movingPlans, moveError: Boolean(scope) && moveErrorScope === scope,
     loading: Boolean(scope) && !current, failed: current?.failed ?? false,
     refresh: () => setAttempt(value => value + 1),
