@@ -206,5 +206,9 @@ export function renderInlineActions(
     );
   }
 
-  return renderMoreActionsButton(row, callbacks, t, isStandaloneRender);
+  if (row.type === 'individualPlan') {
+    return renderMoreActionsButton(row, callbacks, t, isStandaloneRender);
+  }
+
+  return null;
 }

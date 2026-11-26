@@ -345,6 +345,18 @@ describe('when inline actions are switched off', () => {
   });
 });
 
+describe('an individual planting plan row', () => {
+  it('only offers the plan context menu', async () => {
+    const user = userEvent.setup();
+    const row: HierarchyRow = { id: 'individual-plan-7', type: 'individualPlan', level: 3, plantingPlanId: 7 };
+    const { onOpenContextMenu } = setup(row, { isStandalone: true });
+
+    expect(buttonNames()).toEqual(['Aktionen']);
+    await user.click(button('Aktionen'));
+    expect(onOpenContextMenu).toHaveBeenCalledWith(expect.anything(), row);
+  });
+});
+
 describe('a row type the tree does not have', () => {
   it('renders nothing at all', () => {
     // Asserted as an empty container rather than an absence of buttons: a
