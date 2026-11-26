@@ -1,15 +1,17 @@
-import { useEffect, useId, useRef, type KeyboardEvent, type RefObject } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
 import { Box, Button, IconButton, ListItemIcon, MenuItem, Paper, Stack, Typography } from '@mui/material';
 import { individualPlantCreationAction } from '../planting-plans/individualPlantActions';
 import CloseIcon from '@mui/icons-material/Close';
 import { ContextMenuHint } from '../components/data-grid/ContextMenuHint';
 import { CustomContextMenu } from '../components/contextMenu/CustomContextMenu';
+import { renderGroupedContextMenuActions } from '../components/contextMenu/contextMenuGroups';
 import { useContextMenuOpenRegistration } from '../components/contextMenu/contextMenuOpenState';
 import { useCloseCustomContextMenuOnNativeContextMenu } from '../utils/contextMenu';
 import { GraphicalCropPreview, type CropPreviewData } from './GraphicalCropPreview';
 import { GraphicalBedHoverDetails } from './GraphicalBedHoverDetails';
 import { BedTaskList } from '../components/tasks/BedTaskList';
-import { bedTaskUrgencyLabel, type BedTaskSummary, type bedTaskDateBounds } from '../components/tasks/bedTaskUrgency';
+import { bedTaskUrgencyLabel, orderBedTasks, type BedTaskSummary, type bedTaskDateBounds } from '../components/tasks/bedTaskUrgency';
+import { isOpenTask } from '../components/tasks/taskBoard';
 import type { Task } from '../api/types';
 import type { HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import type { MetricCoverage } from '../components/hierarchy/utils/growingAreaGeometry';
@@ -19,11 +21,14 @@ import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numbe
 import type { useBedTasks } from '../components/tasks/useBedTasks';
 import type { Rect } from './graphicalLayoutUtils';
 import type { ViewportState } from './graphicalViewport';
-import type { GraphicalObjectInteraction } from './useGraphicalObjectInteraction';
+import { graphicalObjectKey, type GraphicalObjectInteraction } from './useGraphicalObjectInteraction';
 import type { BedCultivationEntry } from './graphicalCultivation';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
+import type { GraphicalIndividualPlant } from './graphicalIndividualPlants';
+import type { IndividualPlacementAction } from './useIndividualPlants';
+import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
 
-export interface GraphicalObject {
+export interface GraphicalAreaObject {
   key: string;
   type: HierarchyEntityType;
   id: number;
@@ -34,6 +39,8 @@ export interface GraphicalObject {
   coverage?: MetricCoverage;
 }
 
+export type GraphicalObject = GraphicalAreaObject | GraphicalIndividualPlant;
+
 const positive = (value: unknown): number | null => {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
@@ -41,7 +48,7 @@ const positive = (value: unknown): number | null => {
 
 const numberText = (value: number) => formatLocalizedNumber(value, getActiveFormattingLocale(), { maximumFractionDigits: 2 });
 
-function ObjectFacts({ object, compact = false }: { object: GraphicalObject; compact?: boolean }) {
+function ObjectFacts({ object, compact = false }: { object: GraphicalAreaObject; compact?: boolean }) {
   const { t } = useTranslation(['fields', 'hierarchy', 'common']);
   const width = positive(object.metrics.width_m);
   const length = positive(object.metrics.length_m);
@@ -86,13 +93,18 @@ interface OverlayProps {
   stageHeight: number;
   root: RefObject<HTMLDivElement | null>;
   openDetails: (object: GraphicalObject) => void;
-  onStartIndividualPlan?: (object: GraphicalObject) => void;
+  onOpenCrop?: (id: number) => void;
+  onStartIndividualPlan?: (object: GraphicalAreaObject) => void;
+  canEditPlant: (plant: GraphicalIndividualPlant) => boolean;
+  onEditPlant: (plant: GraphicalIndividualPlant, action: IndividualPlacementAction) => void;
   onFocusObject: (rect: Rect) => void;
   bedTasks: ReturnType<typeof useBedTasks>;
+  plantTasks: ReturnType<typeof useBedTasks>;
   cropPreview?: CropPreviewData;
   hoverTaskData?: {
     byBed: ReadonlyMap<number, readonly Task[]>;
     summaries: ReadonlyMap<number, BedTaskSummary>;
+    plantSummaries: ReadonlyMap<number, BedTaskSummary>;
     bounds: ReturnType<typeof bedTaskDateBounds>;
     crops?: ReadonlyMap<number, readonly BedCultivationEntry[]>;
     cropLoading: boolean;
@@ -107,10 +119,11 @@ const isGraphicalMenu = (target: EventTarget | null) => target instanceof Elemen
   && Boolean(target.closest('[data-graphical-object-target], .konvajs-content'));
 
 export function GraphicalObjectOverlays({
-  interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onStartIndividualPlan, onFocusObject,
-  bedTasks, cropPreview, hoverTaskData, seasonId, canComplete, showLocationLabel,
+  interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onOpenCrop, onStartIndividualPlan,
+  canEditPlant, onEditPlant, onFocusObject, bedTasks, plantTasks, cropPreview, hoverTaskData, seasonId,
+  canComplete, showLocationLabel,
 }: OverlayProps) {
-  const { t } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard']);
+  const { t } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard', 'plantingPlans']);
   const titleId = useId();
   const preview = useRef<HTMLDivElement>(null);
   const keyboardPreview = useRef<HTMLButtonElement | null>(null);
@@ -119,8 +132,21 @@ export function GraphicalObjectOverlays({
   const hovered = interaction.hover ? objects.get(interaction.hover.key) : null;
   const menu = interaction.menu;
   const menuObject = menu ? objects.get(menu.key) : null;
-  const individualAction = menuObject && menuObject.type !== 'location' && onStartIndividualPlan
+  const individualAction = menuObject && (menuObject.type === 'field' || menuObject.type === 'bed') && onStartIndividualPlan
     ? individualPlantCreationAction(t, () => onStartIndividualPlan(menuObject)) : null;
+  const [keyboardPlants, setKeyboardPlants] = useState<Record<number, string>>({});
+  const plantsByPlan = useMemo(() => {
+    const result = new Map<number, GraphicalIndividualPlant[]>();
+    for (const object of objects.values()) {
+      if (object.type !== 'plant') continue;
+      const current = result.get(object.id);
+      if (current) current.push(object);
+      else result.set(object.id, [object]);
+    }
+    return result;
+  }, [objects]);
+  const tabKeys = useMemo(() => new Map([...plantsByPlan].map(([id, plants]) => [id,
+    (plants.find(plant => plant.key === keyboardPlants[id]) ?? plants[0]).key])), [plantsByPlan, keyboardPlants]);
   const { close } = interaction;
   const closeMenu = () => {
     close();
@@ -166,12 +192,52 @@ export function GraphicalObjectOverlays({
     interaction.openMenu(key, { x: anchor.left, y: anchor.bottom }, trigger);
   };
 
+  const keyboardPlant = (event: KeyboardEvent<HTMLButtonElement>, plant: GraphicalIndividualPlant) => {
+    const related = plantsByPlan.get(plant.id) ?? [];
+    const direction = ['ArrowRight', 'ArrowDown'].includes(event.key) ? 1
+      : ['ArrowLeft', 'ArrowUp'].includes(event.key) ? -1 : 0;
+    if (!direction || related.length < 2) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const next = (related.indexOf(plant) + direction + related.length) % related.length;
+    targets.current.get(related[next].key)?.focus({ preventScroll: true });
+  };
+
+  const plantPositionLabel = (plant: GraphicalIndividualPlant) => t('individualPlants.positionInPlan', {
+    index: numberText(plant.index), total: numberText(plant.count),
+  });
+  const plantFacts = (plant: GraphicalIndividualPlant, compact = false) => {
+    const parent = objects.get(graphicalObjectKey(plant.parent.kind, plant.parent.id));
+    return <>
+      <Typography variant="caption">{plantPositionLabel(plant)}</Typography>
+      {plant.phase && <Typography variant="caption" color="text.secondary">{plant.phase}</Typography>}
+      {!compact && parent && <Typography variant="caption" color="text.secondary">{parent.name}</Typography>}
+    </>;
+  };
+  const plantMenuActions = (plant: GraphicalIndividualPlant) => {
+    const editAllowed = canEditPlant(plant);
+    const crop = plant.plan.crop;
+    return [
+      { id: 'plan-details', group: 'details', label: t('plantingPlans:details.title'), activate: () => openDetails(plant) },
+      { id: 'view-crop', group: 'details', label: t('plantingPlans:details.openCrop'), disabled: crop === null || !onOpenCrop,
+        activate: () => { if (crop !== null) onOpenCrop?.(crop); } },
+      ...(!editAllowed ? [] : [
+        { id: 'edit-stems', group: 'placement', label: t('individualPlants.editPlants'), activate: () => onEditPlant(plant, 'edit') },
+        { id: 'add-stem', group: 'placement', label: t('individualPlants.newPosition'), disabled: plant.count >= MAX_INDIVIDUAL_POSITIONS,
+          activate: () => onEditPlant(plant, 'add') },
+        { id: 'remove-stem', group: 'remove', label: t('individualPlants.removePosition'), disabled: plant.count <= 1,
+          activate: () => onEditPlant(plant, 'remove') },
+      ]),
+    ];
+  };
+
   const detailsLabel = t('graphical.objects.viewDetails');
+  const noPlantTasks = t('individualPlants.noOpenTasks');
   const selectedRect = selection?.rect ? screenRect(selection.rect, viewport) : null;
   const narrow = stageWidth < 650 || interaction.device === 'touch';
   const cropDateDiffers = cropPreview && (cropPreview.reference.kind === 'season'
     || cropPreview.reference.date !== formatDateToAPI(new Date()));
-  const previewWidth = Math.min(320, Math.max(124, stageWidth - 120));
+  const previewWidth = Math.min(320, Math.max(124, stageWidth - (narrow && selection?.type === 'plant' ? 72 : 120)));
   const cx = selectedRect ? selectedRect.x + selectedRect.width / 2 : 12;
   const below = selectedRect ? selectedRect.y + selectedRect.height + 8 : 50;
   const previewLeft = narrow ? 8 : Math.max(8, Math.min(stageWidth - previewWidth - 110, cx - previewWidth / 2));
@@ -189,7 +255,8 @@ export function GraphicalObjectOverlays({
   const tooltipWidth = Math.min(264, stageWidth - 16);
   const tooltipY = pointer && canvas ? pointer.y - canvas.top : 0;
   const hoverBelow = tooltipY < stageHeight / 2;
-  const tooltipOffset = Math.max(8, Math.min(stageHeight - (hoverTaskData && hovered?.type === 'bed' ? 260 : 100),
+  const detailedTooltip = hoverTaskData && (hovered?.type === 'bed' || hovered?.type === 'plant');
+  const tooltipOffset = Math.max(8, Math.min(stageHeight - (detailedTooltip ? 260 : 100),
     hoverBelow ? tooltipY + 14 : stageHeight - tooltipY + 8));
   const tooltipHeight = Math.max(0, stageHeight - tooltipOffset - 8);
   const bedTaskDescription = (id: number) => {
@@ -200,6 +267,18 @@ export function GraphicalObjectOverlays({
     if (!summary?.outstanding || !summary.urgency) return t('graphical.objects.noOpenTasks');
     return `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`;
   };
+  const plantTaskDescription = (id: number) => {
+    if (!hoverTaskData) return undefined;
+    if (plantTasks.planTasksFailed) return t('graphical.taskLayer.loadError');
+    if (plantTasks.planTasksLoading) return t('common:messages.loading');
+    const summary = hoverTaskData.plantSummaries.get(id);
+    return summary?.outstanding && summary.urgency
+      ? `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`
+      : noPlantTasks;
+  };
+  const hoveredPlant = hovered?.type === 'plant' ? hovered : null;
+  const hoveredPlantTasks = hoveredPlant && hoverTaskData
+    ? orderBedTasks((plantTasks.tasksByPlan.get(hoveredPlant.id) ?? []).filter(isOpenTask)) : [];
 
   return (
     <>
@@ -216,10 +295,16 @@ export function GraphicalObjectOverlays({
               else targets.current.delete(object.key);
             }}
             data-graphical-object-target={object.key}
-            aria-label={`${t(`hierarchy:details.entityType.${object.type}`)} · ${object.name}`}
-            aria-description={object.type === 'bed' ? bedTaskDescription(object.id) : undefined}
-            aria-haspopup="menu" aria-keyshortcuts="Shift+F10 ContextMenu" aria-pressed={active}
+            tabIndex={object.type === 'plant' && tabKeys.get(object.id) !== object.key ? -1 : undefined}
+            aria-label={object.type === 'plant' ? `${object.name} · ${plantPositionLabel(object)}`
+              : `${t(`hierarchy:details.entityType.${object.type}`)} · ${object.name}`}
+            aria-description={object.type === 'bed' ? bedTaskDescription(object.id) : object.type === 'plant'
+              ? [object.phase, plantTaskDescription(object.id)].filter(Boolean).join(' · ') || undefined : undefined}
+            aria-haspopup="menu" aria-keyshortcuts={object.type === 'plant'
+              ? 'Shift+F10 ContextMenu ArrowLeft ArrowRight ArrowUp ArrowDown' : 'Shift+F10 ContextMenu'} aria-pressed={active}
             onFocus={() => {
+              if (object.type === 'plant') setKeyboardPlants(current => current[object.id] === object.key
+                ? current : { ...current, [object.id]: object.key });
               if (!menuObject && rect && (rect.x + rect.width < 0 || rect.y + rect.height < 0
                 || rect.x > stageWidth || rect.y > stageHeight) && object.rect) onFocusObject(object.rect);
             }}
@@ -229,7 +314,10 @@ export function GraphicalObjectOverlays({
               if (selectedKey === object.key) preview.current?.focus({ preventScroll: true });
               interaction.select(object.key);
             }}
-            onKeyDown={event => keyboardMenu(event, object.key)}
+            onKeyDown={event => {
+              keyboardMenu(event, object.key);
+              if (object.type === 'plant') keyboardPlant(event, object);
+            }}
             onPointerDown={event => {
               if (!visibleLabel || event.button !== 0 || !event.isPrimary) return;
               keyboardPreview.current = null;
@@ -285,12 +373,16 @@ export function GraphicalObjectOverlays({
           '& .MuiTypography-caption': { lineHeight: 1.4 },
         }}>
           <Stack><Typography variant="body2" sx={{ fontWeight: 700 }}>{hovered.name}</Typography>
-            <ObjectFacts object={hovered} compact />
+            {hovered.type === 'plant' ? plantFacts(hovered, true) : <ObjectFacts object={hovered} compact />}
             {hovered.type === 'bed' && hoverTaskData && <GraphicalBedHoverDetails
               tasks={hoverTaskData.byBed.get(hovered.id) ?? []} taskLoading={bedTasks.loading} taskFailed={bedTasks.failed}
               taskBounds={hoverTaskData.bounds} crops={hoverTaskData.crops?.get(hovered.id)}
               taskLimit={tooltipHeight >= 240 ? 3 : tooltipHeight >= 190 ? 2 : 1}
               cropLoading={hoverTaskData.cropLoading} cropFailed={hoverTaskData.cropFailed} />}
+            {hoveredPlant && hoverTaskData && <GraphicalBedHoverDetails tasks={hoveredPlantTasks}
+              taskLoading={plantTasks.planTasksLoading} taskFailed={plantTasks.planTasksFailed} taskBounds={hoverTaskData.bounds}
+              taskLimit={tooltipHeight >= 240 ? 3 : tooltipHeight >= 190 ? 2 : 1} noOpenTasksLabel={noPlantTasks}
+              cropLoading={false} cropFailed={false} />}
           </Stack>
         </Paper>
       )}
@@ -310,7 +402,7 @@ export function GraphicalObjectOverlays({
                 keyboardPreview.current = null;
               }} sx={{ width: 36, height: 36 }}><CloseIcon fontSize="small" /></IconButton>
             </Stack>
-            <ObjectFacts object={selection} />
+            {selection.type === 'plant' ? plantFacts(selection) : <ObjectFacts object={selection} />}
             {selection.type === 'bed' && cropPreview && <GraphicalCropPreview {...cropPreview} />}
             {selection.type === 'bed' && seasonId !== undefined && (
               <>
@@ -322,9 +414,15 @@ export function GraphicalObjectOverlays({
                   canComplete={canComplete} onOpenDetails={() => openDetails(selection)} />
               </>
             )}
-            <Button size="small" onClick={() => openDetails(selection)}
-              sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{detailsLabel}</Button>
-            {onStartIndividualPlan && selection.type !== 'location' && (
+            {selection.type === 'plant' && seasonId !== undefined && <BedTaskList key={`plant:${selection.id}:${seasonId}`}
+              tasks={plantTasks.tasksByPlan.get(selection.id) ?? []} loading={plantTasks.planTasksLoading}
+              failed={plantTasks.planTasksFailed} refresh={plantTasks.refresh} canComplete={canComplete}
+              noOpenTasksLabel={noPlantTasks} onOpenDetails={() => openDetails(selection)} />}
+            <Button size="small" onClick={() => openDetails(selection)} sx={{ alignSelf: 'flex-start', minHeight: 44 }}>
+              {selection.type === 'plant' ? t('plantingPlans:details.title') : detailsLabel}</Button>
+            {selection.type === 'plant' && canEditPlant(selection) && <Button size="small" onClick={() => onEditPlant(selection, 'edit')}
+              sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.editPlants')}</Button>}
+            {onStartIndividualPlan && (selection.type === 'field' || selection.type === 'bed') && (
               <Button size="small" onClick={() => onStartIndividualPlan(selection)}
                 sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.newPlan')}</Button>
             )}
@@ -334,10 +432,14 @@ export function GraphicalObjectOverlays({
       <CustomContextMenu open={Boolean(menuObject)} mouseX={menu?.point.x} mouseY={menu?.point.y}
         keyboardNavigation onClose={closeMenu} container={getGraphicalPortalContainer()} disableRestoreFocus
         listLabel={menuObject?.name}>
-        <MenuItem onClick={() => { if (menuObject) openDetails(menuObject); }}>{detailsLabel}</MenuItem>
-        {individualAction && <MenuItem onClick={individualAction.onClick}>
-          <ListItemIcon>{individualAction.icon}</ListItemIcon>{individualAction.label}
-        </MenuItem>}
+        {menuObject?.type === 'plant' ? renderGroupedContextMenuActions(plantMenuActions(menuObject), action => (
+          <MenuItem key={action.id} disabled={action.disabled} onClick={action.activate}>{action.label}</MenuItem>
+        )) : [
+          <MenuItem key="details" onClick={() => { if (menuObject) openDetails(menuObject); }}>{detailsLabel}</MenuItem>,
+          individualAction && <MenuItem key={individualAction.id} onClick={individualAction.onClick}>
+            <ListItemIcon>{individualAction.icon}</ListItemIcon>{individualAction.label}
+          </MenuItem>,
+        ]}
       </CustomContextMenu>
     </>
   );

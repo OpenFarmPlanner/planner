@@ -72,6 +72,8 @@ export interface GraphicalFieldsProps {
   onIndividualCreationHandled?: () => void;
   onOpenBed?: (id: number) => void;
   onOpenDetails?: (type: HierarchyEntityType, id: number) => void;
+  onOpenIndividualPlan?: (id: number) => void;
+  onOpenIndividualCrop?: (id: number) => void;
   canCompleteTasks?: boolean;
   hierarchyData?: HierarchyDataState;
   selectedLocationId?: number | null;

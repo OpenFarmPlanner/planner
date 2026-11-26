@@ -303,7 +303,8 @@ export function GraphicalIndividualPlantsPanel({
                         bgcolor: stem.key === selectedKey ? 'action.selected' : undefined }}>
                       {label}
                     </Button>
-                    {draft && <IconButton disabled={saving} color="error" aria-label={`${tr('removePosition')} · ${label}`}
+                    {draft && <IconButton disabled={saving || Boolean(draft.planId && stems.length <= 1)}
+                      color="error" aria-label={`${tr('removePosition')} · ${label}`}
                       sx={{ width: 44, height: 44 }} onClick={() => changeStem(stem.key, null)}>
                       <DeleteOutlineIcon fontSize="small" />
                     </IconButton>}

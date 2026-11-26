@@ -9,6 +9,7 @@ import { planPlacementParent, type PlacementParent } from './individualPlantGeom
 import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
 
 export type DraftStem = StemCoordinates & { id?: string; key: string };
+export type IndividualPlacementAction = 'edit' | 'add' | 'remove';
 
 interface Draft {
   planId?: number;
@@ -44,6 +45,7 @@ const initialEditor: Editor = {
 };
 
 type PlanResult = { key: string; plans: PlantingPlan[]; failed: boolean };
+const NO_PLANS: PlantingPlan[] = [];
 
 function placementDraft(parent: PlacementParent, season: Season, plan?: PlantingPlan): Draft {
   const today = formatDateToAPI(new Date());
@@ -73,7 +75,7 @@ export function useIndividualPlants(
   if (state.scope !== scope) setState({ scope, editor: initialEditor });
   const editor = state.scope === scope ? state.editor : initialEditor;
   const current = result?.key === key ? result : null;
-  const plans = current?.plans ?? [];
+  const plans = current?.plans ?? NO_PLANS;
 
   useEffect(() => {
     if (!location || !scope || !season) return;
@@ -120,13 +122,28 @@ export function useIndividualPlants(
       : { open: true, choosingParent: false, planId, parent, selectedKey });
   };
 
-  const startDraft = (parent: PlacementParent, plan?: PlantingPlan) => {
+  const startDraft = (parent: PlacementParent, plan?: PlantingPlan, selection?: {
+    action: IndividualPlacementAction; stemId: string;
+  }) => {
     // A direct move of this plan is still saving: a draft would start from a version about to change.
     if (!canEdit || !season || saving.current || (plan?.id && movingPlans.has(plan.id))) return;
-    update({
-      open: true, choosingParent: false, placing: plan ? null : 'add', error: null, parent, planId: plan?.id ?? null,
-      selectedKey: plan?.individual_positions?.[0]?.id ?? null,
-      draft: placementDraft(parent, season, plan),
+    const draft = placementDraft(parent, season, plan);
+    const action = selection?.action;
+    const requestedStem = selection && draft.stems.find(stem => stem.key === selection.stemId);
+    if (selection && (!requestedStem || !plan?.updated_at)) return;
+    if (action === 'add' && draft.stems.length >= MAX_INDIVIDUAL_POSITIONS) return;
+    if (action === 'remove') {
+      if (draft.stems.length <= 1) return;
+      draft.stems = draft.stems.filter(stem => stem.key !== selection?.stemId);
+    }
+    update(value => {
+      if (selection && value.draft) return {};
+      return {
+        open: true, choosingParent: false, error: null, parent, planId: plan?.id ?? null,
+        placing: !plan || action === 'add' ? 'add' : null,
+        selectedKey: (action === 'remove' ? draft.stems[0] : requestedStem || draft.stems[0])?.key ?? null,
+        draft,
+      };
     });
   };
 
@@ -144,6 +161,7 @@ export function useIndividualPlants(
 
   const changeStem = (stemKey: string, point: StemCoordinates | null) => update(value => {
     if (!value.draft) return {};
+    if (!point && value.draft.planId && value.draft.stems.length <= 1) return {};
     const stems = point
       ? value.draft.stems.map(stem => stem.key === stemKey ? { ...stem, ...point } : stem)
       : value.draft.stems.filter(stem => stem.key !== stemKey);

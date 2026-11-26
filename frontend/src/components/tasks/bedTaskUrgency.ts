@@ -42,6 +42,18 @@ export function linkTasksToBeds(
   return byBed;
 }
 
+export function linkTasksToPlans(tasks: readonly Task[], includeCancelled = false) {
+  const byPlan = new Map<number, Task[]>();
+  for (const task of tasks) {
+    const plan = task.planting_plan;
+    if (plan === null || (!includeCancelled && task.status === 'cancelled')) continue;
+    const current = byPlan.get(plan);
+    if (current) current.push(task);
+    else byPlan.set(plan, [task]);
+  }
+  return byPlan;
+}
+
 export function summarizeBedTasks(tasks: readonly Task[], bounds: ReturnType<typeof bedTaskDateBounds>): BedTaskSummary {
   const counts: Record<BedTaskUrgency, number> = { overdue: 0, upcoming: 0, later: 0, undated: 0, completed: 0 };
   for (const task of tasks) {

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { plantingPlanAPI, taskAPI } from '../../api/api';
 import type { PlantingPlan, Task } from '../../api/types';
-import { linkTasksToBeds } from './bedTaskUrgency';
+import { linkTasksToBeds, linkTasksToPlans } from './bedTaskUrgency';
 
 type GrowingArea = 'bed' | 'location';
 const NO_BED_TASKS: ReadonlyMap<number, readonly Task[]> = new Map();
@@ -63,8 +63,13 @@ export function useBedTasks(
   const rows = taskRequest.rows;
   const tasksByBed = useMemo(() => rows && plans.rows ? linkTasksToBeds(rows, plans.rows, includeCancelled) : NO_BED_TASKS,
     [includeCancelled, plans.rows, rows]);
+  const tasksByPlan = useMemo(() => rows ? linkTasksToPlans(rows, includeCancelled) : NO_BED_TASKS,
+    [includeCancelled, rows]);
   return {
     tasksByBed,
+    tasksByPlan,
+    planTasksLoading: taskRequest.loading,
+    planTasksFailed: taskRequest.failed,
     loading: scope !== null && (plans.loading || taskRequest.loading),
     failed: scope !== null && (plans.failed || taskRequest.failed),
     refresh: () => {
