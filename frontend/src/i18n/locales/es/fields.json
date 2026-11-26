@@ -45,7 +45,8 @@
       "taskDateNote": "Los vencimientos y la urgencia de las tareas se calculan desde hoy.",
       "legend": "Leyenda del gráfico",
       "cropLegend": "Los colores indican el crecimiento o la cosecha prevista. Los cultivos perennes ocupan el bancal fuera de la cosecha. Un color neutro indica planes mixtos o inciertos.",
-      "taskLegend": "Los símbolos indican tareas abiertas. Un bancal sin símbolo puede tener tareas completadas.",
+      "combinedCropLegend": "Los nombres y las fases de los cultivos se muestran como texto en el bancal.",
+      "taskLegend": "El color y el símbolo indican la tarea abierta más urgente. Los bancales sin tareas abiertas conservan su color habitual.",
       "cropLoadError": "No se pudieron cargar los planes de cultivo.",
       "phase": {
         "growth": "Crecimiento previsto",

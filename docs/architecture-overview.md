@@ -216,9 +216,16 @@ clear the slot before the next page's registration. Growing areas uses this
 wrapping in both representations so its view switch stays reachable; the location/edit controls and compact canvas gutter remain
 exclusive to Graphic mode. The same mechanism is available for the remaining
 shared-topbar work in #930, including Cultures; other pages keep their action layouts.
-Edit graphic and Spacing stay directly available with 44 px buttons. They
-show labels from `lg` when the topbar itself has enough width. The edit button
-shows the active state, and Spacing shows the Shift hint for keyboard users.
+Edit graphic and the Graphic display dropdown use 44 px controls with text
+labels when the topbar has enough width. Spacing is directly available on
+wider layouts and appears in the dropdown on phones. Its keyboard interaction
+shows the Shift hint. The dropdown also selects the four graphic display modes.
+
+Crops renders phase colors from the selected crop reference date. Tasks and
+Crops & tasks share the urgency fills and task symbols for outstanding tasks.
+The combined mode keeps crop names and phases as text. Bed tooltips read from
+the existing location-scoped plans and tasks. Selecting the bed opens the same
+actionable preview in every mode.
 
 The floating canvas tools use the measured canvas width, including in
 fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,

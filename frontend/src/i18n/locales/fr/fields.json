@@ -45,7 +45,8 @@
       "taskDateNote": "Les échéances et l’urgence des tâches se calculent à partir d’aujourd’hui.",
       "legend": "Légende du graphique",
       "cropLegend": "Les couleurs indiquent la croissance ou la récolte prévue. Les cultures pérennes occupent la planche en dehors de la récolte. Une couleur neutre indique des plans mixtes ou incertains.",
-      "taskLegend": "Les symboles indiquent les tâches ouvertes. Une planche sans symbole peut avoir des tâches terminées.",
+      "combinedCropLegend": "Le nom et la phase des cultures sont indiqués sur la planche.",
+      "taskLegend": "La couleur et le symbole indiquent la tâche ouverte la plus urgente. Les planches sans tâche ouverte gardent leur couleur habituelle.",
       "cropLoadError": "Impossible de charger les plans de culture.",
       "phase": {
         "growth": "Croissance prévue",

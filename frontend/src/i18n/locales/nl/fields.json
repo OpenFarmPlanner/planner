@@ -45,7 +45,8 @@
       "taskDateNote": "De vervaldatum en urgentie van taken worden vanaf vandaag berekend.",
       "legend": "Legenda van de grafiek",
       "cropLegend": "De kleuren tonen de verwachte groei of oogst. Meerjarige gewassen bezetten het bed ook buiten de oogst. Een neutrale kleur wijst op gemengde of onzekere plannen.",
-      "taskLegend": "Symbolen tonen openstaande taken. Een bed zonder symbool kan voltooide taken hebben.",
+      "combinedCropLegend": "Gewasnamen en groeifasen staan als tekst op het bed.",
+      "taskLegend": "De kleur en het symbool tonen de dringendste openstaande taak. Bedden zonder openstaande taken behouden hun gebruikelijke kleur.",
       "cropLoadError": "De teeltplannen konden niet worden geladen.",
       "phase": {
         "growth": "Verwachte groei",

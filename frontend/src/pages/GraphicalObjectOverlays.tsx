@@ -6,7 +6,10 @@ import { CustomContextMenu } from '../components/contextMenu/CustomContextMenu';
 import { useContextMenuOpenRegistration } from '../components/contextMenu/contextMenuOpenState';
 import { useCloseCustomContextMenuOnNativeContextMenu } from '../utils/contextMenu';
 import { GraphicalCropPreview, type CropPreviewData } from './GraphicalCropPreview';
+import { GraphicalBedHoverDetails } from './GraphicalBedHoverDetails';
 import { BedTaskList } from '../components/tasks/BedTaskList';
+import { bedTaskUrgencyLabel, type BedTaskSummary, type bedTaskDateBounds } from '../components/tasks/bedTaskUrgency';
+import type { Task } from '../api/types';
 import type { HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import type { MetricCoverage } from '../components/hierarchy/utils/growingAreaGeometry';
 import { useTranslation } from '../i18n';
@@ -16,6 +19,7 @@ import type { useBedTasks } from '../components/tasks/useBedTasks';
 import type { Rect } from './graphicalLayoutUtils';
 import type { ViewportState } from './graphicalViewport';
 import type { GraphicalObjectInteraction } from './useGraphicalObjectInteraction';
+import type { BedCultivationEntry } from './graphicalCultivation';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 
 export interface GraphicalObject {
@@ -84,6 +88,14 @@ interface OverlayProps {
   onFocusObject: (rect: Rect) => void;
   bedTasks: ReturnType<typeof useBedTasks>;
   cropPreview?: CropPreviewData;
+  hoverTaskData?: {
+    byBed: ReadonlyMap<number, readonly Task[]>;
+    summaries: ReadonlyMap<number, BedTaskSummary>;
+    bounds: ReturnType<typeof bedTaskDateBounds>;
+    crops?: ReadonlyMap<number, readonly BedCultivationEntry[]>;
+    cropLoading: boolean;
+    cropFailed: boolean;
+  };
   seasonId?: number;
   canComplete: boolean;
   showLocationLabel: boolean;
@@ -94,9 +106,9 @@ const isGraphicalMenu = (target: EventTarget | null) => target instanceof Elemen
 
 export function GraphicalObjectOverlays({
   interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onFocusObject,
-  bedTasks, cropPreview, seasonId, canComplete, showLocationLabel,
+  bedTasks, cropPreview, hoverTaskData, seasonId, canComplete, showLocationLabel,
 }: OverlayProps) {
-  const { t } = useTranslation(['fields', 'hierarchy', 'common']);
+  const { t } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard']);
   const titleId = useId();
   const preview = useRef<HTMLDivElement>(null);
   const keyboardPreview = useRef<HTMLButtonElement | null>(null);
@@ -170,6 +182,20 @@ export function GraphicalObjectOverlays({
   const previewHeight = Math.max(0, Math.min(previewMaxHeight, stageHeight - previewOffset - 8));
   const pointer = interaction.hover?.point;
   const canvas = pointer && hovered ? root.current?.getBoundingClientRect() : undefined;
+  const tooltipWidth = Math.min(264, stageWidth - 16);
+  const tooltipY = pointer && canvas ? pointer.y - canvas.top : 0;
+  const hoverBelow = tooltipY < stageHeight / 2;
+  const tooltipOffset = Math.max(8, Math.min(stageHeight - (hoverTaskData && hovered?.type === 'bed' ? 260 : 100),
+    hoverBelow ? tooltipY + 14 : stageHeight - tooltipY + 8));
+  const tooltipHeight = Math.max(0, stageHeight - tooltipOffset - 8);
+  const bedTaskDescription = (id: number) => {
+    if (!hoverTaskData) return undefined;
+    if (bedTasks.failed) return t('graphical.taskLayer.loadError');
+    if (bedTasks.loading) return t('common:messages.loading');
+    const summary = hoverTaskData.summaries.get(id);
+    if (!summary?.outstanding || !summary.urgency) return t('graphical.objects.noOpenTasks');
+    return `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`;
+  };
 
   return (
     <>
@@ -187,6 +213,7 @@ export function GraphicalObjectOverlays({
             }}
             data-graphical-object-target={object.key}
             aria-label={`${t(`hierarchy:details.entityType.${object.type}`)} · ${object.name}`}
+            aria-description={object.type === 'bed' ? bedTaskDescription(object.id) : undefined}
             aria-haspopup="menu" aria-keyshortcuts="Shift+F10 ContextMenu" aria-pressed={active}
             onFocus={() => {
               if (!menuObject && rect && (rect.x + rect.width < 0 || rect.y + rect.height < 0
@@ -247,14 +274,20 @@ export function GraphicalObjectOverlays({
       })}
       {hovered && pointer && canvas && (
         <Paper role="tooltip" elevation={4} sx={{ position: 'absolute', pointerEvents: 'none', zIndex: 3, p: 1,
-          left: Math.max(8, Math.min(stageWidth - 180, pointer.x - canvas.left + 12)),
-          ...(pointer.y - canvas.top < stageHeight - 100
-            ? { top: Math.max(4, pointer.y - canvas.top + 14) }
-            : { bottom: Math.max(4, canvas.bottom - pointer.y + 8) }),
-          maxWidth: Math.min(220, stageWidth - 16),
+          left: Math.max(8, Math.min(stageWidth - tooltipWidth - 8, pointer.x - canvas.left + 12)),
+          [hoverBelow ? 'top' : 'bottom']: tooltipOffset,
+          width: 'max-content', maxWidth: tooltipWidth, maxHeight: tooltipHeight,
+          overflow: 'hidden', overflowWrap: 'anywhere',
+          '& .MuiTypography-caption': { lineHeight: 1.4 },
         }}>
           <Stack><Typography variant="body2" sx={{ fontWeight: 700 }}>{hovered.name}</Typography>
-            <ObjectFacts object={hovered} compact /></Stack>
+            <ObjectFacts object={hovered} compact />
+            {hovered.type === 'bed' && hoverTaskData && <GraphicalBedHoverDetails
+              tasks={hoverTaskData.byBed.get(hovered.id) ?? []} taskLoading={bedTasks.loading} taskFailed={bedTasks.failed}
+              taskBounds={hoverTaskData.bounds} crops={hoverTaskData.crops?.get(hovered.id)}
+              taskLimit={tooltipHeight >= 240 ? 3 : tooltipHeight >= 190 ? 2 : 1}
+              cropLoading={hoverTaskData.cropLoading} cropFailed={hoverTaskData.cropFailed} />}
+          </Stack>
         </Paper>
       )}
       {selection && (

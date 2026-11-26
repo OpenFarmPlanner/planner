@@ -147,7 +147,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     mode: displayMode, onMode: setDisplayMode, season: activeSeason, reference: cropReference,
     onDate: setCropDate, onOpenLegend: setDisplayLegendAnchor,
   }), [activeSeason, cropReference, displayMode, setDisplayMode]);
-  const displayControls = useMemo(() => <GraphicalDisplayControls {...displayControlProps} />, [displayControlProps]);
+  const displayControls = useMemo(() => <GraphicalDisplayControls {...displayControlProps} fullscreen />, [displayControlProps]);
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
   const rotation = useParcelRotationGroups({
     enabled: projectId != null, fields, beds, onChanged: () => { void reloadActiveSeason?.(); },

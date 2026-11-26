@@ -179,7 +179,7 @@ export default function GraphicalFields({
   };
   const objectInteractionEnabled = Boolean(activeLocationId && !loading && !error && layoutReady && !layoutFailed
     && !globalEditMode && editableLocationId !== activeLocationId && !individualPlants.editor.placing);
-  const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId);
+  const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId, displayMode);
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
   const showCrops = includesCrops(displayMode);
   const showTasks = includesTasks(displayMode);
@@ -198,10 +198,9 @@ export default function GraphicalFields({
   }, [cropReference, individualSeason, plansByBed]);
   const openTasksByBed = useMemo(() => new Map(Array.from(bedTasks.tasksByBed,
     ([id, tasks]) => [id, orderBedTasks(tasks.filter(isOpenTask))])), [bedTasks.tasksByBed]);
-  const taskSummaries = useMemo(() => {
-    const bounds = bedTaskDateBounds(new Date());
-    return new Map(Array.from(bedTasks.tasksByBed, ([id, tasks]) => [id, summarizeBedTasks(tasks, bounds)]));
-  }, [bedTasks.tasksByBed]);
+  const { today, upcomingEnd } = bedTaskDateBounds(new Date());
+  const taskSummaries = useMemo(() => new Map(Array.from(bedTasks.tasksByBed,
+    ([id, tasks]) => [id, summarizeBedTasks(tasks, { today, upcomingEnd })])), [bedTasks.tasksByBed, today, upcomingEnd]);
   const cropPreview = cropReference && selectedBedId !== null ? {
     reference: cropReference,
     entries: cropsByBed.get(selectedBedId) ?? [],
@@ -1321,7 +1320,7 @@ export default function GraphicalFields({
                                   ? getGanttPhaseColors(color && /^#[\da-f]{6}$/i.test(color) ? color : theme.palette.success.main) : null;
                                 const cropFill = phaseColors ? alpha(phaseColors[phase === 'harvest' ? 'harvest' : 'growth'], 0.45)
                                   : entries.length ? alpha(theme.palette.grey[700], 0.22) : undefined;
-                                const fill = shownMode === 'tasks' ? taskColors?.fill : cropFill;
+                                const fill = includesTasks(shownMode) ? taskColors?.fill : cropFill;
                                 return (
                                   <Group key={bedVm.id}>
                                     <Rect
@@ -1398,6 +1397,11 @@ export default function GraphicalFields({
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
                     openDetails={details} onFocusObject={focusArea} bedTasks={previewTasks} cropPreview={cropPreview}
+                    hoverTaskData={showTasks && activeSeasonId !== undefined ? {
+                      byBed: openTasksByBed, summaries: taskSummaries, bounds: { today, upcomingEnd },
+                      crops: showCrops ? cropsByBed : undefined, cropLoading: showCrops && locationPlans.loading,
+                      cropFailed: showCrops && locationPlans.failed,
+                    } : undefined}
                     seasonId={activeSeasonId} canComplete={canCompleteTasks} showLocationLabel={showFallbackLocationLabel} />}
                 </Box>
                 {showIndividualPanel && (

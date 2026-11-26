@@ -45,7 +45,8 @@
       "taskDateNote": "Für die Fälligkeit und Dringlichkeit der Aufgaben gilt das heutige Datum.",
       "legend": "Legende der Grafik",
       "cropLegend": "Die Kulturfarben zeigen das geplante Wachstum oder die geplante Ernte. Mehrjährige Kulturen belegen das Beet auch außerhalb der Ernte. Eine neutrale Farbe steht für gemischte oder unklare Pläne.",
-      "taskLegend": "Die Symbole zeigen offene Aufgaben. Auch in Beeten ohne Symbol kann es bereits erledigte Aufgaben geben.",
+      "combinedCropLegend": "Kulturnamen und Phasen stehen als Text im Beet.",
+      "taskLegend": "Farbe und Symbol zeigen die dringendste offene Aufgabe. Beete ohne offene Aufgaben behalten ihre normale Farbe.",
       "cropLoadError": "Die Anbaupläne konnten nicht geladen werden.",
       "phase": {
         "growth": "Geplantes Wachstum",

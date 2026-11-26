@@ -44,6 +44,13 @@ fills the available canvas. Select another, zoom/pan/rotate, then switch between
 List and Graphic: the selected location and its camera stay intact. Edit graphic
 in the same topbar applies to the selected location only; Add location remains
 available through the existing add action/menu. Fullscreen stays optional.
+Use the Graphic display dropdown in Pachtacker Lindenhof to compare all four
+modes. Crops shows phase colors. Tasks and Crops & tasks use the most urgent
+open task to color each bed. Crops & tasks also shows the crop and its phase
+when the bed has room for labels. Hover the harvest bed for its open task titles
+and dates, or select it by mouse, touch or keyboard to preview and complete a task.
+Change the crop reference date to compare phases, then reload after choosing a
+different mode to verify that the display choice is remembered.
 All three locations carry outer dimensions (Hofgarten 24 × 42 m, Acker am Bach
 20 × 50 m, Pachtacker Lindenhof 24 × 55 m), so the graphic draws each location's
 dashed boundary with free space around the saved plot positions and the list

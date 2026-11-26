@@ -45,7 +45,8 @@
       "taskDateNote": "Os prazos e a urgência das tarefas são calculados a partir de hoje.",
       "legend": "Legenda do gráfico",
       "cropLegend": "As cores indicam o crescimento ou a colheita prevista. As culturas perenes ocupam o canteiro fora da colheita. Uma cor neutra indica planos mistos ou incertos.",
-      "taskLegend": "Os símbolos indicam tarefas em aberto. Um canteiro sem símbolo pode ter tarefas concluídas.",
+      "combinedCropLegend": "Os nomes e as fases das culturas aparecem no canteiro.",
+      "taskLegend": "A cor e o símbolo indicam a tarefa em aberto mais urgente. Os canteiros sem tarefas em aberto mantêm a sua cor habitual.",
       "cropLoadError": "Não foi possível carregar os planos de cultivo.",
       "phase": {
         "growth": "Crescimento previsto",
