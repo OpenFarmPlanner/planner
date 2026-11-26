@@ -152,6 +152,7 @@ import {
 } from "./individualPlantGeometry";
 import { individualPlantGraphicPath } from "../planting-plans/individualPlantRoutes";
 import { useIndividualPlanGeneration } from '../planting-plans/useIndividualPlanGeneration';
+import { IndividualPlanGenerationRequest } from '../planting-plans/IndividualPlanGenerationRequest';
 import {
   ACTUAL_DATE_FIELDS, displayedPlanDate, displayedPlanDates, getPlanColumnDates, PLANTING_PLAN_DATE_COLUMNS,
   getPlanDateReadOnlyReason, type PlantingPlanDateColumn, type PlantingPlanDateComparison,
@@ -349,7 +350,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
   const { api: plantingPlanGridAPI, getRowHarvestOverlaps } = usePlantingPlanGridAPI(
     `${userId}:${activeProjectId}:${activeSeasonId}`,
   );
-  const { confirmGeneration, dialog: individualGenerationDialog } = useIndividualPlanGeneration(
+  const { confirmGeneration, input: individualGenerationInput, completeGeneration } = useIndividualPlanGeneration(
     `${userId}:${activeProjectId}:${activeSeasonId}:${detailOpen}`,
   );
   const getRowTimingWindowFindings = useCallback(
@@ -3217,7 +3218,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           onCommit={commitAreaValidationDialogValue}
         />
       )}
-      {individualGenerationDialog}
+      {individualGenerationInput && <IndividualPlanGenerationRequest input={individualGenerationInput} onComplete={completeGeneration} />}
 
       <NotesDrawer
         open={mobileNotesEditor.isOpen}

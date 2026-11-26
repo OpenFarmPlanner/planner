@@ -1,5 +1,5 @@
-import { createElement, useCallback, useEffect, useRef, useState } from 'react';
-import { IndividualPlanGenerationRequest, type GenerationInput, type GenerationResult } from './IndividualPlanGenerationRequest';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { GenerationInput, GenerationResult } from './IndividualPlanGenerationRequest';
 
 /** Await explicit preview confirmation in the grid's existing row save gate. */
 export function useIndividualPlanGeneration(scopeKey: string) {
@@ -27,6 +27,6 @@ export function useIndividualPlanGeneration(scopeKey: string) {
     });
   }, [scopeKey]);
 
-  const dialog = request?.scopeKey === scopeKey ? createElement(IndividualPlanGenerationRequest, { input: request.input, onComplete: complete }) : null;
-  return { confirmGeneration, dialog };
+  const input = request?.scopeKey === scopeKey ? request.input : null;
+  return { confirmGeneration, input, completeGeneration: complete };
 }
