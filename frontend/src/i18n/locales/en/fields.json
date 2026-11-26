@@ -45,7 +45,8 @@
       "taskDateNote": "Task due dates and urgency use today.",
       "legend": "Graphic legend",
       "cropLegend": "Crop colors show projected growth or harvest. Perennials remain on the bed outside harvest. A neutral fill shows mixed or uncertain plans.",
-      "taskLegend": "Markers show open tasks. A bed without a marker can have completed tasks.",
+      "combinedCropLegend": "Crop names and phases appear as text on the bed.",
+      "taskLegend": "The fill and symbol show the most urgent open task. Beds without open tasks keep their usual color.",
       "cropLoadError": "Cultivation plans could not be loaded.",
       "phase": {
         "growth": "Projected growth",

@@ -603,9 +603,13 @@ test.describe('location spacing in a touch-capable browser', () => {
           && menuBox.x >= editBox.x + editBox.width - 1
           && menuBox.y < editBox.y + editBox.height && menuBox.x + menuBox.width <= 375;
       }).toBe(true);
+      await expect(mode.getByTestId('graphical-display-chevron')).toBeVisible();
       await mode.tap();
       await expect(page.getByRole('menuitemradio')).toHaveCount(4);
       await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
+      const menuBox = (await page.getByRole('menu').boundingBox())!;
+      expect(menuBox.x).toBeGreaterThanOrEqual(0);
+      expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(375);
       const spacingItem = page.getByRole('menuitem', { name: button, exact: true });
       await expect.poll(async () => (await spacingItem.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
       await spacingItem.tap();
@@ -830,6 +834,8 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, longLocationName);
+  const contextHint = page.getByRole('note').filter({ hasText: /Kontextmenü öffnen|öffnet das Kontextmenü/ });
+  await expect(contextHint).toBeVisible();
   for (const viewport of [
     { width: 2240, height: 1080 }, { width: 1920, height: 1080 }, { width: 1440, height: 900 },
     { width: 1200, height: 900 },
@@ -845,6 +851,11 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     const location = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
     if (compact) {
       await expect(spacing).toHaveCount(0);
+      await display.press('Enter');
+      await page.getByRole('menuitem', { name: 'Abstände', exact: true }).press('Enter');
+      await expect(page.getByRole('dialog', { name: 'Abstände (Wege)' })).toBeVisible();
+      await page.keyboard.press('Escape');
+      await expect(display).toBeFocused();
       await expect(location).toHaveAccessibleName(`Standort · ${longLocationName}`);
       await expect(location).toHaveText(longLocationName);
       await expect.poll(async () => {
@@ -889,13 +900,18 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
     // The mode and date controls can use the wrapped workspace row on a large desktop as well.
-    if (viewport.width === 2240) await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
+    if (viewport.width === 2240) {
+      await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
+      await expect(display.locator('[data-display-label]')).toBeVisible();
+    }
     if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     if ([1440, 768, 375].includes(viewport.width)) {
       const canvas = page.locator('.konvajs-content');
-      const before = (await canvas.boundingBox())!;
+      await expect(canvas).toBeVisible();
+      const before = await canvas.boundingBox();
+      expect(before).not.toBeNull();
       if (viewport.width === 1440) {
         await edit.hover();
         await expect(page.getByRole('tooltip')).toContainText('Im Bearbeitungsmodus lassen sich Parzellen und Beete verschieben.');
@@ -908,7 +924,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       await expect(edit).toHaveClass(/MuiButton-colorSuccess\b/);
       await expect(page.getByRole('tooltip')).toHaveCount(0);
       await expect(page.getByText(/^Grafikbearbeitung aktiv:/)).toHaveCount(0);
-      await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before.y, height: before.height });
+      await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before?.y, height: before?.height });
       await page.screenshot({ path: testInfo.outputPath(`workspace-edit-${viewport.width}.png`), animations: 'disabled' });
       await edit.click();
       await expect(edit).toHaveAttribute('aria-pressed', 'false');
@@ -934,6 +950,21 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect(page.locator('.konvajs-content')).toHaveCount(1);
 
   }
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await contextHint.getByRole('button', { name: 'Schließen' }).click();
+  await expect(contextHint).toHaveCount(0);
+  for (const width of [320, 1200, 768, 1440, 375]) {
+    await page.setViewportSize({ width, height: 800 });
+  }
+  await selectGraphicDisplay(page, 'Aufgaben');
+  await expect(page.getByRole('button', { name: /^Stichtag für Kulturen · / })).toHaveCount(0);
+  await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
+  await expect(page.getByRole('button', { name: /^Stichtag für Kulturen · / })).toBeVisible();
+  await expect(contextHint).toHaveCount(0);
+  await expect.poll(async () => {
+    const canvas = (await canvasRects(page, 'field-rect-'))[0];
+    return Boolean(canvas && canvas.stage.width <= 375 && canvas.container.y + canvas.stage.height <= 801);
+  }).toBe(true);
 });
 
 test('draws a sized location boundary and flags plots that cross it', async ({ page, request }, testInfo) => {
@@ -1218,6 +1249,13 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   const harvest = id('Erntebeet');
   const mixed = id('Misch- und Folgebeet');
   const free = id('Freies Beispielbeet');
+  const { results: growthPlans } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/planting-plans/?bed=${growth}`);
+  for (const plan of growthPlans) {
+    const { results: tasks } = await apiRequest<{ results: { id: number; status: string }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+    for (const task of tasks.filter(task => task.status === 'pending' || task.status === 'in_progress')) {
+      await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'completed' });
+    }
+  }
   const reads: URL[] = [];
   const writes: string[] = [];
   page.on('request', request => {
@@ -1235,10 +1273,11 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
 
   const shape = (id: number) => page.evaluate(id => {
-    const stage = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva.stages
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
       .find(item => item.container()?.isConnected);
     const bed = stage?.find('Rect').find(rect => rect.getAttr('data-testid') === `bed-rect-${id}`);
-    return { phase: bed?.getAttr('data-crop-phase') ?? null, urgency: bed?.getAttr('data-task-urgency') ?? null };
+    return { phase: bed?.getAttr('data-crop-phase') ?? null, urgency: bed?.getAttr('data-task-urgency') ?? null,
+      fill: bed?.getAttr('fill') ?? null };
   }, id);
   await expect.poll(async () => (await shape(growth)).phase).toBe('growth');
   await expect.poll(async () => (await shape(harvest)).phase).toBe('harvest');
@@ -1246,6 +1285,21 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await expect.poll(async () => (await shape(free)).phase).toBeNull();
   const harvestUrgency = (await shape(harvest)).urgency;
   expect(harvestUrgency).toBeTruthy();
+  const combinedHarvest = await shape(harvest);
+  const normalFill = (await shape(free)).fill;
+  expect(combinedHarvest.fill).not.toBe(normalFill);
+  expect((await shape(growth)).fill).toBe(normalFill);
+  const hover = page.getByRole('tooltip').filter({ hasText: 'Erntebeet' });
+  const harvestPoint = shapePoint((await canvasRects(page, `bed-rect-${harvest}`))[0]);
+  await page.mouse.move(harvestPoint.x, harvestPoint.y);
+  await expect(hover).toContainText('Erntereife prüfen');
+  await expect(hover).toContainText('Geplante Ernte');
+  await expect(hover).not.toContainText('Erntewerkzeug vorbereiten');
+  await expect(hover.getByRole('button')).toHaveCount(0);
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-task-tooltip.png') });
+  await display.press('Enter');
+  await expect(hover).toHaveCount(0);
+  await page.keyboard.press('Escape');
 
   const preview = page.getByTestId('graphical-object-preview');
   const target = (id: number) => page.locator(`[data-graphical-object-target="bed:${id}"]`);
@@ -1281,12 +1335,25 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await selectGraphicDisplay(page, 'Kulturen');
   await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
   expect((await shape(harvest)).urgency).toBeNull();
+  expect((await shape(harvest)).fill).not.toBe(combinedHarvest.fill);
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen');
   await selectGraphicDisplay(page, 'Aufgaben');
   await expect(dateButton).toHaveCount(0);
   expect((await shape(harvest)).phase).toBeNull();
+  await expect.poll(async () => (await shape(harvest)).fill).toBe(combinedHarvest.fill);
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Aufgaben');
   await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
-  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
+  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
+  await page.reload();
+  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+  await expect.poll(() => shape(harvest)).toMatchObject(combinedHarvest);
   await page.screenshot({ path: testInfo.outputPath('graphic-display-combined-375.png') });
+  await display.press('Enter');
+  await expect(page.getByRole('menuitemradio', { name: 'Kulturen & Aufgaben' })).toHaveAttribute('aria-checked', 'true');
+  await page.screenshot({ path: testInfo.outputPath('graphic-display-dropdown-375.png') });
+  await page.keyboard.press('Escape');
   await selectGraphicDisplay(page, 'Anbauflächen');
   await page.reload();
   await expect(display).toHaveAccessibleName('Darstellung der Grafik · Anbauflächen');

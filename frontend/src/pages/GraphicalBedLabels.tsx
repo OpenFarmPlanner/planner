@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { useTheme } from '@mui/material/styles';
 import { Circle, Text } from 'react-konva';
 import type { Task } from '../api/types';
@@ -8,7 +9,7 @@ import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeas
 import type { BedViewModel } from './graphicalFieldsGeometry';
 import { FIELD_INNER_OFFSET_X, FIELD_INNER_OFFSET_Y } from './graphicalFieldsGeometry';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
-import { includesCrops, includesTasks, type BedCultivationEntry, type GraphicalDisplayMode } from './graphicalCultivation';
+import { bedCropDisplayName, bedCropPhaseLabel, includesCrops, includesTasks, type BedCultivationEntry, type GraphicalDisplayMode } from './graphicalCultivation';
 import { getBedLabelLayout } from './graphicalViewport';
 
 interface Props {
@@ -30,39 +31,33 @@ export function GraphicalBedLabels({ bed, scale, mode, detailedArea, crops, task
   const showTasks = includesTasks(mode) && tasks.length > 0 && urgency && urgency !== 'completed';
   const badge = showTasks ? BED_TASK_SYMBOLS[urgency] : null;
   const colors = showTasks ? bedTaskColors(theme, urgency) : null;
-  const badgeText = badge && width >= 78 ? `${badge} ${tasks.length}` : badge;
+  const badgeText = badge && width >= 64 ? `${badge} ${tasks.length}` : badge;
   const badgeWidth = badgeText && width >= 44 && height >= 20 ? badgeText.length * 7 + 7 : 0;
   const label = getBedLabelLayout({ ...bed, width: bed.width - badgeWidth / scale }, scale);
-  const maxRows = width >= 64 ? Math.max(1, Math.floor((height - 8) / 15)) : 1;
-  const cropList = includesCrops(mode) ? crops : [];
-  const names = cropList.map(({ plan }) => {
-    const name = plan.name || t('ganttChart:taskNames.unknownCrop', { id: plan.crop ?? '' });
-    return width >= 160 && plan.variety ? `${name} (${plan.variety})` : name;
-  });
+  const detailRows = width >= 64 ? Math.max(0, Math.floor((height - 20) / 15)) : 0;
+  const cropList = includesCrops(mode) ? crops.filter(({ plan }) => plan.name || plan.crop !== null) : [];
+  const names = cropList.slice(0, 2).map(({ plan }) => bedCropDisplayName(plan, t, width >= 160));
   const locale = resolveSeasonDateLocale(i18n);
-  const phase = cropList.length === 1 ? cropList[0].phase : null;
-  const rows: { kind: string; text: string }[] = [];
-  if (maxRows >= 2 && names.length) rows.push({
+  const phase = cropList.length === 1 && crops.length === 1 ? bedCropPhaseLabel(cropList[0], t) : null;
+  const rows: { kind: string; text: string; due?: string }[] = [];
+  if (detailRows >= 1 && names.length) rows.push({
     kind: 'crop',
-    text: names.length > 2 ? `${names.slice(0, 2).join(', ')} +${names.length - 2}` : names.join(', '),
+    text: `${names.join(', ')}${cropList.length > 2 ? ` +${cropList.length - 2}` : ''}`,
   });
-  if (maxRows >= 3 && width >= 114 && phase) {
-    const item = cropList[0];
-    const label = t(item.recordedHarvest ? 'graphical.display.recordedHarvest' : `graphical.display.phase.${phase}`);
-    const period = item.harvest;
+  if (detailRows >= 2 && width >= 114 && phase) {
+    const period = cropList[0].harvest;
     rows.push({ kind: 'phase', text: period
-      ? `${label} · ${formatSeasonDate(period.start_date, locale)}` : label });
+      ? `${phase} · ${formatSeasonDate(period.start_date, locale)}` : phase });
   }
-  if (maxRows >= 3 && width >= 104 && showTasks) {
-    const available = maxRows - rows.length - 1;
-    const needsMoreRow = available > 1 && tasks.length > Math.min(2, available);
+  const available = detailRows - rows.length;
+  if (available > 0 && width >= 150 && showTasks) {
+    const needsMoreRow = tasks.length > Math.min(2, available);
     const taskCount = Math.min(2, available - Number(needsMoreRow));
     for (const task of tasks.slice(0, taskCount)) {
-      const title = taskDisplayTitle(task, t);
-      rows.push({ kind: 'task', text: task.due_date && width >= 160
-        ? `${title} · ${formatSeasonDate(task.due_date, locale)}` : title });
+      rows.push({ kind: 'task', text: taskDisplayTitle(task, t),
+        due: task.due_date ? formatSeasonDate(task.due_date, locale) : t('dashboard:board.noDate') });
     }
-    if (needsMoreRow) rows.push({
+    if (taskCount > 0 && needsMoreRow) rows.push({
       kind: 'more-tasks', text: t('graphical.objects.moreTasks', { count: tasks.length - taskCount }),
     });
   }
@@ -76,7 +71,7 @@ export function GraphicalBedLabels({ bed, scale, mode, detailedArea, crops, task
           width={badgeWidth - 2} height={14} align="right" text={badgeText}
           fontSize={12} fontStyle="bold" fill={colors?.glyph}
           listening={false} scaleX={1 / scale} scaleY={1 / scale}
-          aria-label={urgency ? bedTaskUrgencyLabel(urgency, t) : undefined}
+          aria-label={urgency ? `${bedTaskUrgencyLabel(urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: tasks.length })}` : undefined}
           data-testid={`bed-task-icon-${bed.id}`} />
       )}
       {showTasks && badgeWidth === 0 && (
@@ -91,12 +86,22 @@ export function GraphicalBedLabels({ bed, scale, mode, detailedArea, crops, task
           lineHeight={1} wrap="none" ellipsis listening={false} scaleX={1 / scale} scaleY={1 / scale}
           data-testid={`bed-label-${bed.id}`} />
       )}
-      {label && rows.map(({ kind, text }, index) => (
-        <Text key={index} x={origin.x + 4 / scale} y={origin.y + (19 + index * 15) / scale}
-          text={text} fontSize={11} width={Math.max(0, width - 8)} height={12}
-          lineHeight={1} wrap="none" ellipsis listening={false} scaleX={1 / scale} scaleY={1 / scale}
-          data-testid={`bed-${kind}-label-${bed.id}-${index}`} />
-      ))}
+      {label && rows.map(({ kind, text, due }, index) => {
+        const dueWidth = due ? Math.min(due.length * 7, width * 0.45) : 0;
+        const y = origin.y + (19 + index * 15) / scale;
+        return (
+          <Fragment key={index}>
+            <Text x={origin.x + 4 / scale} y={y}
+              text={text} fontSize={11} width={width - (due ? 12 : 8) - dueWidth} height={12}
+              lineHeight={1} wrap="none" ellipsis listening={false} scaleX={1 / scale} scaleY={1 / scale}
+              data-testid={`bed-${kind}-label-${bed.id}-${index}`} />
+            {due && <Text x={origin.x + (width - 4 - dueWidth) / scale} y={y}
+              text={due} fontSize={11} width={dueWidth} height={12} align="right"
+              lineHeight={1} wrap="none" ellipsis listening={false} scaleX={1 / scale} scaleY={1 / scale}
+              data-testid={`bed-task-due-${bed.id}-${index}`} />}
+          </Fragment>
+        );
+      })}
     </>
   );
 }

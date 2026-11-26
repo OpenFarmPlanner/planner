@@ -2,8 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Konva from 'konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { ROW_LONG_PRESS_MS, useLongPressTimer } from '../components/contextMenu/useLongPressTimer';
+import { useContextMenuOpenSnapshot } from '../components/contextMenu/contextMenuOpenState';
 import type { HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
 import type { Point } from './graphicalFieldsGeometry';
+import type { GraphicalDisplayMode } from './graphicalCultivation';
 
 type Device = 'desktop' | 'touch';
 type StagePressEvent = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -25,9 +27,10 @@ function eventPoint(event: MouseEvent | TouchEvent): Point | undefined {
   return pointer && { x: pointer.clientX, y: pointer.clientY };
 }
 
-export function useGraphicalObjectInteraction(enabled: boolean, scope: number | null) {
+export function useGraphicalObjectInteraction(enabled: boolean, scope: number | null, mode: GraphicalDisplayMode) {
   const [selection, setSelection] = useState<{ key: string; scope: number | null } | null>(null);
-  const [hover, setHover] = useState<{ key: string; point: Point } | null>(null);
+  const [hover, setHover] = useState<{ key: string; point: Point; mode: GraphicalDisplayMode; menuSequence: number } | null>(null);
+  const { open: contextMenuOpen, openSequence: menuSequence } = useContextMenuOpenSnapshot();
   const [menu, setMenu] = useState<{ point: Point; key: string; trigger?: HTMLElement; gesture?: Device } | null>(null);
   const [device, setDevice] = useState<Device | null>(null);
   const press = useRef<{ key: string | null; point: Point } | null>(null);
@@ -111,8 +114,9 @@ export function useGraphicalObjectInteraction(enabled: boolean, scope: number | 
 
   const hoverObject = (key: string | null, point: Point | undefined) => {
     if (key && point) setDevice('desktop');
-    setHover(current => key && point && !menu && !selection
-      ? (current?.key === key ? current : { key, point }) : null);
+    setHover(current => key && point && !menu && !selection && !contextMenuOpen
+      ? (current?.key === key && current.mode === mode && current.menuSequence === menuSequence
+        ? current : { key, point, mode, menuSequence }) : null);
   };
 
   const beginStage = (event: StagePressEvent) => {
@@ -135,7 +139,7 @@ export function useGraphicalObjectInteraction(enabled: boolean, scope: number | 
   return {
     selection: enabled && selection?.scope === scope ? selection.key : null,
     menu: enabled ? menu : null,
-    hover: enabled ? hover : null,
+    hover: enabled && !contextMenuOpen && hover?.mode === mode && hover.menuSequence === menuSequence ? hover : null,
     device,
     noteDevice: setDevice,
     select,

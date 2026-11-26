@@ -99,6 +99,18 @@ export interface BedCultivationEntry {
   recordedPeriods?: readonly SeasonalHarvestPeriod[];
 }
 
+export function bedCropDisplayName(
+  plan: BedCultivationPlan, t: (key: string, options: { id: number | string }) => string, showVariety = true,
+): string {
+  const name = plan.name || t('ganttChart:taskNames.unknownCrop', { id: plan.crop ?? '' });
+  return showVariety && plan.variety ? `${name} (${plan.variety})` : name;
+}
+
+export function bedCropPhaseLabel(entry: BedCultivationEntry, t: (key: string) => string): string | null {
+  if (!entry.phase) return null;
+  return t(entry.recordedHarvest ? 'graphical.display.recordedHarvest' : `graphical.display.phase.${entry.phase}`);
+}
+
 function periodIncludes(period: SeasonalHarvestPeriod, date: string): boolean {
   return date >= period.start_date && date <= period.end_date;
 }
