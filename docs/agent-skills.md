@@ -7,10 +7,12 @@ Tracked relative directory symlinks at `.agents/skills/<name>` expose the same
 folders to Codex; Claude Code retains its existing discovery location. Edit the
 canonical files, not copied bodies or a user-scope installation.
 
-The nine skills are `django-migration`, `public-page`, `qa-sweep`,
+The ten skills are `django-migration`, `public-page`, `qa-sweep`, `qa-refresh`,
 `release-deploy`, `security-review-protocol`, `test-coverage-campaign`,
-`ui-text-i18n`, `visual-review` and `issue-and-queue`. The last one captures
-explicitly requested issue/queue operations; the execution order and worker
+`ui-text-i18n`, `visual-review` and `issue-and-queue`. `qa-refresh` builds new
+local QA dashboard cards for recently closed, merged queue work; `issue-and-queue`
+captures explicitly requested issue/queue operations and its `sync` mode removes
+the dashboard's Accepted rows from the queue. The execution order and worker
 handoff remain in [work-execution-queue.md](work-execution-queue.md).
 
 ## Discovery versus execution
