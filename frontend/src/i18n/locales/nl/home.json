@@ -135,11 +135,10 @@
       "individualPlants": "Bomen en struiken als losse planten met hun kroondiameter plaatsen"
     },
     "illustration": {
-      "ariaLabel": "Schematische plattegrond: een locatie met een perceel, vier bedden met paden ertussen en een fruitboom als losse plant.",
+      "ariaLabel": "Schematische plattegrond: een locatie met een perceel, vier bedden en een fruitboom als losse plant.",
       "location": "Locatie",
       "parcel": "Perceel",
       "bed": "Bed {{number}}",
-      "path": "Pad",
       "tree": "Fruitboom"
     }
   },

@@ -650,7 +650,6 @@ export default function HomePage() {
                   locationLabel={t('graphicalPlanning.illustration.location')}
                   parcelLabel={t('graphicalPlanning.illustration.parcel')}
                   bedLabels={[1, 2, 3, 4].map(number => t('graphicalPlanning.illustration.bed', { number }))}
-                  pathLabel={t('graphicalPlanning.illustration.path')}
                   treeLabel={t('graphicalPlanning.illustration.tree')}
                 />
               </Box>

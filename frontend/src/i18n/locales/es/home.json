@@ -139,11 +139,10 @@
       "individualPlants": "Colocar árboles y arbustos como plantas individuales con su diámetro de copa"
     },
     "illustration": {
-      "ariaLabel": "Plano esquemático: una ubicación con una parcela, cuatro bancales con pasillos entre ellos y un frutal como planta individual.",
+      "ariaLabel": "Plano esquemático: una ubicación con una parcela, cuatro bancales y un frutal como planta individual.",
       "location": "Ubicación",
       "parcel": "Parcela",
       "bed": "Bancal {{number}}",
-      "path": "Pasillo",
       "tree": "Frutal"
     }
   },

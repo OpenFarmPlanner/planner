@@ -7,7 +7,6 @@ interface GrowingAreaPlanIllustrationProps {
   locationLabel: string;
   parcelLabel: string;
   bedLabels: string[];
-  pathLabel: string;
   treeLabel: string;
 }
 
@@ -25,11 +24,11 @@ const BED_SX: SxProps<Theme> = {
 
 /**
  * Drawn illustration (not a screenshot, not a map) of the schematic growing
- * area plan: a location with a parcel, its beds separated by paths and one
+ * area plan: a location with a parcel, spaced beds and one
  * individual tree drawn as a stem with its canopy. Purely decorative and inert.
  */
 export default function GrowingAreaPlanIllustration({
-  ariaLabel, locationLabel, parcelLabel, bedLabels, pathLabel, treeLabel,
+  ariaLabel, locationLabel, parcelLabel, bedLabels, treeLabel,
 }: GrowingAreaPlanIllustrationProps) {
   return (
     <Box role="img" aria-label={ariaLabel} sx={{ width: '100%' }}>
@@ -70,10 +69,6 @@ export default function GrowingAreaPlanIllustration({
                   </Box>
                 ))}
               </Box>
-              <Stack direction="row" spacing={0.75} sx={{ alignItems: 'center' }}>
-                <Box sx={{ width: 24, borderTop: 2, borderStyle: 'dashed', borderColor: 'text.secondary' }} />
-                <Typography variant="caption" color="text.secondary">{pathLabel}</Typography>
-              </Stack>
             </Stack>
             <Stack spacing={1} sx={{ alignItems: 'center', minWidth: 0 }}>
               <Box

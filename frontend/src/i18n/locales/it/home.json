@@ -139,11 +139,10 @@
       "individualPlants": "Posizionare alberi e arbusti come piante singole con il diametro della chioma"
     },
     "illustration": {
-      "ariaLabel": "Pianta schematica: un sito con un appezzamento, quattro aiuole con passaggi tra di loro e un albero da frutto come pianta singola.",
+      "ariaLabel": "Pianta schematica: un sito con un appezzamento, quattro aiuole e un albero da frutto come pianta singola.",
       "location": "Sito",
       "parcel": "Appezzamento",
       "bed": "Aiuola {{number}}",
-      "path": "Passaggio",
       "tree": "Albero da frutto"
     }
   },
