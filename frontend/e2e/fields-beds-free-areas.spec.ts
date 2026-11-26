@@ -16,7 +16,7 @@ async function rectangles(page: Page, prefix: string) {
 const free = (page: Page, kind: 'site' | 'parcel') => rectangles(page, `graphical-free-area-${kind}`);
 
 async function selectLocation(page: Page, name: string, touch = false) {
-  const select = page.getByRole('combobox', { name: 'Standort', exact: true });
+  const select = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
   if (touch) await select.tap();
   else await select.click();
   const option = page.getByRole('option', { name, exact: true });

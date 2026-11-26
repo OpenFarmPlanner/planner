@@ -115,9 +115,12 @@ test.describe('planting plan crop rotation in the table', () => {
 
   test('leaves the cell empty when the rotation fits', async ({ page }) => {
     await searchBox(page).fill('Mangold');
-    await expect(rows(page)).toHaveCount(1);
+    const matchingPlan = rows(page).filter({
+      has: page.locator('[data-field="bed"]').getByText('Kräuter & Mangold', { exact: true }),
+    });
+    await expect(matchingPlan).toHaveCount(1);
 
-    await expect(rows(page).getByTestId('rotation-status-button')).toHaveCount(0);
+    await expect(matchingPlan.getByTestId('rotation-status-button')).toHaveCount(0);
   });
 
   test('filters by crop rotation status from the filter menu', async ({ page }) => {

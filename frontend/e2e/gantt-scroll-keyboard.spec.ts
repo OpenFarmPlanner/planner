@@ -71,17 +71,24 @@ test('the right arrow moves the day view forward one day per press', async ({ pa
 test('rows scroll with the viewport and the last row can be reached', async ({ page }) => {
   await openCalendar(page, '3');
   const viewport = page.getByTestId('gantt-virtual-viewport');
-  const rowTop = async (name: string): Promise<number> => (await viewport.getByText(name, { exact: true }).first().boundingBox())!.y;
+  await viewport.getByRole('button', { name: 'Eine Hierarchieebene mehr anzeigen' }).click();
+  await expect.poll(() => viewport.evaluate(element => element.scrollHeight - element.clientHeight))
+    .toBeGreaterThan(120);
+  const row = (name: string) => viewport.locator('.rmg-task-group-tree-row').filter({
+    has: page.getByText(name, { exact: true }),
+  });
+  const rowTop = async (name: string): Promise<number> => (await row(name).boundingBox())!.y;
 
   const before = await rowTop('Kohlquartier');
   await viewport.evaluate((element) => { element.scrollTop = 120; });
   await expect.poll(() => rowTop('Kohlquartier')).toBe(before - 120);
 
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    await viewport.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-    await page.waitForTimeout(200);
-  }
-  const viewportBox = (await viewport.boundingBox())!;
-  const lastRow = (await viewport.getByText('Zuckermais', { exact: true }).last().boundingBox())!;
-  expect(lastRow.y + lastRow.height).toBeLessThanOrEqual(viewportBox.y + viewportBox.height);
+  const lastRow = row('Zuckermais');
+  await expect.poll(async () => {
+    await viewport.evaluate(element => { element.scrollTop = element.scrollHeight; });
+    if (!await lastRow.count()) return false;
+    const viewportBox = (await viewport.boundingBox())!;
+    const rowBox = (await lastRow.boundingBox())!;
+    return rowBox.y >= viewportBox.y && rowBox.y + rowBox.height <= viewportBox.y + viewportBox.height;
+  }).toBe(true);
 });

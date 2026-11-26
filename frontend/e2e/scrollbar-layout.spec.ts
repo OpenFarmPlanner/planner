@@ -287,7 +287,10 @@ test('growing-area columns fit when there is room and preserve a manual width', 
   await page.mouse.down();
   await page.mouse.move(x + 430, y, { steps: 8 });
   await page.mouse.up();
-  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThan(Math.max(680, before + 400));
+  // An oversized drag stops at the desktop column limit. It must still
+  // exceed the narrow viewport limit so the next resize exercises clamping.
+  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThanOrEqual(Math.min(720, before + 430) - 1);
+  await expect.poll(async () => (await box(nameHeader)).width).toBeGreaterThan(680);
   const manualWidth = (await box(nameHeader)).width;
   await expect(horizontal).toBeVisible();
   await nameHeader.getByRole('button', { name: 'Eine Hierarchieebene ausblenden' }).click();

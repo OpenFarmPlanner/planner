@@ -54,7 +54,7 @@ export const DEFAULT_HIERARCHY_COLUMN_WIDTHS: HierarchyColumnWidths = {
 // calculated area header does not.
 const DIMENSION_HEADER_ALLOWANCE = 50;
 const AREA_HEADER_ALLOWANCE = 30;
-const NOTES_MIN_WIDTH = 136;
+const NOTES_MIN_WIDTH = 108;
 
 // A new bed row can start prefilled ("Beet hinzufügen" copies the last bed's
 // dimensions and counts its name up). The first focus of each new-row cell

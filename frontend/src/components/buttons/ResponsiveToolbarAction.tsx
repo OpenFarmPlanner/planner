@@ -16,6 +16,7 @@ interface ResponsiveToolbarActionProps extends Omit<ButtonProps, 'children' | 's
 
 export const LIST_TOOLBAR_LABEL_QUERY = '@container list-toolbar (min-width: 52rem)';
 export const WORKSPACE_TOOLBAR_LABEL_QUERY = '@container workspace-topbar (min-width: 70rem)';
+export const TOOLBAR_ACTION_MIN_HEIGHT = 44;
 
 export function ResponsiveToolbarAction({
   label, icon, labelQuery, labelBreakpoint, help, disabledReason, onClick, ref, ...buttonProps
@@ -56,7 +57,7 @@ export function ResponsiveToolbarAction({
           }}
           sx={theme => ({
             ...getStandardActionButtonSx(true),
-            minHeight: 44,
+            minHeight: TOOLBAR_ACTION_MIN_HEIGHT,
             minWidth: 44,
             flexShrink: 0,
             whiteSpace: 'nowrap',

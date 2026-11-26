@@ -6,6 +6,7 @@ import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import CalendarTodayOutlinedIcon from '@mui/icons-material/CalendarTodayOutlined';
 import { extractApiErrorMessage } from '../api/errors';
 import { AppTooltip } from '../components/AppTooltip';
+import { TOOLBAR_ACTION_MIN_HEIGHT } from '../components/buttons/ResponsiveToolbarAction';
 import { DateEditCell } from '../components/data-grid/DateEditCell';
 import { buildDialogEditCellKey, useDialogEditCellOpenRequest } from '../components/data-grid/DialogEditCellContext';
 import { dismissGridTooltipForEdit, useGridTooltipScope } from '../components/data-grid/gridTooltipState';
@@ -33,7 +34,7 @@ export function PlantingPlanDateModeSelect({ mode, onChange }: {
       startIcon={<CalendarTodayOutlinedIcon fontSize="small" />} endIcon={<ArrowDropDownIcon />}
       aria-haspopup="menu" aria-expanded={open} aria-controls={open ? menuId : undefined}
       aria-labelledby={`${labelId} ${valueId}`} onClick={event => setAnchor(event.currentTarget)}
-      sx={{ minHeight: { xs: 44, sm: 40 }, maxWidth: '100%', textAlign: 'start', whiteSpace: 'nowrap' }}>
+      sx={{ minHeight: TOOLBAR_ACTION_MIN_HEIGHT, maxWidth: '100%', textAlign: 'start', whiteSpace: 'nowrap' }}>
       <Box component="span" id={labelId} sx={visuallyHidden}>{t('actualDates.modeLabel')}</Box>
       <span id={valueId}>{t(`actualDates.displayModes.${mode}`)}</span>
     </Button>
