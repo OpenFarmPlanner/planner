@@ -379,6 +379,7 @@ test.describe('responsive canvas tools', () => {
     const toolbar = page.getByTestId('graphical-canvas-tools');
     const trigger = toolbar.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
     const menu = page.getByRole('menu', { name: 'Weitere Grafikwerkzeuge' });
+    const individualPlants = toolbar.getByRole('button', { name: 'Einzelpflanzen', exact: true });
     const rotate = 'Ansicht um 90° nach rechts drehen';
     const directRotation = toolbar.getByRole('button', { name: rotate, exact: true });
 
@@ -438,18 +439,54 @@ test.describe('responsive canvas tools', () => {
     await activateCanvasTool(page, 'Ansicht um 90° nach links drehen', 'touch');
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0].width).toBe(originalWidth);
 
+    await trigger.press('Enter');
+    await expect(menu).toBeVisible();
     await page.setViewportSize({ width: 1600, height: 900 });
+    await expect(menu).toHaveCount(0);
+    await expect(individualPlants).toBeFocused();
     await expect(directRotation).toBeVisible();
-    await trigger.tap();
-    await expect(menu.getByRole('menuitem', { name: rotate })).toHaveCount(0);
-    await menu.getByRole('menuitem', { name: 'Einzelpflanzen' }).tap();
+    await expect(trigger).toHaveCount(0);
+    await expect(individualPlants).toHaveAttribute('aria-pressed', 'false');
+    await expect.poll(async () => {
+      const box = await individualPlants.boundingBox();
+      return Boolean(box && box.width >= 44 && box.height >= 44);
+    }).toBe(true);
+    await page.setViewportSize({ width: 768, height: 1024 });
+    await expect(trigger).toBeFocused();
+    await expect(menu).toHaveCount(0);
+    await expect(individualPlants).toHaveCount(0);
+    await page.setViewportSize({ width: 1600, height: 900 });
+    await individualPlants.press('Enter');
     const plants = page.getByRole('region', { name: 'Einzelpflanzen' });
     await expect(plants).toBeVisible();
     await expect(directRotation).toHaveCount(0);
+    await expect(plants).toBeFocused();
+    await trigger.tap();
+    await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveAttribute('aria-description', 'Aktiv');
+    await page.keyboard.press('Escape');
+    await expect(plants).toBeVisible();
     await plants.getByRole('button', { name: 'Schließen' }).tap();
-    await expect(trigger).toBeFocused();
+    await expect(individualPlants).toBeFocused();
     await expect(directRotation).toBeVisible();
+    await expect(trigger).toHaveCount(0);
+    await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('canvas-tools-wide.png'), animations: 'disabled' });
+
+    await page.setViewportSize({ width: 1920, height: 900 });
+    await individualPlants.tap();
+    await expect(individualPlants).toHaveAttribute('aria-pressed', 'true');
+    await expect(plants).toBeVisible();
+    await individualPlants.tap();
+    await expect(plants).toHaveCount(0);
+    await expect(individualPlants).toHaveAttribute('aria-pressed', 'false');
+    await toolbar.getByRole('button', { name: 'Vollbild öffnen' }).tap();
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+    await expect(individualPlants).toHaveCount(0);
+    await expect(trigger).toHaveCount(0);
+    await expect(directRotation).toBeVisible();
+    await expect(zoom).toBeVisible();
+    await toolbar.getByRole('button', { name: 'Vollbild schließen' }).tap();
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
 
     await page.setViewportSize({ width: 1024, height: 768 });
     await toolbar.getByRole('button', { name: 'Vollbild öffnen' }).tap();

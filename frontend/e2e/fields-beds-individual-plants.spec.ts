@@ -59,9 +59,11 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
 
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-  const control = page.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
+  const toolbar = page.getByTestId('graphical-canvas-tools');
+  const control = toolbar.getByRole('button', { name: /^(Weitere Grafikwerkzeuge|Einzelpflanzen)$/ });
+  const opensMenu = await control.getAttribute('aria-haspopup') === 'menu';
   await control.press('Enter');
-  await page.getByRole('menuitem', { name: 'Einzelpflanzen', exact: true }).press('Enter');
+  if (opensMenu) await page.getByRole('menuitem', { name: 'Einzelpflanzen', exact: true }).press('Enter');
   const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
   // #1575: a fixed parcel is context, planning and placement are separate sections, and the
   // stem/canopy explanation lives in the page help instead of the form.

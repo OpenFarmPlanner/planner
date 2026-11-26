@@ -230,15 +230,16 @@ May 15 of that year. This keeps fixture data independent of the day tests run.
 Stored example text follows the selected German, English, French or Spanish
 demo template.
 
-Open Farm Garden in the graphical Growing areas view. Choose **More canvas tools** →
-**Bed tasks** and enable **Show tasks**.
+Open Farm Garden in the graphical Growing areas view. Choose **Graphic display** →
+**Tasks**.
 Lettuce 1 is overdue, Tomato Row 1 is due soon, Lettuce 2 is due later,
 Herbs & Chard has open work without a date, and Cucumber Row is complete.
 Tomato Row 2 has no applicable tasks. The fence task on the leased North Plot
 stays on the task board. Open a bed's details to complete one of its tasks.
 
-In Farm Garden, choose **More canvas tools** → **Individual plants** and select
-the North Early Beds plot. Its three Topaz apple trees share one plan, with
+In Farm Garden, open **Individual plants** with the tree button on a wide canvas
+or from **More canvas tools** when actions are grouped. Select the North Early
+Beds plot. Its three Topaz apple trees share one plan, with
 an estimated canopy diameter of 3.8 m. Their stems retain their IDs as the
 planting continues into the following season. Select a stem to inspect its
 coordinates. While editing, the panel separates the planting plan from the

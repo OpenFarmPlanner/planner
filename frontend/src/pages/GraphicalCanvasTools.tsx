@@ -1,5 +1,5 @@
-import { useId, useState, type ReactNode } from 'react';
-import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Paper, Stack, useTheme } from '@mui/material';
+import { useId, useRef, useState, type ReactNode, type Ref } from 'react';
+import { Box, Divider, IconButton, ListItemIcon, ListItemText, Menu, MenuItem, Paper, Stack, useTheme, type IconButtonProps } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CheckIcon from '@mui/icons-material/Check';
 import FitScreenIcon from '@mui/icons-material/FitScreen';
@@ -44,11 +44,14 @@ interface Tool {
   opensPanel?: boolean;
 }
 
-function CanvasToolButton({ tool }: { tool: Tool }) {
+function CanvasToolButton({ label, icon, active, ref, ...buttonProps }: Pick<Tool, 'label' | 'icon' | 'active'>
+  & Pick<IconButtonProps, 'aria-haspopup' | 'aria-expanded' | 'aria-controls' | 'onClick'>
+  & { ref?: Ref<HTMLButtonElement> }) {
   return (
-    <AppTooltip title={tool.label} placement="left" disableInteractive
+    <AppTooltip title={label} placement="left" disableInteractive
       slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
-      <IconButton aria-label={tool.label} onClick={tool.action} sx={touchTarget}>{tool.icon}</IconButton>
+      <IconButton ref={ref} aria-label={label} aria-pressed={active} color={active ? 'success' : 'default'}
+        sx={touchTarget} {...buttonProps}>{icon}</IconButton>
     </AppTooltip>
   );
 }
@@ -65,7 +68,7 @@ export function GraphicalCanvasTools({
   const [nextAction, setNextAction] = useState<(() => void) | null>(null);
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  useContextMenuOpenRegistration(menuOpen);
+  const zoomButtonRef = useRef<HTMLButtonElement>(null);
   const title = t('graphical.moreTools');
 
   const rotation: Tool[] = [
@@ -88,7 +91,20 @@ export function GraphicalCanvasTools({
   const additional: Tool[] = [];
   if (individualPlants) additional.push({ label: t('individualPlants.title'), icon: <ParkOutlinedIcon fontSize="small" />,
     active: individualPlants.active, opensPanel: true, action: individualPlants.toggle });
-  const hasMenu = compact || additional.length > 0;
+  const groups = (compact ? [rotation, pan, additional] : [additional]).filter(group => group.length > 0);
+  const overflowTools = groups.flat();
+  const hasMenu = overflowTools.length > 1;
+  const promoted = overflowTools.length === 1 ? overflowTools[0] : undefined;
+  const [hadMenu, setHadMenu] = useState(hasMenu);
+  if (hadMenu !== hasMenu) {
+    setHadMenu(hasMenu);
+    setMenuOpen(false);
+  }
+  useContextMenuOpenRegistration(hasMenu && menuOpen);
+
+  const toolButton = (tool: Tool) => (
+    <CanvasToolButton key={tool.label} label={tool.label} icon={tool.icon} onClick={tool.action} />
+  );
   const menuItem = (tool: Tool) => (
     <MenuItem key={tool.label} sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}
       aria-description={tool.active ? t('graphical.toolActive') : undefined}
@@ -109,29 +125,26 @@ export function GraphicalCanvasTools({
         sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, borderRadius: 3, overflow: 'auto',
           maxHeight: 'calc(100% - 24px)', bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: short ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
-          {hasMenu && (
-            <AppTooltip title={title} placement="left" disableInteractive
-              slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
-              <IconButton ref={onTriggerChange}
-                aria-label={title} aria-haspopup="menu" aria-expanded={menuOpen}
-                aria-controls={menuOpen ? menuId : undefined}
-                onClick={event => { setAnchor(event.currentTarget); setMenuOpen(true); }} sx={touchTarget}>
-                <MoreVertIcon fontSize="small" />
-              </IconButton>
-            </AppTooltip>
+          {(hasMenu || promoted) && (
+            <CanvasToolButton ref={onTriggerChange} label={promoted?.label ?? title}
+              icon={promoted?.icon ?? <MoreVertIcon fontSize="small" />} active={promoted?.active}
+              aria-haspopup={hasMenu ? 'menu' : undefined} aria-expanded={hasMenu ? menuOpen : undefined}
+              aria-controls={hasMenu && menuOpen ? menuId : undefined}
+              onClick={promoted?.action ?? (event => { setAnchor(event.currentTarget); setMenuOpen(true); })} />
           )}
           {warnings}
         </Box>
         {!compact && (
           <Stack sx={{ alignItems: 'center' }}>
-            <Stack direction="row">{rotation.map(tool => <CanvasToolButton key={tool.label} tool={tool} />)}</Stack>
-            <CanvasToolButton tool={pan[0]} />
-            <Stack direction="row"><CanvasToolButton tool={pan[1]} /><CanvasToolButton tool={pan[2]} /></Stack>
-            <CanvasToolButton tool={pan[3]} />
+            <Stack direction="row">{rotation.map(toolButton)}</Stack>
+            {toolButton(pan[0])}
+            <Stack direction="row">{pan.slice(1, 3).map(toolButton)}</Stack>
+            {toolButton(pan[3])}
           </Stack>
         )}
         <Box sx={{ display: 'grid', gridTemplateColumns: short || !compact ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
-          {core.map(tool => <CanvasToolButton key={tool.label} tool={tool} />)}
+          <CanvasToolButton ref={zoomButtonRef} label={core[0].label} icon={core[0].icon} onClick={core[0].action} />
+          {core.slice(1).map(toolButton)}
         </Box>
       </Paper>
       <Menu open={hasMenu && menuOpen} anchorEl={anchor} onClose={() => setMenuOpen(false)}
@@ -139,14 +152,14 @@ export function GraphicalCanvasTools({
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
         slotProps={{ list: { id: menuId, 'aria-label': title }, paper: { sx: { maxWidth: 'calc(100% - 32px)', maxHeight: 'calc(100% - 32px)' } },
           transition: { onExited: () => {
+            if (anchor && !anchor.isConnected) zoomButtonRef.current?.focus({ preventScroll: true });
             setNextAction(null);
             nextAction?.();
           } } }}>
-        {compact && rotation.map(menuItem)}
-        {compact && <Divider />}
-        {compact && pan.map(menuItem)}
-        {compact && additional.length > 0 && <Divider />}
-        {additional.map(menuItem)}
+        {groups.flatMap((group, index) => [
+          ...(index ? [<Divider key={`group-${index}`} />] : []),
+          ...group.map(menuItem),
+        ])}
       </Menu>
     </>
   );
