@@ -159,7 +159,8 @@ def _validate_arrangement(attrs: dict, plan: PlantingPlan | None) -> Crop:
         'area_usage_sqm', 'area_input_value', 'quantity',
     )):
         raise serializers.ValidationError({
-            'placement_mode': 'Individual plants use stem positions instead of bed area or a manual count.',
+            'placement_mode': 'Individual plants use stem positions instead of bed area '
+                              'or a manual count.',
         })
     if crop is None:
         raise serializers.ValidationError({'crop': 'Choose a crop for the individual plants.'})
@@ -180,24 +181,35 @@ def _apply_placement_defaults(attrs, plan, crop, positions, placement_updated_at
         raise PlacementConflict()
 
 
+def _resolve_placement_mode(
+    attrs: dict, plan: PlantingPlan | None, parcel: Field | None, bed: Bed | None,
+) -> str:
+    mode = attrs.pop('placement_mode', None)
+    if plan is None:
+        return mode or (
+            PlantingPlan.PLACEMENT_PARCEL if parcel is not None else PlantingPlan.PLACEMENT_AREA
+        )
+    mode = mode or plan.placement_mode
+    parent_changed = plan.is_individual and (parcel != plan.parcel or bed != plan.bed)
+    if mode != plan.placement_mode or parent_changed:
+        raise serializers.ValidationError({
+            'placement_mode': 'The individual placement parent and mode are fixed.',
+        })
+    return mode
+
+
 def validate_individual_planting(attrs: dict, plan: PlantingPlan | None) -> None:
     parcel = attrs.get('parcel', getattr(plan, 'parcel', None))
     bed = attrs.get('bed', getattr(plan, 'bed', None))
-    mode = attrs.pop('placement_mode', None)
-    if mode is None:
-        mode = plan.placement_mode if plan is not None else (
-            PlantingPlan.PLACEMENT_PARCEL if parcel is not None else PlantingPlan.PLACEMENT_AREA
-        )
+    mode = _resolve_placement_mode(attrs, plan, parcel, bed)
     positions = attrs.get('individual_positions')
     canopy = attrs.get('estimated_canopy_diameter_m')
     placement_updated_at = attrs.pop('placement_updated_at', None)
-    if plan is not None and (mode != plan.placement_mode or (plan.is_individual and (
-        parcel != plan.parcel or bed != plan.bed
-    ))):
-        raise serializers.ValidationError({'placement_mode': 'The individual placement parent and mode are fixed.'})
     if mode == PlantingPlan.PLACEMENT_AREA:
         if parcel is not None:
-            raise serializers.ValidationError({'parcel': 'A direct parcel requires individual parcel placement.'})
+            raise serializers.ValidationError({
+                'parcel': 'A direct parcel requires individual parcel placement.',
+            })
         if positions or canopy is not None:
             raise serializers.ValidationError({
                 'placement_mode': 'Choose an individual bed or parcel placement.',
@@ -208,10 +220,14 @@ def validate_individual_planting(attrs: dict, plan: PlantingPlan | None) -> None
     if mode == PlantingPlan.PLACEMENT_PARCEL and bed is None:
         parent = parcel
     if parent is None:
-        raise serializers.ValidationError({'placement_mode': 'Choose exactly the bed or parcel required by the placement mode.'})
+        raise serializers.ValidationError({
+            'placement_mode': 'Choose exactly the bed or parcel required by the placement mode.',
+        })
     # Existing placements without a date stay editable unless the date is cleared explicitly.
     if (plan is None or 'planting_date' in attrs) and attrs.get('planting_date') is None:
-        raise serializers.ValidationError({'planting_date': 'Set a planting date for the individual plants.'})
+        raise serializers.ValidationError({
+            'planting_date': 'Set a planting date for the individual plants.',
+        })
 
     crop = _validate_arrangement(attrs, plan)
     if plan is None and mode == PlantingPlan.PLACEMENT_BED:

@@ -29,7 +29,8 @@ _YIELD_PRECISION = Decimal('0.01')
 _COPIED_FORECAST_FIELDS = (
     'copied_from_plan_id', 'season_id', 'crop_id', 'bed_id', 'parcel_id', 'cultivation_type',
     'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
-    'harvest_date', 'harvest_end_date', 'clearing_date', 'area_usage_sqm', 'quantity', 'individual_bed',
+    'harvest_date', 'harvest_end_date', 'clearing_date', 'area_usage_sqm', 'quantity',
+    'individual_bed',
 )
 
 

@@ -275,7 +275,8 @@ def calculate_bed_capacities(
         bed_ids=[bed.pk for bed in beds], start=start, end=firm_end,
         exclude_plan_id=exclude_plan_id,
     ).select_related('crop').only(
-        'bed', 'project', 'crop', 'area_usage_sqm', 'individual_bed', 'individual_positions', 'planting_date', 'harvest_date',
+        'bed', 'project', 'crop', 'area_usage_sqm', 'individual_bed', 'individual_positions',
+        'planting_date', 'harvest_date',
         'harvest_end_date', 'clearing_date', 'cultivation_type', 'harvest_window_overrides',
         'actual_sowing_date', 'actual_transplanting_date', 'crop__project', 'crop__crop_species',
         'crop__variety', 'crop__life_cycle', 'crop__annual_harvest_window',

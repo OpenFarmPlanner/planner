@@ -137,7 +137,8 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(carrots.status_code, 201, carrots.data)
         self.assertEqual(carrots.data['placement_mode'], 'area')
         bed_payload = {
-            'crop': beans.pk, 'parcel': None, 'bed': self.bed.pk, 'placement_mode': 'individual_bed',
+            'crop': beans.pk, 'parcel': None, 'bed': self.bed.pk,
+            'placement_mode': 'individual_bed',
         }
         placed = self.create_plan(**bed_payload).json()
         second = self.create_plan(**bed_payload).json()
@@ -156,8 +157,10 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
                 stem['id'] for stem in second['individual_positions']
             )
         )
-        locations = self.client.get(URL, {'individual_location': self.location.pk}).json()['results']
-        self.assertEqual({plan['id'] for plan in locations}, {placed['id'], second['id'], direct['id']})
+        results = self.client.get(URL, {'individual_location': self.location.pk}).json()['results']
+        self.assertEqual(
+            {plan['id'] for plan in results}, {placed['id'], second['id'], direct['id']},
+        )
         detail = self.client.get(f"{URL}{placed['id']}/").json()
         self.assertEqual(detail['field_name'], self.field.name)
         self.assertEqual(detail['location_name'], self.location.name)
@@ -185,24 +188,31 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         detail = f"{URL}{created['id']}/"
         stems = [{'id': created['individual_positions'][0]['id'], 'x_m': 3, 'y_m': 4}]
         edited = self.client.patch(detail, {
-            'individual_positions': stems, 'placement_updated_at': self.client.get(detail).json()['updated_at'],
+            'individual_positions': stems,
+            'placement_updated_at': self.client.get(detail).json()['updated_at'],
         }, format='json')
         self.assertEqual(edited.status_code, 200, edited.data)
         cleared = self.client.patch(detail, {'planting_date': None}, format='json')
         self.assertEqual(cleared.status_code, 400)
-        omitted = self.client.post(URL, {k: v for k, v in self.payload().items() if k != 'planting_date'}, format='json')
+        undated_payload = self.payload()
+        del undated_payload['planting_date']
+        omitted = self.client.post(URL, undated_payload, format='json')
         self.assertEqual(omitted.status_code, 400)
 
     def test_bed_placement_checks_dimensions_and_preserves_parent_on_updates(self):
         self.bed.width_m, self.bed.length_m = 3, 10
         self.bed.save()
-        base = {'crop': self.crop.pk, 'parcel': None, 'bed': self.bed.pk, 'placement_mode': 'individual_bed'}
+        base = {
+            'crop': self.crop.pk, 'parcel': None, 'bed': self.bed.pk,
+            'placement_mode': 'individual_bed',
+        }
         other_bed = Bed.objects.create(
             project=self.project, field=self.field, name='Unmeasured bed',
         )
         for invalid in (
             {'parcel': self.field.pk}, {'bed': None}, {'bed': other_bed.pk},
-            {'placement_mode': 'individual_parcel'}, {'individual_positions': [{'x_m': 3.01, 'y_m': 4}]},
+            {'placement_mode': 'individual_parcel'},
+            {'individual_positions': [{'x_m': 3.01, 'y_m': 4}]},
         ):
             with self.subTest(invalid=invalid):
                 result = self.client.post(URL, self.payload(**(base | invalid)), format='json')
@@ -211,7 +221,9 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
 
         placed = self.create_plan(**base).json()
         url = f"{URL}{placed['id']}/"
-        for invalid in ({'bed': other_bed.pk}, {'placement_mode': 'area'}, {'parcel': self.field.pk}):
+        for invalid in (
+            {'bed': other_bed.pk}, {'placement_mode': 'area'}, {'parcel': self.field.pk},
+        ):
             result = self.client.patch(url, invalid, format='json')
             self.assertEqual(result.status_code, 400, result.data)
         dimensions = f'/openfarmplanner/api/beds/{self.bed.pk}/'
@@ -469,7 +481,9 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         ).summary
         self.assertTrue(preview['enabled'])
         self.assertEqual(len(preview['moves']), 2)
-        position_move = next(move for move in preview['moves'] if move['source_plan_id'] == plants['id'])
+        position_move = next(
+            move for move in preview['moves'] if move['source_plan_id'] == plants['id']
+        )
         self.assertIsNone(position_move['new_area_sqm'])
         self.assertEqual(position_move['new_plant_count'], 2)
 
@@ -480,7 +494,8 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             continuing_count=continuing,
         ).summary
         self.assertFalse(incompatible['available'])
-        self.assertIn('bed_placement_incompatible', {issue['code'] for issue in incompatible['issues']})
+        issue_codes = {issue['code'] for issue in incompatible['issues']}
+        self.assertIn('bed_placement_incompatible', issue_codes)
         api = f'/openfarmplanner/api/seasons/{self.later.pk}/copy-from/'
         rejected = self.client.post(api, {
             'source_season_id': self.origin.pk, 'rotate_parcels': True,
@@ -502,9 +517,12 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(copied_bed_placement.bed_id, opposite_bed.pk)
         self.assertIsNone(copied_bed_placement.area_usage_sqm)
         self.assertEqual(
-            PlantingPlan.objects.get(pk=plants['id']).individual_positions, plants['individual_positions'],
+            PlantingPlan.objects.get(pk=plants['id']).individual_positions,
+            plants['individual_positions'],
         )
-        for before, after in zip(plants['individual_positions'], copied_bed_placement.individual_positions, strict=True):
+        for before, after in zip(
+            plants['individual_positions'], copied_bed_placement.individual_positions, strict=True,
+        ):
             self.assertNotEqual(before['id'], after['id'])
             self.assertEqual((before['x_m'], before['y_m']), (after['x_m'], after['y_m']))
         trees = by_source[orchard['id']]

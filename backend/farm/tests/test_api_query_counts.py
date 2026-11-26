@@ -797,7 +797,8 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             response = self.client.get(url)
         self.assertEqual(response.data['count'], 2 * ROW_COUNT)
         self.assertEqual(
-            {(plan['placement_mode'], plan['parcel_location_id']) for plan in response.data['results']},
+            {(plan['placement_mode'], plan['parcel_location_id'])
+             for plan in response.data['results']},
             {('individual_parcel', self.location.pk), ('individual_bed', self.location.pk)},
         )
 

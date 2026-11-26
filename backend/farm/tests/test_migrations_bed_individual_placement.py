@@ -19,7 +19,9 @@ class TestBedIndividualPlacementMigration(MigrationTestBase):
         project = apps.get_model('farm', 'Project').objects.create(
             name='Legacy placement', slug='legacy-placement',
         )
-        location = apps.get_model('farm', 'Location').objects.create(project=project, name='Legacy location')
+        location = apps.get_model('farm', 'Location').objects.create(
+            project=project, name='Legacy location',
+        )
         parcel = apps.get_model('farm', 'Field').objects.create(
             project=project, location=location, name='Legacy parcel', width_m=5, length_m=10,
         )
@@ -34,7 +36,9 @@ class TestBedIndividualPlacementMigration(MigrationTestBase):
             project=project, parcel=parcel, crop=crop, notes='Legacy direct placement',
             planting_date=date(2026, 3, 1), individual_positions=LEGACY_POSITIONS,
         )
-        plans.create(project=project, bed=bed, crop=crop, notes='Legacy area plan', area_usage_sqm=3)
+        plans.create(
+            project=project, bed=bed, crop=crop, notes='Legacy area plan', area_usage_sqm=3,
+        )
 
     def test_preserves_existing_stem_ids_coordinates_and_area(self):
         plans = self.new_apps.get_model('farm', 'PlantingPlan').objects

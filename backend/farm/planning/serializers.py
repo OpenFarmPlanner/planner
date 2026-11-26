@@ -445,7 +445,10 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = PlantingPlan
-        exclude = ['copied_from_plan_id', 'harvest_window_overrides', 'harvest_occurrence_actuals', 'individual_bed']
+        exclude = [
+            'copied_from_plan_id', 'harvest_window_overrides', 'harvest_occurrence_actuals',
+            'individual_bed',
+        ]
         read_only_fields = [
             'project', 'harvest_date', 'harvest_end_date', 'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'rotation_conflict_accepted_at',

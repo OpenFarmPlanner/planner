@@ -62,7 +62,8 @@ class PlantingPlan(TimestampedModel):
     individual_bed = models.BooleanField(default=False)
     individual_positions = models.JSONField(
         default=list, blank=True,
-        help_text='Individual IDs and stem coordinates in metres relative to the assigned bed or parcel.',
+        help_text='Individual IDs and stem coordinates in metres relative to the assigned bed '
+                  'or parcel.',
     )
     estimated_canopy_diameter_m = models.DecimalField(
         max_digits=7, decimal_places=2, null=True, blank=True,

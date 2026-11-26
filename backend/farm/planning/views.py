@@ -979,7 +979,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
                 None if capacity.has_unmeasured_placement else float(free_area or 0)
             ),
             'unallocated_measured_area_sqm': (
-                float(capacity.unallocated_measured_area_sqm) if capacity.bed_area_sqm is not None else None
+                float(capacity.unallocated_measured_area_sqm)
+                if capacity.bed_area_sqm is not None else None
             ),
             'start_date': start_date.isoformat(),
             'end_date': end_date.isoformat(),

@@ -257,7 +257,10 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops, excluded=frozense
             continue
         if source.individual_bed:
             if not positions_fit_parent(target_bed, source.individual_positions):
-                issues.append({'code': 'bed_placement_incompatible', 'bed': target_bed.name, 'source_bed': source_bed.name})
+                issues.append({
+                    'code': 'bed_placement_incompatible', 'bed': target_bed.name,
+                    'source_bed': source_bed.name,
+                })
             rotated.append((source, rotated_plan))
             continue
         if not source_bed.area_sqm or not target_bed.area_sqm:
@@ -388,7 +391,10 @@ def preview_parcel_rotation(
             (a.pk, b.bed_id, b.area_usage_sqm, plan_event_dates(b, crop_index)) for a, b in rotated
         ],
         'individual_copies': [
-            (a.pk, a.placement_mode, b.bed_id, a.parcel_id, a.individual_positions, a.estimated_canopy_diameter_m)
+            (
+                a.pk, a.placement_mode, b.bed_id, a.parcel_id, a.individual_positions,
+                a.estimated_canopy_diameter_m,
+            )
             for a, b in rotated if a.is_individual
         ],
         'crop_rotation': crop_rotation,
