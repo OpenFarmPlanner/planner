@@ -8,8 +8,10 @@ import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
 import type { BedCultivationEntry } from './graphicalCultivation';
 import { graphicalPlantColors } from './graphicalDisplayStyle';
 import { FIELD_WORLD_PX_PER_METER } from './graphicalFieldsGeometry';
+import { hasShift } from './graphicalAreaDrag';
 import { canvasToStem, stemToCanvas, type PlacementDimensions } from './individualPlantGeometry';
 import type { GraphicalRotation, Position, Rect as CanvasRect } from './graphicalLayoutUtils';
+import type { PlantSnapResult } from './individualPlantSnapping';
 
 export interface CanvasStem extends StemCoordinates {
   key: string;
@@ -33,6 +35,7 @@ const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
 
 export function GraphicalIndividualPlantsLayer({
   field, surface, rotation, stems, zoom, editablePlanId, draggablePlanIds, captureStems, onSelect, onMove, onMoveWorld, onDragPreview,
+  resolveDragPoint, onDragReapply,
 }: {
   field: PlacementDimensions;
   surface: CanvasRect;
@@ -51,9 +54,12 @@ export function GraphicalIndividualPlantsLayer({
   onMove: (key: string, position: StemCoordinates) => void;
   onMoveWorld?: (key: string, point: Position) => void;
   onDragPreview?: (key: string, point: Position | null) => void;
+  resolveDragPoint?: (stem: CanvasStem, raw: Position, previous: string | null, bypass: boolean) => PlantSnapResult;
+  onDragReapply?: (apply: ((bypass: boolean) => void) | null) => void;
 }) {
   const theme = useTheme();
   const press = useRef<{ target: Press['target']; position: Position } | null>(null);
+  const drag = useRef<{ key: string; target: string | null; apply: (bypass: boolean) => void } | null>(null);
 
   const beginPress = (event: Press) => {
     const position = event.target.getStage()?.getPointerPosition();
@@ -87,7 +93,7 @@ export function GraphicalIndividualPlantsLayer({
         if (!point) return null;
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
-        const freeDrag = stem.planId !== null && draggablePlanIds?.has(stem.planId) ? onMoveWorld : undefined;
+        const freeDrag = canDrag ? onMoveWorld : undefined;
         const taskColors = stem.urgency ? bedTaskColors(theme, stem.urgency) : null;
         const colors = graphicalPlantColors(theme, stem.phaseColor, taskColors, stem.neutralCrop);
         const radius = stem.urgency || stem.selected ? 6 : 4.5;
@@ -105,18 +111,40 @@ export function GraphicalIndividualPlantsLayer({
                 y: Math.max(surface.y, Math.min(surface.y + surface.height, y)),
               });
             }
-            const stage = event.currentTarget.getStage();
-            if (stage) onDragPreview?.(stem.key, event.currentTarget.getAbsolutePosition(stage));
+            const node = event.currentTarget;
+            const stage = node.getStage();
+            const parent = node.getParent();
+            if (!stage || !parent) return;
+            const raw = node.getAbsolutePosition(stage);
+            const session = {
+              key: stem.key,
+              target: drag.current?.key === stem.key ? drag.current.target : null,
+              apply: (bypass: boolean) => {
+                const result = resolveDragPoint?.(stem, raw, session.target, bypass);
+                const point = result?.point ?? raw;
+                session.target = result?.target ?? null;
+                node.position(parent.getAbsoluteTransform(stage).copy().invert().point(point));
+                onDragPreview?.(stem.key, point);
+                node.getLayer()?.batchDraw();
+              },
+            };
+            drag.current = session;
+            onDragReapply?.(session.apply);
+            session.apply(hasShift(event.evt));
           }}
           onDragEnd={event => {
             event.cancelBubble = true;
-            const stage = event.currentTarget.getStage();
-            const world = stage && freeDrag ? event.currentTarget.getAbsolutePosition(stage) : null;
-            const position = canvasToStem(event.currentTarget.position(), field, surface, rotation);
-            // Reset the shared drag transform. React applies the confirmed rounded position to both shapes.
-            event.currentTarget.position(point);
-            onDragPreview?.(stem.key, null);
+            const node = event.currentTarget;
             const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
+            if (!canceled && drag.current?.key === stem.key) drag.current.apply(hasShift(event.evt));
+            drag.current = null;
+            onDragReapply?.(null);
+            const stage = node.getStage();
+            const world = stage && freeDrag ? node.getAbsolutePosition(stage) : null;
+            const position = canvasToStem(node.position(), field, surface, rotation);
+            // Reset the shared drag transform. React applies the confirmed rounded position to both shapes.
+            node.position(point);
+            onDragPreview?.(stem.key, null);
             if (canceled) return;
             if (world && freeDrag) freeDrag(stem.key, world);
             else if (position) onMove(stem.key, position);

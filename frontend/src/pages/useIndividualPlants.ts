@@ -197,7 +197,7 @@ export function useIndividualPlants(
     if (!canEdit || !draft || saving.current) return;
     saving.current = true;
     update({ saving: true, error: null, placing: null });
-    const positions = draft.stems.flatMap(stem => stem.graphic ? [stem.graphic] : []);
+    const positions = draft.stems.flatMap(({ graphic, id }) => graphic ? [{ ...graphic, id }] : []);
     const data: IndividualPlacementInput = {
       individual_positions: draft.stems.filter(stem => !stem.graphic).map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
       ...(draft.canopy === undefined ? {} : { estimated_canopy_diameter_m: draft.canopy }),

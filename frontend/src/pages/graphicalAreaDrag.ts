@@ -29,7 +29,7 @@ export interface AreaDragOptions {
   blocked?: () => boolean;
 }
 
-const hasShift = (event: Event | undefined): boolean =>
+export const hasShift = (event: Event | undefined): boolean =>
   Boolean(event && 'shiftKey' in event && event.shiftKey);
 
 function resolvePosition(options: AreaDragOptions, raw: Point, bypass: boolean, previousTargets: string[]) {

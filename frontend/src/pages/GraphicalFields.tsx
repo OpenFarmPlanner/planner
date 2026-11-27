@@ -38,7 +38,10 @@ import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../componen
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
 import { isOpenTask } from "../components/tasks/taskBoard";
 import { getDirectlyDraggableStemPlans, readyForPlacement, useIndividualPlants, type IndividualPlacementAction } from "./useIndividualPlants";
-import { matchesPlacementParent, parcelMeters, stemToCanvas, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
+import { matchesPlacementParent, parcelMeters, planPlacementParent, roundStemInside, stemToCanvas, type PlacementDimensions, type PlacementParent } from "./individualPlantGeometry";
+import { individualCropSpacings, individualPlacementPeriod, intersectsPlantingPeriod, type PlantingPeriod } from './individualPlantGeneration';
+import { snapIndividualStem, type PlantDistanceGuide, type PlantSnapResult } from './individualPlantSnapping';
+import { usePlacementCrops } from './usePlacementCrops';
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
 import { getIndividualPlantLabels, individualPlantObjectKey, placeIndividualPlantObjects, projectIndividualPlants,
   type GraphicalIndividualPlant } from "./graphicalIndividualPlants";
@@ -47,9 +50,9 @@ import { GraphicalFreePlantPlacement } from "./GraphicalFreePlantPlacement";
 import { GraphicalAreaAnnotations } from './GraphicalAreaAnnotations';
 import { useGraphicalAnnotationOverlays } from './useGraphicalAnnotationOverlays';
 import { layoutAreaAnnotations, type AreaAnnotationObstacle, type AreaAnnotationSubject } from './graphicalAnnotationLayout';
-import { createGraphicPlacementContext, createParentLocalPlacement } from "./graphicalPlantPlacement";
+import { createGraphicPlacementContext, createParentLocalPlacement, type GraphicPlacementContext, type GraphicPlacementResolution } from "./graphicalPlantPlacement";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
-import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
+import { GraphicalPlantDistanceGuide, GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import { analyzeGraphicalGeometry, getBedWorldRect, getGeometryOutlines, getGraphicalBedLayout, getGraphicalFreeRects, getSchematicLocationLayout, previewPosition, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
 import ModeToggle from "../components/ModeToggle";
 import {
@@ -149,8 +152,15 @@ export default function GraphicalFields({
   const individualPlants = useIndividualPlants(
     activeLocationId, individualSeason, canEditIndividualPlants, requestedIndividualPlan, editRequestedIndividualPlan,
   );
+  const activeDraft = individualPlants.editor.draft;
+  const cropOptions = usePlacementCrops(activeDraft && !activeDraft.planId ? 'all' : activeDraft?.crop ?? null);
   const [placementCursor, setPlacementCursor] = useState<{ location: number; point: Point } | null>(null);
   const [draggedStem, setDraggedStem] = useState<{ location: number; key: string; point: Point } | null>(null);
+  const [plantDistanceGuide, setPlantDistanceGuide] = useState<{ location: number; guide: PlantDistanceGuide } | null>(null);
+  const plantDragReapply = useRef<((bypass: boolean) => void) | null>(null);
+  const plantPlacementSnap = useRef<{
+    requestId: string; raw: Point; target: string | null; preview: (bypass: boolean) => GraphicPlacementResolution | null;
+  } | null>(null);
   const showCrops = includesCrops(displayMode);
   const plantCropReference = showCrops ? cropReference : undefined;
   const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
@@ -290,6 +300,9 @@ export default function GraphicalFields({
   const resetTransientInteractionState = (): void => {
     setActiveGuides([]);
     setGeometryPreview(null);
+    setPlantDistanceGuide(null);
+    plantDragReapply.current = null;
+    plantPlacementSnap.current = null;
     Object.keys(panSessionRef.current).forEach((key) => {
       panSessionRef.current[Number(key)] = null;
     });
@@ -479,6 +492,17 @@ export default function GraphicalFields({
     boundaryOriginByLocation[activeLayout.location.id!] ?? activeLayout.unsavedBoundaryOrigin,
     activeLayout.rotation, activeScene.parcels,
   ) : null, [activeLayout, activeScene, boundaryOriginByLocation]);
+  const plantSnapPlans = useMemo(() => individualPlants.plans.flatMap(plan => {
+    const parent = planPlacementParent(plan);
+    const period = individualPlacementPeriod(plan.planting_date ?? '', undefined, plan);
+    if (!parent || !period || plan.id === undefined) return [];
+    const stems = plan.individual_positions ?? [];
+    return [{ plan, parent, period, stems,
+      neighbors: placementContext ? stems.flatMap(stem => {
+        const point = placementContext.projectToWorld(parent, stem);
+        return point ? [{ key: stem.id, point }] : [];
+      }) : null }];
+  }), [individualPlants.plans, placementContext]);
   const geometry = useMemo(() => {
     if (!activeLayout || !activeScene) return null;
     if (!geometryPreview) return activeScene.savedGeometry;
@@ -974,6 +998,8 @@ export default function GraphicalFields({
       switch (event.key) {
         case "Shift":
           areaDrag.preview(true);
+          plantDragReapply.current?.(true);
+          if (individualPlants.editor.placing) plantPlacementSnap.current?.preview(true);
           break;
         case "Escape":
           if (stageRefs.current[effectiveActivePanLocationId]?.find?.(".graphical-editable")
@@ -1007,7 +1033,10 @@ export default function GraphicalFields({
     };
 
     const handleKeyUp = (event: KeyboardEvent): void => {
-      if (event.key === "Shift" && !event.shiftKey) areaDrag.preview(false);
+      if (event.key !== "Shift" || event.shiftKey) return;
+      areaDrag.preview(false);
+      plantDragReapply.current?.(false);
+      if (individualPlants.editor.placing) plantPlacementSnap.current?.preview(false);
     };
     const captureEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") handleKeyDown(event);
@@ -1117,21 +1146,81 @@ export default function GraphicalFields({
           const draftPlacement = placementContext ?? localPlacement;
           const placingStems = Boolean(stemDraft && individualSeason && draftPlacement && individualPlants.editor.placing
             && readyForPlacement(stemDraft, individualSeason));
+          const savedDraftPlan = stemDraft?.planId === undefined ? undefined
+            : plantSnapPlans.find(entry => entry.plan.id === stemDraft.planId)?.plan;
+          const draftCrop = cropOptions.crops?.find(crop => crop.id === stemDraft?.crop);
+          const draftPeriod = stemDraft && individualPlacementPeriod(stemDraft.date, draftCrop, savedDraftPlan);
+          const draftSpacing = savedDraftPlan ? savedDraftPlan.recommended_within_row_spacing_m
+            : individualCropSpacings(draftCrop).plantSpacing;
+          const resolvePlantSnap = (raw: Point, context: GraphicPlacementContext | null, period: PlantingPeriod | null,
+            spacingMeters: number | null | undefined, excludedStem: string | null, previousKey: string | null,
+            bypass: boolean): PlantSnapResult => {
+            if (!pathSpacing.snap_to_path_spacing || !context || !period || !spacingMeters) {
+              setPlantDistanceGuide(null);
+              return { point: raw, target: null, guide: null };
+            }
+            const neighbors = plantSnapPlans.flatMap(entry => {
+              if (entry.plan.id === stemDraft?.planId || !intersectsPlantingPeriod(period, entry.period)) return [];
+              return entry.neighbors ?? entry.stems.flatMap(stem => {
+                const point = context.projectToWorld(entry.parent, stem);
+                return point ? [{ key: stem.id, point }] : [];
+              });
+            });
+            if (stemDraft && draftPeriod && intersectsPlantingPeriod(period, draftPeriod)) {
+              for (const stem of stemDraft.stems) {
+                const point = context.projectToWorld(stem.graphic?.parent ?? stemDraft.parent, stem);
+                if (point) neighbors.push({ key: stem.key, point });
+              }
+            }
+            const result = snapIndividualStem(raw, {
+              neighbors: neighbors.filter(neighbor => neighbor.key !== excludedStem), spacingMeters,
+              zoom: viewport.scale, previousKey, bypass,
+              accepts: candidate => 'local' in context.resolveWorld(candidate),
+            });
+            setPlantDistanceGuide(result.guide ? { location: locationId, guide: result.guide } : null);
+            return result;
+          };
           const cursorPoint = placementCursor?.location === locationId ? placementCursor.point : null;
           const placementPreview = placingStems && cursorPoint ? draftPlacement?.resolveWorld(cursorPoint) ?? null : null;
-          const previewPlacement = (point: Point | null) => setPlacementCursor(point && { location: locationId, point });
-          const addStemAt = (point: Point) => {
-            previewPlacement(point);
-            const resolution = draftPlacement?.resolveWorld(point);
-            if (resolution && 'local' in resolution) individualPlants.addStem({ ...resolution.local, graphic: resolution.point });
+          const previewPlacement = (raw: Point | null, bypass = false) => {
+            if (!raw || !stemDraft || !draftPlacement) {
+              plantPlacementSnap.current = null;
+              setPlantDistanceGuide(null);
+              setPlacementCursor(null);
+              return null;
+            }
+            const previous = plantPlacementSnap.current;
+            const session = {
+              requestId: stemDraft.requestId,
+              raw,
+              target: previous?.requestId === stemDraft.requestId ? previous.target : null,
+              preview: (skip: boolean) => {
+                const result = resolvePlantSnap(raw, draftPlacement, draftPeriod, draftSpacing, null, session.target, skip);
+                session.target = result.target;
+                setPlacementCursor({ location: locationId, point: result.point });
+                return draftPlacement.resolveWorld(result.point);
+              },
+            };
+            plantPlacementSnap.current = session;
+            return session.preview(bypass);
           };
-          const keyboardPlacement = (direction: Point | null) => {
+          const addStemAt = (point: Point, bypass = false) => {
+            const resolution = previewPlacement(point, bypass);
+            if (resolution && 'local' in resolution) {
+              individualPlants.addStem({ ...resolution.local, graphic: resolution.point });
+              plantPlacementSnap.current = null;
+              setPlantDistanceGuide(null);
+            }
+          };
+          const keyboardPlacement = (direction: Point | null, bypass = false) => {
             const surface = localPlacement?.surface ?? boundary;
             if (!surface) return;
-            const start = cursorPoint ?? { x: surface.x + surface.width / 2, y: surface.y + surface.height / 2 };
+            const session = plantPlacementSnap.current;
+            const raw = session?.requestId === stemDraft?.requestId ? session?.raw : undefined;
+            const start = raw ?? cursorPoint ?? { x: surface.x + surface.width / 2, y: surface.y + surface.height / 2 };
             if (direction) previewPlacement({ x: start.x + direction.x * FIELD_WORLD_PX_PER_METER / 2,
-              y: start.y + direction.y * FIELD_WORLD_PX_PER_METER / 2 });
-            else addStemAt(start);
+              y: start.y + direction.y * FIELD_WORLD_PX_PER_METER / 2 }, bypass);
+            else addStemAt(start, bypass);
           };
           const renderedPlantPlans = [...plansByParent].flatMap(([key, plans]) => {
             const area = areaObjects.get(key);
@@ -1172,6 +1261,8 @@ export default function GraphicalFields({
             length: formatLocalizedNumber(location.length_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
           }) : '';
           const movingStem = draggedStem?.location === locationId ? draggedStem : null;
+          const activePlantGuide = plantDistanceGuide?.location === locationId && (placingStems || movingStem)
+            ? plantDistanceGuide.guide : null;
           const annotations = (() => {
             if (!annotationOverlays) return [];
             const project = (rect: PlacementRect) => projectViewportRect(rect, viewport);
@@ -1281,17 +1372,44 @@ export default function GraphicalFields({
             stems.push(...added.map(stem => ({ ...stem, planId: stemDraft?.planId ?? null,
               canopy: Number(stemDraft?.canopy ?? 0), selected: stem.key === individualPlants.editor.selectedKey })));
             if (!stems.length) return null;
+            const dragPlacement = placementContext ?? (draggableStemPlans && pathSpacing.snap_to_path_spacing
+              ? createParentLocalPlacement(parent, parcels, rotation) : null);
             return <GraphicalIndividualPlantsLayer field={dimensions} surface={surface}
               rotation={placementRotation} zoom={viewport.scale} stems={stems}
               editablePlanId={(draft || added.length) && !individualPlants.editor.saving && !placingStems
                 ? stemDraft?.planId ?? null : undefined}
               draggablePlanIds={draggableStemPlans}
               captureStems={locationIsEditable && individualPlants.canEdit}
-              onDragPreview={(key, point) => setDraggedStem(point && { location: locationId, key, point })}
+              onDragPreview={(key, point) => {
+                setDraggedStem(point && { location: locationId, key, point });
+                if (!point) setPlantDistanceGuide(null);
+              }}
+              onDragReapply={apply => { plantDragReapply.current = apply; }}
+              resolveDragPoint={(stem, raw, previousKey, bypass) => {
+                if (added.some(item => item.key === stem.key)) {
+                  return resolvePlantSnap(raw, draftPlacement, draftPeriod, draftSpacing, stem.key, previousKey, bypass);
+                }
+                const entry = plantSnapPlans.find(item => item.plan.id === stem.planId);
+                return resolvePlantSnap(raw, dragPlacement, entry?.period ?? null,
+                  entry?.plan.recommended_within_row_spacing_m, stem.key, previousKey, bypass);
+              }}
               onMoveWorld={placementContext ? (key, world) => {
+                const resolution = placementContext.resolveWorld(world);
+                const editingStem = added.find(stem => stem.key === key);
+                if (editingStem) {
+                  if ('error' in resolution) {
+                    individualPlants.update({ error: resolution.error });
+                  } else if (editingStem.id && matchesPlacementParent(stemDraft?.parent, resolution.frame.parent)) {
+                    const { across, width, height } = resolution.frame;
+                    const dimensions = across ? { width: height, height: width } : { width, height };
+                    individualPlants.changeStem(key, { ...roundStemInside(resolution.local, dimensions), graphic: undefined });
+                  } else {
+                    individualPlants.changeStem(key, { ...resolution.local, graphic: resolution.point });
+                  }
+                  return;
+                }
                 const plan = individualPlants.plans.find(item => item.individual_positions?.some(stem => stem.id === key));
                 if (!plan?.id) return;
-                const resolution = placementContext.resolveWorld(world);
                 if ('error' in resolution) individualPlants.reportMoveError(resolution.error);
                 else void individualPlants.moveSavedStem(plan.id, key, resolution.local, { scene: placementContext.scene, point: resolution.point });
               } : undefined}
@@ -1579,6 +1697,7 @@ export default function GraphicalFields({
                         strokeScaleEnabled={false} stroke={theme.palette.success.dark}
                         data-testid="graphical-object-highlight" />}
                       <GraphicalSnapGuides guides={activeGuides} scale={viewport.scale} />
+                      {activePlantGuide && <GraphicalPlantDistanceGuide guide={activePlantGuide} scale={viewport.scale} />}
                     </Layer>
                     <GraphicalAreaAnnotations labels={annotations} viewport={viewport} />
                   </Stage>
@@ -1632,7 +1751,7 @@ export default function GraphicalFields({
                 </Box>
                 {showIndividualPanel && (
                   <GraphicalIndividualPlantsPanel location={location} fields={parcels.map(({ field }) => field)} beds={beds}
-                    season={individualSeason} controller={individualPlants}
+                    season={individualSeason} controller={individualPlants} cropOptions={cropOptions}
                     placementContext={draftPlacement} preview={placementPreview} onKeyboardPlacement={keyboardPlacement}
                     onRefreshGeometry={() => setLayoutAttempt(attempt => attempt + 1)}
                     onClose={() => canvasToolsRefs.current[locationId]?.focus({ preventScroll: true })}

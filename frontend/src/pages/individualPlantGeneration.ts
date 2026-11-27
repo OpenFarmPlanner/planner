@@ -26,6 +26,10 @@ export interface PlantingPeriod {
   end: string;
 }
 
+export function intersectsPlantingPeriod(first: PlantingPeriod, second: PlantingPeriod): boolean {
+  return first.start <= second.end && second.start <= first.end;
+}
+
 export interface PlacementFrame {
   dimensions: RectSize;
   /** Extent of the parent in unrotated parcel metres, matching the graphic. */
@@ -120,7 +124,7 @@ export function collectOccupiedPlantPositions({
     const peer = planPlacementParent(plan);
     if (!peer) return [];
     const planted = savedPeriod(plan);
-    if (period && planted && (planted.end < period.start || planted.start > period.end)) return [];
+    if (period && planted && !intersectsPlantingPeriod(period, planted)) return [];
     const peerKey = placementFrameKey(peer);
     const stems = plan.individual_positions ?? [];
     if (key === peerKey) return stems;

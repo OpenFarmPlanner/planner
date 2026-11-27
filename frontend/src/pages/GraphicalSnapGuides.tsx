@@ -1,7 +1,8 @@
 import { useTheme } from '@mui/material';
-import { Group, Rect, Text } from 'react-konva';
+import { Group, Line, Rect, Text } from 'react-konva';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import type { GuideLine } from './graphicalFieldsGeometry';
+import type { PlantDistanceGuide } from './individualPlantSnapping';
 
 export function GraphicalSnapGuides({ guides, scale }: { guides: GuideLine[]; scale: number }) {
   const { palette } = useTheme();
@@ -40,4 +41,21 @@ export function GraphicalSnapGuides({ guides, scale }: { guides: GuideLine[]; sc
       </Group>
     );
   });
+}
+
+export function GraphicalPlantDistanceGuide({ guide, scale }: { guide: PlantDistanceGuide; scale: number }) {
+  const { palette } = useTheme();
+  const { neighbor, stem, meters, snapped } = guide;
+  const color = snapped ? palette.primary.main : palette.text.secondary;
+  const label = `${formatLocalizedNumber(meters, getActiveFormattingLocale(), { maximumFractionDigits: 2 })} m`;
+  return (
+    <Group listening={false} data-testid="individual-distance-guide" data-snapped={snapped}>
+      <Line points={[neighbor.x, neighbor.y, stem.x, stem.y]} stroke={color}
+        strokeWidth={snapped ? 2 : 1} strokeScaleEnabled={false} dash={snapped ? [] : [4 / scale, 3 / scale]} />
+      <Text x={(neighbor.x + stem.x) / 2 + 4 / scale} y={(neighbor.y + stem.y) / 2 - 17 / scale}
+        text={label} fontStyle={snapped ? 'bold' : 'normal'} fill={color}
+        stroke={palette.background.paper} strokeWidth={3} fillAfterStrokeEnabled
+        scaleX={1 / scale} scaleY={1 / scale} />
+    </Group>
+  );
 }

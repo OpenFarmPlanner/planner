@@ -5,8 +5,7 @@ import {
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { Link } from 'react-router';
-import { cropAPI } from '../api/api';
-import type { Bed, Crop, Field, Location, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
+import type { Bed, Field, Location, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
 import { Disclosure } from '../components/Disclosure';
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
 import LoadRetryButton from '../components/LoadRetryButton';
@@ -27,6 +26,7 @@ import {
   individualPositionLimit,
 } from './individualPlantGeneration';
 import { readyForPlacement, type IndividualPlantsController } from './useIndividualPlants';
+import type { usePlacementCrops } from './usePlacementCrops';
 
 const cultivationLabels = {
   direct_sowing: 'directSowing', pre_cultivation: 'preCultivation', purchased_transplant: 'purchasedTransplant',
@@ -40,33 +40,6 @@ function placementPlanLabel(plan: PlantingPlan, locale: string) {
 function positive(value: unknown): number | null {
   const number = Number(value);
   return Number.isFinite(number) && number > 0 ? number : null;
-}
-
-function usePlacementCrops(source: 'all' | number | null) {
-  const [attempt, setAttempt] = useState(0);
-  const [result, setResult] = useState<{
-    source: 'all' | number; attempt: number; crops: Crop[] | null;
-  } | null>(null);
-  useEffect(() => {
-    if (source === null) return;
-    const request = new AbortController();
-    const load = source === 'all'
-      ? cropAPI.listAll(request.signal).then(({ results }) => results.filter(crop => crop.id != null))
-      : cropAPI.get(source).then(({ data }) => [data]);
-    void load.then(crops => {
-      if (!request.signal.aborted) setResult({ source, attempt, crops });
-    }).catch(() => {
-      if (!request.signal.aborted) setResult({ source, attempt, crops: null });
-    });
-    return () => request.abort();
-  }, [source, attempt]);
-  const current = result?.source === source && result.attempt === attempt ? result : null;
-  return {
-    crops: current?.crops ?? null,
-    failed: current?.crops === null,
-    loading: source !== null && current === null,
-    retry: () => setAttempt(value => value + 1),
-  };
 }
 
 function CoordinateEditor({
@@ -105,7 +78,7 @@ function CoordinateEditor({
 const sectionTitleSx = { fontWeight: 600 } as const;
 
 export function GraphicalIndividualPlantsPanel({
-  location, fields, beds, season, controller, placementContext, preview,
+  location, fields, beds, season, controller, cropOptions, placementContext, preview,
   onKeyboardPlacement, onRefreshGeometry, onFocusParent, onClose,
 }: {
   location: Location;
@@ -113,9 +86,10 @@ export function GraphicalIndividualPlantsPanel({
   beds: Bed[];
   season: Season;
   controller: IndividualPlantsController;
+  cropOptions: ReturnType<typeof usePlacementCrops>;
   placementContext: GraphicPlacementContext | null;
   preview: GraphicPlacementResolution | null;
-  onKeyboardPlacement: (direction: Position | null) => void;
+  onKeyboardPlacement: (direction: Position | null, bypass?: boolean) => void;
   onRefreshGeometry: () => void;
   onFocusParent: (parent: PlacementParent) => void;
   onClose: () => void;
@@ -149,9 +123,7 @@ export function GraphicalIndividualPlantsPanel({
   const coordinatesContainer = containerFor(coordinatesParent);
   const creating = Boolean(draft && !draft.planId);
   const [generationOpen, setGenerationOpen] = useState(false);
-  const { crops, failed: cropsFailed, loading: cropsLoading, retry: retryCrops } = usePlacementCrops(
-    creating ? 'all' : draft?.crop ?? null,
-  );
+  const { crops, failed: cropsFailed, loading: cropsLoading, retry: retryCrops } = cropOptions;
   const crop = crops?.find(item => item.id === draft?.crop);
   const cultivationTypes = getAllowedCultivationTypesForCrop(crop);
   const spacing = creating
@@ -326,12 +298,12 @@ export function GraphicalIndividualPlantsPanel({
                 : t('fields:individualPlants.predictedParent', { name: preview.frame.name }))
                 : tr(!placementContext ? 'geometryUnknown' : canAdd ? 'freePlacementHint' : 'placementNeedsInputs')}
             </Alert>}
-            {placing && canAdd && <Button variant="outlined" onClick={() => onKeyboardPlacement(null)} onKeyDown={event => {
+            {placing && canAdd && <Button variant="outlined" onClick={event => onKeyboardPlacement(null, event.shiftKey)} onKeyDown={event => {
               const directions: Record<string, Position> = { ArrowRight: { x: 1, y: 0 }, ArrowLeft: { x: -1, y: 0 },
                 ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 } };
               if (!directions[event.key]) return;
               event.preventDefault();
-              onKeyboardPlacement(directions[event.key]);
+              onKeyboardPlacement(directions[event.key], event.shiftKey);
             }}>{tr('placeAtCursor')}</Button>}
             {groups.size > 0 && <Box component="ul" aria-label={tr('parentSummary')} sx={{ my: 0, pl: 3 }}>
               {[...groups].map(([key, { parent, count }]) => <Typography component="li" key={key} variant="body2">

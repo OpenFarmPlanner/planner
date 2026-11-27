@@ -1,5 +1,5 @@
 import type { Field, IndividualPlacementParent, PlantingPlan, StemCoordinates } from '../api/types';
-import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
+import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect, type RectSize } from './graphicalLayoutUtils';
 
 export type PlacementDimensions = Pick<Field, 'width_m' | 'length_m'>;
 export type PlacementParent = IndividualPlacementParent;
@@ -65,6 +65,11 @@ export function roundMeters(value: number): number {
   return Number(value.toFixed(2));
 }
 
+export function roundStemInside(stem: StemCoordinates, { width, height }: RectSize): StemCoordinates {
+  const limit = (value: number, max: number) => Math.min(Math.floor(max * 100) / 100, roundMeters(Math.max(0, value)));
+  return { x_m: limit(stem.x_m, width), y_m: limit(stem.y_m, height) };
+}
+
 export function canvasToStem(
   point: Position, field: PlacementDimensions, surface: Rect, rotation: GraphicalRotation,
 ): StemCoordinates | null {
@@ -75,8 +80,7 @@ export function canvasToStem(
     { x: point.x - surface.x, y: point.y - surface.y, width: 0, height: 0 },
     surface, dimensions, inverse,
   );
-  const limit = (value: number, max: number) => Math.min(Math.floor(max * 100) / 100, roundMeters(Math.max(0, value)));
-  return { x_m: limit(model.x, dimensions.width), y_m: limit(model.y, dimensions.height) };
+  return roundStemInside({ x_m: model.x, y_m: model.y }, dimensions);
 }
 
 export function shortStemSpacing(stems: readonly StemCoordinates[], recommended: number | null) {

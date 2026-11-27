@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Bed, Crop, Field, PlantingPlan } from '../api/types';
 import {
   collectOccupiedPlantPositions, generateRegularPlants, getIndividualPlantFrames, individualCropSpacings,
-  individualPlacementPeriod, type RegularPlantInputs,
+  individualPlacementPeriod, intersectsPlantingPeriod, type RegularPlantInputs,
 } from '../pages/individualPlantGeneration';
 
 const wholeBed = { width: 2, height: 4 };
@@ -133,6 +133,16 @@ describe('shared placement geometry and occupancy', () => {
     expect(individualPlacementPeriod('2028-02-29', crop)).toEqual({
       start: '2028-02-29', end: '2029-02-28',
     });
+  });
+
+  it('uses the original dates of continuing perennials and inclusive occupation endpoints', () => {
+    const apple = { crop: 1, planting_date: '2024-04-12', clearing_date: '2034-04-12',
+      occupancy_end_date: '2034-04-12' } as PlantingPlan;
+    const perennial = individualPlacementPeriod('2034-01-01', undefined, apple)!;
+    expect(perennial.start).toBe('2024-04-12');
+    expect(intersectsPlantingPeriod(perennial, { start: '2034-04-12', end: '2034-08-20' })).toBe(true);
+    expect(intersectsPlantingPeriod(perennial, { start: '2034-04-13', end: '2034-08-20' })).toBe(false);
+    expect(intersectsPlantingPeriod(perennial, { start: '2024-01-01', end: '2024-04-11' })).toBe(false);
   });
 
   it('uses effective crop values for different in-row and between-row spacing', () => {

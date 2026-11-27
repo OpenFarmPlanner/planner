@@ -221,6 +221,13 @@ Edit graphic and the Graphic display dropdown use 44 px controls with text
 labels when the topbar has enough width. Spacing is directly available on
 wider layouts and appears in the dropdown on phones. Its keyboard interaction
 shows the Shift hint. The dropdown also selects the four graphic display modes.
+The location's spacing toggle and Shift bypass also apply to individual stems.
+Plant snapping projects eligible neighbours into the metric layout and uses the
+moving crop's effective within-row distance. Eligibility uses intersecting
+occupation periods. Capture and release tolerances stay constant on screen at
+different zoom levels, and a temporary guide reports the live centre distance.
+The snapped position goes through the same deepest-parent resolution and atomic
+save as free placement. Moving a draft stem between parents retains its ID.
 
 Crops renders phase colors from the selected crop date. The calendar popover
 provides Today, a specific date with an inclusive season slider, a custom date
