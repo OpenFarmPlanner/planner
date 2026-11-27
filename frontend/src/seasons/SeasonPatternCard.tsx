@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -18,7 +18,7 @@ import { useTranslation } from '../i18n';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
-import { SeasonStartDateFields } from './SeasonStartDateFields';
+import { LegacySeasonPatternNote, SeasonStartMonthField } from './SeasonStartMonthField';
 import { SettingsSection } from '../components/settings/SettingsSection';
 import { settingsActionButtonSx, settingsFlatAlertSx } from '../components/settings/settingsStyles';
 import { showGlobalSnackbar } from '../utils/globalSnackbar';
@@ -40,11 +40,13 @@ export function SeasonPatternCard({ id = 'season-pattern', onSaved }: { id?: str
   const [existingSeasons, setExistingSeasons] = useState<Season[]>([]);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const previewRequest = useRef(0);
 
   const loadPreview = useCallback(async (day: number, month: number) => {
+    const request = ++previewRequest.current;
     try {
       const response = await seasonPatternAPI.preview({ start_day: day, start_month: month });
-      setPreview(response.data);
+      if (previewRequest.current === request) setPreview(response.data);
     } catch (error) {
       console.error('Error loading season pattern preview:', error);
     }
@@ -142,10 +144,12 @@ export function SeasonPatternCard({ id = 'season-pattern', onSaved }: { id?: str
         </>
       )}
     >
-      <SeasonStartDateFields idPrefix="season-pattern" startDay={startDay} startMonth={startMonth} onChange={handleChange} />
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 1, mb: 2.5 }}>
-        {t('navigation:seasonPattern.helper')}
-      </Typography>
+      <Stack spacing={1} sx={{ mb: 2.5, maxWidth: 360 }}>
+        <SeasonStartMonthField month={startMonth} disabled={saving} onChange={month => handleChange(1, month)} />
+        <Typography variant="body2" color="text.secondary">{t('navigation:seasonPattern.helper')}</Typography>
+        <LegacySeasonPatternNote day={startDay} month={startMonth} disabled={saving}
+          onUseFirstDay={() => handleChange(1, startMonth)} />
+      </Stack>
 
       <Typography component="h3" variant="subtitle2" sx={{ mb: 1 }}>{t('navigation:seasonPattern.previewTitle')}</Typography>
       <Table size="small" sx={{ mb: 2 }}>

@@ -151,6 +151,11 @@ export function useActiveSeason() {
     return response.data;
   }, [reload]);
 
+  const createFirstSeason = useCallback(async (startYear: number, startMonth: number): Promise<Season> => {
+    const response = await seasonAPI.createFirst({ start_year: startYear, start_month: startMonth });
+    return response.data;
+  }, []);
+
   const createTransitionSeasons = useCallback(async (
     copy: boolean, expectedSourceId?: number, useActualDates = false, expectedPeriods?: SeasonTransitionPeriods,
     parcelRotation?: ParcelRotationConfirmation,
@@ -318,6 +323,7 @@ export function useActiveSeason() {
     reload,
     switchSeason,
     createSeason,
+    createFirstSeason,
     createTransitionSeasons,
     renameSeason,
     updateSeasonPeriod,

@@ -7,6 +7,7 @@ from django.db import transaction
 from django.db.models import Count, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import APIException, ValidationError
@@ -34,7 +35,15 @@ from farm.history.restore import (
     SEASON_TASK_BEFORE,
     _record_cascade_deletions,
 )
-from farm.models import BatchOperation, EntityRevision, PlantingPlan, Season, SeasonPattern, Task
+from farm.models import (
+    BatchOperation,
+    EntityRevision,
+    PlantingPlan,
+    Project,
+    Season,
+    SeasonPattern,
+    Task,
+)
 from farm.project_context import get_active_project_or_400
 from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_rotation import COPY_CONFLICTS_KEEP, RotationService, preview_season_copy
@@ -46,12 +55,14 @@ from farm.services.seasons import (
     compute_custom_season_period,
     compute_first_future_pattern_period,
     compute_preview_periods,
+    compute_season_period,
     compute_setup_target_period,
     copy_planting_plans,
     create_or_resurrect_season,
     distribute_planting_plans,
     find_due_but_missing_season,
     find_soft_deleted_season,
+    first_season_available,
     get_or_create_season_for_period,
     get_or_create_season_pattern,
     is_historical_copy_period,
@@ -67,6 +78,7 @@ from farm.services.tasks import generate_tasks_for_plans
 
 from .serializers import (
     CreateTransitionSeasonsSerializer,
+    FirstSeasonSerializer,
     SeasonCopyFromSerializer,
     SeasonCopyPreviewOptionsSerializer,
     SeasonCreateAndCopySerializer,
@@ -101,6 +113,38 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
         .order_by('-start_date')
     )
     serializer_class = SeasonSerializer
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        # Use the same lock as first-season creation before validating the period.
+        Project.objects.select_for_update().get(pk=request.active_project.pk)
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(request=FirstSeasonSerializer, responses={201: SeasonSerializer})
+    @action(detail=False, methods=['post'], url_path='create-first', history_read_only=True)
+    @transaction.atomic
+    def create_first(self, request):
+        """Set the regular pattern and create the selected first season together."""
+        inputs = FirstSeasonSerializer(data=request.data)
+        inputs.is_valid(raise_exception=True)
+        project = Project.objects.select_for_update().get(pk=request.active_project.pk)
+        if not first_season_available(project):
+            return api_error_response(
+                code='first_season_unavailable',
+                detail='This project already has season history or planting plans.',
+                status_code=status.HTTP_409_CONFLICT,
+            )
+        pattern = season_pattern_for_planning(project)
+        pattern.start_day = 1
+        pattern.start_month = inputs.validated_data['start_month']
+        start, end = compute_season_period(pattern, inputs.validated_data['start_year'])
+        serializer = self.get_serializer(data={'start_date': start, 'end_date': end})
+        serializer.is_valid(raise_exception=True)
+        ensure_project_checkpoint(project, user_name=_current_actor_label(request))
+        pattern._history_user_name = _current_actor_label(request)
+        pattern.save()
+        self.perform_create(serializer)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
     @transaction.atomic
     def perform_create(self, serializer):
@@ -625,13 +669,19 @@ class SeasonViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelView
 class SeasonPatternView(APIView):
     """Get/update the project's season pattern, and preview computed periods."""
 
+    @transaction.atomic
     def get(self, request):
         active_project = get_active_project_or_400(request)
+        # This legacy read initializes a default if none exists. Serialize that
+        # initialization with a grower saving the first season in another tab.
+        Project.objects.select_for_update().get(pk=active_project.pk)
         pattern = get_or_create_season_pattern(active_project)
         return Response(SeasonPatternSerializer(pattern).data)
 
+    @transaction.atomic
     def patch(self, request):
         active_project = get_active_project_or_400(request)
+        Project.objects.select_for_update().get(pk=active_project.pk)
         pattern = get_or_create_season_pattern(active_project)
         serializer = SeasonPatternSerializer(pattern, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
@@ -646,7 +696,7 @@ class SeasonPatternPreviewView(APIView):
 
     def get(self, request):
         active_project = get_active_project_or_400(request)
-        pattern = get_or_create_season_pattern(active_project)
+        pattern = season_pattern_for_planning(active_project)
         start_day = request.query_params.get('start_day')
         start_month = request.query_params.get('start_month')
         if start_day is not None:
@@ -670,8 +720,10 @@ class SeasonPatternPreviewView(APIView):
                 'end_date': latest_season.end_date.isoformat(),
                 'label': latest_season.label,
             }
-            future_start, _ = compute_first_future_pattern_period(pattern, latest_season)
-            raw_transition = analyze_period_transition(latest_season.end_date, future_start)
+            future_period = compute_first_future_pattern_period(pattern, latest_season)
+            raw_transition = future_period and analyze_period_transition(
+                latest_season.end_date, future_period[0],
+            )
             if raw_transition is not None:
                 transition = serialize_period_transition(raw_transition)
         return Response({
@@ -694,7 +746,7 @@ class SeasonSetupStatusView(APIView):
     def get(self, request):
         active_project = get_active_project_or_400(request)
         unassigned_count = PlantingPlan.objects.filter(project=active_project, season__isnull=True).count()
-        pattern = get_or_create_season_pattern(active_project)
+        pattern = season_pattern_for_planning(active_project)
         preview_pattern = pattern
         start_day_param = request.query_params.get('start_day')
         start_month_param = request.query_params.get('start_month')
@@ -720,8 +772,10 @@ class SeasonSetupStatusView(APIView):
 class SeasonSetupApplyView(APIView):
     """Apply the first-run season setup: save the pattern and assign existing plans."""
 
+    @transaction.atomic
     def post(self, request: Request) -> Response:
         active_project = get_active_project_or_400(request)
+        Project.objects.select_for_update().get(pk=active_project.pk)
         try:
             start_day = int(request.data.get('start_day'))
             start_month = int(request.data.get('start_month'))

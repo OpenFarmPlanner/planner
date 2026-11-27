@@ -1929,6 +1929,7 @@ export type SeasonCreationCopyTarget = 'adopt' | 'transition' | 'manual';
 export interface SeasonCreationOptions {
   start_day: number;
   start_month: number;
+  first_season?: boolean;
   last_season: { start_date: string; end_date: string; label: string } | null;
   due_period: SeasonPeriodRange | null;
   transition: SeasonPeriodTransition | null;

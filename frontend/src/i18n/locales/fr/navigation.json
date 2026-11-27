@@ -243,11 +243,19 @@
     "submit": "Configurer",
     "error": "La configuration a échoué."
   },
+  "firstSeason": {
+    "title": "Créer la première saison",
+    "year": "Année de début",
+    "yearRange": "Saisissez une année entre 1 et 9998.",
+    "recurs": "Les prochaines saisons régulières commenceront aussi le premier jour de ce mois.",
+    "unavailable": "La création de la première saison n’est plus disponible ici. Rechargez le projet pour voir les saisons et options disponibles."
+  },
   "seasonPattern": {
+    "legacyDay": "Le début enregistré est le {{day}} {{month}}. Une modification fixe le début au premier jour du mois.",
+    "useFirstDay": "Utiliser le premier jour",
     "title": "Modèle de saison",
-    "dayLabel": "Jour",
-    "monthLabel": "Mois",
-    "helper": "Chaque saison dure exactement 12 mois à partir de cette date.",
+    "monthLabel": "Début annuel de la saison",
+    "helper": "Les saisons régulières commencent le premier jour du mois et durent douze mois.",
     "previewTitle": "Aperçu des saisons calculées",
     "previewColumnLabel": "Année",
     "previewColumnPeriod": "Période",

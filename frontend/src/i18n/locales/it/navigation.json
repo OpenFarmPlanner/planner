@@ -243,11 +243,19 @@
     "description_many": "Prima di lavorare con le stagioni, imposteremo il modello di stagione e assegneremo a una stagione le {{count}} serie esistenti di questo progetto.",
     "summary_many": "→ Tutte le {{count}} serie esistenti verranno assegnate alla stagione «{{label}}» ({{period}})."
   },
+  "firstSeason": {
+    "title": "Crea la prima stagione",
+    "year": "Anno di inizio",
+    "yearRange": "Inserisci un anno da 1 a 9998.",
+    "recurs": "Anche le prossime stagioni regolari inizieranno il primo giorno di questo mese.",
+    "unavailable": "Qui non puoi più creare la prima stagione. Ricarica il progetto per vedere le stagioni e le opzioni disponibili."
+  },
   "seasonPattern": {
+    "legacyDay": "L’inizio salvato è il giorno {{day}} di {{month}}. Una modifica imposta il primo giorno del mese.",
+    "useFirstDay": "Usa il primo giorno",
     "title": "Modello di stagione",
-    "dayLabel": "Giorno",
-    "monthLabel": "Mese",
-    "helper": "Ogni stagione dura esattamente 12 mesi a partire da questa data.",
+    "monthLabel": "Inizio annuale della stagione",
+    "helper": "Le stagioni regolari iniziano il primo giorno del mese e durano dodici mesi.",
     "previewTitle": "Anteprima delle stagioni calcolate",
     "previewColumnLabel": "Anno",
     "previewColumnPeriod": "Periodo",

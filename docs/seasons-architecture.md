@@ -3,16 +3,16 @@
 Seasons let a project split its planting plans into successive ~12-month
 planning periods (e.g. "2026", or "25/26" for a season that doesn't align
 with the calendar year). This doc covers the data model, the season-scoping
-mechanism, the copy-data action, and the first-run migration for projects
-that predate this feature.
+mechanism, the copy-data action, and how projects create their first season
+or assign older planting plans to a season.
 
 ## Data model
 
 - **`SeasonPattern`** (`backend/farm/models/seasons.py`) — one row per
-  project (`OneToOneField`), holding only `start_day`/`start_month`. Duration
-  is deliberately not configurable: every season spans exactly 12 months from
-  its start date (`farm/services/seasons.py:add_months`, which clamps the day
-  when the target month is shorter, e.g. Feb 30 → Feb 28/29).
+  project (`OneToOneField`), holding `start_day` and `start_month`. New regular
+  patterns use the first day of the selected month and span twelve months.
+  The stored day remains available for older patterns and history restores.
+  The existing period computation still clamps legacy days to short months.
 - **`Season`** — project-scoped (`project` FK), `start_date`/`end_date`,
   optional `custom_label` (set via "Umbenennen"), and soft-deleted via
   `deleted_at` — same convention as `Crop` (`ActiveSeasonManager` hides
@@ -620,6 +620,31 @@ From 2027's three-dot menu, use **Copy season data** to add the carrot from
 DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_season_creation_dates_acceptance --historical-copy --username LOCAL_USER --database-name LOCAL_DATABASE
 ```
 
+## Creating the first season
+
+In a new project, choose **Create season** from Planting Plans, the Crop Calendar,
+or the season menu. Choose the year in which the season starts and its annual
+start month. The default year is the period containing today when the saved
+month starts on its first day. The dialog previews the inclusive period and
+computed label. October 2026, for example, runs from 1 October 2026 through
+30 September 2027 and is labelled **26/27**. Confirmation creates and activates
+the selected season.
+
+`GET /seasons/creation-options/` advertises this workflow when there is no
+season history and no planting plan to migrate. Preview reads keep the saved
+pattern and project unchanged. `POST /seasons/create-first/` takes `start_year`
+and `start_month`, computes the exact period via `compute_season_period`, and
+saves the pattern and season in one project-locked transaction with history.
+Existing history, including deleted seasons, uses the existing season creation,
+undelete and migration flows. An already completed concurrent initialization
+makes any later first-season submission ineligible.
+
+Project Settings and legacy setup both offer the same month selector. When a
+saved pattern has a custom day, the UI shows that value and allows the grower to
+keep it or explicitly adopt the first of the month. Saving a new month updates
+the recurring pattern. Existing season boundaries, manual transitions and
+history retain their exact dates.
+
 ## First-run setup (migrating pre-existing projects)
 
 Projects created before this feature have `PlantingPlan` rows with
@@ -632,8 +657,8 @@ migration modal below. `reset_project_demo_data` drops a project's seasons
 along with the rest of its farm data so repopulating never accumulates them.
 
 The planting-plans page also mirrors this rule in the UI: when a project has
-no active season it shows a "Noch keine Saison angelegt" empty state whose
-only action is a CTA into the shared suggested-season dialog. If direct season
+no active season it shows a "Noch keine Saison angelegt" empty state with an
+action to open the appropriate season creation dialog. If direct season
 creation would leave existing
 unassigned plans outside the proposed period (planting date through harvest
 end), the API rejects it with a structured
@@ -653,10 +678,10 @@ and gated on `seasonSetupAPI.status().needs_setup`):
    to contain today when a user gets around to running setup. The endpoint
    also accepts `start_day`/`start_month` query params to preview the effect
    of a not-yet-saved pattern choice (mirroring
-   `SeasonPatternPreviewView`) — `SeasonSetupDialog` re-fetches on every
-   change to the day/month selects so the info box and summary line never
-   show a stale period.
-2. Applying the setup saves the chosen start day/month as the project's
+   `SeasonPatternPreviewView`). `SeasonSetupDialog` requests a new preview
+   after the grower chooses a start month or adopts the first day of a legacy
+   pattern's existing month.
+2. Applying the setup saves the recurring pattern as the project's
    `SeasonPattern`, creates (or reuses, via `get_or_create`) the `Season` for
    that same earliest-plan-anchored period, and bulk-`update()`s every
    `season IS NULL` plan onto it in one query — no data is copied or

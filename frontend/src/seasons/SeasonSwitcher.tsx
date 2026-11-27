@@ -34,6 +34,7 @@ import type { UseActiveSeasonReturn } from './useActiveSeason';
 import { SeasonRowActionsMenu } from './SeasonRowActionsMenu';
 import { SeasonRenameDialog } from './SeasonRenameDialog';
 import { SeasonPeriodEditDialog } from './SeasonPeriodEditDialog';
+import { FirstSeasonDialog } from './FirstSeasonDialog';
 import { ParcelRotationCopyPreview, ParcelRotationCopyToggle } from './ParcelRotationCopyPreview';
 import { SeasonCopyCheckbox, SeasonCopyPreviewSection } from './SeasonCopyPreviewSection';
 import { seasonCopyDialogActionsSx, seasonCopyDialogContentSx, seasonCopyDialogSlotProps, seasonCopyDialogTitleSx } from './seasonCopyDialogLayout';
@@ -110,7 +111,26 @@ function getSeasonCreateErrorMessage(
   return extractApiErrorMessage(error, t, fallbackMessage);
 }
 
-export function SeasonCreateSuggestionDialog({
+export function SeasonCreateSuggestionDialog(props: SeasonCreateSuggestionDialogProps) {
+  const { controller, open, onClose } = props;
+  const options = controller.seasonCreationOptions;
+  if (options?.first_season && options.due_period) {
+    return open ? <FirstSeasonDialog
+      defaultYear={Number(options.due_period.start_date.slice(0, 4))}
+      defaultMonth={options.start_month}
+      existingDay={options.start_day}
+      onClose={onClose}
+      onCreate={async (year, month) => {
+        const season = await controller.createFirstSeason(year, month);
+        onClose();
+        controller.switchSeason(season.id);
+      }}
+    /> : null;
+  }
+  return <SuggestedSeasonDialog {...props} />;
+}
+
+function SuggestedSeasonDialog({
   controller,
   open,
   onClose,
@@ -690,7 +710,7 @@ export function SeasonSwitcher({
   const { t, i18n } = useTranslation(['navigation', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
   const {
-    seasons, activeSeason, dueSuggestion, pendingDeletions,
+    seasons, activeSeason, dueSuggestion, seasonCreationOptions, pendingDeletions,
     switchSeason, renameSeason, updateSeasonPeriod, deleteSeason,
     undoPendingDeletion, closePendingDeletionSnackbar,
   } = controller;
@@ -808,11 +828,12 @@ export function SeasonSwitcher({
                 </Box>
                 <Stack sx={{ minWidth: 0 }}>
                   <Typography sx={{ fontWeight: 500 }}>
-                    {t('navigation:seasonSwitcher.suggestion.title', { label: suggestedLabel })}
+                    {seasonCreationOptions?.first_season ? t('navigation:firstSeason.title')
+                      : t('navigation:seasonSwitcher.suggestion.title', { label: suggestedLabel })}
                   </Typography>
-                  <Typography variant="caption" color="text.secondary" noWrap>
+                  {!seasonCreationOptions?.first_season && <Typography variant="caption" color="text.secondary" noWrap>
                     {suggestedPeriod}
-                  </Typography>
+                  </Typography>}
                 </Stack>
               </Stack>
               <Button

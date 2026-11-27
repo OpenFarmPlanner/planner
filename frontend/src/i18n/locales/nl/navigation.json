@@ -224,11 +224,19 @@
     "submit": "Instellen",
     "error": "Instellen mislukt."
   },
+  "firstSeason": {
+    "title": "Eerste seizoen aanmaken",
+    "year": "Startjaar",
+    "yearRange": "Voer een jaar tussen 1 en 9998 in.",
+    "recurs": "Ook toekomstige reguliere seizoenen beginnen op de eerste dag van deze maand.",
+    "unavailable": "Je kunt het eerste seizoen hier niet meer aanmaken. Herlaad het project om de beschikbare seizoenen en opties te zien."
+  },
   "seasonPattern": {
+    "legacyDay": "De opgeslagen start valt op dag {{day}} van {{month}}. Bij een wijziging begint het seizoen op de eerste van de maand.",
+    "useFirstDay": "Gebruik de eerste dag",
     "title": "Seizoenspatroon",
-    "dayLabel": "Dag",
-    "monthLabel": "Maand",
-    "helper": "Elk seizoen duurt vanaf deze datum precies 12 maanden.",
+    "monthLabel": "Jaarlijkse seizoensstart",
+    "helper": "Reguliere seizoenen beginnen op de eerste dag van de maand en duren twaalf maanden.",
     "previewTitle": "Voorbeeld van berekende seizoenen",
     "previewColumnLabel": "Jaar",
     "previewColumnPeriod": "Periode",

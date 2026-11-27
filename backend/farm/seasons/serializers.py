@@ -166,6 +166,12 @@ class SeasonPatternSerializer(serializers.ModelSerializer):
         return value
 
 
+class FirstSeasonSerializer(serializers.Serializer):
+    # Computing a complete period needs the same month in the following year.
+    start_year = serializers.IntegerField(min_value=1, max_value=9998)
+    start_month = serializers.IntegerField(min_value=1, max_value=12)
+
+
 class SeasonCreateAndCopySerializer(SeasonSerializer):
     source_season_id = serializers.IntegerField(write_only=True)
     use_actual_dates = serializers.BooleanField(write_only=True, default=False)

@@ -1,6 +1,7 @@
 """Tests for the seasons domain: label computation, pattern math, CRUD, copy-data, and setup."""
 
 from datetime import date
+from unittest.mock import patch
 
 from django.core.files.base import ContentFile
 from django.core.files.storage import default_storage
@@ -8,6 +9,7 @@ from django.db import connection
 from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
+from rest_framework.exceptions import ValidationError
 
 from farm.models import (
     BatchOperation,
@@ -1987,6 +1989,129 @@ class SeasonPeriodEditApiTest(ProjectApiTestCase):
         self.assertEqual(str(overlap['overlap_end_date']), '2025-12-31')
 
 
+class FirstSeasonApiTest(ProjectApiTestCase):
+    root_url = '/openfarmplanner/api/seasons/'
+
+    def create_first(self, year, month, **headers):
+        return self.client.post(
+            f'{self.root_url}create-first/', {'start_year': year, 'start_month': month},
+            format='json', **headers,
+        )
+
+    def test_first_season_defaults_are_read_only_and_future_year_is_created_directly(self):
+        with patch('farm.services.seasons.date', wraps=date) as simulated_date:
+            simulated_date.today.return_value = date(2026, 11, 27)
+            options = self.client.get(f'{self.root_url}creation-options/')
+            suggestion = self.client.get(f'{self.root_url}due-suggestion/')
+        self.client.get('/openfarmplanner/api/season-setup/status/')
+        self.assertEqual(options.status_code, 200)
+        self.assertTrue(options.data['first_season'])
+        self.assertEqual((options.data['start_day'], options.data['start_month']), (1, 1))
+        self.assertEqual(options.data['due_period'], {
+            'start_date': '2026-01-01', 'end_date': '2026-12-31',
+        })
+        self.assertEqual(suggestion.data, {'due': True, **options.data['due_period']})
+        self.assertFalse(SeasonPattern.objects.filter(project=self.project).exists())
+        self.assertFalse(Season.objects.filter(project=self.project).exists())
+
+        response = self.create_first(2027, 1)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['label'], '2027')
+        self.assertEqual(response.data['start_date'], '2027-01-01')
+        self.assertEqual(response.data['end_date'], '2027-12-31')
+        season = Season.objects.get(project=self.project)
+        self.assertEqual(season.pk, response.data['id'])
+        self.assertEqual(season.created_by_id, self.user.pk)
+        pattern = SeasonPattern.objects.get(project=self.project)
+        self.assertEqual((pattern.start_day, pattern.start_month), (1, 1))
+        self.assertEqual(self.create_first(2027, 1).status_code, 409)
+        self.assertEqual(self.create_first(2028, 10).status_code, 409)
+        pattern.refresh_from_db()
+        self.assertEqual(pattern.start_month, 1)
+        self.assertEqual(Season.objects.filter(project=self.project).count(), 1)
+
+    def test_first_season_defaults_to_the_month_start_without_editing_a_saved_legacy_pattern(self):
+        pattern = SeasonPattern.objects.create(project=self.project, start_day=15, start_month=10)
+        with patch('farm.services.seasons.date', wraps=date) as simulated_date:
+            simulated_date.today.return_value = date(2026, 10, 10)
+            options = self.client.get(f'{self.root_url}creation-options/')
+            suggestion = self.client.get(f'{self.root_url}due-suggestion/')
+        self.assertEqual(options.data['due_period']['start_date'], '2026-10-01')
+        self.assertEqual(suggestion.data['start_date'], '2026-10-01')
+        self.assertEqual(options.data['start_day'], 15)
+        pattern.refresh_from_db()
+        self.assertEqual(pattern.start_day, 15)
+
+        response = self.create_first(2027, 3)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['label'], '27/28')
+        self.assertEqual(response.data['start_date'], '2027-03-01')
+        self.assertEqual(response.data['end_date'], '2028-02-29')
+        pattern.refresh_from_db()
+        self.assertEqual((pattern.start_day, pattern.start_month), (1, 3))
+        earlier_revision = EntityRevision.objects.get(
+            project=self.project, entity_type='season_pattern', object_id=pattern.pk,
+            action=EntityRevision.ACTION_CREATED,
+        )
+        self.assertEqual(earlier_revision.snapshot['start_day'], 15)
+
+    def test_invalid_or_failed_creation_leaves_pattern_and_history_intact(self):
+        pattern = SeasonPattern.objects.create(project=self.project, start_day=15, start_month=10)
+        revision_count = EntityRevision.objects.filter(project=self.project).count()
+        for year, month in ((0, 10), (9999, 10), (2027, 0), (2027, 13), (2027.5, 10)):
+            with self.subTest(year=year, month=month):
+                self.assertEqual(self.create_first(year, month).status_code, 400)
+        with patch(
+            'farm.seasons.views.SeasonViewSet.perform_create',
+            side_effect=ValidationError('Failed'),
+        ):
+            response = self.create_first(2026, 3)
+        self.assertEqual(response.status_code, 400)
+        pattern.refresh_from_db()
+        self.assertEqual((pattern.start_day, pattern.start_month), (15, 10))
+        self.assertEqual(
+            EntityRevision.objects.filter(project=self.project).count(), revision_count,
+        )
+        self.assertFalse(Season.objects.filter(project=self.project).exists())
+
+    def test_first_season_flow_leaves_legacy_plans_and_deleted_periods_to_existing_flows(self):
+        plan = PlantingPlan.objects.create(
+            crop=self.crop, bed=self.bed, project=self.project, planting_date=date(2024, 4, 1),
+        )
+        self.assertFalse(self.client.get(f'{self.root_url}creation-options/').data['first_season'])
+        self.assertEqual(self.create_first(2025, 1).data['code'], 'first_season_unavailable')
+        response = self.client.post('/openfarmplanner/api/season-setup/apply/', {
+            'start_day': 1, 'start_month': 1,
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        plan.refresh_from_db()
+        self.assertEqual(plan.season_id, response.data['season']['id'])
+        self.assertEqual(self.client.delete(f'{self.root_url}{plan.season_id}/').status_code, 204)
+        self.assertFalse(self.client.get(f'{self.root_url}creation-options/').data['first_season'])
+        self.assertEqual(self.create_first(2025, 1).status_code, 409)
+        archived = Season.all_objects.get(pk=plan.season_id)
+        self.assertIsNotNone(archived.deleted_at)
+
+    def test_first_season_does_not_write_to_an_unauthorized_project(self):
+        other = Project.objects.create(name='Other project', slug='other-first-season')
+        response = self.create_first(2027, 10, HTTP_X_PROJECT_ID=str(other.pk))
+        self.assertIn(response.status_code, (403, 404), response.data)
+        self.assertFalse(Season.objects.filter(project=other).exists())
+        self.assertFalse(SeasonPattern.objects.filter(project=other).exists())
+
+    def test_latest_supported_first_season_keeps_season_views_available(self):
+        response = self.create_first(9998, 10)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['end_date'], '9999-09-30')
+        self.assertEqual(self.client.get(f'{self.root_url}due-suggestion/').data, {'due': False})
+        options = self.client.get(f'{self.root_url}creation-options/')
+        self.assertEqual(options.status_code, 200, options.data)
+        self.assertIsNone(options.data['due_period'])
+        preview = self.client.get('/openfarmplanner/api/season-pattern/preview/')
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertIsNone(preview.data['transition'])
+
+
 class SeasonSetupApiTest(ProjectApiTestCase):
     def test_status_reports_unassigned_plans(self):
         PlantingPlan.objects.create(
@@ -2052,9 +2177,7 @@ class SeasonSetupApiTest(ProjectApiTestCase):
         self.assertEqual(preview_response.data['computed_start_date'], '2025-09-01')
         self.assertEqual(preview_response.data['computed_end_date'], '2026-08-31')
 
-        # The override is preview-only — the persisted pattern is untouched.
-        pattern = SeasonPattern.objects.get(project=self.project)
-        self.assertEqual((pattern.start_day, pattern.start_month), (1, 1))
+        self.assertFalse(SeasonPattern.objects.filter(project=self.project).exists())
 
     def test_due_suggestion_advances_once_season_exists(self):
         start_date, end_date = compute_due_season_period(self.project, today=date(2026, 6, 1))

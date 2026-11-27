@@ -90,15 +90,15 @@ afterEach(() => {
  */
 describe('SeasonPatternCard', () => {
   describe('loading the current pattern', () => {
-    it('shows the stored start date and previews it', async () => {
+    it('shows a saved legacy start day without changing or hiding the existing preview', async () => {
       mocks.get.mockResolvedValue({ data: { start_day: 15, start_month: 9 } });
       renderCard();
 
-      await waitFor(() =>
-        expect(screen.getByRole('combobox', { name: 'Tag' })).toHaveTextContent('15'),
-      );
-      expect(screen.getByRole('combobox', { name: 'Monat' })).toHaveTextContent('September');
+      expect(await screen.findByText(/gespeicherte Saisonbeginn ist Tag 15 im September/)).toBeVisible();
+      expect(screen.queryByRole('combobox', { name: 'Tag' })).not.toBeInTheDocument();
+      expect(screen.getByRole('combobox', { name: 'Jährlicher Saisonbeginn' })).toHaveTextContent('September');
       expect(mocks.preview).toHaveBeenCalledWith({ start_day: 15, start_month: 9 });
+      expect(mocks.update).not.toHaveBeenCalled();
     });
 
     it('survives a pattern that cannot be loaded', async () => {
@@ -124,7 +124,7 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await screen.findByText('2026 (aktuell)');
 
-      await choose(user, 'Monat', 'März');
+      await choose(user, 'Jährlicher Saisonbeginn', 'März');
 
       // A failed refetch must not blank a preview the user is reading.
       await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(2));
@@ -285,7 +285,7 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1));
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
 
       // The preview is the reason to trust the change; deferring it to save
       // would make the card a blind edit.
@@ -295,30 +295,36 @@ describe('SeasonPatternCard', () => {
       expect(mocks.update).not.toHaveBeenCalled();
     });
 
-    it('keeps the day when only the month changes', async () => {
+    it('previews the first day when a legacy pattern is changed to a new month', async () => {
       mocks.get.mockResolvedValue({ data: { start_day: 15, start_month: 1 } });
       const user = userEvent.setup();
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1));
 
-      await choose(user, 'Monat', 'März');
+      await choose(user, 'Jährlicher Saisonbeginn', 'März');
 
       await waitFor(() =>
-        expect(mocks.preview).toHaveBeenLastCalledWith({ start_day: 15, start_month: 3 }),
+        expect(mocks.preview).toHaveBeenLastCalledWith({ start_day: 1, start_month: 3 }),
       );
+      expect(mocks.update).not.toHaveBeenCalled();
     });
 
-    it('keeps the month when only the day changes', async () => {
-      mocks.get.mockResolvedValue({ data: { start_day: 1, start_month: 9 } });
+    it('lets a legacy project choose the first day of its existing month and cancel the change', async () => {
+      mocks.get.mockResolvedValue({ data: { start_day: 15, start_month: 9 } });
       const user = userEvent.setup();
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalledTimes(1));
 
-      await choose(user, 'Tag', '15');
+      await user.click(screen.getByRole('button', { name: 'Monatsersten verwenden' }));
+      await waitFor(() =>
+        expect(mocks.preview).toHaveBeenLastCalledWith({ start_day: 1, start_month: 9 }),
+      );
+      await user.click(cancelButton());
 
       await waitFor(() =>
         expect(mocks.preview).toHaveBeenLastCalledWith({ start_day: 15, start_month: 9 }),
       );
+      expect(mocks.update).not.toHaveBeenCalled();
     });
   });
 
@@ -348,7 +354,7 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
 
       await waitFor(() => expect(saveButton()).toBeEnabled());
       expect(cancelButton()).toBeEnabled();
@@ -359,9 +365,9 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
-      await choose(user, 'Monat', 'Januar');
+      await choose(user, 'Jährlicher Saisonbeginn', 'Januar');
 
       // Back where it started is not a change, however it was reached.
       await waitFor(() => expect(saveButton()).toBeDisabled());
@@ -372,7 +378,7 @@ describe('SeasonPatternCard', () => {
       const { onSaved } = renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
 
@@ -390,7 +396,7 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
       await savedConfirmation();
@@ -405,14 +411,14 @@ describe('SeasonPatternCard', () => {
       const { onSaved } = renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
 
       expect(
         await screen.findByText('Saison-Muster konnte nicht gespeichert werden.'),
       ).toBeInTheDocument();
-      expect(screen.getByRole('combobox', { name: 'Monat' })).toHaveTextContent('September');
+      expect(screen.getByRole('combobox', { name: 'Jährlicher Saisonbeginn' })).toHaveTextContent('September');
       expect(saveButton()).toBeEnabled();
       expect(onSaved).not.toHaveBeenCalled();
     });
@@ -428,7 +434,7 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
 
@@ -441,7 +447,7 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
       await screen.findByText('Saison-Muster konnte nicht gespeichert werden.');
@@ -464,11 +470,11 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(cancelButton());
 
-      expect(screen.getByRole('combobox', { name: 'Monat' })).toHaveTextContent('Januar');
+      expect(screen.getByRole('combobox', { name: 'Jährlicher Saisonbeginn' })).toHaveTextContent('Januar');
       // The preview has to follow the fields back, or it would keep showing
       // periods for a date the card no longer holds.
       await waitFor(() =>
@@ -482,16 +488,16 @@ describe('SeasonPatternCard', () => {
       renderCard();
       await waitFor(() => expect(mocks.preview).toHaveBeenCalled());
 
-      await choose(user, 'Monat', 'September');
+      await choose(user, 'Jährlicher Saisonbeginn', 'September');
       await waitFor(() => expect(saveButton()).toBeEnabled());
       await user.click(saveButton());
       await savedConfirmation();
 
-      await choose(user, 'Monat', 'März');
+      await choose(user, 'Jährlicher Saisonbeginn', 'März');
       await waitFor(() => expect(cancelButton()).toBeEnabled());
       await user.click(cancelButton());
 
-      expect(screen.getByRole('combobox', { name: 'Monat' })).toHaveTextContent('September');
+      expect(screen.getByRole('combobox', { name: 'Jährlicher Saisonbeginn' })).toHaveTextContent('September');
     });
   });
 
