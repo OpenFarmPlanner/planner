@@ -439,6 +439,18 @@
       "bed": "Planche"
     },
     "backToList": "Retour aux surfaces de culture",
+    "backToAreaList": "Retour à la liste",
+    "emptyChildren": {
+      "location": "Aucune parcelle sur ce site.",
+      "field": "Aucune planche dans cette parcelle."
+    },
+    "childBedCount_one": "{{formatted}} planche",
+    "childBedCount_many": "{{formatted}} planches",
+    "childBedCount_other": "{{formatted}} planches",
+    "selectTaskSeason": "Sélectionnez une saison pour voir ses tâches.",
+    "noAreaTasks": "Cette surface n’a aucune tâche pour cette saison.",
+    "areaTaskLoadError": "Impossible de charger les tâches pour cette surface.",
+    "tasksNeedPlans": "Les tâches apparaîtront après le chargement des plans de culture.",
     "breadcrumbAria": "Fil d’Ariane",
     "unsavedChanges": "Vous avez des modifications non enregistrées. Elles seront perdues si vous quittez la page.",
     "unnamedPlan": "Plan de culture sans culture",

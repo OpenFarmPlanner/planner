@@ -15,6 +15,9 @@ const apiMocks = vi.hoisted(() => ({
   plans: vi.fn(),
   layouts: vi.fn(),
   bedUpdate: vi.fn(),
+  tasks: vi.fn(),
+  updateTaskStatus: vi.fn(),
+  members: vi.fn(),
   rotationGroups: vi.fn(),
   rotationUpdate: vi.fn(),
   membership: undefined as { project_id: number } | undefined,
@@ -40,6 +43,8 @@ vi.mock('../api/api', async () => {
     bedAPI: { ...actual.bedAPI, listAll: apiMocks.beds, update: apiMocks.bedUpdate },
     layoutAPI: { ...actual.layoutAPI, listByLocation: apiMocks.layouts },
     plantingPlanAPI: { ...actual.plantingPlanAPI, listAll: apiMocks.plans },
+    taskAPI: { ...actual.taskAPI, listAll: apiMocks.tasks, updateStatus: apiMocks.updateTaskStatus },
+    projectAPI: { ...actual.projectAPI, listMembers: apiMocks.members },
     parcelRotationAPI: { ...actual.parcelRotationAPI, list: apiMocks.rotationGroups, update: apiMocks.rotationUpdate },
   };
 });
@@ -56,11 +61,53 @@ const detailRoute = (path: string) => (
 );
 const renderDetail = (path: string) => render(detailRoute(path));
 
+const renderSeasonDetail = (path: string) => render(
+  <MemoryRouter initialEntries={[path]}>
+    <Routes>
+      <Route element={<Outlet context={{ activeSeason: { id: 38 } }} />}>
+        <Route path="/app/fields-beds/:entityType/:entityId" element={<GrowingAreaDetailPage />} />
+        <Route path="/app/fields-beds" element={<div data-testid="list-page" />} />
+      </Route>
+    </Routes>
+  </MemoryRouter>,
+);
+
+const taskRow = (id: number, title: string, relations: {
+  planting_plan?: number; field?: number; crop?: number; assigned_to?: number; due_date?: string;
+} = {}) => ({ id, title, status: 'pending', season: 38, due_date: null, ...relations });
+
+function seedAreaWork() {
+  apiMocks.plans.mockResolvedValue(page([
+    { id: 7, bed: 100, crop: 3, crop_name: 'Tomate', planting_date: '2026-05-01' },
+    { id: 11, bed: 100, crop_name: 'Paprika', placement_mode: 'individual_bed', plants_count: 4, pending_plants_count: 2 },
+    { id: 12, bed: null, parcel: 10, crop_name: 'Birne', placement_mode: 'individual_parcel', plants_count: 1 },
+    { id: 13, bed: null, site: 1, crop_name: 'Pflaume', placement_mode: 'individual_site', plants_count: 2 },
+    { id: 14, bed: null, site: 2, crop_name: 'Andere Pflaume', placement_mode: 'individual_site', plants_count: 2 },
+  ]).data);
+  const tasks = [
+    taskRow(1, 'Tomaten pflegen', { planting_plan: 7, assigned_to: 12, due_date: '2025-04-20' }),
+    taskRow(2, 'Paprika prüfen', { planting_plan: 11 }),
+    taskRow(3, 'Birne gießen', { planting_plan: 12 }),
+    taskRow(4, 'Pflaume schneiden', { planting_plan: 13 }),
+    taskRow(5, 'Tunnel lüften', { field: 10 }),
+    taskRow(6, 'Anderen Standort prüfen', { planting_plan: 14 }),
+    taskRow(7, 'Allgemeine Erinnerung'),
+    taskRow(8, 'Nur Kultur prüfen', { crop: 3 }),
+    taskRow(9, 'Andere Parzelle prüfen', { field: 101 }),
+  ];
+  apiMocks.tasks.mockResolvedValue(page([...tasks, tasks[0]]).data);
+  apiMocks.members.mockResolvedValue({ data: [{ user: 12, user_display_name: 'Garten-Team' }] });
+  return tasks;
+}
+
 describe('GrowingAreaDetailPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     apiMocks.projectId = 1;
     apiMocks.membership = { project_id: 1 };
+    apiMocks.tasks.mockResolvedValue(page([]).data);
+    apiMocks.updateTaskStatus.mockResolvedValue({});
+    apiMocks.members.mockResolvedValue({ data: [] });
     apiMocks.rotationGroups.mockResolvedValue({ data: [] });
     apiMocks.layouts.mockResolvedValue({ data: { field_layouts: [], bed_layouts: [] } });
     apiMocks.locations.mockResolvedValue(page([
@@ -91,6 +138,7 @@ describe('GrowingAreaDetailPage', () => {
     await act(async () => finishLayouts({ data: { field_layouts: [], bed_layouts: [] } }));
     expect(geometry.getByTestId('detail-covered-area')).toHaveTextContent('0 m²');
     expect(geometry.getByTestId('detail-remaining-area')).toHaveTextContent(/800 m² \(100\s*%\)/);
+    expect(geometry.getByRole('img', { name: /0 m².*800 m².*100/ })).toBeVisible();
     expect(geometry.getAllByText('Bruttofläche')).toHaveLength(1);
   });
 
@@ -469,5 +517,68 @@ describe('GrowingAreaDetailPage', () => {
 
     expect(await screen.findByText('Eintrag nicht gefunden')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Zurück zu den Anbauflächen' })).toHaveAttribute('href', '/app/fields-beds');
+  });
+
+  it.each([
+    ['locations/1', 'Hofgarten', 'Pflaume', ['Tomaten pflegen', 'Paprika prüfen', 'Birne gießen', 'Pflaume schneiden', 'Tunnel lüften']],
+    ['fields/10', 'Tunnel', 'Birne', ['Tomaten pflegen', 'Paprika prüfen', 'Birne gießen', 'Tunnel lüften']],
+    ['beds/100', 'Tomate 1', 'Paprika', ['Tomaten pflegen', 'Paprika prüfen']],
+  ] as const)('shows the active-season work scoped to %s', async (path, heading, plant, openTitles) => {
+    const all = seedAreaWork();
+    renderSeasonDetail(`/app/fields-beds/${path}`);
+    const title = await screen.findByRole('heading', { level: 1, name: heading });
+    const back = screen.getByRole('button', { name: 'Zurück zur Liste', exact: true });
+    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const direct = within(await screen.findByTestId('detail-section-individual-plans'));
+    expect(direct.getAllByRole('listitem')).toHaveLength(1);
+    expect(direct.getByRole('link', { name: plant, exact: true })).toBeVisible();
+    if (path.startsWith('beds')) expect(direct.getByText(/4 Einzelpflanzen.*2 noch nicht positioniert/)).toBeVisible();
+    const tasks = within(screen.getByRole('region', { name: 'Aufgaben', exact: true }));
+    await tasks.findByText('Tomaten pflegen');
+    expect(tasks.getAllByRole('listitem')).toHaveLength(openTitles.length);
+    expect(tasks.getAllByRole('listitem')[0]).toHaveTextContent(/Tomaten pflegen.*Hofgarten \/ Tunnel \/ Tomate 1.*Garten-Team/);
+    expect(tasks.getByRole('status')).toHaveTextContent(`${openTitles.length} offene Aufgaben`);
+    for (const task of all) {
+      if (openTitles.some(name => name === task.title)) expect(tasks.getByText(task.title)).toBeVisible();
+      else expect(tasks.queryByText(task.title)).not.toBeInTheDocument();
+    }
+    expect(apiMocks.tasks).toHaveBeenCalledTimes(1);
+  });
+
+  it('distinguishes task loading, failure, retry, completion history and a genuinely empty result', async () => {
+    const tasks = seedAreaWork();
+    let rejectTasks!: (error: Error) => void;
+    apiMocks.tasks.mockImplementationOnce(() => new Promise((_, reject) => { rejectTasks = reject; }));
+    const user = userEvent.setup();
+    renderSeasonDetail('/app/fields-beds/beds/100');
+    const section = within(await screen.findByRole('region', { name: 'Aufgaben', exact: true }));
+    expect(section.getByRole('progressbar')).toBeVisible();
+    expect(section.queryByRole('status')).not.toBeInTheDocument();
+    await act(async () => rejectTasks(new Error('Task service unavailable')));
+    await section.findByRole('alert');
+    await user.click(section.getByRole('button', { name: 'Erneut versuchen' }));
+    const complete = await section.findByRole('button', { name: /Tomaten pflegen.*als erledigt markieren/ });
+    apiMocks.tasks.mockResolvedValueOnce(page(tasks.map(task => task.id === 1 ? { ...task, status: 'completed' } : task)).data);
+    await user.click(complete);
+    expect(apiMocks.updateTaskStatus).toHaveBeenCalledWith(1, 'completed');
+    await waitFor(() => expect(section.getByRole('status')).toHaveTextContent(/1 offene Aufgabe/));
+    expect(section.queryByRole('button', { name: /Tomaten pflegen.*als erledigt markieren/ })).not.toBeInTheDocument();
+    const history = section.getByText(/1 erledigte Aufgabe/i);
+    await user.click(history);
+    expect(section.getByText('Tomaten pflegen')).toBeVisible();
+    apiMocks.tasks.mockResolvedValueOnce(page([]).data);
+    fireEvent.focus(window);
+    await waitFor(() => expect(section.queryAllByRole('listitem')).toHaveLength(0));
+    expect(section.getByRole('status')).toBeVisible();
+  });
+
+  it('keeps area work and plans readable without edit or completion permissions', async () => {
+    apiMocks.membership = undefined;
+    seedAreaWork();
+    renderSeasonDetail('/app/fields-beds/fields/10');
+    const section = within(await screen.findByRole('region', { name: 'Aufgaben', exact: true }));
+    expect(await section.findByText('Tunnel lüften')).toBeVisible();
+    expect(section.queryAllByRole('button', { name: /als erledigt markieren/ })).toHaveLength(0);
+    expect(screen.queryByRole('button', { name: 'Bearbeiten', exact: true })).not.toBeInTheDocument();
   });
 });

@@ -7,7 +7,7 @@ type GrowingArea = 'bed' | 'location';
 const NO_BED_TASKS: ReadonlyMap<number, readonly Task[]> = new Map();
 const NO_PLANS: readonly PlantingPlan[] = [];
 
-function useScopedRead<T>(
+export function useScopedRead<T>(
   scope: string | null, load: (signal: AbortSignal) => Promise<{ results: T[] }>,
 ) {
   const [attempt, setAttempt] = useState(0);

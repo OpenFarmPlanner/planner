@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Alert, Typography } from '@mui/material';
+import { Alert, Box, Typography } from '@mui/material';
 import { layoutAPI, type Bed, type Field, type LocationLayoutsResponse } from '../api/api';
 import type { ResolvedGrowingAreaEntity } from '../components/hierarchy/details/growingAreaEntity';
 import { DetailRow } from '../components/layout/DetailPrimitives';
+import { freeAreaColor } from '../components/hierarchy/utils/freeAreaColors';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { useTranslation } from '../i18n';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
@@ -79,26 +80,34 @@ export function GrowingAreaCoverageRows({ resolved, locale, refreshHierarchy }: 
       </Alert>
     );
   }
-  if (!coverage || coverage.footprintArea === null || coverage.remainingArea === null) {
+  if (!coverage?.grossArea || coverage.footprintArea === null || coverage.remainingArea === null) {
     return (
       <Typography variant="body2" color="text.secondary" sx={{ gridColumn: '1 / -1' }}>
         {t(isLocation ? 'details.coverage.locationUnknown' : 'details.coverage.parcelUnknown')}
       </Typography>
     );
   }
-  const percent = coverage.grossArea && coverage.grossArea > 0
-    ? formatLocalizedNumber(coverage.remainingArea / coverage.grossArea, locale, { style: 'percent', maximumFractionDigits: 1 })
-    : null;
+  const fraction = coverage.footprintArea / coverage.grossArea;
+  const percent = (value: number) => formatLocalizedNumber(value, locale, { style: 'percent', maximumFractionDigits: 1 });
+  const coveredLabel = t(isLocation ? 'details.coverage.parcelFootprint' : 'details.coverage.bedFootprint');
+  const remainingLabel = t(isLocation ? 'details.coverage.outsideParcels' : 'details.coverage.withoutBeds');
+  const covered = `${area(coverage.footprintArea)} (${percent(fraction)})`;
+  const remaining = `${area(coverage.remainingArea)} (${percent(coverage.remainingArea / coverage.grossArea)})`;
   return (
     <>
+      <Box role="img" aria-label={`${coveredLabel} · ${covered}. ${remainingLabel} · ${remaining}.`}
+        sx={{ gridColumn: '1 / -1', height: 10, border: 1, borderColor: 'divider', borderRadius: 1,
+          overflow: 'hidden', bgcolor: theme => freeAreaColor(theme, isLocation ? 'site' : 'parcel') }}>
+        <Box sx={{ bgcolor: 'primary.main', width: `${fraction * 100}%`, height: '100%' }} />
+      </Box>
       <DetailRow
-        label={t(isLocation ? 'details.coverage.parcelFootprint' : 'details.coverage.bedFootprint')}
-        value={area(coverage.footprintArea)}
+        label={coveredLabel}
+        value={covered}
         testId="detail-covered-area"
       />
       <DetailRow
-        label={t(isLocation ? 'details.coverage.outsideParcels' : 'details.coverage.withoutBeds')}
-        value={percent ? `${area(coverage.remainingArea)} (${percent})` : area(coverage.remainingArea)}
+        label={remainingLabel}
+        value={remaining}
         caption={isLocation ? undefined : t('details.coverage.parcelRemainingHelp')}
         testId="detail-remaining-area"
       />

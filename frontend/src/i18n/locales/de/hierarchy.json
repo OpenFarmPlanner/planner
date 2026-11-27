@@ -415,6 +415,17 @@
       "bed": "Beet"
     },
     "backToList": "Zurück zu den Anbauflächen",
+    "backToAreaList": "Zurück zur Liste",
+    "emptyChildren": {
+      "location": "Keine Parzellen an diesem Standort.",
+      "field": "Keine Beete in dieser Parzelle."
+    },
+    "childBedCount_one": "{{formatted}} Beet",
+    "childBedCount_other": "{{formatted}} Beete",
+    "selectTaskSeason": "Eine Saison auswählen, um ihre Aufgaben zu sehen.",
+    "noAreaTasks": "Für diese Fläche gibt es in dieser Saison keine Aufgaben.",
+    "areaTaskLoadError": "Die Aufgaben für diese Fläche konnten nicht geladen werden.",
+    "tasksNeedPlans": "Aufgaben erscheinen, sobald die Anbaupläne geladen sind.",
     "breadcrumbAria": "Navigationspfad",
     "unsavedChanges": "Du hast ungespeicherte Änderungen. Beim Verlassen der Seite gehen sie verloren.",
     "unnamedPlan": "Anbauplan ohne Kultur",

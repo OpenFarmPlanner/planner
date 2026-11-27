@@ -415,6 +415,17 @@
       "bed": "Bed"
     },
     "backToList": "Back to Fields & Beds",
+    "backToAreaList": "Back to List",
+    "emptyChildren": {
+      "location": "No parcels at this location.",
+      "field": "No beds in this parcel."
+    },
+    "childBedCount_one": "{{formatted}} bed",
+    "childBedCount_other": "{{formatted}} beds",
+    "selectTaskSeason": "Select a season to see its tasks.",
+    "noAreaTasks": "There are no tasks for this area in this season.",
+    "areaTaskLoadError": "Could not load tasks for this area.",
+    "tasksNeedPlans": "Tasks will appear once the planting plans load.",
     "breadcrumbAria": "Breadcrumb",
     "unsavedChanges": "You have unsaved changes. They will be lost if you leave this page.",
     "unnamedPlan": "Planting plan without crop",

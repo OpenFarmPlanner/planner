@@ -56,6 +56,7 @@ interface UseMobileHierarchyRowOperationsParams {
   onBulkCreateBeds: (fieldId: number) => void;
   onDuplicateField: (fieldId: number) => void;
   onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
+  onOpenDetails?: (path: string, rowId: string | number) => void;
   t: TFunction;
 }
 
@@ -82,6 +83,7 @@ export function useMobileHierarchyRowOperations({
   onBulkCreateBeds,
   onDuplicateField,
   onAddIndividualPlants,
+  onOpenDetails,
   t,
 }: UseMobileHierarchyRowOperationsParams) {
   const navigate = useNavigate();
@@ -155,7 +157,11 @@ export function useMobileHierarchyRowOperations({
         label: t(`details.open.${row.type}`),
         group: "details",
         icon: <InfoOutlinedIcon fontSize="small" />,
-        onClick: () => navigate(detailPath),
+        closeSheetBeforeRun: true,
+        onClick: () => {
+          if (onOpenDetails) onOpenDetails(detailPath, row.id);
+          else void navigate(detailPath);
+        },
       }] : [];
 
       if (row.type === "location" && row.locationId) {
@@ -235,7 +241,7 @@ export function useMobileHierarchyRowOperations({
       return [...detailActions, ...createActions, ...destructiveActions];
     },
     [deleteHierarchyRowWithUndo, handleCreatePlantingPlan, handleDuplicateBed,
-      navigate, onAddIndividualPlants, onBulkCreateBeds, onDuplicateField, t],
+      navigate, onAddIndividualPlants, onBulkCreateBeds, onDuplicateField, onOpenDetails, t],
   );
 
   return {

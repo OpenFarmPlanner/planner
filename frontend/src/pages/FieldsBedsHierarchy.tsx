@@ -59,6 +59,7 @@ import {
 import { createSiteConditionColumns } from "../components/hierarchy/SiteConditionColumns";
 import { INLINE_SITE_CONDITION_FIELDS as SITE_CONDITION_COLUMN_FIELDS } from "../components/hierarchy/utils/siteConditions";
 import { getHierarchyDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
+import type { GrowingAreaListPosition } from "../components/hierarchy/details/growingAreaWorkspaceNavigation";
 import { ContextMenuActionItem } from "../components/contextMenu/ContextMenuActionItem";
 import { CustomContextMenu } from "../components/contextMenu/CustomContextMenu";
 import { renderGroupedContextMenuActions } from "../components/contextMenu/contextMenuGroups";
@@ -173,6 +174,8 @@ interface FieldsBedsHierarchyProps {
   individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
   individualHierarchyLoading?: boolean;
   activeSeasonId?: number;
+  onOpenDetails?: (path: string, position: GrowingAreaListPosition) => void;
+  restoredPosition?: GrowingAreaListPosition;
 }
 
 interface HierarchyRowAction {
@@ -210,6 +213,8 @@ function FieldsBedsHierarchy({
   individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
   individualHierarchyLoading = false,
   activeSeasonId,
+  onOpenDetails,
+  restoredPosition,
 }: FieldsBedsHierarchyProps) {
   const LOCATION_ROW_HEIGHT = 46;
   const FIELD_ROW_HEIGHT = 42;
@@ -533,6 +538,20 @@ function FieldsBedsHierarchy({
     expandedRows,
     rows,
   });
+  const restoreListPosition = useRef(restoredPosition?.layout === 'grid' ? restoredPosition : null);
+  useEffect(() => {
+    const saved = restoreListPosition.current;
+    if (!saved || loading || individualHierarchyLoading || rows.length === 0) return;
+    if (hierarchyRowWindow.ensureRowIndexVisible(Math.min(saved.firstRowIndex ?? 0, rows.length - 1))) return;
+    const frame = requestAnimationFrame(() => {
+      const grid = gridApiRef.current;
+      if (!grid) return;
+      restoreListPosition.current = null;
+      grid.scroll({ top: saved.top, left: saved.left });
+      if (saved.rowId !== null && rows.some(row => row.id === saved.rowId)) selectRow(saved.rowId);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [gridApiRef, hierarchyRowWindow, individualHierarchyLoading, loading, rows, selectRow]);
 
   // Delete with undo
   const {
@@ -1482,6 +1501,17 @@ function FieldsBedsHierarchy({
     }));
   }, [rememberRowSnapshot, rowsRef, selectedRowIdRef]);
 
+  const openRowDetails = useEventCallback((detailPath: string, rowId: GridRowId) => {
+    if (!onOpenDetails) {
+      void navigate(detailPath);
+      return;
+    }
+    const { top, left } = gridApiRef.current?.getScrollPosition() ?? { top: 0, left: 0 };
+    const { page, pageSize } = hierarchyRowWindowRef.current;
+    onOpenDetails(detailPath, { layout: 'grid', rowId: selectedRowIdRef.current ?? rowId,
+      top, left, firstRowIndex: page * pageSize });
+  });
+
   const getHierarchyRowActions = useCallback((row: HierarchyRow): HierarchyRowAction[] => {
     if (row.type === 'individualPlan') return individualPlanRowActions(row, t, navigate, Boolean(onAddIndividualPlants));
     const addIndividuals = individualPlantCreationForRow(row, t, onAddIndividualPlants);
@@ -1492,7 +1522,7 @@ function FieldsBedsHierarchy({
       label: t(`details.open.${row.type}`),
       group: "details",
       icon: <InfoOutlinedIcon fontSize="small" />,
-      onClick: () => navigate(detailPath),
+      onClick: () => openRowDetails(detailPath, row.id),
     }] : [];
 
     if (row.type === "location" && row.locationId) {
@@ -1572,6 +1602,7 @@ function FieldsBedsHierarchy({
     return [...detailActions, ...createActions, ...destructiveActions];
   }, [
     navigate,
+    openRowDetails,
     deleteHierarchyRowWithUndo,
     handleAddBed,
     handleAddField,

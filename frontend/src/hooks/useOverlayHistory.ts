@@ -21,7 +21,7 @@ export function useOverlayHistory({
   onClose,
   historyKey = DEFAULT_OVERLAY_HISTORY_KEY,
   enabled = true,
-}: UseOverlayHistoryOptions): void {
+}: UseOverlayHistoryOptions): (action: () => void) => void {
   const entryIdRef = useRef<string | null>(null);
   const pushedUrlRef = useRef<string | null>(null);
   const closingFromHistoryRef = useRef(false);
@@ -96,4 +96,16 @@ export function useOverlayHistory({
       }
     };
   }, [enabled, historyKey, isCurrentOverlayEntry, open, pushOverlayEntry]);
+
+  // A new route would strand the overlay's same-URL history entry behind it.
+  return useCallback((action: () => void): void => {
+    if (!isCurrentOverlayEntry()) {
+      action();
+      return;
+    }
+    entryIdRef.current = null;
+    pushedUrlRef.current = null;
+    window.addEventListener('popstate', () => queueMicrotask(action), { once: true });
+    window.history.back();
+  }, [isCurrentOverlayEntry]);
 }

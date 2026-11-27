@@ -70,9 +70,11 @@ export function DetailSection({ title, children, outlined = false, showHeaderDiv
   );
 }
 
-export function DetailGrid({ children }: { children: ReactNode }) {
+export function DetailGrid({ children, mobileColumns = 1 }: { children: ReactNode; mobileColumns?: 1 | 2 }) {
   return (
-    <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, minmax(0, 1fr))' }, gap: 2 }}>
+    <Box sx={{ display: 'grid',
+      gridTemplateColumns: { xs: mobileColumns === 2 ? 'repeat(2, minmax(0, 1fr))' : '1fr', sm: 'repeat(3, minmax(0, 1fr))' },
+      gap: 2 }}>
       {children}
     </Box>
   );

@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link as RouterLink, useLocation, useNavigate, useOutletContext, useParams } from 'react-router';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link as RouterLink, useLocation, useNavigate, useNavigationType, useOutletContext, useParams } from 'react-router';
 import {
   Alert,
   Box,
@@ -38,7 +38,7 @@ import type { Bed, Field, Location, PlantingPlan } from '../api/types';
 import { extractApiErrorMessage } from '../api/errors';
 import { resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { GrowingAreaPlanLinks } from '../planting-plans/GrowingAreaPlanLinks';
-import { BedTaskSection } from '../components/tasks/BedTaskSection';
+import { GrowingAreaTaskSection } from '../components/tasks/GrowingAreaTaskSection';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import { parseDimensionValue } from '../components/hierarchy/utils/hierarchyAreaParsing';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
@@ -46,6 +46,8 @@ import { GrowingAreaCoverageRows } from './GrowingAreaCoverageRows';
 import { getMeasuredArea } from './graphicalAreaGeometry';
 import {
   DETAIL_ROUTE_SEGMENTS,
+  growingAreaPlanTarget,
+  planBelongsToGrowingArea,
   resolveGrowingAreaEntity,
   type ResolvedGrowingAreaEntity,
 } from '../components/hierarchy/details/growingAreaEntity';
@@ -55,10 +57,12 @@ import {
   GROWING_AREAS_PATH,
   type HierarchyEntityType,
 } from '../components/hierarchy/details/hierarchyDetailRoutes';
+import { getGrowingAreaDetailOrigin, relatedGrowingAreaDetail } from '../components/hierarchy/details/growingAreaWorkspaceNavigation';
 import {
   GrowingAreaDetailForm,
   type GrowingAreaDetailDraft,
 } from '../components/hierarchy/details/GrowingAreaDetailForm';
+import { isIndividualPlacement } from './individualPlantGeometry';
 import { INHERITED_SITE_CONDITION_FIELDS } from '../components/hierarchy/utils/siteConditions';
 import { ParcelRotationDetailSection } from '../components/hierarchy/rotation/ParcelRotationDetailSection';
 import {
@@ -71,6 +75,9 @@ import {
 const formatNumber = (value: number | null | undefined, locale: string): string | null => (
   typeof value === 'number' && Number.isFinite(value) ? value.toLocaleString(locale) : null
 );
+
+const knownArea = (area: Location | Field | Bed): number | null =>
+  getMeasuredArea(area) ?? (Number(area.area_sqm) > 0 ? Number(area.area_sqm) : null);
 
 const toDraft = (resolved: ResolvedGrowingAreaEntity): GrowingAreaDetailDraft => {
   const entity = resolved.entity as Location & Field & Bed;
@@ -87,6 +94,7 @@ const toDraft = (resolved: ResolvedGrowingAreaEntity): GrowingAreaDetailDraft =>
     water_supply: entity.water_supply ?? '',
     notes: entity.notes ?? '',
     description: entity.description ?? '',
+    address: entity.address ?? '',
     exposure: entity.exposure ?? '',
     cultivation_environment: entity.cultivation_environment ?? '',
   };
@@ -102,7 +110,7 @@ export default function GrowingAreaDetailPage() {
   const id = Number(params.entityId);
 
   if (shouldShowProjectRequiredState && missingProjectReason) {
-    return <PageContainer variant="standard"><ProjectRequiredState reason={missingProjectReason} /></PageContainer>;
+    return <PageContainer variant="standard" mobileInset><ProjectRequiredState reason={missingProjectReason} /></PageContainer>;
   }
   return (
     <GrowingAreaDetail
@@ -114,11 +122,18 @@ export default function GrowingAreaDetailPage() {
 }
 
 function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined; id: number | null }) {
-  const { activeProjectMembership } = useProjectRequirement();
+  const { activeProjectId, activeProjectMembership } = useProjectRequirement();
   const { t, i18n } = useTranslation(['hierarchy', 'locations', 'common', 'fields']);
   const locale = resolveSeasonDateLocale(i18n);
   const navigate = useNavigate();
-  const fromGraphic = useLocation().state?.fromGrowingAreaGraphic === true;
+  const location = useLocation();
+  const navigationType = useNavigationType();
+  useLayoutEffect(() => {
+    if (navigationType === 'PUSH') window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [navigationType]);
+  const origin = getGrowingAreaDetailOrigin(location.state, activeProjectId);
+  const fromGraphic = origin ? origin.view === 'graphic' : location.state?.fromGrowingAreaGraphic === true;
+  const relatedState = relatedGrowingAreaDetail(origin);
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
   const seasonId = outletContext?.activeSeason?.id;
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
@@ -153,7 +168,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   }, []);
 
   const save = useCallback(async (): Promise<void> => {
-    if (!resolved || !draft || !type) return;
+    if (!resolved || !draft || !type || !activeProjectMembership) return;
     if (!draft.name.trim()) {
       setSaveError(t('hierarchy:validation.nameRequired'));
       return;
@@ -186,6 +201,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
           ...location,
           ...common,
           description: draft.description,
+          address: draft.address,
           exposure: (draft.exposure || null) as Location['exposure'],
         });
         setLocations((previous) => previous.map((item) => (item.id === location.id ? response.data : item)));
@@ -209,21 +225,25 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
     } finally {
       setIsSaving(false);
     }
-  }, [draft, resolved, setBeds, setFields, setLocations, t, type]);
+  }, [activeProjectMembership, draft, resolved, setBeds, setFields, setLocations, t, type]);
 
   const backPath = !fromGraphic && resolved && type && id !== null ? getGrowingAreaListPath(type, id) : GROWING_AREAS_PATH;
-  const backLabel = t(fromGraphic ? 'fields:graphical.objects.backToGraphic' : 'hierarchy:details.backToList');
+  const backLabel = t(fromGraphic ? 'fields:graphical.objects.backToGraphic' : 'hierarchy:details.backToAreaList');
+  const goBack = (): void => {
+    if (origin) void navigate(-origin.steps);
+    else void navigate(backPath);
+  };
 
   if (!hasLoaded && loading) {
     return (
-      <PageContainer variant="standard">
+      <PageContainer variant="standard" mobileInset>
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 4 }}><CircularProgress size={24} /></Box>
       </PageContainer>
     );
   }
   if (error && !resolved) {
     return (
-      <PageContainer variant="standard">
+      <PageContainer variant="standard" mobileInset>
         <Alert severity="error" action={<LoadRetryButton disabled={loading} onClick={() => void hierarchy.fetchData()} />}>
           {error}
         </Alert>
@@ -232,7 +252,7 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   }
   if (!resolved || !type) {
     return (
-      <PageContainer variant="standard">
+      <PageContainer variant="standard" mobileInset>
         <EmptyStateCard
           title={t('hierarchy:details.notFound.title')}
           description={t('hierarchy:details.notFound.description')}
@@ -253,27 +273,41 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
         variant: 'contained',
       },
     ]
-    : [{ label: t('common:actions.edit'), icon: <EditIcon fontSize="small" />, onClick: startEditing }];
+    : activeProjectMembership ? [{ label: t('common:actions.edit'), icon: <EditIcon fontSize="small" />, onClick: startEditing }] : [];
 
   return (
-    <PageContainer variant="standard">
+    <PageContainer variant="standard" mobileInset>
       <Stack spacing={2} data-testid="growing-area-detail">
         <Breadcrumbs aria-label={t('hierarchy:details.breadcrumbAria')} sx={{ overflowWrap: 'anywhere' }}>
-          <Link component={RouterLink} to={backPath} underline="hover" color="inherit">
+          <Link component={RouterLink} to={backPath} underline="hover" color="inherit" onClick={event => {
+            if (isSaving || (origin && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey)) {
+              event.preventDefault();
+              if (!isSaving) goBack();
+            }
+          }}>
             {t('hierarchy:title')}
           </Link>
           {resolved.location && type !== 'location' ? (
-            <Link component={RouterLink} to={getEntityDetailPath('location', resolved.location.id!)} underline="hover" color="inherit">
+            <Link component={RouterLink} to={getEntityDetailPath('location', resolved.location.id!)} state={relatedState}
+              underline="hover" color="inherit">
               {resolved.location.name}
             </Link>
           ) : null}
           {resolved.field && type === 'bed' ? (
-            <Link component={RouterLink} to={getEntityDetailPath('field', resolved.field.id!)} underline="hover" color="inherit">
+            <Link component={RouterLink} to={getEntityDetailPath('field', resolved.field.id!)} state={relatedState}
+              underline="hover" color="inherit">
               {resolved.field.name}
             </Link>
           ) : null}
           <Typography color="text.primary" aria-current="page">{resolved.entity.name}</Typography>
         </Breadcrumbs>
+
+        <Box>
+          <Button variant="outlined" startIcon={<ArrowBackIcon fontSize="small" />}
+            onClick={goBack} disabled={isSaving} sx={{ minHeight: 44 }}>
+            {backLabel}
+          </Button>
+        </Box>
 
         <Box sx={detailHeaderRowSx}>
           <Box sx={detailHeaderTitleColumnSx}>
@@ -285,16 +319,6 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
             </Typography>
           </Box>
           <DetailPageActions primaryActions={primaryActions} />
-        </Box>
-
-        <Box>
-          <Button
-            startIcon={<ArrowBackIcon fontSize="small" />}
-            onClick={() => navigate(backPath)}
-            disabled={isSaving}
-          >
-            {backLabel}
-          </Button>
         </Box>
 
         {saveError ? <Alert severity="error">{saveError}</Alert> : null}
@@ -309,14 +333,15 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
               nameError={!draft.name.trim() ? t('hierarchy:validation.nameRequired') : undefined}
             />
           ) : (
-            <GrowingAreaReadView resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} />
+            <GrowingAreaReadView resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} beds={beds}
+              relatedState={relatedState} />
           )}
           {!isEditing && type === 'field' && id !== null ? (
             <ParcelRotationDetailSection fieldId={id} fields={fields} beds={beds}
               canManage={Boolean(activeProjectMembership)} onChanged={() => { void reloadActiveSeason?.(); }} />
           ) : null}
-          <GrowingAreaRelatedPlans bedIds={resolved.bedIds} showBed={type !== 'bed'} />
-          {type === 'bed' && id !== null && <BedTaskSection bedId={id} seasonId={seasonId} />}
+          <GrowingAreaRelatedWork key={seasonId} area={resolved} projectId={activeProjectId} seasonId={seasonId}
+            fields={fields} beds={beds} canComplete={Boolean(activeProjectMembership)} />
           {!isEditing && resolved.entity.notes?.trim() ? (
             <Box data-testid="detail-section-notes">
               <DetailSection title={t('common:fields.notes')}>
@@ -330,8 +355,15 @@ function GrowingAreaDetail({ type, id }: { type: HierarchyEntityType | undefined
   );
 }
 
-function GrowingAreaRelatedPlans({ bedIds, showBed }: { bedIds: ReadonlySet<number>; showBed: boolean }) {
-  const { t } = useTranslation(['hierarchy', 'plantingPlans']);
+function GrowingAreaRelatedWork({ area, projectId, seasonId, fields, beds, canComplete }: {
+  area: ResolvedGrowingAreaEntity;
+  projectId: number | null;
+  seasonId?: number;
+  fields: Field[];
+  beds: Bed[];
+  canComplete: boolean;
+}) {
+  const { t } = useTranslation(['hierarchy', 'plantingPlans', 'fields']);
   const [request, setRequest] = useState<{ status: 'loading' | 'ready' | 'error'; plans: PlantingPlan[] }>({
     status: 'loading',
     plans: [],
@@ -354,40 +386,62 @@ function GrowingAreaRelatedPlans({ bedIds, showBed }: { bedIds: ReadonlySet<numb
     setRequest(previous => ({ ...previous, status: 'loading' }));
     setAttempt(previous => previous + 1);
   };
-  const relatedPlans = request.plans.filter(plan => plan.bed !== null && bedIds.has(plan.bed));
+  const relatedPlans = useMemo(() => request.plans.filter(plan => planBelongsToGrowingArea(plan, area)), [request.plans, area]);
+  const { directIndividuals, otherPlans } = useMemo(() => {
+    const directIndividuals: PlantingPlan[] = [];
+    const otherPlans: PlantingPlan[] = [];
+    for (const plan of relatedPlans) {
+      const target = growingAreaPlanTarget(plan);
+      if (isIndividualPlacement(plan) && target?.kind === area.type && target.id === area.entity.id) directIndividuals.push(plan);
+      else otherPlans.push(plan);
+    }
+    return { directIndividuals, otherPlans };
+  }, [area.entity.id, area.type, relatedPlans]);
   const loading = request.status === 'loading';
+  const failed = request.status === 'error';
   const showRetry = request.status === 'error' || (loading && attempt > 0);
-  if (request.status === 'ready' && relatedPlans.length === 0) return null;
 
   return (
-    <Box data-testid="detail-section-plans">
-      <DetailSection title={t('hierarchy:details.sections.plantingPlans')}>
-        {showRetry ? (
-          <Alert
-            severity={loading ? 'info' : 'error'}
-            role={loading ? 'status' : 'alert'}
-            action={<LoadRetryButton disabled={loading} onClick={retry} />}
-          >
-            {loading ? t('plantingPlans:loadingPlans') : t('plantingPlans:errors.load')}
-          </Alert>
-        ) : loading ? (
-          <CircularProgress size={20} aria-label={t('plantingPlans:loadingPlans')} />
-        ) : null}
-        {relatedPlans.length > 0 ? (
-          <GrowingAreaPlanLinks plans={relatedPlans} showBed={showBed} keepTableLinks />
-        ) : null}
-      </DetailSection>
-    </Box>
+    <>
+      {(request.status !== 'ready' || otherPlans.length > 0) && (
+        <Box data-testid="detail-section-plans">
+          <DetailSection title={t('hierarchy:details.sections.plantingPlans')}>
+            {showRetry ? (
+              <Alert severity={loading ? 'info' : 'error'} role={loading ? 'status' : 'alert'}
+                action={<LoadRetryButton disabled={loading} onClick={retry} />}>
+                {loading ? t('plantingPlans:loadingPlans') : t('plantingPlans:errors.load')}
+              </Alert>
+            ) : loading ? <CircularProgress size={20} aria-label={t('plantingPlans:loadingPlans')} /> : null}
+            {otherPlans.length > 0 && <GrowingAreaPlanLinks plans={otherPlans} showBed={area.type !== 'bed'}
+              keepTableLinks showIndividualCounts />}
+          </DetailSection>
+        </Box>
+      )}
+      {directIndividuals.length > 0 && (
+        <Box data-testid="detail-section-individual-plans">
+          <DetailSection title={t('fields:individualPlants.title')}>
+            <GrowingAreaPlanLinks plans={directIndividuals} showBed={false} keepTableLinks showIndividualCounts />
+          </DetailSection>
+        </Box>
+      )}
+      <GrowingAreaTaskSection area={area} projectId={projectId} seasonId={seasonId} fields={fields} beds={beds}
+        plans={relatedPlans} plansLoading={loading} plansFailed={failed} retryPlans={retry} canComplete={canComplete} />
+    </>
   );
 }
 
-function OptionalSection({ title, rows, testId }: { title: string; rows: ReactNode[]; testId: string }) {
+function OptionalSection({ title, rows, testId, mobileColumns }: {
+  title: string;
+  rows: ReactNode[];
+  testId: string;
+  mobileColumns?: 1 | 2;
+}) {
   const visible = rows.filter(Boolean);
   if (visible.length === 0) return null;
   return (
     <Box data-testid={testId}>
       <DetailSection title={title}>
-        <DetailGrid>{visible}</DetailGrid>
+        <DetailGrid mobileColumns={mobileColumns}>{visible}</DetailGrid>
       </DetailSection>
     </Box>
   );
@@ -397,25 +451,30 @@ function GrowingAreaReadView({
   resolved,
   locale,
   refreshHierarchy,
+  beds,
+  relatedState,
 }: {
   resolved: ResolvedGrowingAreaEntity;
   locale: string;
   refreshHierarchy: () => Promise<void>;
+  beds: Bed[];
+  relatedState: ReturnType<typeof relatedGrowingAreaDetail>;
 }) {
   const { t } = useTranslation(['hierarchy', 'locations', 'common']);
   const { type } = resolved;
   const entity = resolved.entity as Location & Field & Bed;
   const measuredArea = getMeasuredArea(entity);
-  const area = measuredArea ?? (type === 'location' ? null : Number(entity.area_sqm) || null);
+  const area = type === 'location' ? measuredArea : knownArea(entity);
   const text = (key: string, label: string, value: string | null | undefined): ReactNode => (
     value && value.trim() ? <DetailRow key={key} label={label} value={value} testId={`detail-${key}`} /> : null
   );
 
-  const parentRow = type === 'bed' && resolved.field
-    ? <DetailRow key="parent" label={t('hierarchy:columns.field')} value={resolved.field.name} />
-    : type === 'field' && resolved.location
-      ? <DetailRow key="parent" label={t('hierarchy:columns.location')} value={resolved.location.name} />
-      : null;
+  const bedsByField = new Map<number, number>();
+  for (const bed of beds) {
+    if (bed.id != null && resolved.bedIds.has(bed.id)) bedsByField.set(bed.field, (bedsByField.get(bed.field) ?? 0) + 1);
+  }
+  const count = (value: number) => formatLocalizedNumber(value, locale);
+  const areaText = (value: number) => `${formatLocalizedNumber(value, locale, { maximumFractionDigits: 2 })} ${t('common:units.squareMeters')}`;
 
   const conditionRows = INHERITED_SITE_CONDITION_FIELDS.map((field) => {
     const condition = resolved.effective[field];
@@ -438,7 +497,6 @@ function GrowingAreaReadView({
         testId="detail-section-general"
         title={t('hierarchy:details.sections.general')}
         rows={[
-          parentRow,
           type === 'location' ? text('description', t('hierarchy:details.fields.description'), entity.description) : null,
           type === 'location' ? text('address', t('hierarchy:details.fields.address'), entity.address) : null,
         ]}
@@ -446,13 +504,16 @@ function GrowingAreaReadView({
       <OptionalSection
         testId="detail-section-geometry"
         title={t('hierarchy:details.sections.geometry')}
+        mobileColumns={2}
         rows={[
           text('length_m', t('hierarchy:columns.length'), formatNumber(entity.length_m, locale)),
           text('width_m', t('hierarchy:columns.width'), formatNumber(entity.width_m, locale)),
           type !== 'bed' && measuredArea !== null
             ? text('area', t('hierarchy:details.coverage.gross'),
-              `${formatLocalizedNumber(measuredArea, locale, { maximumFractionDigits: 2 })} ${t('common:units.squareMeters')}`)
-            : text('area', t('hierarchy:columns.area'), formatNumber(area === null ? null : Math.round(area * 10) / 10, locale)),
+              areaText(measuredArea))
+            : text('area', t('hierarchy:columns.area'), area === null ? null : areaText(area)),
+          type === 'location' ? text('parcel-count', t('hierarchy:details.sections.children.location'), count(resolved.fieldIds.size)) : null,
+          type !== 'bed' ? text('bed-count', t('hierarchy:details.sections.children.field'), count(resolved.bedIds.size)) : null,
           type !== 'bed' ? <GrowingAreaCoverageRows key="coverage" resolved={resolved} locale={locale} refreshHierarchy={refreshHierarchy} /> : null,
         ]}
       />
@@ -478,25 +539,36 @@ function GrowingAreaReadView({
         ]}
       />
 
-      {resolved.children.length > 0 ? (
+      {type !== 'bed' && (
         <Box data-testid="detail-section-children">
           <DetailSection title={t(`hierarchy:details.sections.children.${type}`)}>
-            <List dense disablePadding>
-              {resolved.children.map((child) => (
-                <ListItem key={child.id} disableGutters>
-                  <Link
-                    component={RouterLink}
-                    to={getEntityDetailPath(type === 'location' ? 'field' : 'bed', child.id!)}
-                    underline="hover"
-                  >
-                    {child.name}
-                  </Link>
-                </ListItem>
-              ))}
-            </List>
+            {resolved.children.length === 0 ? (
+              <Typography variant="body2" color="text.secondary">{t(`hierarchy:details.emptyChildren.${type}`)}</Typography>
+            ) : (
+              <List dense disablePadding>
+                {resolved.children.map(child => {
+                  const childArea = knownArea(child);
+                  const bedCount = type === 'location' ? bedsByField.get(child.id!) ?? 0 : null;
+                  return (
+                    <ListItem key={child.id} disableGutters sx={{ gap: 1, flexWrap: 'wrap', borderBottom: 1, borderColor: 'divider' }}>
+                      <Link component={RouterLink} to={getEntityDetailPath(type === 'location' ? 'field' : 'bed', child.id!)} state={relatedState}
+                        underline="hover" sx={{ display: 'inline-flex', alignItems: 'center', minHeight: 44 }}>
+                        {child.name}
+                      </Link>
+                      <Typography variant="body2" color="text.secondary">
+                        {[
+                          childArea === null ? null : areaText(childArea),
+                          bedCount === null ? null : t('hierarchy:details.childBedCount', { count: bedCount, formatted: count(bedCount) }),
+                        ].filter(Boolean).join(' · ')}
+                      </Typography>
+                    </ListItem>
+                  );
+                })}
+              </List>
+            )}
           </DetailSection>
         </Box>
-      ) : null}
+      )}
 
     </>
   );

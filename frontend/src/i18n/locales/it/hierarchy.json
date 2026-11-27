@@ -439,6 +439,18 @@
       "bed": "Aiuola"
     },
     "backToList": "Torna alle superfici coltivate",
+    "backToAreaList": "Torna all’elenco",
+    "emptyChildren": {
+      "location": "Nessuna parcella in questo sito.",
+      "field": "Nessuna aiuola in questa parcella."
+    },
+    "childBedCount_one": "{{formatted}} aiuola",
+    "childBedCount_many": "{{formatted}} aiuole",
+    "childBedCount_other": "{{formatted}} aiuole",
+    "selectTaskSeason": "Seleziona una stagione per vederne le attività.",
+    "noAreaTasks": "Non ci sono attività per questa area nella stagione selezionata.",
+    "areaTaskLoadError": "Impossibile caricare le attività per questa area.",
+    "tasksNeedPlans": "Le attività appariranno dopo il caricamento dei piani colturali.",
     "breadcrumbAria": "Percorso di navigazione",
     "unsavedChanges": "Hai modifiche non salvate. Andranno perse se lasci la pagina.",
     "unnamedPlan": "Piano colturale senza coltura",

@@ -243,6 +243,14 @@ phases as text. The bottom-left legend explains the active mode's colors,
 symbols and free areas. Select a bed or individual plant for its task list,
 completion actions and details.
 
+The location, parcel and bed detail routes share the same header and in-place
+editor. The back action returns to the originating workspace entry, including
+its Graphic camera or List state. Direct links return to List. Location and
+parcel coverage bars use the same clipped geometric union as Graphic.
+Each area's active-season task list includes that area's related planting
+plans, including directly assigned individual plans and plans on descendants.
+Direct parcel tasks appear at the parcel and location levels.
+
 The floating canvas tools use the measured canvas width, including in
 fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,
 fullscreen, and layout warnings stay directly reachable. Pan and rotation move

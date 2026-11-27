@@ -91,6 +91,108 @@ test.describe('related planting plans', () => {
   });
 });
 
+test.describe('growing-area details on a phone', () => {
+  test.use({ viewport: { width: 375, height: 620 }, hasTouch: true, serviceWorkers: 'block' });
+
+  test('scopes tasks through the hierarchy and returns to the filtered list', async ({ page, request }, testInfo) => {
+    await loginWithDeterministicProject(page, request, 'growing-area-detail-tasks-phone', {
+      loginAsAdmin: true, demoProject: true, demoYear: 2026,
+    });
+    const { results: locations } = await apiRequest<{ results: Entity[] }>(page, 'GET', '/locations/');
+    const site = locations.find(location => location.name === 'Hofgarten')!;
+    const { results: beds } = await apiRequest<{ results: (Entity & { field: number })[] }>(page, 'GET', '/beds/');
+    const bed = beds.find(item => item.name === 'Salat 1')!;
+    const field = await apiRequest<Entity>(page, 'GET', `/fields/${bed.field}/`);
+    const { results: bedPlans } = await apiRequest<{ results: { id: number; season: number }[] }>(page, 'GET',
+      `/planting-plans/?bed=${bed.id}`);
+    const { results: individualPlans } = await apiRequest<{ results: { id: number; site: number | null }[] }>(
+      page, 'GET', `/planting-plans/?individual_location=${site.id}`,
+    );
+    const sitePlan = individualPlans.find(plan => plan.site === site.id)!;
+    const { id: planId, season } = bedPlans[0];
+    const bedTask = 'Beet auf Schnecken prüfen';
+    const parcelTask = 'Parzellenzugang kontrollieren';
+    const siteTask = 'Apfelstamm kontrollieren';
+    await apiRequest(page, 'POST', '/tasks/', { title: bedTask, season, planting_plan: planId, due_date: '2026-05-14' });
+    await apiRequest(page, 'POST', '/tasks/', { title: parcelTask, season, field: field.id, due_date: null });
+    await apiRequest(page, 'POST', '/tasks/', { title: siteTask, season, planting_plan: sitePlan.id, due_date: null });
+    await apiRequest(page, 'POST', '/tasks/', { title: 'Nicht zugeordnete Erinnerung', season, due_date: null });
+    const sortedList = '/app/fields-beds?sort_fieldsBedsHierarchy=name&dir_fieldsBedsHierarchy=desc';
+    await page.goto(sortedList);
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('searchbox').fill('Hofgarten');
+    const row = page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`);
+    const individualRow = page.locator('[data-hierarchy-mobile-row-type="individualPlan"]').first();
+    await expect(row).toBeVisible();
+    await expect(individualRow).toBeVisible();
+    await page.evaluate(() => window.scrollTo({ top: 150, behavior: 'instant' }));
+    await row.scrollIntoViewIfNeeded();
+    const scroll = await page.evaluate(() => window.scrollY);
+    expect(scroll).toBeGreaterThan(0);
+    await row.getByRole('button', { name: /Salat 1/ }).tap();
+    await page.getByRole('dialog').getByRole('button', { name: 'Weitere Aktionen', exact: true }).tap();
+    await page.getByRole('menuitem', { name: 'Beetdetails', exact: true }).tap();
+    await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bed.id}$`));
+    const detail = page.getByTestId('growing-area-detail');
+    const tasks = detail.getByRole('region', { name: 'Aufgaben', exact: true });
+    const back = detail.getByRole('button', { name: 'Zurück zur Liste', exact: true });
+    const heading = detail.getByRole('heading', { level: 1 });
+    await expect(heading).toHaveText(bed.name);
+    await expect(back).toBeInViewport();
+    expect((await back.boundingBox())!.y).toBeLessThan((await heading.boundingBox())!.y);
+    await expect(tasks.getByText(bedTask, { exact: true })).toBeVisible();
+    await expect(tasks.getByText(parcelTask, { exact: true })).toHaveCount(0);
+    await expect(tasks.getByText(siteTask, { exact: true })).toHaveCount(0);
+
+    const breadcrumb = detail.getByRole('navigation', { name: 'Navigationspfad' });
+    await breadcrumb.getByRole('link', { name: field.name, exact: true }).tap();
+    await expect(heading).toHaveText(field.name);
+    await expect(back).toBeVisible();
+    await expect(tasks.getByText(bedTask, { exact: true })).toBeVisible();
+    await expect(tasks.getByText(parcelTask, { exact: true })).toBeVisible();
+    await expect(tasks.getByText(siteTask, { exact: true })).toHaveCount(0);
+    await breadcrumb.getByRole('link', { name: site.name, exact: true }).tap();
+    await expect(heading).toHaveText(site.name);
+    await expect(back).toBeVisible();
+    await expect(detail.getByTestId('detail-section-individual-plans')).toBeVisible();
+    await expect(detail.getByRole('img', { name: /Freifläche außerhalb der Parzellen.*m²/ })).toBeVisible();
+    await expect(detail.getByTestId('detail-section-children').getByRole('link', { name: field.name })).toBeVisible();
+    await expect(tasks.getByText(bedTask, { exact: true })).toHaveCount(1);
+    await expect(tasks.getByText(parcelTask, { exact: true })).toBeVisible();
+    await expect(tasks.getByText(siteTask, { exact: true })).toBeVisible();
+    await expect(tasks.getByText('Nicht zugeordnete Erinnerung')).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('growing-area-detail-phone.png'), animations: 'disabled' });
+    const status = tasks.getByRole('status');
+    const before = Number((await status.textContent())?.match(/(\d+) offene Aufgabe/)?.[1]);
+    expect(before).toBeGreaterThan(1);
+    await tasks.getByRole('button', { name: new RegExp(`${bedTask}.*als erledigt markieren`) }).tap();
+    await expect(status).toContainText(`${before - 1} offene Aufgabe`);
+    await expect(tasks.getByRole('button', { name: new RegExp(`${bedTask}.*als erledigt markieren`) })).toHaveCount(0);
+    let releasePlans = () => {};
+    const delayedPlans = new Promise<void>(resolve => { releasePlans = resolve; });
+    let plansRequested = false;
+    await page.route(url => url.pathname.endsWith('/planting-plans/') && url.searchParams.get('individual_only') === 'true',
+      async route => {
+        plansRequested = true;
+        await delayedPlans;
+        await route.continue();
+      }, { times: 1 });
+    try {
+      await back.tap();
+      await expect(page).toHaveURL(new RegExp(sortedList.replace('?', '\\?') + '$'));
+      await expect(toolbar.getByRole('searchbox')).toHaveValue('Hofgarten');
+      await expect.poll(() => plansRequested).toBe(true);
+      await expect(row).toBeAttached();
+    } finally {
+      releasePlans();
+    }
+    await expect(individualRow).toBeVisible();
+    await expect(row).toBeInViewport();
+    await expect.poll(async () => Math.abs(await page.evaluate(() => window.scrollY) - scroll)).toBeLessThanOrEqual(5);
+    await expect(page.getByRole('dialog', { name: 'Beet bearbeiten', exact: true })).toHaveCount(0);
+  });
+});
+
 test.describe('growing areas site conditions', () => {
   test('filters on inherited light and shows the optional column', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-filter', { loginAsAdmin: true });
@@ -124,7 +226,13 @@ test.describe('growing areas site conditions', () => {
   test('opens bed details from the row menu and returns to the list', async ({ page, request }) => {
     await loginWithDeterministicProject(page, request, 'fields-site-conditions-details', { loginAsAdmin: true });
     const { shadyBed } = await seedConditions(page, 'SC Details');
-    await page.goto('/app/fields-beds');
+    const sortedList = '/app/fields-beds?sort_fieldsBedsHierarchy=name&dir_fieldsBedsHierarchy=desc';
+    await page.goto(sortedList);
+    const toolbar = page.getByTestId('growing-area-search-toolbar');
+    await toolbar.getByRole('searchbox').fill('SC Details');
+    await toolbar.getByRole('button', { name: 'Filter' }).click();
+    await page.getByRole('dialog').getByRole('button', { name: 'Schattig', exact: true }).click();
+    await page.keyboard.press('Escape');
 
     const row = page.locator(`[role="row"][data-id="${shadyBed.id}"]`);
     await row.click({ button: 'right' });
@@ -137,8 +245,35 @@ test.describe('growing areas site conditions', () => {
     await expect(page.getByTestId('detail-light_condition')).toHaveText(/Schattig/);
     await expect(page.getByTestId('detail-irrigation')).toHaveText(/Übernommen vom Standort/);
 
-    await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
-    await expect(page).toHaveURL(/\/app\/fields-beds/);
+    const heading = page.getByRole('heading', { level: 1, name: 'SC Details Schattenbeet' });
+    const edit = page.getByRole('button', { name: 'Bearbeiten', exact: true });
+    const back = page.getByRole('button', { name: 'Zurück zur Liste', exact: true });
+    await edit.click();
+    await page.getByRole('textbox', { name: /^Name\b/ }).fill('Nicht gespeichert');
+    const pendingConfirmation = page.waitForEvent('dialog');
+    const attemptedReturn = back.click();
+    const confirmation = await pendingConfirmation;
+    expect(confirmation.type()).toBe('confirm');
+    await confirmation.dismiss();
+    await attemptedReturn;
+    await expect(page.getByRole('textbox', { name: /^Name\b/ })).toHaveValue('Nicht gespeichert');
+    await page.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    await expect(heading).toBeVisible();
+    await edit.click();
+    await page.getByRole('textbox', { name: /^Name\b/ }).fill('SC Details Schattenbeet neu');
+    await page.getByRole('button', { name: 'Speichern', exact: true }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'SC Details Schattenbeet neu' })).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`/app/fields-beds/beds/${shadyBed.id}$`));
+    await back.click();
+    await expect(page).toHaveURL(new RegExp(sortedList.replace('?', '\\?') + '$'));
+    await expect(toolbar.getByRole('searchbox')).toHaveValue('SC Details');
+    await expect(toolbar.getByText('Licht: Schattig')).toBeVisible();
+    await expect(row).toBeVisible();
+    await expect(row).toContainText('SC Details Schattenbeet neu');
+
+    await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+    await page.goto(`/app/fields-beds/beds/${shadyBed.id}`);
+    await page.getByRole('button', { name: 'Zurück zur Liste', exact: true }).click();
     await expect(row).toBeVisible();
   });
 
