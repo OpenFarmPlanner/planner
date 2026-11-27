@@ -15,10 +15,10 @@ from farm.common.serializer_fields import (
     AuditUserSerializer,
     _resolve_active_project_from_serializer,
 )
-from farm.models import Crop, PlantingPlan, Season, Task
+from farm.models import Crop, Field, Location, PlantingPlan, Season, Task
 from farm.planning.individual_planting import (
     MAX_INDIVIDUAL_POSITIONS,
-    IndividualPlantParcelField,
+    IndividualPlantParentField,
     IndividualPlantPositionSerializer,
     validate_individual_planting,
 )
@@ -81,11 +81,15 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     actual_harvest = serializers.SerializerMethodField()
     crop_loss_count = serializers.SerializerMethodField()
     bed_name = serializers.SerializerMethodField(read_only=True)
-    parcel = IndividualPlantParcelField(
-        required=False, allow_null=True,
+    parcel = IndividualPlantParentField(
+        queryset=Field.objects.all(), required=False, allow_null=True,
         help_text='Direct parcel assignment for individual plants.',
     )
     parcel_name = serializers.CharField(source='parcel.name', read_only=True, allow_null=True)
+    site = IndividualPlantParentField(
+        queryset=Location.objects.all(), required=False, allow_null=True,
+    )
+    site_name = serializers.CharField(source='site.name', read_only=True, allow_null=True)
     parcel_location_id = serializers.SerializerMethodField()
     placement_mode = serializers.ChoiceField(choices=PlantingPlan.PLACEMENT_MODES, required=False)
     individual_positions = IndividualPlantPositionSerializer(
@@ -105,6 +109,8 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         help_text='Harvest occurrences with actual dates in the selected season.',
     )
     plants_count = serializers.SerializerMethodField(read_only=True)
+    positioned_plants_count = serializers.SerializerMethodField()
+    pending_plants_count = serializers.SerializerMethodField()
     note_attachment_count = serializers.IntegerField(read_only=True)
     occupancy_end_date = serializers.DateField(read_only=True)
     carried_over = serializers.SerializerMethodField()
@@ -183,8 +189,14 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         return obj.bed.name if obj.bed else None
 
     def get_parcel_location_id(self, obj: PlantingPlan) -> int | None:
-        parent = obj.growing_area_parcel if obj.is_individual else None
-        return parent.location_id if parent is not None else None
+        location = obj.growing_area_location if obj.is_individual else None
+        return location.pk if location else None
+
+    def get_positioned_plants_count(self, obj: PlantingPlan) -> int | None:
+        return len(obj.individual_positions) if obj.is_individual else None
+
+    def get_pending_plants_count(self, obj: PlantingPlan) -> int | None:
+        return obj.individual_total - len(obj.individual_positions) if obj.is_individual else None
 
     def get_recommended_plant_spacing_m(self, obj: PlantingPlan) -> float | None:
         if not obj.is_individual or obj.crop_id is None:
@@ -767,12 +779,13 @@ class IndividualPlantHierarchySerializer(PlantingPlanSerializer):
     class Meta:
         model = PlantingPlan
         fields = (
-            'id', 'crop_name', 'crop_display_name', 'crop_variety', 'bed', 'parcel',
-            'placement_mode', 'plants_count', 'carried_over',
+            'id', 'crop_name', 'crop_display_name', 'crop_variety', 'bed', 'parcel', 'site',
+            'placement_mode', 'plants_count', 'positioned_plants_count',
+            'pending_plants_count', 'carried_over',
         )
 
     def get_plants_count(self, obj: PlantingPlan) -> int:
-        return len(obj.individual_positions)
+        return obj.individual_total
 
 
 class PlantingPlanDetailSerializer(PlantingPlanSerializer):
@@ -790,8 +803,8 @@ class PlantingPlanDetailSerializer(PlantingPlanSerializer):
         return parcel.name if parcel else None
 
     def get_location_name(self, obj: PlantingPlan) -> str | None:
-        parcel = obj.growing_area_parcel
-        return parcel.location.name if parcel else None
+        location = obj.growing_area_location
+        return location.name if location else None
 
     def get_bed_area_sqm(self, obj: PlantingPlan) -> float | None:
         return float(obj.bed.area_sqm) if obj.bed and obj.bed.area_sqm is not None else None

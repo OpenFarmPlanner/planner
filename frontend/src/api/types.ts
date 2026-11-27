@@ -1428,12 +1428,40 @@ export interface IndividualPlantPosition extends StemCoordinates {
 export interface IndividualPlacementInput {
   individual_positions: (StemCoordinates & { id?: string })[];
   estimated_canopy_diameter_m?: number | string | null;
+  individual_count?: number | null;
 }
 
-export type PlantingPlanPlacementMode = 'area' | 'individual_bed' | 'individual_parcel';
+export type PlantingPlanPlacementMode = 'area' | 'individual_bed' | 'individual_parcel' | 'individual_site';
+
+export type IndividualPlacementParent = { kind: 'location' | 'field' | 'bed'; id: number };
+
+export interface GraphicStemPoint extends StemCoordinates {
+  parent: IndividualPlacementParent;
+}
+
+export interface GraphicPlacementScene {
+  location: number;
+  origin_x: number;
+  origin_y: number;
+  footprints: (IndividualPlacementParent & { x: number; y: number; width: number; height: number })[];
+}
+
+export interface GraphicPlacementInput {
+  request_id: string;
+  scene: GraphicPlacementScene;
+  points: GraphicStemPoint[];
+  plan?: number;
+  placement_updated_at?: string;
+  crop?: number;
+  planting_date?: string;
+  cultivation_type?: PlanCultivationType | '';
+  estimated_canopy_diameter_m?: number | string | null;
+  existing_positions?: IndividualPlacementInput['individual_positions'];
+}
 
 export type IndividualPlantPlanSummary = Pick<PlantingPlan,
-  'id' | 'crop_name' | 'crop_display_name' | 'crop_variety' | 'bed' | 'parcel' | 'placement_mode' | 'carried_over'>
+  'id' | 'crop_name' | 'crop_display_name' | 'crop_variety' | 'bed' | 'parcel' | 'site' | 'placement_mode' | 'carried_over'
+  | 'pending_plants_count' | 'positioned_plants_count'>
   & { plants_count: number };
 
 export interface PlantingPlan extends PlantingPlanActualDates {
@@ -1461,9 +1489,15 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   bed_name?: string | null;
   parcel?: number | null;
   parcel_name?: string | null;
+  site?: number | null;
+  site_name?: string | null;
   parcel_location_id?: number | null;
   placement_mode?: PlantingPlanPlacementMode;
   individual_positions?: IndividualPlantPosition[];
+  individual_count?: number | null;
+  positioned_plants_count?: number | null;
+  pending_plants_count?: number | null;
+  placement_updated_at?: string;
   estimated_canopy_diameter_m?: number | string | null;
   recommended_plant_spacing_m?: number | null;
   season?: number | null;

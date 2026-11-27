@@ -4,6 +4,7 @@ import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { parcelMeters, planPlacementParent, type PlacementParent } from './individualPlantGeometry';
 import type { Rect, RectSize } from './graphicalLayoutUtils';
+import type { GraphicPlacementContext, PlantGenerationGeometry } from './graphicalPlantPlacement';
 
 export const MAX_INDIVIDUAL_POSITIONS = 1000;
 
@@ -99,13 +100,14 @@ export function individualPlacementPeriod(
 }
 
 export function collectOccupiedPlantPositions({
-  frames, parent, plans, planId, period,
+  frames, parent, plans, planId, period, projectBetweenParents,
 }: {
-  frames: PlacementFrames | undefined;
+  frames?: PlacementFrames;
   parent: PlacementParent;
   plans: readonly PlantingPlan[];
   planId?: number;
   period: PlantingPeriod | null;
+  projectBetweenParents?: GraphicPlacementContext['projectBetweenParents'];
 }): StemCoordinates[] {
   const key = placementFrameKey(parent);
   const target = frames?.get(key);
@@ -118,6 +120,7 @@ export function collectOccupiedPlantPositions({
     const peerKey = placementFrameKey(peer);
     const stems = plan.individual_positions ?? [];
     if (key === peerKey) return stems;
+    if (projectBetweenParents) return stems.flatMap(stem => projectBetweenParents(peer, parent, stem) ?? []);
     const source = frames?.get(peerKey);
     if (!source || !target) return [];
     return stems.map(stem => ({
@@ -173,6 +176,51 @@ function blockedCells(rows: Axis, columns: Axis, occupied: readonly StemCoordina
   return { blocked, count };
 }
 
+type GridSpan = { first: number; last: number };
+type GridBand = GridSpan & { columns: GridSpan[] };
+
+function insideGrid(axis: Axis, low = -Infinity, high = Infinity): GridSpan {
+  return { first: Math.max(0, Math.ceil((low * CM - axis.first - TOLERANCE) / axis.step)),
+    last: Math.min(axis.slots - 1, Math.floor((high * CM - axis.first + TOLERANCE) / axis.step)) };
+}
+
+function openColumns(range: GridSpan, excluded: GridSpan[]): GridSpan[] {
+  const free: GridSpan[] = [];
+  let next = range.first;
+  for (const block of excluded.sort((a, b) => a.first - b.first)) {
+    if (block.last < next || block.first > range.last) continue;
+    if (block.first > next) free.push({ first: next, last: block.first - 1 });
+    next = Math.max(next, block.last + 1);
+  }
+  if (next <= range.last) free.push({ first: next, last: range.last });
+  return free;
+}
+
+/** Several rows can share the same exclusions even when the grid contains billions of cells. */
+function availableBands(rows: Axis, columns: Axis, alongWidth: boolean, occupied: ReadonlyMap<number, Set<number>>,
+  geometry?: PlantGenerationGeometry): GridBand[] {
+  const extents = (rect: Rect) => ({
+    rows: alongWidth ? insideGrid(rows, rect.y, rect.y + rect.height) : insideGrid(rows, rect.x, rect.x + rect.width),
+    columns: alongWidth ? insideGrid(columns, rect.x, rect.x + rect.width) : insideGrid(columns, rect.y, rect.y + rect.height),
+  });
+  const allowed = geometry ? extents(geometry.bounds) : { rows: insideGrid(rows), columns: insideGrid(columns) };
+  if (allowed.rows.first > allowed.rows.last || allowed.columns.first > allowed.columns.last) return [];
+  const excluded = (geometry?.excluded ?? []).map(extents).filter(rect => rect.columns.first <= rect.columns.last);
+  const rowEdges = new Set([allowed.rows.first, allowed.rows.last + 1]);
+  for (const span of [...excluded.map(rect => rect.rows), ...[...occupied.keys()].map(row => ({ first: row, last: row }))]) {
+    const first = Math.max(allowed.rows.first, span.first);
+    const last = Math.min(allowed.rows.last, span.last);
+    if (first <= last) { rowEdges.add(first); rowEdges.add(last + 1); }
+  }
+  const edges = [...rowEdges].sort((a, b) => a - b);
+  return edges.slice(0, -1).flatMap((first, index) => {
+    const blocked = excluded.filter(rect => rect.rows.first <= first && rect.rows.last >= first).map(rect => rect.columns);
+    for (const column of occupied.get(first) ?? []) blocked.push({ first: column, last: column });
+    const free = openColumns(allowed.columns, blocked);
+    return free.length ? [{ first, last: edges[index + 1] - 1, columns: free }] : [];
+  });
+}
+
 type GenerationProblem = 'dimensions' | 'spacing' | 'margin' | 'count' | 'noFit' | 'cap' | 'notEnough';
 export interface RegularPlantPreview {
   positions: StemCoordinates[];
@@ -189,8 +237,10 @@ export function generateRegularPlants(
   inputs: RegularPlantInputs,
   occupied: readonly StemCoordinates[],
   existingCount: number,
+  geometry?: PlantGenerationGeometry,
+  countLimit = MAX_INDIVIDUAL_POSITIONS,
 ): RegularPlantPreview {
-  const remaining = Math.max(0, MAX_INDIVIDUAL_POSITIONS - existingCount);
+  const remaining = Math.max(0, Math.min(countLimit, MAX_INDIVIDUAL_POSITIONS) - existingCount);
   const empty = { positions: [], rowCount: 0, freeSlots: 0n, maxAdditional: 0, blockedSlots: 0 };
   if (!dimensions || dimensions.width <= 0 || dimensions.height <= 0
       || !Number.isFinite(dimensions.width) || !Number.isFinite(dimensions.height)) {
@@ -209,7 +259,9 @@ export function generateRegularPlants(
   const rows = alongWidth ? gridAxis(dimensions.height, lengthMargin, row)
     : gridAxis(dimensions.width, widthMargin, row);
   const { blocked, count: blockedSlots } = blockedCells(rows, columns, occupied, alongWidth);
-  const freeSlots = BigInt(rows.slots) * BigInt(columns.slots) - BigInt(blockedSlots);
+  const bands = availableBands(rows, columns, alongWidth, blocked, geometry);
+  const freeSlots = bands.reduce((total, band) => total + BigInt(band.last - band.first + 1)
+    * BigInt(band.columns.reduce((width, span) => width + span.last - span.first + 1, 0)), 0n);
   const maxAdditional = freeSlots > BigInt(remaining) ? remaining : Number(freeSlots);
   const preview = { ...empty, freeSlots, maxAdditional, blockedSlots };
   if (freeSlots === 0n) return { ...preview, problem: 'noFit' };
@@ -225,16 +277,18 @@ export function generateRegularPlants(
 
   const positions: StemCoordinates[] = [];
   let rowCount = 0;
-  for (let r = 0; r < rows.slots && positions.length < count; r += 1) {
-    const before = positions.length;
-    const across = (rows.first + r * rows.step) / CM;
-    const blockedColumns = blocked.get(r);
-    for (let c = 0; c < columns.slots && positions.length < count; c += 1) {
-      if (blockedColumns?.has(c)) continue;
-      const along = (columns.first + c * columns.step) / CM;
-      positions.push(alongWidth ? { x_m: along, y_m: across } : { x_m: across, y_m: along });
+  for (const band of bands) {
+    if (positions.length >= count) break;
+    for (let r = band.first; r <= band.last && positions.length < count; r += 1) {
+      const across = (rows.first + r * rows.step) / CM;
+      for (const span of band.columns) {
+        for (let c = span.first; c <= span.last && positions.length < count; c += 1) {
+          const along = (columns.first + c * columns.step) / CM;
+          positions.push(alongWidth ? { x_m: along, y_m: across } : { x_m: across, y_m: along });
+        }
+      }
+      rowCount += 1;
     }
-    if (positions.length > before) rowCount += 1;
   }
   return { ...preview, positions, rowCount };
 }

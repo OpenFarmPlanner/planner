@@ -11,6 +11,20 @@ const wideBedInputs: RegularPlantInputs = {
 };
 
 describe('regular individual plant positions', () => {
+  it('counts overlapping exclusions once and generates only points assigned to the selected area', () => {
+    const dimensions = { width: 5, height: 5 };
+    const preview = generateRegularPlants(dimensions, {
+      count: 'max', plantSpacing: 1, rowSpacing: 1, marginWidth: 0, marginLength: 0, along: 'length',
+    }, [{ x_m: 0, y_m: 0 }], 0, {
+      bounds: { x: 0, y: 0, ...dimensions },
+      excluded: [{ x: 1, y: 1, width: 2, height: 2 }, { x: 3, y: 0, width: 1, height: 4 }],
+    });
+    expect(preview).toMatchObject({ freeSlots: 19n, maxAdditional: 19 });
+    expect(preview.positions).toHaveLength(19);
+    expect(preview.positions).toContainEqual({ x_m: 3, y_m: 5 });
+    expect(preview.positions).not.toContainEqual({ x_m: 3, y_m: 3 });
+    expect(preview.positions).not.toContainEqual({ x_m: 0, y_m: 0 });
+  });
   it('fills a rectangular bed without leaving its measured bounds or margins', () => {
     const result = generateRegularPlants(wholeBed, wideBedInputs, [], 0);
     expect(result).toMatchObject({ rowCount: 3, maxAdditional: 9, freeSlots: 9n });

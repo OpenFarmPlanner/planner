@@ -29,9 +29,9 @@ def compute_plan_plant_count(
     plan: PlantingPlan,
     general_crop_index: GeneralCropIndex | None = None,
 ) -> PlantCountResult:
-    """Count confirmed stems, or derive the count for an area-based plan."""
+    """Read the exact individual total, or derive the count for an area-based plan."""
     if plan.is_individual:
-        return PlantCountResult(count=len(plan.individual_positions))
+        return PlantCountResult(count=plan.individual_total)
     blockers: list[str] = []
     area = Decimal(str(plan.area_usage_sqm)) if plan.area_usage_sqm else Decimal('0')
     if not area.is_finite() or area <= 0:

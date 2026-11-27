@@ -47,6 +47,108 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(response.status_code, 201, response.data)
         return response
 
+    def graphic_scene(self):
+        self.location.width_m, self.location.length_m = 30, 30
+        self.location.save()
+        self.bed.width_m, self.bed.length_m = 2, 4
+        self.bed.save()
+        return {
+            'location': self.location.id, 'origin_x': 100, 'origin_y': 100,
+            'footprints': [
+                {'kind': 'field', 'id': self.field.id, 'x': 0, 'y': 0, 'width': 12, 'height': 20},
+                {'kind': 'bed', 'id': self.bed.id, 'x': 1, 'y': 1, 'width': 2, 'height': 4},
+            ],
+        }
+
+    def graphic_point(self, parent, x, y):
+        kind = {Location: 'location', Field: 'field', Bed: 'bed'}[type(parent)]
+        return {'x_m': x, 'y_m': y, 'parent': {'kind': kind, 'id': parent.pk}}
+
+    def test_graphic_atomically_groups_distinct_parents_and_replays_without_duplicates(self):
+        data = {
+            'request_id': str(uuid4()), 'scene': self.graphic_scene(), 'crop': self.apple.id,
+            'cultivation_type': BOUGHT_IN, 'planting_date': '2026-04-18',
+            'points': [
+                self.graphic_point(self.location, 21, 3), self.graphic_point(self.field, 6, 8),
+                self.graphic_point(self.bed, 2, 3), self.graphic_point(self.bed, 2.5, 3),
+            ],
+        }
+        url = f'{URL}graphic-placement/'
+        incorrect = {**data, 'points': [*data['points'], self.graphic_point(self.field, 2, 3)]}
+        self.assertEqual(self.client.post(url, incorrect, format='json').status_code, 409)
+        self.assertFalse(PlantingPlan.objects.filter(project=self.project).exists())
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        members = {plan['placement_mode']: plan for plan in response.json()['plans']}
+        self.assertEqual(members['individual_site']['site'], self.location.pk)
+        self.assertEqual(members['individual_parcel']['parcel'], self.field.pk)
+        self.assertEqual(members['individual_bed']['bed'], self.bed.pk)
+        positions = members['individual_bed']['individual_positions']
+        self.assertEqual([(point['x_m'], point['y_m']) for point in positions], [(1, 2), (1.5, 2)])
+        again = self.client.post(url, data, format='json')
+        self.assertEqual(again.status_code, 200, again.data)
+        self.assertEqual({plan['id'] for plan in again.json()['plans']},
+                         {plan['id'] for plan in members.values()})
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 3)
+
+    def test_count_only_location_keeps_pending_and_moves_the_split_count_with_a_stem(self):
+        scene = self.graphic_scene()
+        original = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=3,
+        ).json()
+        counts = ('plants_count', 'positioned_plants_count', 'pending_plants_count')
+        self.assertEqual(tuple(original[key] for key in counts), (3, 0, 3))
+        by_location = self.client.get(f'{URL}?individual_location={self.location.pk}').json()
+        self.assertEqual(by_location['results'][0]['id'], original['id'])
+        demand = self.client.get('/openfarmplanner/api/young-plant-demand/').json()['results'][0]
+        self.assertEqual(demand['plant_count'], 3)
+        response = self.client.post(f'{URL}graphic-placement/', {
+            'request_id': str(uuid4()), 'scene': scene, 'plan': original['id'],
+            'placement_updated_at': original['updated_at'],
+            'points': [
+                self.graphic_point(self.location, 21, 3), self.graphic_point(self.location, 22, 3),
+            ],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        plan, = response.json()['plans']
+        self.assertEqual((plan['plants_count'], plan['pending_plants_count']), (3, 1))
+        stem = plan['individual_positions'][0]['id']
+        move = {'scene': scene, 'stem': stem, 'placement_updated_at': plan['updated_at'],
+                'point': self.graphic_point(self.bed, 2, 3)}
+        url = f'{URL}{plan["id"]}/graphic-move/'
+        moved = self.client.post(url, move, format='json')
+        self.assertEqual(moved.status_code, 200, moved.data)
+        source, target = moved.json()['plans']
+        self.assertEqual(source['id'], original['id'])
+        self.assertEqual(tuple(source[key] for key in counts), (2, 1, 1))
+        self.assertEqual(target['individual_positions'], [{'id': stem, 'x_m': 1, 'y_m': 2}])
+        self.assertEqual(target['bed'], self.bed.pk)
+        self.assertEqual(tuple(target[key] for key in counts), (1, 1, 0))
+        self.assertEqual(self.client.post(url, move, format='json').status_code, 409)
+
+    def test_graphic_rejects_overlapping_geometry_and_protected_split(self):
+        scene = self.graphic_scene()
+        other = Field.objects.create(project=self.project, location=self.location,
+                                     name='Overlapping parcel', width_m=4, length_m=8)
+        scene['footprints'].append({
+            'kind': 'field', 'id': other.pk, 'x': 1, 'y': 1, 'width': 4, 'height': 8,
+        })
+        plan = self.create_plan(actual_transplanting_date='2026-04-18').json()
+        stem = plan['individual_positions'][0]
+        url = f'{URL}{plan["id"]}/graphic-move/'
+        base = {'scene': scene, 'stem': stem['id'], 'placement_updated_at': plan['updated_at']}
+        ambiguous = self.client.post(url, {**base, 'point': self.graphic_point(self.bed, 2, 3)},
+                                     format='json')
+        self.assertEqual(ambiguous.status_code, 409)
+        self.assertEqual(ambiguous.json()['code'], 'individual_parent_ambiguous')
+        protected = self.client.post(url, {**base,
+            'point': self.graphic_point(self.location, 22, 8)}, format='json')
+        self.assertEqual(protected.status_code, 409)
+        self.assertEqual(protected.json()['code'], 'individual_split_protected')
+        plan_after = self.client.get(f'{URL}{plan["id"]}/').json()
+        self.assertEqual(plan_after['individual_positions'], plan['individual_positions'])
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
+
     def test_create_and_edit_positions_preserves_ids_and_updates_demand(self):
         created = self.create_plan().json()
         plan_id = created['id']

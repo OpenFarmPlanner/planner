@@ -317,7 +317,8 @@ def _with_legacy_snapshot_fields(model: type, snapshot: dict) -> dict:
         return {
             'copied_from_plan_id': None, 'harvest_window_overrides': {},
             'harvest_occurrence_actuals': {}, 'parcel_id': None,
-            'individual_bed': False, 'individual_positions': [],
+            'site_id': None, 'individual_bed': False, 'individual_positions': [],
+            'individual_count': None,
             'estimated_canopy_diameter_m': None, **snapshot,
         }
     if model is Task:

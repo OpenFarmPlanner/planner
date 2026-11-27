@@ -1505,6 +1505,7 @@ function FieldsBedsHierarchy({
         icon: <HierarchyAddIcon interactive={false} ariaHidden />,
         shortcutHint: t("actions.addShortcutHint"),
       });
+      if (addIndividuals) createActions.push(addIndividuals);
     }
 
     if (row.type === "field" && row.fieldId) {

@@ -610,6 +610,7 @@
       "seasonPattern": "Seizoensinstellingen"
     },
     "batch": {
+      "individualPlacement": "Individuele planten geplaatst",
       "seasonCreate": "Seizoen {{season}} gemaakt",
       "seasonDelete": "Seizoen {{season}} verwijderd",
       "seasonUndelete": "Seizoen {{season}} hersteld",

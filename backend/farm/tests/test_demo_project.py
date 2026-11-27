@@ -450,8 +450,8 @@ class DemoProjectServiceTests(TestCase):
         for row in rows:
             plans_by_crop[row['crop_name']] += row['plan_count']
         # Both broccoli beds share a row when 20 and 22 April fall in one ISO week.
-        self.assertEqual(plans_by_crop, Counter({'Brokkoli': 2, 'Tomate': 1, 'Apfel': 1}))
-        self.assertEqual(next(row['plant_count'] for row in rows if row['crop_name'] == 'Apfel'), 3)
+        self.assertEqual(plans_by_crop, Counter({'Brokkoli': 2, 'Tomate': 1, 'Apfel': 2}))
+        self.assertEqual(next(row['plant_count'] for row in rows if row['crop_name'] == 'Apfel'), 4)
         self.assertTrue(all(row['plant_count'] for row in rows))
 
     def test_demo_project_shows_a_computed_seed_demand_for_every_sown_crop(self) -> None:
@@ -512,7 +512,7 @@ class DemoProjectServiceTests(TestCase):
             )
         self.assertEqual(Bed.objects.filter(project=result.project).count(), 24)
         self.assertEqual(Crop.objects.filter(project=result.project).count(), 32)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 74)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 75)
         self.assertEqual(Supplier.objects.filter(project=result.project).count(), 3)
         self.assertEqual(FieldLayout.objects.filter(project=result.project).count(), 6)
         self.assertEqual(BedLayout.objects.filter(project=result.project).count(), 24)
@@ -580,7 +580,7 @@ class DemoProjectServiceTests(TestCase):
         graphic_plans = plans.filter(bed__name__in=GRAPHIC_DEMO_BEDS['de'])
         other_plans = plans.exclude(pk__in=graphic_plans)
         self.assertEqual(
-            [other_plans.filter(season=season).count() for season in seasons], [1, 21, 23, 24, 0],
+            [other_plans.filter(season=season).count() for season in seasons], [1, 21, 23, 25, 0],
         )
         self.assertEqual(graphic_plans.count(), 5)
         for plan in graphic_plans.select_related('season'):
@@ -838,7 +838,7 @@ class DemoProjectServiceTests(TestCase):
         user = User.objects.get(email='command-demo@example.local')
         self.assertEqual(project.name, 'Solawi Sonnenacker')
         self.assertTrue(ProjectMembership.objects.filter(project=project, user=user, role='admin').exists())
-        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 74)
+        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 75)
         public_entries = PublicCrop.objects.filter(source_project=project, seed_packages=[])
         self.assertEqual(public_entries.count(), 32)
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Tomate', variety='Roma', row_spacing_m=0.70).exists())
@@ -860,7 +860,7 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
         self.assertEqual(Bed.objects.filter(project=result.project).count(), 24)
         self.assertEqual(Crop.objects.filter(project=result.project).count(), 32)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 74)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 75)
 
     def test_seeding_marks_when_it_finished_after_its_own_revisions(self) -> None:
         """The dashboard tells seed revisions from user changes by this marker."""

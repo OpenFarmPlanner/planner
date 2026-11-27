@@ -276,6 +276,10 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                     count: loadedPlan.plants_count ?? 0,
                     formatted: formatLocalizedNumber(loadedPlan.plants_count ?? 0, locale),
                   })}</Typography>
+                  {Boolean(loadedPlan.pending_plants_count) && <Typography>{t('fields:individualPlants.pendingCount', {
+                    count: loadedPlan.pending_plants_count ?? 0,
+                    formatted: formatLocalizedNumber(loadedPlan.pending_plants_count ?? 0, locale),
+                  })}</Typography>}
                   <SiteSuitabilityHints findings={loadedPlan.site_suitability_findings} scope="field" />
                   <Button component={RouterLink}
                     to={individualPlantGraphicPath(loadedPlan.id, loadedPlan.parcel_location_id)}>

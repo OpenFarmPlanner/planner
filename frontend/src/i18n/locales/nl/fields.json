@@ -200,6 +200,20 @@
     }
   },
   "individualPlants": {
+    "atLocation": "Individuele planten op deze locatie",
+    "pendingCount": "{{formatted}} nog niet geplaatst",
+    "predictedParent": "Teeltgebied · {{name}}",
+    "freePlacementHint": "Klik of tik binnen de locatie. Verplaats het voorbeeld met de pijltjestoetsen en druk op Enter om een plant te plaatsen.",
+    "placeAtCursor": "Plaats op het voorbeeldpunt",
+    "parentSummary": "Planten per teeltgebied",
+    "geometryUnknown": "De gemeten afmetingen van dit teeltgebied ontbreken.",
+    "outsideLocation": "Plaats de plant binnen de grens van de locatie.",
+    "parentAmbiguous": "Dit punt ligt in overlappende teeltgebieden. Kies een eenduidige positie.",
+    "geometryChanged": "De teeltgebieden zijn gewijzigd. Vernieuw de plattegrond en controleer de posities opnieuw.",
+    "splitProtected": "Dit plan bevat gegevens die niet veilig kunnen worden gesplitst. De planten zijn op hun plaats gebleven.",
+    "countExhausted": "Binnen het geregistreerde aantal zijn alle planten geplaatst.",
+    "exactCountRequired": "Voer een positief geheel getal in dat minstens gelijk is aan het aantal geplaatste planten.",
+    "exactCount": "Exact aantal planten",
     "generation": {
       "title": "Planten automatisch plaatsen",
       "quantity": "Kies het aantal",

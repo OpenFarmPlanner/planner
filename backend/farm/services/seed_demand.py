@@ -332,7 +332,7 @@ def compute_plan_requirement(
         )
 
     area = Decimal(str(plan.area_usage_sqm or 0))
-    quantity = Decimal(len(plan.individual_positions) if plan.is_individual else plan.quantity or 0)
+    quantity = Decimal(plan.individual_total if plan.is_individual else plan.quantity or 0)
     row_spacing = Decimal(str(crop.row_spacing_m or 0))
 
     if unit in {SEED_RATE_UNIT_G_PER_M2, SEED_RATE_UNIT_SEEDS_PER_M2}:

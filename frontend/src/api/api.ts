@@ -546,11 +546,16 @@ export const plantingPlanAPI = {
     }),
   create: (data: PlantingPlan) => http.post<PlantingPlan>('/planting-plans/', withActiveProject(data)),
   createIndividual: (data: Pick<PlantingPlan, 'crop' | 'parcel' | 'planting_date' | 'cultivation_type' | 'placement_mode'>
-    & Partial<Pick<PlantingPlan, 'bed' | 'quantity' | 'notes' | 'planned_propagation_start_date' | 'planned_sowing_date'>>
+    & Partial<Pick<PlantingPlan, 'bed' | 'site' | 'quantity' | 'notes' | 'planned_propagation_start_date' | 'planned_sowing_date'>>
     & import('./types').IndividualPlacementInput) =>
     http.post<PlantingPlan>('/planting-plans/', data),
   saveIndividualPlacement: (id: number, placement_updated_at: string, data: import('./types').IndividualPlacementInput) =>
     http.patch<PlantingPlan>(`/planting-plans/${id}/individual-placement/`, { ...data, placement_updated_at }),
+  saveGraphicPlacement: (data: import('./types').GraphicPlacementInput) =>
+    http.post<{ plans: PlantingPlan[] }>('/planting-plans/graphic-placement/', data),
+  moveGraphicStem: (id: number, stem: string, placement_updated_at: string,
+    scene: import('./types').GraphicPlacementScene, point: import('./types').GraphicStemPoint) =>
+    http.post<{ plans: PlantingPlan[] }>(`/planting-plans/${id}/graphic-move/`, { stem, placement_updated_at, scene, point }),
   update: (id: number, data: PlantingPlan) => http.put<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   patch: (id: number, data: Partial<PlantingPlan>) => http.patch<PlantingPlan>(`/planting-plans/${id}/`, withActiveProject(data)),
   saveHarvestActualDates: (id: number, recordSeasonId: number, data: HarvestActualDateUpdate) =>

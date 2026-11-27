@@ -9,7 +9,7 @@ export interface IndividualHierarchyRow extends HierarchyRow {
   type: 'individualPlan';
   id: string;
   parentId: string | number;
-  fieldId: number;
+  fieldId?: number;
   locationId: number;
   name: string;
   plantingPlanId: number;
@@ -39,25 +39,28 @@ export function indexIndividualHierarchy(
     const parent = planPlacementParent(plan);
     if (!plan.id || !parent || seen.has(plan.id)) continue;
     const bed = parent.kind === 'bed' ? bedById.get(parent.id) : undefined;
-    const field = fieldById.get(parent.kind === 'bed' ? bed?.field : parent.id);
-    if (field?.id === undefined) continue;
-    const fieldRowId = `field-${field.id}`;
-    const parentId = bed?.id ?? fieldRowId;
+    const field = parent.kind === 'location' ? undefined : fieldById.get(parent.kind === 'bed' ? bed?.field : parent.id);
+    const locationId = parent.kind === 'location' ? parent.id : field?.location;
+    if (locationId === undefined || (parent.kind === 'bed' && !bed)) continue;
+    const locationRowId = `location-${locationId}`;
+    const fieldRowId = field?.id === undefined ? null : `field-${field.id}`;
+    const parentId = bed?.id ?? fieldRowId ?? locationRowId;
     const count = plan.plants_count;
     const crop = plan.crop_display_name || plan.crop_name || '';
     const row: IndividualHierarchyRow = {
       id: `individual-plan-${plan.id}`, type: 'individualPlan', parentId,
-      level: (showsLocations ? 2 : 1) + (bed ? 1 : 0),
-      locationId: field.location, fieldId: field.id, plantingPlanId: plan.id,
+      level: (showsLocations ? 1 : 0) + (field ? 1 : 0) + (bed ? 1 : 0),
+      locationId, fieldId: field?.id, plantingPlanId: plan.id,
       name: plan.crop_variety ? `${crop} (${plan.crop_variety})` : crop,
       individualPlantCount: count,
+      individualPendingCount: plan.pending_plants_count ?? 0,
     };
     seen.add(plan.id);
     rows.push(row);
     const group = children.get(parentId) ?? [];
     group.push(row);
     children.set(parentId, group);
-    for (const ancestor of [fieldRowId, `location-${field.location}`, ...(bed?.id !== undefined ? [bed.id] : [])]) {
+    for (const ancestor of [locationRowId, ...(fieldRowId ? [fieldRowId] : []), ...(bed?.id !== undefined ? [bed.id] : [])]) {
       counts.set(ancestor, (counts.get(ancestor) ?? 0) + count);
     }
   }

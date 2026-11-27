@@ -135,7 +135,7 @@ export function GraphicalObjectOverlays({
   const hovered = interaction.hover ? objects.get(interaction.hover.key) : null;
   const menu = interaction.menu;
   const menuObject = menu ? objects.get(menu.key) : null;
-  const individualAction = menuObject && (menuObject.type === 'field' || menuObject.type === 'bed') && onStartIndividualPlan
+  const individualAction = menuObject && menuObject.type !== 'plant' && onStartIndividualPlan
     ? individualPlantCreationAction(t, () => onStartIndividualPlan(menuObject)) : null;
   const [keyboardPlants, setKeyboardPlants] = useState<Record<number, string>>({});
   const plantsByPlan = useMemo(() => {
@@ -433,7 +433,7 @@ export function GraphicalObjectOverlays({
               {selection.type === 'plant' ? t('plantingPlans:details.title') : detailsLabel}</Button>
             {selection.type === 'plant' && canEditPlant(selection) && <Button size="small" onClick={() => onEditPlant(selection, 'edit')}
               sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.editPlants')}</Button>}
-            {onStartIndividualPlan && (selection.type === 'field' || selection.type === 'bed') && (
+            {onStartIndividualPlan && selection.type !== 'plant' && (
               <Button size="small" onClick={() => onStartIndividualPlan(selection)}
                 sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.newPlan')}</Button>
             )}

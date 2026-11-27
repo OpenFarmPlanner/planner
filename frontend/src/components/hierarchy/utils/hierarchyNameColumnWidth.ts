@@ -14,9 +14,13 @@ export const getHierarchyNameTextOffsetPx = (level: number) =>
 
 export function hierarchyNameText(row: HierarchyRow, value: unknown, t: TFunction, showInlineCount: boolean) {
   const count = row.individualPlantCount;
+  const pending = row.individualPendingCount;
   const countLabel = row.type === 'individualPlan' && showInlineCount && count !== undefined
     ? t('fields:individualPlants.count', { count, formatted: formatLocalizedNumber(count, getActiveFormattingLocale()) }) : '';
-  return [String(value ?? ''), countLabel].filter(Boolean).join(' · ');
+  const pendingLabel = pending ? t('fields:individualPlants.pendingCount', {
+    count: pending, formatted: formatLocalizedNumber(pending, getActiveFormattingLocale()),
+  }) : '';
+  return [String(value ?? ''), countLabel, pendingLabel].filter(Boolean).join(' · ');
 }
 
 /** The width occupied by the in-flow hover/focus controls, including their gaps. */

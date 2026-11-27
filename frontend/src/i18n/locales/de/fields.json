@@ -200,6 +200,20 @@
     }
   },
   "individualPlants": {
+    "atLocation": "Einzelpflanzen am Standort",
+    "pendingCount": "{{formatted}} noch nicht positioniert",
+    "predictedParent": "Anbaufläche · {{name}}",
+    "freePlacementHint": "Klicke oder tippe innerhalb des Standorts. Mit den Pfeiltasten verschiebst du die Vorschau, mit der Eingabetaste setzt du eine Pflanze.",
+    "placeAtCursor": "Am Vorschaupunkt platzieren",
+    "parentSummary": "Pflanzen nach Anbaufläche",
+    "geometryUnknown": "Für diese Anbaufläche fehlen gemessene Maße.",
+    "outsideLocation": "Setze die Pflanze innerhalb der Standortgrenze.",
+    "parentAmbiguous": "Der Punkt liegt in überlappenden Anbauflächen. Wähle eine eindeutige Position.",
+    "geometryChanged": "Die Anbauflächen wurden geändert. Lade die Grafik neu und prüfe die Positionen erneut.",
+    "splitProtected": "Dieser Plan enthält Aufzeichnungen, die nicht sicher aufgeteilt werden können. Die Pflanzen bleiben an ihren Positionen.",
+    "countExhausted": "Die erfasste Anzahl enthält keine weiteren unpositionierten Pflanzen.",
+    "exactCountRequired": "Gib eine positive ganze Zahl ein, die mindestens der Anzahl der positionierten Pflanzen entspricht.",
+    "exactCount": "Genaue Pflanzenanzahl",
     "generation": {
       "title": "Pflanzen automatisch platzieren",
       "quantity": "Anzahl festlegen",

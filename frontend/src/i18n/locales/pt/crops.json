@@ -620,6 +620,7 @@
       "seasonPattern": "Definições da época"
     },
     "batch": {
+      "individualPlacement": "Plantas individuais colocadas",
       "seasonCreate": "Época {{season}} criada",
       "seasonDelete": "Época {{season}} eliminada",
       "seasonUndelete": "Época {{season}} restaurada",

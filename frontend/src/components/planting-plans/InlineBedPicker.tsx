@@ -21,9 +21,9 @@ import { formatIsoDate, getBedCapacityText, getPrimaryFinding } from './rotation
 import { useFamilyNameResolver } from './rotation/useFamilyNameResolver';
 import { useBedSuggestions, type RotationInput } from './rotation/useRotationQueries';
 import { IndividualPlantIcon } from '../../planting-plans/individualPlantActions';
-import type { PlacementParent } from '../../pages/individualPlantGeometry';
+import { placementLabelKey, type PlacementParent } from '../../pages/individualPlantGeometry';
 
-type AreaOption = Exclude<BedPickerResult, { kind: 'location' }>;
+type AreaOption = BedPickerResult;
 type PickerOption = BedPickerResult | { kind: 'individual'; id: number; area: AreaOption };
 
 export interface IndividualPickerChoices {
@@ -68,8 +68,8 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
   const matches = useMemo(() => options.filter((option) => terms.every((term) => option.searchText.includes(term))), [options, terms]);
   const visible = matches.flatMap((option): PickerOption[] => {
     if (!isBedInScope(option, scope)) return [];
-    if (option.kind === 'location') return scope.locationId === null ? [option] : [];
-    const choices: PickerOption[] = option.kind === 'bed' || scope.fieldId === null ? [option] : [];
+    const showArea = option.kind === 'location' ? scope.locationId === null : option.kind === 'bed' || scope.fieldId === null;
+    const choices: PickerOption[] = showArea ? [option] : [];
     if (individual?.canChoose(option)) choices.push({ kind: 'individual', id: option.id, area: option });
     return choices;
   });
@@ -308,7 +308,7 @@ export function InlineBedPicker({ anchor, initialQuery, options, selected, rotat
                       borderRadius: 0.5, cursor: 'pointer', '&[data-highlighted="true"]': { bgcolor: 'action.selected' } }}>
                     <IndividualPlantIcon fontSize="small" sx={{ flexShrink: 0, color: 'text.secondary' }} />
                     <Box sx={{ minWidth: 0, flex: 1, overflowWrap: 'anywhere' }}>
-                      <Typography variant="body2">{t(area.kind === 'bed' ? 'fields:individualPlants.inBed' : 'fields:individualPlants.onParcel')}</Typography>
+                      <Typography variant="body2">{t(placementLabelKey(area.kind))}</Typography>
                       <Typography variant="caption" color="text.secondary">
                         <SearchHighlightedText text={[area.locationName, area.fieldName, area.kind === 'bed' ? area.name : ''].filter(Boolean).join(BED_PATH_SEPARATOR)} />
                       </Typography>

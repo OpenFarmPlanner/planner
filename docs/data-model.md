@@ -352,25 +352,28 @@ erDiagram
 ```
 
 - **`PlantingPlan`** is the operational record for one crop or variety.
-  The API exposes three placement modes. `area` describes an ordinary bed
+  The API exposes four placement modes. `area` describes an ordinary bed
   allocation. `individual_bed` stores the parent in `bed` and sets the
   `individual_bed` flag. `individual_parcel` stores the parent in `parcel`.
-  Both individual modes require a crop, a planting date and a single measured
-  parent at creation. A bed can hold both area allocations and individual plans.
+  `individual_site` stores a direct location in `site`. All individual modes
+  require a crop, a planting date and exactly one parent. Stem coordinates
+  require measured dimensions. A bed can hold both kinds of plan.
   Each `individual_positions` entry has a stable UUID and two coordinates in
-  metres from the assigned bed or parcel's unrotated origin, to centimetre
-  precision. Position edits preserve the parent and existing stem UUIDs.
-  The confirmed stem count drives young-plant demand and per-plant seed and
-  yield calculations. Individual plans leave exclusive area unset. A confirmed
+  metres from the assigned area's unrotated origin, to centimetre precision.
+  A nullable `individual_count` stores the exact recorded total when supplied.
+  Otherwise the total follows the stored stems. The pending count is the total
+  minus the positioned count. Demand and per-plant yield use the exact total.
+  Individual plans leave exclusive area unset. A confirmed
   bed placement makes exact free area unknown while measured allocations still
   count. Estimated canopy diameter is an optional value in metres. A project
   crop may supply an initial estimate that growers can override or clear.
   Geometry edits use the plan's `updated_at` to reject a stale replacement.
-  In the graphic's edit mode a saved stem is its own drag target above beds
-  and parcels: dropping it saves that plan's positions at once, like a bed
-  or parcel move, and a failed save restores the previous position. The
-  canopy is not a drag target
-  ([#1579](https://github.com/OpenFarmPlanner/planner/issues/1579)).
+  Graphic placement resolves the deepest containing measured area from the
+  stem centre. One placement operation groups compatible stems by parent and
+  records their plans atomically. A deliberate cross-parent drag transfers the
+  stable stem UUID and its share of the count. Splits that would separate
+  protected records are rejected with the original plan intact. Parent drags
+  carry their own descendants and preserve earlier explicit assignments.
   Its internal `parcel_rotation_basis` retains the original occupied area and
   bed area as decimal strings after a rotating copy. Subsequent copies derive
   areas from that fraction while the current bed and area match the last

@@ -33,7 +33,7 @@ _COPIED_FORECAST_FIELDS = (
     'copied_from_plan_id', 'season_id', 'crop_id', 'bed_id', 'parcel_id', 'cultivation_type',
     'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
     'harvest_date', 'harvest_end_date', 'clearing_date', 'area_usage_sqm', 'quantity',
-    'individual_bed',
+    'individual_bed', 'site_id', 'individual_count',
 )
 
 
@@ -83,7 +83,7 @@ def distinct_forecast_plans(
     for plan in plans:
         schedule = recurring_harvest_schedule(plan, crop_index)
         if plan.copied_from_plan_id is not None:
-            count = len(plan.individual_positions) if plan.is_individual else None
+            count = plan.individual_total if plan.is_individual else None
             key = (tuple(getattr(plan, name) for name in _COPIED_FORECAST_FIELDS), schedule, count)
             if key in seen:
                 continue

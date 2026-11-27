@@ -14,7 +14,10 @@ export function buildHierarchySecondaryLine(
 ): string {
   if (row.type === 'individualPlan') {
     const count = row.individualPlantCount ?? 0;
-    return t('fields:individualPlants.count', { count, formatted: formatLocalizedNumber(count, locale) });
+    const pending = row.individualPendingCount ?? 0;
+    return [t('fields:individualPlants.count', { count, formatted: formatLocalizedNumber(count, locale) }),
+      pending ? t('fields:individualPlants.pendingCount', { count: pending, formatted: formatLocalizedNumber(pending, locale) }) : '']
+      .filter(Boolean).join(' · ');
   }
   if (row.type === "location") {
     const count = row.childCount;

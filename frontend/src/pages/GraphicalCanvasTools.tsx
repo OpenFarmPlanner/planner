@@ -33,7 +33,7 @@ interface CanvasToolsProps {
   onPan: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onTriggerChange: (button: HTMLButtonElement | null) => void;
   warnings: ReactNode;
-  individualPlants?: { active: boolean; toggle: () => void };
+  individualPlants?: { active: boolean; toggle: () => void; add?: () => void };
 }
 
 interface Tool {
@@ -89,8 +89,11 @@ export function GraphicalCanvasTools({
       icon: fullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />, action: onFullscreen },
   ];
   const additional: Tool[] = [];
-  if (individualPlants) additional.push({ label: t('individualPlants.title'), icon: <ParkOutlinedIcon fontSize="small" />,
-    active: individualPlants.active, opensPanel: true, action: individualPlants.toggle });
+  if (individualPlants) additional.push({
+    label: t(individualPlants.add ? 'individualPlants.addPlants' : 'individualPlants.title'),
+    icon: <ParkOutlinedIcon fontSize="small" />, active: individualPlants.active, opensPanel: true,
+    action: individualPlants.add ?? individualPlants.toggle,
+  });
   const groups = (compact ? [rotation, pan, additional] : [additional]).filter(group => group.length > 0);
   const overflowTools = groups.flat();
   const hasMenu = overflowTools.length > 1;

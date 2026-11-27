@@ -63,7 +63,7 @@ def _week_start(planting_date: date | None) -> date | None:
 def _plan_entry(plan: PlantingPlan, count: int | None, blockers: tuple[str, ...]) -> dict:
     bed = plan.bed
     field_obj = plan.growing_area_parcel
-    location = field_obj.location if field_obj else None
+    location = plan.growing_area_location
     return {
         'plan_id': plan.id,
         'planting_date': plan.planting_date,
@@ -85,7 +85,9 @@ def _group_plans(project: Project, language_code: str, season_id: int | None) ->
             crop__isnull=False,
             cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
         )
-        .select_related('crop', 'crop__crop_species', 'bed__field__location', 'parcel__location')
+        .select_related(
+            'crop', 'crop__crop_species', 'bed__field__location', 'parcel__location', 'site',
+        )
         .prefetch_related('crop__crop_species__translations')
         .order_by('planting_date', 'id')
     )

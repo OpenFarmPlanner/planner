@@ -696,6 +696,18 @@ def _create_demo_orchard(
         ],
         created_by=owner, updated_by=owner,
     )
+    # Leave one example directly in Hofgarten, east of both measured parcels.
+    PlantingPlan.objects.create(
+        project=project, season=season, crop=crop, site=parcel.location, planting_date=planted,
+        clearing_date=date(year + 18, 4, 18),
+        cultivation_type=PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT,
+        estimated_canopy_diameter_m=crop.estimated_canopy_diameter_m,
+        individual_positions=[{
+            'id': str(uuid5(NAMESPACE_URL, f'openfarmplanner:demo:{project.pk}:site-apple')),
+            'x_m': 21, 'y_m': 8,
+        }],
+        created_by=owner, updated_by=owner,
+    )
 
 
 def populate_demo_project(

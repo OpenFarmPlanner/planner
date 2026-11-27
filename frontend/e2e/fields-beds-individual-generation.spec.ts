@@ -32,6 +32,7 @@ test('previews and saves the same bed grid alongside area and individual plans',
   await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
   await loginWithDeterministicProject(page, request, 'generate-bed-plants', { loginAsAdmin: true });
   const { results: [site] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+  await apiRequest(page, 'PATCH', `/locations/${site.id}/`, { width_m: 22, length_m: 24 });
   const plot = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
     name: 'Marktgarten', location: site.id, width_m: 12, length_m: 18,
   });
@@ -75,11 +76,11 @@ test('previews and saves the same bed grid alongside area and individual plans',
   await expect(panel(page).getByText('8 Einzelpflanzen', { exact: true })).toBeVisible();
   const [response] = await Promise.all([
     page.waitForResponse(candidate => candidate.request().method() === 'POST'
-      && new URL(candidate.url()).pathname === '/api/planting-plans/'),
+      && new URL(candidate.url()).pathname === '/api/planting-plans/graphic-placement/'),
     panel(page).getByRole('button', { name: 'Speichern', exact: true }).click(),
   ]);
-  expect(response.status()).toBe(201);
-  const saved = await response.json() as PlantingPlan;
+  expect(response.status()).toBe(200);
+  const { plans: [saved] } = await response.json() as { plans: PlantingPlan[] };
   const expected = [
     { x_m: 1, y_m: 0.5 }, { x_m: 1.5, y_m: 0.5 },
     { x_m: 0.5, y_m: 2 }, { x_m: 1, y_m: 2 }, { x_m: 1.5, y_m: 2 },
@@ -105,9 +106,10 @@ test.describe('orchard generation on a phone', () => {
     });
     const { results: locations } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
     const site = locations.find(location => location.name === 'Hofgarten')!;
-    const { results: [orchard] } = await apiRequest<{ results: PlantingPlan[] }>(
+    const { results } = await apiRequest<{ results: PlantingPlan[] }>(
       page, 'GET', `/planting-plans/?individual_location=${site.id}`,
     );
+    const orchard = results.find(plan => plan.placement_mode === 'individual_parcel')!;
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
     const cropPath = `/api/crops/${orchard.crop}/`;
     await page.route(url => url.pathname === cropPath, route => route.fulfill({ status: 500, json: {} }), { times: 1 });

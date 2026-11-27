@@ -10,6 +10,7 @@ import {
   generateRegularPlants, MAX_INDIVIDUAL_POSITIONS, type RegularPlantInputs,
 } from '../pages/individualPlantGeneration';
 import type { RectSize } from '../pages/graphicalLayoutUtils';
+import type { PlantGenerationGeometry } from '../pages/graphicalPlantPlacement';
 import { getActiveFormattingLocale } from '../utils/numberLocalization';
 
 interface Props {
@@ -17,6 +18,8 @@ interface Props {
   suggestedSpacing: Pick<RegularPlantInputs, 'plantSpacing' | 'rowSpacing'>;
   occupied: readonly StemCoordinates[];
   existingCount: number;
+  geometry?: PlantGenerationGeometry;
+  countLimit?: number;
   initialCount?: number | 'max' | null;
   confirmLabel?: string;
   onConfirm: (positions: StemCoordinates[]) => void;
@@ -77,7 +80,7 @@ function PositionPreview({
 
 /** Shared by graphical placement and the planting-plan creation flow. */
 export function IndividualPlantGenerationDialog({
-  dimensions, suggestedSpacing, occupied, existingCount, initialCount = null, confirmLabel, onConfirm, onClose,
+  dimensions, suggestedSpacing, occupied, existingCount, geometry, countLimit, initialCount = null, confirmLabel, onConfirm, onClose,
 }: Props) {
   const { t } = useTranslation(['fields', 'common']);
   const tr = (key: string) => t(`fields:individualPlants.generation.${key}`);
@@ -89,7 +92,7 @@ export function IndividualPlantGenerationDialog({
   const [mode, setMode] = useState<'exact' | 'max'>(initialCount === 'max' ? 'max' : 'exact');
   const update = (change: Partial<RegularPlantInputs>) => setInputs(previous => ({ ...previous, ...change }));
   const preview = generateRegularPlants(dimensions, { ...inputs, count: mode === 'max' ? 'max' : inputs.count },
-    occupied, existingCount);
+    occupied, existingCount, geometry, countLimit);
   const number = (value: number | bigint) => new Intl.NumberFormat(getActiveFormattingLocale()).format(value);
   const summary = t('fields:individualPlants.generation.summary', {
     rows: number(preview.rowCount),
@@ -97,7 +100,8 @@ export function IndividualPlantGenerationDialog({
     total: number(existingCount + preview.positions.length),
   });
   const message = preview.problem && t(`fields:individualPlants.generation.${preview.problem}`, {
-    max: number(preview.maxAdditional), cap: number(MAX_INDIVIDUAL_POSITIONS), free: number(preview.freeSlots),
+    max: number(preview.maxAdditional), cap: number(Math.min(MAX_INDIVIDUAL_POSITIONS, countLimit ?? MAX_INDIVIDUAL_POSITIONS)),
+    free: number(preview.freeSlots),
   });
   const belowRecommendation = preview.positions.length > 0 && (
     (inputs.plantSpacing ?? 0) < (suggestedSpacing.plantSpacing ?? 0)
