@@ -107,6 +107,17 @@ describe('handleContextMenuKeyboardNavigation', () => {
     expect(event.stopPropagation).not.toHaveBeenCalled();
   });
 
+  it('does not click the item again when MUI already handled Enter', () => {
+    const menu = mountMenu(THREE_ITEMS);
+    const activeItem = item(menu, 'one');
+    activeItem.focus();
+    const click = vi.spyOn(activeItem, 'click');
+    handleContextMenuKeyboardNavigation(
+      Object.assign(keyEvent('Enter', activeItem, menu), { defaultPrevented: true }),
+    );
+    expect(click).not.toHaveBeenCalled();
+  });
+
   it('closes on Escape without swallowing the browser default', () => {
     const menu = mountMenu(THREE_ITEMS);
     const onClose = vi.fn();

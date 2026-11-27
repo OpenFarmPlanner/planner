@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { Alert, Box, Button, CircularProgress, List, ListItem, Stack, Typography } from '@mui/material';
 import CheckIcon from '@mui/icons-material/Check';
 import { taskAPI } from '../../api/api';
@@ -18,10 +18,12 @@ interface BedTaskListProps {
   canComplete?: boolean;
   onOpenDetails?: () => void;
   noOpenTasksLabel?: string;
+  loadErrorMessage?: string;
+  renderContext?: (task: Task) => ReactNode;
 }
 
 export function BedTaskList({
-  tasks, loading, failed, refresh, canComplete = true, onOpenDetails, noOpenTasksLabel,
+  tasks, loading, failed, refresh, canComplete = true, onOpenDetails, noOpenTasksLabel, loadErrorMessage, renderContext,
 }: BedTaskListProps) {
   const { t, i18n } = useTranslation(['fields', 'dashboard', 'common']);
   const locale = resolveSeasonDateLocale(i18n);
@@ -70,6 +72,7 @@ export function BedTaskList({
             {task.due_date ? formatSeasonDate(task.due_date, locale) : t('dashboard:board.noDate')}
             {' · '}{t(task.status === 'cancelled' ? 'graphical.display.cancelledStatus' : `dashboard:board.status.${task.status}`)}
           </Typography>
+          {renderContext?.(task)}
         </Stack>
         {canComplete && isOpenTask(task) && <Button size="small" startIcon={<CheckIcon fontSize="small" />}
           aria-label={t('fields:graphical.taskLayer.completeNamed', { title })}
@@ -85,7 +88,7 @@ export function BedTaskList({
     <Box ref={taskList} tabIndex={-1} aria-label={t('dashboard:board.title')}>
       {loading ? <CircularProgress size={20} aria-label={t('common:messages.loading')} /> : null}
       {failed ? <Alert severity="error" action={<LoadRetryButton onClick={refresh} />}>
-        {t('fields:graphical.taskLayer.loadError')}
+        {loadErrorMessage ?? t('fields:graphical.taskLayer.loadError')}
       </Alert> : null}
       {failedTask !== null && !loading && tasks.some(task => task.id === failedTask && isOpenTask(task)) ? (
         <Alert severity="error" action={<LoadRetryButton onClick={() => void complete(failedTask)} />}>
@@ -93,7 +96,7 @@ export function BedTaskList({
         </Alert>
       ) : null}
       {!loading && !failed && (
-        <Typography role={compact ? 'status' : undefined} variant="body2" color="text.secondary">
+        <Typography role={compact || renderContext ? 'status' : undefined} variant="body2" color="text.secondary">
           {(compact ? open.length : ordered.length) === 0
             ? noOpenTasksLabel ?? t(compact ? 'graphical.objects.noOpenTasks' : 'graphical.taskLayer.none') : (
             <>

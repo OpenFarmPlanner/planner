@@ -43,6 +43,7 @@ import {
 import type { GraphicalRotation } from "./graphicalLayoutUtils";
 import { individualPlanRowActions, type IndividualCreationTarget } from '../planting-plans/individualPlantActions';
 import { EMPTY_INDIVIDUAL_HIERARCHY, type indexIndividualHierarchy } from '../components/hierarchy/utils/individualHierarchyRows';
+import type { GrowingAreaListPosition } from '../components/hierarchy/details/growingAreaWorkspaceNavigation';
 
 interface FieldsBedsHierarchyMobileProps {
   showTitle?: boolean;
@@ -57,6 +58,8 @@ interface FieldsBedsHierarchyMobileProps {
   onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
   individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
   viewSwitch?: ReactNode;
+  onOpenDetails?: (path: string, position: GrowingAreaListPosition) => void;
+  restoredPosition?: GrowingAreaListPosition;
 }
 
 type SheetState =
@@ -75,6 +78,8 @@ function FieldsBedsHierarchyMobile({
   onAddIndividualPlants,
   individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
   viewSwitch,
+  onOpenDetails,
+  restoredPosition,
 }: FieldsBedsHierarchyMobileProps) {
   const { manage: manageRotationGroups } = useContext(ParcelRotationContext);
   const { t } = useTranslation(["hierarchy", "common"]);
@@ -90,7 +95,8 @@ function FieldsBedsHierarchyMobile({
   // actually closes (cancelled or saved) keeps createFieldRequest > 0, and
   // therefore this component mounted, for as long as the sheet is open.
   const createFieldRequestSheetOpenRef = useRef(false);
-  const [selectedRowId, setSelectedRowId] = useState<string | number | null>(null);
+  const [selectedRowId, setSelectedRowId] = useState<string | number | null>(restoredPosition?.rowId ?? null);
+  const restoreListPosition = useRef(restoredPosition?.layout === 'mobile' ? restoredPosition : null);
 
   const internalHierarchyData = useHierarchyData(hierarchyData === undefined);
   const {
@@ -105,6 +111,15 @@ function FieldsBedsHierarchyMobile({
     setFields,
     fetchData,
   } = hierarchyData ?? internalHierarchyData;
+  useEffect(() => {
+    const saved = restoreListPosition.current;
+    if (loading || !saved) return;
+    const frame = requestAnimationFrame(() => {
+      restoreListPosition.current = null;
+      window.scrollTo({ top: saved.top, behavior: 'instant' });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading]);
 
   const { expandedRows, toggleExpand, expandAll, ensureExpanded } = useExpandedState("fieldsBedsHierarchy");
   const { sortModel } = usePersistentSortModel({
@@ -155,6 +170,10 @@ function FieldsBedsHierarchyMobile({
 
   const [bulkCreateFieldId, setBulkCreateFieldId] = useState<number | null>(null);
 
+  const openAreaDetails = useCallback((path: string, rowId: string | number) => {
+    if (onOpenDetails) onOpenDetails(path, { layout: 'mobile', rowId, top: window.scrollY });
+    else void navigate(path);
+  }, [navigate, onOpenDetails]);
   const {
     saveBed,
     bulkCreateBeds,
@@ -178,6 +197,7 @@ function FieldsBedsHierarchyMobile({
     onBulkCreateBeds: setBulkCreateFieldId,
     onDuplicateField: openDuplicateField,
     onAddIndividualPlants,
+    onOpenDetails: openAreaDetails,
     t,
   });
 

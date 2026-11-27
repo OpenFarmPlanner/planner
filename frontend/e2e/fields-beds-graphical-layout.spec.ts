@@ -396,6 +396,11 @@ test('selects the deepest object, keeps the native blank-canvas menu and support
   await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(scale);
   await expect(preview).toHaveCount(0);
   await expect(page).toHaveURL(/fields-beds$/);
+  await selectGraphicDisplay(page, 'Aufgaben');
+  await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
+  await activateCanvasTool(page, 'Ansicht nach links verschieben');
+  const cameraBeforeDetails = await activeCamera(page);
+  const parcelGeometry = (await canvasRects(page, `field-rect-${parcel.id}`))[0];
   await card.getByRole('button', { name: 'Vollbild öffnen' }).click();
   await expect.poll(() => page.evaluate(() => document.fullscreenElement !== null)).toBe(true);
   await locationTarget.press('Shift+F10');
@@ -405,6 +410,27 @@ test('selects the deepest object, keeps the native blank-canvas menu and support
   await fullscreenMenu.getByRole('menuitem', { name: 'Details anzeigen' }).click();
   await expect(page).toHaveURL(new RegExp(`/fields-beds/locations/${location.id}$`));
   await expect(page.getByTestId('detail-remaining-area')).toContainText('552 m²');
+  await expect(page.getByRole('img', { name: /552 m²/ })).toBeVisible();
+  const details = page.getByTestId('growing-area-detail');
+  const back = details.getByRole('button', { name: 'Zurück zur Grafik', exact: true });
+  const heading = details.getByRole('heading', { level: 1 });
+  await expect(back).toBeVisible();
+  expect((await back.boundingBox())!.y).toBeLessThan((await heading.boundingBox())!.y);
+  await details.getByTestId('detail-section-children').getByRole('link', { name: 'Lernparzelle' }).click();
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/fields/${parcel.id}$`));
+  await expect(back).toBeVisible();
+  await expect(page.getByTestId('detail-covered-area')).toContainText('8 m²');
+  await details.getByTestId('detail-section-children').getByRole('link', { name: 'Lernbeet' }).click();
+  await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bed.id}$`));
+  await expect(back).toBeVisible();
+  await page.goBack();
+  await expect(heading).toHaveText('Lernparzelle');
+  await back.click();
+  await expect(page).toHaveURL(/fields-beds$/);
+  await expect(card).toBeVisible();
+  await expectGraphicDisplayMode(page, 'Aufgaben');
+  await expect.poll(() => activeCamera(page)).toEqual(cameraBeforeDetails);
+  expect((await canvasRects(page, `field-rect-${parcel.id}`))[0].width).toBe(parcelGeometry.width);
 });
 
 test.describe('graphical object touch gestures', () => {

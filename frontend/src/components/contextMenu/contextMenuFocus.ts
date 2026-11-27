@@ -139,8 +139,10 @@ export function handleContextMenuKeyboardNavigation(
     : -1;
 
   if (event.key === 'Enter') {
-    event.preventDefault();
     stopKeyboardEvent(event);
+    // MUI MenuItem has already dispatched a click for a handled Enter key.
+    if (event.defaultPrevented) return;
+    event.preventDefault();
     const activeItem = currentIndex >= 0 ? menuItems[currentIndex] : menuItems[0];
     activeItem.click();
     return;

@@ -23,6 +23,9 @@ import { locationAPI } from '../api/api';
 import type { LocationPathSpacing } from '../api/types';
 import { useParcelRotationGroups } from '../components/hierarchy/rotation/useParcelRotationGroups';
 import { getEntityDetailPath, type HierarchyEntityType } from '../components/hierarchy/details/hierarchyDetailRoutes';
+import {
+  beginGrowingAreaDetail, getGrowingAreaWorkspacePosition, type GrowingAreaListPosition,
+} from '../components/hierarchy/details/growingAreaWorkspaceNavigation';
 import { ParcelRotationContext } from '../components/hierarchy/rotation/parcelRotationContext';
 import { getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
@@ -87,12 +90,14 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const { t } = useTranslation(['fields', 'hierarchy', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
+  const [restoredWorkspace] = useState(() => getGrowingAreaWorkspacePosition(projectId, location.key));
   const query = new URLSearchParams(location.search);
   const requestedIndividualPlan = Number(query.get('individualPlan')) || undefined;
   const requestedIndividualLocation = requestedIndividualPlan ? Number(query.get('locationId')) || null : null;
   const editRequestedIndividualPlan = query.get('editIndividualPlan') === 'true';
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const stored = window.localStorage.getItem(VIEW_MODE_STORAGE_KEY);
+    if (restoredWorkspace) return restoredWorkspace.view === 'graphic' ? 'graphical' : 'table';
     return requestedIndividualPlan || stored === 'graphical' ? 'graphical' : 'table';
   });
   // A `?highlight=` deep link (e.g. "Beet/Parzelle/Standort öffnen" from the
@@ -151,8 +156,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     setDisplayPreference({ key: preferenceKey, mode });
     try { localStorage.setItem(preferenceKey, mode); } catch { /* Storage may be disabled. */ }
   }, [preferenceKey]);
-  const [cropDate, setCropDate] = useState<CropDateSelection | null>(() => projectId === null
-    ? null : readCropDateSelection(peekSeasonSwitchState(projectId, CROP_TIME_SWITCH_KEY)));
+  const [cropDate, setCropDate] = useState<CropDateSelection | null>(() => {
+    if (projectId === null) return null;
+    const seasonSwitch = readCropDateSelection(peekSeasonSwitchState(projectId, CROP_TIME_SWITCH_KEY));
+    return seasonSwitch ?? (restoredWorkspace?.view === 'graphic' ? readCropDateSelection(restoredWorkspace.cropDate) : null);
+  });
   const cropDateSnapshot = useRef(cropDate);
   useEffect(() => {
     if (projectId !== null) clearSeasonSwitchState(projectId, CROP_TIME_SWITCH_KEY);
@@ -201,8 +209,14 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   });
   const openGraphicalDetails = (type: HierarchyEntityType, id: number): void => {
     try { sessionStorage.setItem(cameraKey, JSON.stringify(cameraState)); } catch { /* Storage may be disabled. */ }
-    void navigate(getEntityDetailPath(type, id), { state: { fromGrowingAreaGraphic: true } });
+    const state = beginGrowingAreaDetail(projectId, location.key, { view: 'graphic', cropDate });
+    void navigate(getEntityDetailPath(type, id), { state });
   };
+  const openListDetails = useCallback((path: string, position: GrowingAreaListPosition) => {
+    const state = beginGrowingAreaDetail(projectId, location.key, { view: 'list', position });
+    void navigate(path, { state });
+  }, [location.key, navigate, projectId]);
+  const restoredListPosition = restoredWorkspace?.view === 'list' ? restoredWorkspace.position : undefined;
   const [isEditingGraphic, setIsEditingGraphic] = useState(false);
   const graphicalLocations = useMemo(() => locations.filter(item => typeof item.id === 'number' && item.id > 0), [locations]);
   const selectedLocation = graphicalLocations.find(item => item.id === locationSelection.id) ?? graphicalLocations[0];
@@ -681,6 +695,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               projectId={projectId}
               bedDefaults={bedDefaults}
               graphicalRotations={cameraState.rotations}
+              onOpenDetails={openListDetails}
+              restoredPosition={restoredListPosition}
               onAddIndividualPlants={onAddIndividualPlants}
               individualHierarchy={individualHierarchy}
               viewSwitch={<CompactViewSwitch actions={viewModeActions} label={t('fields:representation.ariaLabel')} />}
@@ -696,6 +712,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               projectId={projectId}
               bedDefaults={bedDefaults}
               graphicalRotations={cameraState.rotations}
+              onOpenDetails={openListDetails}
+              restoredPosition={restoredListPosition}
               userId={userId}
               onAddIndividualPlants={onAddIndividualPlants}
               individualHierarchy={individualHierarchy}

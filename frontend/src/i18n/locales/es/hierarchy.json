@@ -439,6 +439,17 @@
       "bed": "Bancal"
     },
     "backToList": "Volver a las superficies de cultivo",
+    "backToAreaList": "Volver a la lista",
+    "emptyChildren": {
+      "location": "No hay parcelas en esta ubicación.",
+      "field": "No hay bancales en esta parcela."
+    },
+    "childBedCount_one": "{{formatted}} bancal",
+    "childBedCount_other": "{{formatted}} bancales",
+    "selectTaskSeason": "Selecciona una temporada para ver sus tareas.",
+    "noAreaTasks": "No hay tareas para esta superficie en esta temporada.",
+    "areaTaskLoadError": "No se pudieron cargar las tareas de esta superficie.",
+    "tasksNeedPlans": "Las tareas aparecerán cuando se carguen los planes de cultivo.",
     "breadcrumbAria": "Ruta de navegación",
     "unsavedChanges": "Tienes cambios sin guardar. Se perderán si sales de la página.",
     "unnamedPlan": "Plan de cultivo sin cultivo",

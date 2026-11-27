@@ -34,6 +34,7 @@ export interface GrowingAreaDetailDraft {
   notes: string;
   /** Location only. */
   description: string;
+  address: string;
   exposure: string;
   /** Field only. */
   cultivation_environment: string;
@@ -131,6 +132,8 @@ export function GrowingAreaDetailForm({ type, draft, onChange, inherited, nameEr
             onChange={(event) => set('name')(event.target.value)}
           />
           {type === 'location' ? textArea('description', t('hierarchy:details.fields.description')) : null}
+          {type === 'location' ? <TextField size="small" label={t('hierarchy:details.fields.address')}
+            value={draft.address} onChange={event => set('address')(event.target.value)} /> : null}
         </Box>
       </Box>
 

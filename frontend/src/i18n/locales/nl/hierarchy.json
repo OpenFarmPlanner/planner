@@ -415,6 +415,17 @@
       "bed": "Bed"
     },
     "backToList": "Terug naar de teeltoppervlakken",
+    "backToAreaList": "Terug naar de lijst",
+    "emptyChildren": {
+      "location": "Geen percelen op deze locatie.",
+      "field": "Geen bedden in dit perceel."
+    },
+    "childBedCount_one": "{{formatted}} bed",
+    "childBedCount_other": "{{formatted}} bedden",
+    "selectTaskSeason": "Selecteer een seizoen om de taken ervan te zien.",
+    "noAreaTasks": "Er zijn dit seizoen geen taken voor dit teeltgebied.",
+    "areaTaskLoadError": "De taken voor dit teeltgebied konden niet worden geladen.",
+    "tasksNeedPlans": "De taken verschijnen zodra de teeltplannen zijn geladen.",
     "breadcrumbAria": "Kruimelpad",
     "unsavedChanges": "Je hebt niet-opgeslagen wijzigingen. Die gaan verloren als je de pagina verlaat.",
     "unnamedPlan": "Teeltplan zonder gewas",

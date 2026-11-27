@@ -144,6 +144,11 @@ export function HierarchyEditSheet({
     }
     setConfirmDiscardOpen(true);
   };
+  const afterOverlayHistoryClose = useOverlayHistory({ open, onClose: requestClose, historyKey: "hierarchyEditSheet" });
+  const runClosedAction = (action: HierarchyRowAction): void => {
+    if (action.id === "details") afterOverlayHistoryClose(action.onClick);
+    else action.onClick();
+  };
 
   /**
    * Runs a row action that needs the sheet closed first. With unsaved edits
@@ -158,14 +163,12 @@ export function HierarchyEditSheet({
     }
     if (!isDirty) {
       onClose();
-      action.onClick();
+      runClosedAction(action);
       return;
     }
     setPendingCloseAction(action);
     setConfirmDiscardOpen(true);
   };
-
-  useOverlayHistory({ open, onClose: requestClose, historyKey: "hierarchyEditSheet" });
 
   const liveArea = useMemo(() => {
     const parsedLength = parseLocalizedNumber(values.length, locale);
@@ -256,7 +259,7 @@ export function HierarchyEditSheet({
     onClose();
     const action = pendingCloseAction;
     setPendingCloseAction(null);
-    action?.onClick();
+    if (action) runClosedAction(action);
   };
 
   return (
