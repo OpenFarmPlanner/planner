@@ -97,14 +97,16 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     runs-on: ubuntu-latest
-    steps:
+    env:
+      BACKEND_PYTHON: '3.13.18'
+    steps: &backend_test_steps
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Python 3.12
+      - name: Setup backend Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: ${{ env.BACKEND_PYTHON }}
 
       - name: Install PDM
         run: python -m pip install --upgrade pip "pdm==2.29.5" "hishel==1.4.0"
@@ -121,7 +123,9 @@ jobs:
       - name: Install backend dependencies with PDM
         run: |
           cd backend
-          pdm install -dG test
+          pdm use -f --no-version-file "$(command -v python)"
+          pdm lock --check
+          pdm sync -G test
 
       - name: Run Django deployment security checks
         env:
@@ -141,6 +145,18 @@ jobs:
           pdm run compilemessages
           pdm run test
 
+  backend-compatibility-tests:
+    needs: changes
+    if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.12', '3.14']
+    env:
+      BACKEND_PYTHON: ${{ matrix.python }}
+    steps: *backend_test_steps
+
   # SQLite ignores row locks (`select_for_update`), so regressions that only
   # PostgreSQL raises are pinned by tests marked `postgres` and run here
   # against a real PostgreSQL server. See docs/testing-and-ci.md.
@@ -148,9 +164,12 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && needs.changes.outputs.metadata_only != 'true' }}
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        postgres: [15, 16]
     services:
       postgres:
-        image: postgres:16
+        image: postgres:${{ matrix.postgres }}
         env:
           POSTGRES_USER: farmplanner
           POSTGRES_PASSWORD: farmplanner
@@ -166,10 +185,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Setup Python 3.12
+      - name: Setup production Python
         uses: actions/setup-python@v7
         with:
-          python-version: '3.12'
+          python-version: '3.13.18'
 
       - name: Install PDM
         run: python -m pip install --upgrade pip "pdm==2.29.5" "hishel==1.4.0"
@@ -177,7 +196,9 @@ jobs:
       - name: Install backend dependencies with PDM
         run: |
           cd backend
-          pdm install -dG test
+          pdm use -f --no-version-file "$(command -v python)"
+          pdm lock --check
+          pdm sync -G test
 
       - name: Run PostgreSQL-only backend tests
         env:

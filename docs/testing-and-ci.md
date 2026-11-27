@@ -13,8 +13,9 @@ gates to run locally, see the "Testing Rules" section of
 | Job | What it runs | Test step | Whole job |
 | --- | --- | --- | --- |
 | `frontend-tests (1-3)` | `vitest run --shard=N/3` | 1m43s-2m36s | 1m58s-2m47s |
-| `backend-tests` | `pytest` (xdist, with coverage) | 3m14s | 3m58s |
-| `backend-postgres-tests` | `pytest -m postgres` against PostgreSQL 16 | — | — |
+| `backend-tests` | `pytest` on production Python 3.13.18 (xdist, with coverage) | 3m14s | 3m58s |
+| `backend-compatibility-tests` | Same suite on the supported floor (3.12) and upgrade candidate (3.14) | — | — |
+| `backend-postgres-tests` | `pytest -m postgres` on production Python against PostgreSQL 15 and 16 | — | — |
 | `quality` | ruff, radon, ESLint, madge | 38s | 1m18s |
 
 Frontend and `quality` from run 36112871261 (25 Sep 2026). `backend-tests`
@@ -394,7 +395,7 @@ nullable foreign key is an outer join, and PostgreSQL refuses `FOR UPDATE`
 on its nullable side (#951; lock only the own row with
 `select_for_update(of=('self',))`). Tests for such behavior carry the
 `postgres` marker and also run in the separate `backend-postgres-tests`
-job against a PostgreSQL 16 service; in `backend-tests` they only check the
+job against PostgreSQL 15 (production major) and 16; in `backend-tests` they only check the
 functional result. `settings_test` switches to PostgreSQL when
 `TEST_DB_ENGINE=postgres` is set and reads the connection from the same
 `DB_*` variables as `settings.py`. Locally:
