@@ -229,12 +229,13 @@ gh auth status
 
 ### 1) Backend setup
 
-For production parity, select Python 3.13.18 in the backend virtual environment.
+The commands below use your supported Python 3.12+ interpreter. For production
+parity, install Python 3.13.18 and run `pdm use 3.13.18` from `backend/` before
+installing dependencies.
 
 ```bash
 cd backend
 cp .env.example .env
-pdm use 3.13.18
 pdm install
 pdm run migrate
 pdm run runserver
