@@ -137,7 +137,7 @@ erDiagram
 - Each location stores recommended path gaps in metres (`bed_path_spacing_m`,
   0.30 by default, and `parcel_path_spacing_m`, 0.75 by default) and a
   `snap_to_path_spacing` preference (on by default). The location API and the
-  Graphic → Spacing popover use centimetres. These values affect subsequent
+  Graphic → Graphic settings → Path spacing use centimetres. These values affect subsequent
   drags between measured siblings. Applying them leaves dimensions, area and
   saved positions intact.
   Metric parcel gaps require both parcels to be drawn at the location scale.

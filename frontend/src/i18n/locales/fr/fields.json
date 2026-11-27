@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Affichage du graphique",
+      "layers": "Couches",
       "mode": {
         "areas": "Surfaces de culture",
         "crops": "Cultures",
@@ -136,9 +137,9 @@
       "unknownParcels": "Une vérification précise de {{names}} est impossible, car les dimensions manquent ou les contours sont agrandis.",
       "unknownBeds": "La surface occupée par {{names}} dans {{name}} ne peut pas être mesurée. Vérifiez les dimensions de la parcelle et des planches dans la liste."
     },
+    "settings": "Paramètres du graphique",
     "spacing": {
-      "button": "Espacement",
-      "title": "Espacement",
+      "title": "Espacement des allées",
       "bed": "Entre les planches (cm)",
       "parcel": "Entre les parcelles (cm)",
       "snap": "Ajuster les plantes et les surfaces aux espacements",

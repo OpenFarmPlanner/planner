@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Darstellung der Grafik",
+      "layers": "Ebenen",
       "mode": {
         "areas": "Anbauflächen",
         "crops": "Kulturen",
@@ -131,9 +132,9 @@
       "unknownParcels": "Für {{names}} fehlen die Maße oder die Umrisse sind vergrößert. Eine genaue Parzellenprüfung ist daher nicht möglich.",
       "unknownBeds": "In {{name}} lässt sich die Beetfläche für {{names}} nicht genau bestimmen. Prüfe die Parzellen- und Beetmaße in der Liste."
     },
+    "settings": "Grafikeinstellungen",
     "spacing": {
-      "button": "Abstände",
-      "title": "Abstände",
+      "title": "Wegeabstände",
       "bed": "Zwischen Beeten (cm)",
       "parcel": "Zwischen Parzellen (cm)",
       "snap": "Pflanzen und Flächen an Abständen einrasten",

@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Visualizzazione del grafico",
+      "layers": "Livelli",
       "mode": {
         "areas": "Aree di coltivazione",
         "crops": "Colture",
@@ -136,9 +137,9 @@
       "unknownParcels": "Non è possibile verificare con esattezza {{names}} perché le dimensioni mancano o i contorni sono ingranditi.",
       "unknownBeds": "Non è possibile misurare la superficie occupata da {{names}} in {{name}}. Controlla le dimensioni dell’appezzamento e delle aiuole nell’elenco."
     },
+    "settings": "Impostazioni grafiche",
     "spacing": {
-      "button": "Distanze",
-      "title": "Distanze",
+      "title": "Distanze per i passaggi",
       "bed": "Tra le aiuole (cm)",
       "parcel": "Tra gli appezzamenti (cm)",
       "snap": "Allinea piante e superfici alle distanze",

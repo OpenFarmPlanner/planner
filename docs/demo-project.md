@@ -66,8 +66,9 @@ Watch its beds follow while the pointer is still down. Drop it, switch to List
 and back to Graphic, then reload to check that each bed kept its position
 within its parcel. Escape during another drag restores the whole parcel.
 
-The Spacing popover beside Edit graphic shows 30 cm between beds and 75 cm
-between parcels in Hofgarten. Acker am Bach demonstrates 45 cm and 100 cm.
+Open the Graphic settings gear beside Edit graphic or in the phone workspace
+menu. Path spacing shows 30 cm between beds and 75 cm between parcels in
+Hofgarten. Acker am Bach demonstrates 45 cm and 100 cm.
 Move a bed or parcel near its neighbour and check the gap shown on the canvas.
 Hold Shift while dragging to place it freely. Restore defaults and Apply
 changes the selected location's settings for later drags.

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { LocationLayoutsResponse, PaginatedResponse, YoungPlantDemand } from '../src/api/types';
-import { activateCanvasTool, apiRequest, canvasInteractionPoint, graphicDisplayButton, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, graphicWorkspaceMenu, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
 
 type Stem = { id: string; x_m: number; y_m: number };
 type Plan = {
@@ -906,9 +906,9 @@ test.describe('individual plants on a phone', () => {
     await expect.poll(() => distanceGuide(page)).toBeNull();
     expect(writes).toBe(0);
 
-    await graphicDisplayButton(page).tap();
-    await page.getByRole('menuitem', { name: 'Abstände', exact: true }).tap();
-    const spacing = page.getByRole('dialog', { name: 'Abstände', exact: true });
+    await graphicWorkspaceMenu(page).tap();
+    await page.getByRole('menuitem', { name: 'Grafikeinstellungen', exact: true }).tap();
+    const spacing = page.getByRole('dialog', { name: 'Grafikeinstellungen', exact: true });
     const snap = spacing.getByRole('checkbox', { name: 'Pflanzen und Flächen an Abständen einrasten' });
     await expect(snap).toBeChecked();
     await snap.tap();

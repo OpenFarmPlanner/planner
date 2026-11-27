@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Grafiekweergave",
+      "layers": "Lagen",
       "mode": {
         "areas": "Teeltgebieden",
         "crops": "Gewassen",
@@ -131,9 +132,9 @@
       "unknownParcels": "Een nauwkeurige controle van {{names}} is niet mogelijk omdat de afmetingen ontbreken of de contouren vergroot zijn.",
       "unknownBeds": "De oppervlakte van {{names}} in {{name}} kan niet worden gemeten. Controleer de afmetingen van het perceel en de bedden in de lijst."
     },
+    "settings": "Grafiekinstellingen",
     "spacing": {
-      "button": "Afstanden",
-      "title": "Afstanden",
+      "title": "Ruimte voor paden",
       "bed": "Tussen bedden (cm)",
       "parcel": "Tussen percelen (cm)",
       "snap": "Planten en gebieden op afstanden uitlijnen",

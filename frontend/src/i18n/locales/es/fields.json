@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Vista del gráfico",
+      "layers": "Capas",
       "mode": {
         "areas": "Zonas de cultivo",
         "crops": "Cultivos",
@@ -136,9 +137,9 @@
       "unknownParcels": "No se puede comprobar con precisión {{names}} porque faltan las dimensiones o los contornos están ampliados.",
       "unknownBeds": "No se puede medir la superficie que ocupa {{names}} en {{name}}. Comprueba las dimensiones de la parcela y de los bancales en la lista."
     },
+    "settings": "Ajustes del gráfico",
     "spacing": {
-      "button": "Distancias",
-      "title": "Distancias",
+      "title": "Espacio para caminos",
       "bed": "Entre bancales (cm)",
       "parcel": "Entre parcelas (cm)",
       "snap": "Ajustar las plantas y las superficies a las distancias",

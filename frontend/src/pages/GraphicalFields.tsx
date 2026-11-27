@@ -33,6 +33,7 @@ import { GraphicalBedLabels } from "./GraphicalBedLabels";
 import { bedCropDisplayName, bedCropPhaseLabel, includesCrops, includesTasks, indexBedCultivations, projectBedCultivation } from "./graphicalCultivation";
 import { graphicalBedCropFill, graphicalCropPhaseColor, graphicalGeometryOutline } from './graphicalDisplayStyle';
 import { GraphicalCanvasTools } from "./GraphicalCanvasTools";
+import { GraphicalLayersControl } from './GraphicalDisplayControls';
 import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
 import { useAreaPlantingPlans, useBedTasks } from "../components/tasks/useBedTasks";
@@ -122,8 +123,9 @@ export default function GraphicalFields({
   showModeToggle = true,
   activeSeasonId,
   displayMode = 'areas',
+  onDisplayModeChange,
   cropReference,
-  fullscreenDisplayControls,
+  fullscreenWorkspaceControls,
   onFullscreenChange,
   individualSeason,
   canEditIndividualPlants = false,
@@ -1466,6 +1468,7 @@ export default function GraphicalFields({
                 >
                   <GraphicalCanvasTools key={activeSeasonId ?? 'no-season'}
                     width={stageWidth} height={stageHeight} fullscreen={fullscreenLocationId === locationId}
+                    layers={onDisplayModeChange && <GraphicalLayersControl mode={displayMode} onMode={onDisplayModeChange} />}
                     onTriggerChange={button => { canvasToolsRefs.current[locationId] = button; }}
                     onZoom={direction => handleZoom(locationId, direction === 1 ? ZOOM_STEP : 1 / ZOOM_STEP)}
                     onFit={() => resetViewport(locationId)}
@@ -1483,10 +1486,10 @@ export default function GraphicalFields({
                       add: individualPlants.canEdit && !individualPlants.editor.draft ? () => startAutomaticIndividualPlan() : undefined,
                     } : undefined}
                   />
-                  {fullscreenLocationId === locationId && fullscreenDisplayControls && (
+                  {fullscreenLocationId === locationId && fullscreenWorkspaceControls && (
                     <Box data-graphical-annotation-obstacle sx={{ position: 'absolute', zIndex: 2, top: 12, left: 105,
                       right: { xs: 64, sm: 110 }, width: 'fit-content', bgcolor: 'background.paper' }}>
-                      {fullscreenDisplayControls}
+                      {fullscreenWorkspaceControls}
                     </Box>
                   )}
                   {!locationIsEditable && ((showCrops && (locationPlans.loading || locationPlans.failed))

@@ -60,8 +60,9 @@ export interface GraphicalFieldsProps {
   showModeToggle?: boolean;
   activeSeasonId?: number;
   displayMode?: GraphicalDisplayMode;
+  onDisplayModeChange?: (mode: GraphicalDisplayMode) => void;
   cropReference?: CropReference;
-  fullscreenDisplayControls?: ReactNode;
+  fullscreenWorkspaceControls?: ReactNode;
   onFullscreenChange?: (fullscreen: boolean) => void;
   individualSeason?: Season;
   canEditIndividualPlants?: boolean;
