@@ -21,7 +21,7 @@ import { HarvestRecords } from '../harvests/HarvestRecords';
 import { useNavigationBlocker } from '../hooks/useNavigationBlocker';
 import { useProjectRequirement } from '../hooks/useProjectRequirement';
 import { useTranslation } from '../i18n';
-import { isIndividualPlacement } from "../pages/individualPlantGeometry";
+import { isIndividualPlacement, planPlacementParent } from "../pages/individualPlantGeometry";
 import { individualPlantGraphicPath } from './individualPlantRoutes';
 import type { RootLayoutOutletContext } from '../navigation/topbarTypes';
 import {
@@ -280,7 +280,7 @@ export function PlantingPlanDetails({ planId, onBack, onChanged, onExpand }: Pla
                     count: loadedPlan.pending_plants_count ?? 0,
                     formatted: formatLocalizedNumber(loadedPlan.pending_plants_count ?? 0, locale),
                   })}</Typography>}
-                  <SiteSuitabilityHints findings={loadedPlan.site_suitability_findings} scope="field" />
+                  <SiteSuitabilityHints findings={loadedPlan.site_suitability_findings} scope={planPlacementParent(loadedPlan)?.kind} />
                   <Button component={RouterLink}
                     to={individualPlantGraphicPath(loadedPlan.id, loadedPlan.parcel_location_id)}>
                     {t('fields:individualPlants.openGraphic')}

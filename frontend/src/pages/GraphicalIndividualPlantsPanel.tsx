@@ -298,7 +298,7 @@ export function GraphicalIndividualPlantsPanel({
               onClick={() => setCanopyShown(true)}>{tr('addCanopy')}</Button>
           ))}
           {canopy != null && !draft && <Typography variant="body2">{tr('canopy')}{' '}{number(Number(canopy))}</Typography>}
-          {(plan || draft) && <SiteSuitabilityHints findings={plan?.site_suitability_findings} scope={parent?.kind === 'bed' ? 'bed' : 'field'} />}
+          {(plan || draft) && <SiteSuitabilityHints findings={plan?.site_suitability_findings} scope={parent?.kind} />}
         </Stack>
 
         {(plan || draft) && <>

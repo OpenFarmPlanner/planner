@@ -288,6 +288,7 @@
     "title": "Condiciones de cultivo",
     "lightMismatch": "El cultivo se adapta a {{crop}}. La exposición del bancal figura como {{bed}}.",
     "parcelLightMismatch": "El cultivo se adapta a {{crop}}. La parcela está registrada como {{bed}}.",
+    "locationLightMismatch": "El cultivo se adapta a {{crop}}. La luz del lugar está registrada como {{bed}}.",
     "waterMismatch": "El cultivo necesita mucha agua. La humedad del suelo figura como {{moisture}} y el riego como {{irrigation}}."
   },
   "rotation": {

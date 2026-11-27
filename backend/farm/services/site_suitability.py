@@ -1,13 +1,14 @@
-"""Advisory crop checks based on the effective conditions of a bed or parcel."""
+"""Advisory crop checks based on effective growing-area conditions."""
 
 from typing import Any
 
 from farm.crop_light import normalize_crop_light
-from farm.models import Bed, Crop, Field
+from farm.models import Bed, Crop, Field, Location
 from farm.services.crop_inheritance import GeneralCropIndex, resolve_crop_field
 from farm.services.site_conditions import (
     effective_conditions_for_bed,
     effective_conditions_for_field,
+    effective_conditions_for_location,
 )
 
 CROP_LIGHT_BY_SITE_LIGHT = {
@@ -18,18 +19,20 @@ CROP_LIGHT_BY_SITE_LIGHT = {
 
 
 def check_site_suitability(
-    crop: Crop | None, site: Bed | Field | None, index: GeneralCropIndex,
+    crop: Crop | None, site: Bed | Field | Location | None, index: GeneralCropIndex,
 ) -> list[dict[str, Any]]:
     if crop is None or site is None or crop.project_id != site.project_id:
         return []
-    parcel = site.field if isinstance(site, Bed) else site
-    if parcel.project_id != crop.project_id or parcel.location.project_id != crop.project_id:
-        return []
-
-    conditions = (
-        effective_conditions_for_bed(site) if isinstance(site, Bed)
-        else effective_conditions_for_field(parcel)
-    )
+    if isinstance(site, Location):
+        conditions = effective_conditions_for_location(site)
+    else:
+        parcel = site.field if isinstance(site, Bed) else site
+        if parcel.project_id != crop.project_id or parcel.location.project_id != crop.project_id:
+            return []
+        conditions = (
+            effective_conditions_for_bed(site) if isinstance(site, Bed)
+            else effective_conditions_for_field(parcel)
+        )
     findings: list[dict[str, Any]] = []
     allowed = normalize_crop_light(resolve_crop_field(crop, 'light_requirement', index))
     light = conditions['light_condition']

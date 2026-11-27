@@ -44,7 +44,7 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
       individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }, { id: 'b', x_m: 4, y_m: 5 }],
     });
     expect(result.current.plans[0].individual_positions?.[1]).toMatchObject({ x_m: 4, y_m: 5 });
-    expect(result.current.moveError).toBe(false);
+    expect(result.current.moveError).toBeNull();
   });
 
   it('reloads a plan that changed elsewhere instead of retrying with its stale version', async () => {
@@ -56,7 +56,7 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
 
     await act(async () => { await result.current.moveSavedStem(7, 'b', { x_m: 4, y_m: 5 }); });
 
-    expect(result.current.moveError).toBe(true);
+    expect(result.current.moveError).toBe('changedElsewhere');
     await waitFor(() => expect(result.current.plans[0]?.updated_at).toBe('2026-05-01T11:00:00Z'));
     expect(listMock).toHaveBeenCalledTimes(2);
     expect(result.current.plans[0].individual_positions?.[1]).toMatchObject({ x_m: 2, y_m: 3 });
@@ -70,7 +70,7 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
 
     await act(async () => { await result.current.moveSavedStem(7, 'b', { x_m: 4, y_m: 5 }); });
 
-    expect(result.current.moveError).toBe(true);
+    expect(result.current.moveError).toBe('saveFailed');
     expect(result.current.plans[0].individual_positions?.[1]).toMatchObject({ x_m: 2, y_m: 3 });
     expect(listMock).toHaveBeenCalledTimes(1);
   });
@@ -114,10 +114,10 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
     await act(async () => { failSave(conflict()); await move; });
 
     expect(listMock).toHaveBeenCalledTimes(2);
-    expect(result.current.moveError).toBe(false);
+    expect(result.current.moveError).toBeNull();
     rerender({ location: 5 });
     await waitFor(() => expect(result.current.plans).toHaveLength(1));
-    expect(result.current.moveError).toBe(false);
+    expect(result.current.moveError).toBeNull();
   });
 
   it('does not start a panel draft for a plan whose direct move is still saving', async () => {
@@ -129,11 +129,11 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
 
     let move: Promise<void> = Promise.resolve();
     act(() => { move = result.current.moveSavedStem(7, 'b', { x_m: 4, y_m: 5 }); });
-    act(() => { result.current.startDraft(11, result.current.plans[0]); });
+    act(() => { result.current.startDraft({ kind: 'field', id: 11 }, result.current.plans[0]); });
     expect(result.current.editor.draft).toBeNull();
 
     await act(async () => { finishSave({ data: plan({ updated_at: 'v2' }) }); await move; });
-    act(() => { result.current.startDraft(11, result.current.plans[0]); });
+    act(() => { result.current.startDraft({ kind: 'field', id: 11 }, result.current.plans[0]); });
     expect(result.current.editor.draft).toMatchObject({ planId: 7, expectedUpdatedAt: 'v2' });
   });
 

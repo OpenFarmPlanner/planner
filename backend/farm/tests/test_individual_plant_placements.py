@@ -439,6 +439,22 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(water['soil_moisture']['source'], 'field')
         self.assertEqual(detail['site_suitability_findings'], listed['site_suitability_findings'])
 
+    def test_site_suitability_uses_location_conditions(self):
+        self.graphic_scene()
+        self.apple.light_requirement, self.apple.water_requirement = ['full_sun'], 'high'
+        self.apple.save()
+        self.location.light_condition, self.location.soil_moisture = 'shade', 'dry'
+        self.location.irrigation = 'unavailable'
+        self.location.save()
+        plan = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
+        ).json()
+        light, water = plan['site_suitability_findings']
+        self.assertEqual((light['code'], light['light']['source']), ('light_mismatch', 'location'))
+        self.assertEqual(
+            (water['code'], water['irrigation']['source']), ('water_mismatch', 'location'),
+        )
+
     def test_crop_cannot_become_annual_while_used_by_an_individual_plan(self):
         created = self.create_plan().json()
         response = self.client.patch(

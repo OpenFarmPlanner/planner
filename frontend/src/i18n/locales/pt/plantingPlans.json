@@ -288,6 +288,7 @@
     "title": "Condições de cultivo",
     "lightMismatch": "A cultura adapta-se a {{crop}}. A exposição do canteiro está registada como {{bed}}.",
     "parcelLightMismatch": "A cultura é adequada a {{crop}}. A parcela está registada como {{bed}}.",
+    "locationLightMismatch": "A cultura é adequada a {{crop}}. A luz do local está registada como {{bed}}.",
     "waterMismatch": "A cultura tem necessidades de água elevadas. A humidade do solo está registada como {{moisture}} e a rega como {{irrigation}}."
   },
   "rotation": {

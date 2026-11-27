@@ -275,7 +275,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_site_suitability_findings(self, obj: PlantingPlan) -> list[dict[str, Any]]:
         return check_site_suitability(
-            obj.crop, obj.bed or obj.parcel, self._general_crop_index(obj),
+            obj.crop, obj.bed or obj.parcel or obj.site, self._general_crop_index(obj),
         )
 
     def get_expected_emergence(self, obj: PlantingPlan) -> dict[str, str] | None:

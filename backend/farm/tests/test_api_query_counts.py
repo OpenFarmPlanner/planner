@@ -1166,7 +1166,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
     def test_tasks_list_query_count(self):
         """`planting_plan_name` renders `PlantingPlan.__str__`, which reads the
-        plan's crop and bed or direct parcel."""
+        plan's crop and growing area."""
         self.assert_list_query_count('/openfarmplanner/api/tasks/', 5)
         Task.objects.bulk_create([
             Task(title=f'Extra task {index}', project=self.project,
@@ -1184,14 +1184,22 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 title=f'Orchard task {index}', project=self.project,
                 planting_plan=orchard, season=self.seasons[index],
             )
-        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 3 * ROW_COUNT)
+            direct = PlantingPlan.objects.create(
+                project=self.project, crop=self.crops[index], site=self.location,
+                season=self.seasons[index], individual_count=1,
+            )
+            Task.objects.create(
+                title=f'Site task {index}', project=self.project,
+                planting_plan=direct, season=self.seasons[index],
+            )
+        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 4 * ROW_COUNT)
         from django.utils import timezone
 
         Task.objects.create(
             project=self.project, title='Hidden generated identity',
             source_key='plan:999:event:sowing', origin='automatic', deleted_at=timezone.now(),
         )
-        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 3 * ROW_COUNT)
+        self.assert_list_query_count('/openfarmplanner/api/tasks/', 5, 4 * ROW_COUNT)
 
 
     def test_task_templates_list_query_count(self) -> None:

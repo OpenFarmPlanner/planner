@@ -1,7 +1,7 @@
 import type { GraphicPlacementScene, GraphicStemPoint, Location, StemCoordinates } from '../api/types';
 import { getBedWorldRect, type GraphicalParcel } from './graphicalAreaGeometry';
 import { FIELD_WORLD_PX_PER_METER } from './graphicalFieldsGeometry';
-import { parcelMeters, matchesPlacementParent, type PlacementParent } from './individualPlantGeometry';
+import { canvasToStem, parcelMeters, matchesPlacementParent, type PlacementParent } from './individualPlantGeometry';
 import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
 
 type PlacementFrame = Rect & {
@@ -163,8 +163,9 @@ export function createParentLocalPlacement(parent: PlacementParent, parcels: rea
     return { frame, local: stem };
   };
   const resolveWorld = (point: Position): GraphicPlacementResolution => {
-    const local = toLocal({ ...point, width: 0, height: 0 });
-    return resolveLocal(parent, { x_m: local.x, y_m: local.y });
+    if (!contains(world, point)) return { error: 'geometryUnknown' };
+    const stem = canvasToStem(point, { width_m: meters.width, length_m: meters.height }, world, orientation);
+    return stem ? resolveLocal(parent, stem) : { error: 'geometryUnknown' };
   };
   return { scene: undefined, surface: world, resolveLocal, resolveWorld,
     generationGeometry: (target: PlacementParent) => matchesPlacementParent(target, parent) ? { bounds, excluded } : null,

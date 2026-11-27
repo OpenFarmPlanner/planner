@@ -1258,7 +1258,7 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     # version (see farm/agent_api/permissions.py).
     api_token_actions = {'list', 'retrieve'}
     queryset = Task.objects.select_related(
-        'planting_plan__crop', 'planting_plan__bed', 'planting_plan__parcel',
+        'planting_plan__crop', 'planting_plan__bed', 'planting_plan__parcel', 'planting_plan__site',
     )
     serializer_class = TaskSerializer
 
