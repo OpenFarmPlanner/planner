@@ -683,7 +683,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     const field = parent.kind === 'location' ? undefined : fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
     const location = locationById.get(parent.kind === 'location' ? parent.id : field?.location ?? -1);
     const dimensions = parcelMeters((parent.kind === 'bed' ? bed : parent.kind === 'location' ? location : field) ?? {});
-    if (location?.id === undefined || !dimensions || !parcelMeters(location)) {
+    if (location?.id === undefined || !dimensions) {
       setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.dimensionsRequired') });
       return Promise.resolve(null);
     }
@@ -1400,7 +1400,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         valueGetter: (_value, row: PlantingPlanRow) => {
           const start = row.seasonal_harvest?.occupancy_start_date ?? toPlanIsoDate(row.planting_date);
           const end = row.occupancy_end_date ?? getPlanOccupancyEndIso(row) ?? start;
-          return seasonBounds && (row.bed || row.parcel) && start && end
+          return seasonBounds && (row.bed || row.parcel || row.site) && start && end
             ? getSeasonOccupancyStatus(start, end, seasonBounds) : null;
         },
         valueFormatter: (value: SeasonOccupancyStatus | null) => (
@@ -3040,11 +3040,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           validateRow={(row) => {
             // A row can be saved as a draft and completed later, so nothing
             // is strictly required except enough to identify what the row
-            // is about: either a crop or a bed. Missing fields stay
+            // is about: either a crop or a growing area. Missing fields stay
             // visible via getRowValidationErrors' per-cell markers below.
             const hasCrop = Boolean(row.crop) && row.crop !== 0;
-            const hasBed = Boolean(row.bed) && row.bed !== 0;
-            if (!hasCrop && !hasBed) {
+            const hasGrowingArea = Boolean(row.bed || row.parcel || row.site);
+            if (!hasCrop && !hasGrowingArea) {
               return t("plantingPlans:validation.cropOrBedRequired");
             }
 
@@ -3064,7 +3064,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             if (!row.crop || row.crop === 0) {
               errors.crop = t("plantingPlans:validation.cropRequired");
             }
-            if (!row.parcel && (!row.bed || row.bed === 0)) {
+            if (!row.bed && !row.parcel && !row.site) {
               errors.bed = t("plantingPlans:validation.bedRequired");
             }
             if (!row.cultivation_type) {

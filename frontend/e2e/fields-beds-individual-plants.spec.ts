@@ -175,6 +175,13 @@ test('places a pending stem in a measured parcel of an unmeasured location', asy
   expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
     parcel: parcel.id, site: null, plants_count: 2, positioned_plants_count: 1, pending_plants_count: 1,
   });
+  await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
+  await panel.getByRole('button', { name: 'Position entfernen · Stamm 1' }).click();
+  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
+  expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
+    plants_count: 2, individual_positions: [], pending_plants_count: 2,
+  });
 });
 
 test('creates, drags and edits stems with the keyboard and keeps the parcel offsets', async ({ page, request }, testInfo) => {

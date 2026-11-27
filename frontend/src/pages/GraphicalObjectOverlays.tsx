@@ -28,7 +28,8 @@ import { formatCropOccupation } from './graphicalCropTimeLabels';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 import type { GraphicalIndividualPlant } from './graphicalIndividualPlants';
 import type { IndividualPlacementAction } from './useIndividualPlants';
-import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
+import { individualPositionLimit } from './individualPlantGeneration';
+import { canRemoveIndividualStem } from './individualPlantGeometry';
 
 export interface GraphicalAreaObject {
   key: string;
@@ -232,9 +233,9 @@ export function GraphicalObjectOverlays({
         activate: () => { if (crop !== null) onOpenCrop?.(crop); } },
       ...(!editAllowed ? [] : [
         { id: 'edit-stems', group: 'placement', label: t('individualPlants.editPlants'), activate: () => onEditPlant(plant, 'edit') },
-        { id: 'add-stem', group: 'placement', label: t('individualPlants.newPosition'), disabled: plant.count >= MAX_INDIVIDUAL_POSITIONS,
+        { id: 'add-stem', group: 'placement', label: t('individualPlants.newPosition'), disabled: plant.count >= individualPositionLimit(plant.plan.individual_count),
           activate: () => onEditPlant(plant, 'add') },
-        { id: 'remove-stem', group: 'remove', label: t('individualPlants.removePosition'), disabled: plant.count <= 1,
+        { id: 'remove-stem', group: 'remove', label: t('individualPlants.removePosition'), disabled: !canRemoveIndividualStem(plant.count, plant.plan.individual_count),
           activate: () => onEditPlant(plant, 'remove') },
       ]),
     ];

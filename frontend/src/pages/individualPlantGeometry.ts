@@ -4,6 +4,10 @@ import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rec
 export type PlacementDimensions = Pick<Field, 'width_m' | 'length_m'>;
 export type PlacementParent = IndividualPlacementParent;
 
+export function canRemoveIndividualStem(positioned: number, exactCount?: number | null) {
+  return positioned > 1 || (exactCount ?? 0) > 0;
+}
+
 export const placementLabelKey = (kind: PlacementParent['kind']) => ({
   bed: 'fields:individualPlants.inBed', field: 'fields:individualPlants.onParcel', location: 'fields:individualPlants.atLocation',
 } as const)[kind];

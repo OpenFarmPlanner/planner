@@ -74,9 +74,33 @@ test('records an exact location count from the table before any position is chos
     individual_positions: [], area_usage_sqm: null });
   await page.reload();
   await expect(page.locator(`[role="row"][data-id="${saved.id}"] [data-field="plants_count"]`)).toHaveText('3');
-  await expect(page.locator(`[role="row"][data-id="${saved.id}"] [data-field="bed"]`)).toContainText('Hofgarten');
+  const growingArea = page.locator(`[role="row"][data-id="${saved.id}"] [data-field="bed"]`);
+  await expect(growingArea).toContainText('Hofgarten');
+  await expect(growingArea).not.toHaveClass(/ofp-cell-error/);
   await page.goto(`/app/planting-plans/${saved.id}`);
   await expect(page.getByText('3 noch nicht positioniert', { exact: true })).toBeVisible();
+});
+
+test('previews regular bed placement when the location has no dimensions', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'inline-generation-unmeasured-location', {
+    demoProject: true, demoYear: 2026, loginAsAdmin: true,
+  });
+  await seedMixedBed(page);
+  const site = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Standort ohne Maßangaben' });
+  const parcel = await apiRequest<Field>(page, 'POST', '/fields/', {
+    name: 'Vermessene Parzelle', location: site.id, width_m: 10, length_m: 12,
+  });
+  const bed = await apiRequest<Bed>(page, 'POST', '/beds/', {
+    name: 'Vermessenes Einzelbeet', field: parcel.id, width_m: 2, length_m: 6,
+  });
+  const { cell } = await openDesktopDraft(page, bed.name, /Einzelpflanzen im Beet.*Vermessenes Einzelbeet/);
+  const count = cell('plants_count').getByRole('textbox');
+  await count.fill('max');
+  await count.press('Enter');
+  const preview = page.getByRole('dialog', { name: PREVIEW });
+  await expect(preview.getByTestId('individual-generation-preview')).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'Speichern', exact: true })).toBeEnabled();
 });
 
 test('previews a bed plan, cancels without writing, and saves exact stems beside an area plan', async ({ page, request }, info) => {

@@ -20,11 +20,11 @@ import type { GraphicPlacementContext, GraphicPlacementResolution } from './grap
 import type { Position } from './graphicalLayoutUtils';
 import { formatLocalizedNumber, resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import { formatSeasonDate } from '../seasons/formatSeasonDate';
-import { matchesPlacementParent, parcelMeters, planPlacementParent, roundMeters, shortStemSpacing, type PlacementDimensions, type PlacementParent } from './individualPlantGeometry';
+import { canRemoveIndividualStem, matchesPlacementParent, parcelMeters, planPlacementParent, roundMeters, shortStemSpacing, type PlacementDimensions, type PlacementParent } from './individualPlantGeometry';
 import { getAllowedCultivationTypesForCrop } from './plantingPlansUtils';
 import {
   collectOccupiedPlantPositions, individualCropSpacings, individualPlacementPeriod,
-  MAX_INDIVIDUAL_POSITIONS,
+  individualPositionLimit,
 } from './individualPlantGeneration';
 import { readyForPlacement, type IndividualPlantsController } from './useIndividualPlants';
 
@@ -174,7 +174,7 @@ export function GraphicalIndividualPlantsPanel({
   const measured = container ? parcelMeters(container) : null;
   const generationGeometry = parent ? placementContext?.generationGeometry(parent) : null;
   const canAdd = Boolean(draft && placementContext && readyForPlacement(draft, season)
-    && stems.length < Math.min(MAX_INDIVIDUAL_POSITIONS, draft.count ?? MAX_INDIVIDUAL_POSITIONS));
+    && stems.length < individualPositionLimit(draft.count));
   const validCount = draft?.count == null || Number.isInteger(draft.count)
     && draft.count >= stems.length && draft.count > 0 && draft.count <= 2147483647;
   const canRecordPending = draft?.allowCountOnly && validCount && Boolean(draft.count);
@@ -356,7 +356,7 @@ export function GraphicalIndividualPlantsPanel({
                         bgcolor: stem.key === selectedKey ? 'action.selected' : undefined }}>
                       {label}
                     </Button>
-                    {draft && <IconButton disabled={saving || Boolean(draft.planId && stems.length <= 1)}
+                    {draft && <IconButton disabled={saving || Boolean(draft.planId && !canRemoveIndividualStem(stems.length, draft.count))}
                       color="error" aria-label={`${tr('removePosition')} · ${label}`}
                       sx={{ width: 44, height: 44 }} onClick={() => changeStem(stem.key, null)}>
                       <DeleteOutlineIcon fontSize="small" />

@@ -8,6 +8,10 @@ import type { GraphicPlacementContext, PlantGenerationGeometry } from './graphic
 
 export const MAX_INDIVIDUAL_POSITIONS = 1000;
 
+export function individualPositionLimit(exactCount?: number | null) {
+  return Math.min(MAX_INDIVIDUAL_POSITIONS, exactCount ?? MAX_INDIVIDUAL_POSITIONS);
+}
+
 export interface RegularPlantInputs {
   count: number | 'max' | null;
   plantSpacing: number | null;

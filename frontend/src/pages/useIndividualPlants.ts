@@ -5,8 +5,8 @@ import type {
   GraphicPlacementScene, GraphicStemPoint, IndividualPlacementInput, PlantingPlan, PlanCultivationType, Season, StemCoordinates,
 } from '../api/types';
 import { formatDateToAPI } from '../utils/isoDate';
-import { placementParentFields, planPlacementParent, type PlacementParent } from './individualPlantGeometry';
-import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
+import { canRemoveIndividualStem, placementParentFields, planPlacementParent, type PlacementParent } from './individualPlantGeometry';
+import { individualPositionLimit } from './individualPlantGeneration';
 
 type PointToAdd = StemCoordinates & { graphic?: GraphicStemPoint };
 export type DraftStem = PointToAdd & { id?: string; key: string };
@@ -150,9 +150,9 @@ export function useIndividualPlants(
     const action = selection?.action;
     const requestedStem = selection && draft.stems.find(stem => stem.key === selection.stemId);
     if (selection && (!requestedStem || !plan?.updated_at)) return;
-    if (action === 'add' && draft.stems.length >= MAX_INDIVIDUAL_POSITIONS) return;
+    if (action === 'add' && draft.stems.length >= individualPositionLimit(draft.count)) return;
     if (action === 'remove') {
-      if (draft.stems.length <= 1) return;
+      if (!canRemoveIndividualStem(draft.stems.length, draft.count)) return;
       draft.stems = draft.stems.filter(stem => stem.key !== selection?.stemId);
     }
     update(value => {
@@ -170,7 +170,7 @@ export function useIndividualPlants(
     const added = points.map(point => ({ ...point, key: `new-${nextStemId.current++}` }));
     update(value => {
       if (!value.draft || !added.length) return {};
-      const limit = Math.min(MAX_INDIVIDUAL_POSITIONS, value.draft.count ?? MAX_INDIVIDUAL_POSITIONS);
+      const limit = individualPositionLimit(value.draft.count);
       if (value.draft.stems.length + added.length > limit) return { error: 'countExhausted' };
       return {
         draft: { ...value.draft, stems: [...value.draft.stems, ...added] },
@@ -182,7 +182,7 @@ export function useIndividualPlants(
 
   const changeStem = (stemKey: string, point: PointToAdd | null) => update(value => {
     if (!value.draft) return {};
-    if (!point && value.draft.planId && value.draft.stems.length <= 1) return {};
+    if (!point && value.draft.planId && !canRemoveIndividualStem(value.draft.stems.length, value.draft.count)) return {};
     const stems = point
       ? value.draft.stems.map(stem => stem.key === stemKey ? { ...stem, ...point } : stem)
       : value.draft.stems.filter(stem => stem.key !== stemKey);
