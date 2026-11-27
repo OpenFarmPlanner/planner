@@ -16,7 +16,7 @@ from drf_spectacular.utils import (
     extend_schema,
     extend_schema_view,
 )
-from rest_framework import status, viewsets
+from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.request import Request
 from rest_framework.response import Response
@@ -59,8 +59,13 @@ from farm.models import (
     PublicCropChangeProposal,
     format_crop_display_name,
 )
+from farm.services.crop_colors import (
+    CropColorResetConflict,
+    reset_variety_colors,
+    undo_variety_color_reset,
+)
 from farm.services.crop_companions import link_free_text_companions
-from farm.services.crop_deletion import crop_group_query, crops_affected_by_delete
+from farm.services.crop_deletion import MAX_BULK_CROPS, crop_group_query, crops_affected_by_delete
 from farm.services.crop_import.field_specs import seed_rate_unit_constraints_payload
 from farm.services.crop_import.spreadsheet import (
     apply_crop_import,
@@ -169,6 +174,37 @@ _CROP_WRITE_ERROR_RESPONSES = {
         ),
     ),
 }
+
+
+class CropColorResetEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    updated_at = serializers.DateTimeField()
+
+
+class CropColorResetSerializer(serializers.Serializer):
+    expected_project_id = serializers.IntegerField(min_value=1)
+    crops = CropColorResetEntrySerializer(
+        many=True, allow_empty=False, max_length=MAX_BULK_CROPS,
+    )
+
+    def validate_crops(self, crops):
+        expected_versions = {crop['id']: crop['updated_at'] for crop in crops}
+        if len(expected_versions) != len(crops):
+            raise serializers.ValidationError('Each variety must appear only once.')
+        return expected_versions
+
+
+class CropColorUndoSerializer(serializers.Serializer):
+    expected_project_id = serializers.IntegerField(min_value=1)
+    undo_token = serializers.CharField(max_length=1_000_000)
+
+
+def _crop_color_reset_conflict():
+    return api_error_response(
+        code='crop_color_reset_conflict',
+        detail='The project or selected varieties have changed. Reload the crops and try again.',
+        status_code=status.HTTP_409_CONFLICT,
+    )
 
 
 @extend_schema_view(
@@ -618,6 +654,35 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
             sibling.name = updated.name
             validate_crop_identity(sibling)
             sibling.save(update_fields=['name', 'name_normalized', 'updated_at'])
+
+    @extend_schema(request=CropColorResetSerializer, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['post'], url_path='reset-colors')
+    def reset_colors(self, request):
+        serializer = CropColorResetSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        project_id = request.active_project.pk
+        if data['expected_project_id'] != project_id:
+            return _crop_color_reset_conflict()
+        try:
+            return Response(reset_variety_colors(project_id, data['crops'], request.user))
+        except CropColorResetConflict:
+            return _crop_color_reset_conflict()
+
+    @extend_schema(request=CropColorUndoSerializer, responses={200: OpenApiTypes.OBJECT})
+    @action(detail=False, methods=['post'], url_path='undo-color-reset')
+    def undo_color_reset(self, request):
+        serializer = CropColorUndoSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        project_id = request.active_project.pk
+        if data['expected_project_id'] != project_id:
+            return _crop_color_reset_conflict()
+        try:
+            count = undo_variety_color_reset(project_id, data['undo_token'], request.user)
+        except CropColorResetConflict:
+            return _crop_color_reset_conflict()
+        return Response({'updated_count': count})
 
     @extend_schema(responses=CropHistoryEntrySerializer(many=True))
     @action(detail=True, methods=['get'], url_path='history')

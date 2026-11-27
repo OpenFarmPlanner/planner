@@ -267,6 +267,17 @@ erDiagram
   Renaming a crop group is atomic; a conflicting active general name in the
   same project returns 409 `crop_name_conflict` without partial saves. See
   [crop-library-architecture.md](./crop-library-architecture.md#sorte--kultur-value-inheritance).
+  The stored `display_color` is a base color on general crops and an optional
+  project-local override on varieties. An unset variety color resolves through
+  its same-project general crop. The project API returns the resolved color as
+  `effective_display_color`. The existing `display_color` field still reads
+  and writes the stored base or override, including the empty string for an
+  inherited variety. Clients can also write a hex color or `null` using
+  `display_color_override` on a variety. An explicit `null` restores
+  inheritance. A variety without a canonical parent uses the default planning color.
+  Past revisions contain the stored value, with no provenance distinguishing
+  automatically generated colors from manually chosen ones. Existing values
+  are preserved, including values that match the general crop color.
   Perennials have a positive whole-year `standing_time_years`. Varieties
   can inherit the value from their general crop. Existing perennial crops
   keep an unknown value until it is explicitly configured.

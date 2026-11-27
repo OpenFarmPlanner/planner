@@ -41,6 +41,7 @@ KIND_ENUM = 'enum'
 KIND_ENUM_LIST = 'enum_list'
 KIND_BOOLEAN = 'boolean'
 KIND_COLOR = 'color'
+INHERIT_DISPLAY_COLOR = 'inherit'
 # Free-text names, several per crop (the crop's tags).
 KIND_STRING_LIST = 'string_list'
 KIND_OBJECT = 'object'
@@ -626,7 +627,11 @@ CROP_FIELD_SPECS: tuple[FieldSpec, ...] = (
     FieldSpec(
         name='display_color',
         kind=KIND_COLOR,
-        description='Calendar colour as a #RRGGBB hex string.',
+        description=(
+            'Display colour as #RRGGBB. Use "inherit" to reset a variety to its general crop '
+            'colour. '
+            'Blank or omitted colours preserve existing values. New varieties inherit by default.'
+        ),
         example='#4CAF50',
         input_aliases={'display_color': None},
     ),

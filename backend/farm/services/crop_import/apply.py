@@ -21,7 +21,9 @@ from farm.models import CropImportDraft
 from farm.services.crop_companions import link_free_text_companions
 
 from .analysis import ACTION_CREATE, ACTION_SKIP, ACTION_UPDATE
+from .field_specs import INHERIT_DISPLAY_COLOR
 from .specific_properties import apply_specific_property_cells
+from .spreadsheet import resolve_import_crop_species
 
 # Canonical (metre-based) field names mapped to the centimetre-based fields the
 # existing CropSerializer exposes. The agent-facing contract stays in SI
@@ -62,6 +64,12 @@ def build_serializer_payload(item: dict[str, Any]) -> dict[str, Any]:
         value = field_entry['api_value']
         if value is None and name != 'plant_health':
             continue
+        if name == 'display_color':
+            if value == INHERIT_DISPLAY_COLOR:
+                payload[name] = ''
+            elif value:
+                payload[name] = value
+            continue
         centimeter_field = LENGTH_FIELD_TO_CENTIMETER_FIELD.get(name)
         if centimeter_field is not None:
             payload[centimeter_field] = float(value) * 100.0
@@ -78,6 +86,7 @@ def _apply_row(item: dict[str, Any], *, project, context: dict[str, Any]) -> dic
     action = item['action']
 
     if action == ACTION_CREATE:
+        resolve_import_crop_species(payload)
         apply_specific_property_cells(payload)
         serializer = CropSerializer(data=payload, context=context)
         serializer.is_valid(raise_exception=True)
@@ -176,7 +185,8 @@ def apply_import_draft(
     errors: list[dict[str, Any]] = []
 
     with transaction.atomic():
-        for item in draft.preview['items']:
+        items = sorted(draft.preview['items'], key=lambda item: bool(item['identity']['variety']))
+        for item in items:
             if item['action'] == ACTION_SKIP:
                 rows.append({
                     'index': item['index'],
@@ -209,7 +219,7 @@ def apply_import_draft(
         'created_count': sum(1 for row in rows if row['action'] == ACTION_CREATE),
         'updated_count': sum(1 for row in rows if row['action'] == ACTION_UPDATE),
         'skipped_count': sum(1 for row in rows if row['action'] == ACTION_SKIP),
-        'rows': rows,
+        'rows': sorted(rows, key=lambda row: row['index']),
     }
     draft.status = CropImportDraft.STATUS_APPLIED
     draft.applied_at = timezone.now()

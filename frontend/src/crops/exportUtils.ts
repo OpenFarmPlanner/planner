@@ -4,6 +4,7 @@ import { toTimingWindowPayload } from './timingWindows';
 import type { CompanionItemsByKind } from './companions';
 import { formatIsoDate } from '../utils/isoDate';
 import { buildDownloadFilename, downloadFilenameWord } from '../utils/downloadFilename';
+import { INHERIT_DISPLAY_COLOR } from './displayColor';
 
 type FilenameT = (key: string) => string;
 
@@ -168,7 +169,9 @@ export const toPortableCrop = (crop: Crop, companions?: CompanionItemsByKind): P
     row_spacing_cm: crop.row_spacing_cm,
     sowing_depth_cm: crop.sowing_depth_cm,
     sowing_depth_max_cm: crop.sowing_depth_max_cm,
-    display_color: crop.display_color,
+    display_color: crop.variety?.trim() && crop.display_color_override !== undefined
+      ? crop.display_color_override ?? INHERIT_DISPLAY_COLOR
+      : crop.display_color,
     seed_rate_value: crop.seed_rate_value,
     seed_rate_unit: crop.seed_rate_unit,
     seed_rate_direct_value: crop.seed_rate_direct_value,

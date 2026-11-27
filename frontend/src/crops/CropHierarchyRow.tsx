@@ -20,6 +20,7 @@ interface CropHierarchyRowProps {
   primary: string;
   isPrimaryEmphasized: boolean;
   secondary?: string;
+  colorAdornment?: ReactNode;
   varietyCount?: number;
   /**
    * Shows "(0)" on a row that has no varieties instead of no count at all.
@@ -79,6 +80,7 @@ export function CropHierarchyRow({
   primary,
   isPrimaryEmphasized,
   secondary,
+  colorAdornment,
   varietyCount,
   showZeroVarietyCount = false,
   highlightQuery,
@@ -168,6 +170,7 @@ export function CropHierarchyRow({
         collapseLabel={collapseLabel}
         sx={compactCropChevronButtonSx}
       />
+      {colorAdornment}
       <ListItemText
         primary={highlightQuery ? <HighlightedText text={primary} query={highlightQuery} /> : primary}
         secondary={secondary}

@@ -280,6 +280,10 @@ export interface Crop {
   sowing_calculation_safety_percent?: number;
   
   display_color?: string;
+  /** Saved project-local variety color. Null means the variety uses its general crop color. */
+  display_color_override?: string | null;
+  /** Resolved base or override color, for display only. */
+  effective_display_color?: string;
   
   // Computed, read-only.
   plants_per_m2?: number | null;
@@ -309,6 +313,8 @@ export interface Crop {
   created_at?: string;
   updated_at?: string;
 }
+
+export type CropColorResetEntry = { id: number; updated_at: string };
 
 /** The four kinds of crop timing windows, in display order. */
 /** No harvest kind: the harvest follows from planting date and growth duration. */

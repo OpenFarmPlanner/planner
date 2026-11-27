@@ -300,6 +300,10 @@
     "sowingDepthRangeError": "The maximum must be at least the minimum.",
     "displayColor": "Display color",
     "displayColorError": "Invalid color format (use #RRGGBB).",
+    "colorInherited": "Inherited color",
+    "colorOwn": "Own color",
+    "colorUseOwn": "Use own color",
+    "colorReset": "Use general crop color",
     "seedRateSectionTitle": "Seed demand",
     "seedRateDirectSectionTitle": "Seed demand for direct sowing",
     "seedRatePreCultivationSectionTitle": "Seed demand for transplanting",
@@ -623,6 +627,7 @@
       "undo": "Undo this action"
     },
     "import": {
+    "colorInheritRequiresVariety": "Only varieties can use inherit in the color column.",
       "summary_one": "{{count}} crop imported",
       "summary_other": "{{count}} crops imported",
       "actions": "Import actions",
@@ -790,7 +795,7 @@
         "required": "Only the “{{name}}” column is required. All other columns may be empty or missing entirely. The column order does not matter.",
         "numbers": "Write numbers with a comma or a point, e.g. 1,5 or 1.5.",
         "multipleValues": "Separate several values in one cell with “;”, e.g. cultivation types “{{example}}”.",
-        "color": "Enter “{{column}}” as a hex code, e.g. #2E7D32. Without one, a color is assigned automatically."
+        "color": "Enter “{{column}}” as #RRGGBB, for example #2E7D32. New varieties inherit when the cell is blank. For existing crops, leave it blank to keep the current setting, or enter inherit to reset a variety."
       },
       "varieties": {
         "withoutVariety": "A row without “{{variety}}” describes the crop itself.",
@@ -1806,6 +1811,17 @@
       "previous": "previous, crop",
       "next": "next, crop"
     }
+  },
+  "colorReset": {
+    "action": "Reset variety colors",
+    "confirm_one": "Reset the color of {{count}} selected variety in “{{project}}”? It will use its general crop color.",
+    "confirm_other": "Reset the colors of {{count}} selected varieties in “{{project}}”? They will use their general crop colors.",
+    "done_one": "Reset {{count}} variety color.",
+    "done_other": "Reset {{count}} variety colors.",
+    "restored_one": "Restored {{count}} variety color.",
+    "restored_other": "Restored {{count}} variety colors.",
+    "failed": "Could not reset the selected colors. Reload the crops and try again.",
+    "undoFailed": "Could not undo the color reset. Check the variety history."
   },
   "bulkDelete": {
     "title": "Delete selection?",

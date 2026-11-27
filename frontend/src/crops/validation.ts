@@ -238,6 +238,9 @@ export function validateCrop(
   if (draft.display_color && !/^#[0-9A-Fa-f]{6}$/.test(draft.display_color)) {
     errors.display_color = t('form.displayColorError');
   }
+  if (draft.display_color_override && !/^#[0-9A-Fa-f]{6}$/.test(draft.display_color_override)) {
+    errors.display_color_override = t('form.displayColorError');
+  }
 
   // If expected_yield is set, the yield unit must also be selected.
   if (

@@ -87,6 +87,8 @@ from farm.services.crop_inheritance import (
     build_general_crop_index,
     crop_group_rows_to_sync,
     crop_identity_write,
+    ensure_general_crop_for_variety,
+    find_general_crop,
     forces_species_invariant_inheritance,
     get_general_crop,
     is_unset_crop_value,
@@ -171,7 +173,6 @@ CROP_COPY_FIELDS = [
     'thousand_kernel_weight_g',
     'seeding_requirement',
     'seeding_requirement_type',
-    'display_color',
 ]
 
 # A Kultur's neighbours (CropCompanion rows, not a Crop column), compared,
@@ -228,7 +229,6 @@ PUBLIC_CROP_EDITABLE_FIELDS = [
     'thousand_kernel_weight_g',
     'seeding_requirement',
     'seeding_requirement_type',
-    'display_color',
     'seed_packages',
     'companions',
 ]
@@ -3962,7 +3962,7 @@ def _create_crop_from_public(
 
 
 def _ensure_local_general_crop(
-    *, public_crop: PublicCrop, project: Project, establish_link: bool = True,
+    *, crop: Crop, public_crop: PublicCrop, project: Project, establish_link: bool = True,
 ) -> None:
     """Companion to importing a variety: also import the species' general entry if missing.
 
@@ -3976,17 +3976,11 @@ def _ensure_local_general_crop(
     """
     if not public_crop.variety_normalized or public_crop.crop_species_id is None:
         return
-    # Crop.variety_normalized is left NULL (not '') for an empty variety
-    # (see Crop.save()), unlike PublicCrop's - filter on the raw field.
-    already_local = Crop.objects.filter(
-        project=project,
-        crop_species_id=public_crop.crop_species_id,
-        variety='',
-    ).exists()
-    if already_local:
+    if find_general_crop(project.pk, public_crop.crop_species_id):
         return
     general_public = find_general_public_crop(public_crop.crop_species)
     if general_public is None:
+        ensure_general_crop_for_variety(crop, creation_origin=Crop.CREATION_LIBRARY_IMPORT)
         return
     # The name already belongs to a general crop of another species (or of
     # none): adding a second one is impossible, and a renamed copy would only
@@ -4046,10 +4040,6 @@ def _apply_public_crop_update(
         payload = build_project_crop_payload(public_crop)
         for field in effective_library_pinned_fields(crop):
             payload.pop(field, None)
-        # `display_color` is a project-local choice — kept out of the update diff
-        # (see `_compared_public_update_fields`), so a pull must not silently
-        # overwrite it either.
-        payload.pop('display_color', None)
         if is_species_level_entry(public_crop):
             payload.pop('variety', None)
             for field in VARIETY_ONLY_COPY_FIELDS:
@@ -4133,9 +4123,7 @@ class PublicCropUpdateStatus:
 def _compared_public_update_fields(crop: Crop, *, include_pinned: bool = False) -> list[str]:
     """The fields whose difference counts as a real library update for ``crop``.
 
-    - ``display_color`` is a project-local presentation choice: an imported crop
-      always gets an auto colour while a public entry often has none, so a
-      colour mismatch is never on its own a "library update".
+    - ``display_color`` stays on the project and is absent from the copy fields.
     - ``crop_family`` / ``nutrient_demand`` on a species-linked Sorte belong to
       the species-level public entry, not the variety one (see
       :func:`build_public_crop_payload`).
@@ -4144,7 +4132,7 @@ def _compared_public_update_fields(crop: Crop, *, include_pinned: bool = False) 
       Only the sync preview, where a pin can be released, asks for them
       (``include_pinned``).
     """
-    excluded = {'display_color'}
+    excluded = set()
     if (crop.variety or '').strip() and crop.crop_species_id:
         excluded |= set(PUBLIC_SPECIES_INVARIANT_FIELDS)
     if not include_pinned:
@@ -4584,7 +4572,8 @@ def import_public_crop_into_project(
                     establish_link=establish_link,
                 )
                 _ensure_local_general_crop(
-                    public_crop=public_crop, project=project, establish_link=establish_link,
+                    crop=crop, public_crop=public_crop, project=project,
+                    establish_link=establish_link,
                 )
             _record_library_crop_revision(crop, None)
         return crop, 'created'

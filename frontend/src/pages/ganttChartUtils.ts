@@ -4,6 +4,7 @@ import type { Task } from '../gantt-chart/src/types';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import { addUtcDays, formatIsoDate, parseIsoDate } from '../utils/isoDate';
 import { formatCropDisplayName, getCropDisplayName } from '../crops/cropDisplay';
+import { getCropDisplayColor } from '../crops/displayColor';
 import { getGanttPhaseColors } from '../utils/colorContrast';
 import { getPlanSowingSchedule } from './planSowingDate';
 import { hasEarlyRecordedOccupancy } from './plantingPlansUtils';
@@ -185,7 +186,7 @@ function getCropColor(
   const crop = typeof cropId === 'number'
     ? crops.find((entry) => entry.id === cropId)
     : undefined;
-  return crop?.display_color || fallbackColor || getDefaultCropColor(cropName);
+  return getCropDisplayColor(crop) || fallbackColor || getDefaultCropColor(cropName);
 }
 
 /**

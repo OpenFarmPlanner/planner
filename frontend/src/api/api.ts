@@ -17,6 +17,7 @@ import type {
   AppNotification,
   NotificationListResponse,
   Crop,
+  CropColorResetEntry,
   CropLoss,
   CropLossWrite,
   CropDeletePreview,
@@ -194,6 +195,10 @@ export const cropAPI = {
   }) => http.post<CropBulkDeleteResult>('/crops/bulk-delete/', payload),
   recoverBulkDelete: (expected_project_id: number, batch_id: number) =>
     http.post<{ restored_count: number }>('/crops/bulk-delete/undo/', { expected_project_id, batch_id }),
+  resetVarietyColors: (expected_project_id: number, crops: CropColorResetEntry[]) =>
+    http.post<{ updated_count: number; undo_token: string | null }>('/crops/reset-colors/', { expected_project_id, crops }),
+  undoVarietyColorReset: (expected_project_id: number, undo_token: string) =>
+    http.post<{ updated_count: number }>('/crops/undo-color-reset/', { expected_project_id, undo_token }),
   delete: (id: number) => http.delete(`/crops/${id}/`),
   history: (id: number) => http.get<CropHistoryEntry[]>(`/crops/${id}/history/`),
   restore: (id: number, history_id: number) => http.post<Crop>(`/crops/${id}/restore/`, { history_id }),

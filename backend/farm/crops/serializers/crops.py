@@ -79,9 +79,11 @@ from farm.services.crop_inheritance import (
     get_general_crop,
     has_variety_identity_conflict,
     is_unset_crop_value,
+    is_variety_crop,
     lock_crop_project,
     promote_species_invariant_values,
     raise_crop_identity_conflict,
+    resolve_crop_display_color,
     resolve_crop_field,
     resolve_effective_rotation_break_years,
     resolve_effective_timing_windows,
@@ -215,6 +217,11 @@ class CropSerializer(serializers.ModelSerializer):
         default='',
         help_text='Crop variety; blank or null for species-level general data'
     )
+    display_color_override = serializers.CharField(
+        required=False, allow_null=True, max_length=7,
+        help_text='Project-local variety color. Null restores the general crop color.',
+    )
+    effective_display_color = serializers.SerializerMethodField()
     crop_family = PlantFamilyField()
     light_requirement = CropLightField(required=False)
     crop_family_display_name = serializers.SerializerMethodField(
@@ -663,6 +670,9 @@ class CropSerializer(serializers.ModelSerializer):
         general_crop = self._resolve_general_crop(obj)
         return general_crop.pk if general_crop else None
 
+    def get_effective_display_color(self, obj: Crop) -> str:
+        return resolve_crop_display_color(obj, self._general_crop_index(obj))
+
     def get_inherited_fields(self, obj: Crop) -> list[str]:
         return [
             INHERITABLE_API_FIELD_NAMES.get(model_field, model_field)
@@ -939,6 +949,10 @@ class CropSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        general_crops = self._general_crop_index(instance)
+        data['display_color_override'] = (
+            instance.display_color or None if is_variety_crop(instance) else None
+        )
         for field_name in _SEED_RATE_UNIT_FIELDS:
             data[field_name] = _normalized_seed_rate_unit_representation(data.get(field_name))
         data['seed_requirements'] = self._build_seed_requirements_representation(data)
@@ -946,7 +960,7 @@ class CropSerializer(serializers.ModelSerializer):
         # the effective spacing; leaving this on the row's own spacing would let
         # a Sorte show a plant count the grid then refuses to edit.
         data['plants_per_m2'] = self._api_representation(
-            'plants_per_m2', resolve_plants_per_m2(instance, self._general_crop_index(instance)),
+            'plants_per_m2', resolve_plants_per_m2(instance, general_crops),
         )
         return data
 
@@ -1267,6 +1281,9 @@ class CropSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('Display color must be in hex format (#RRGGBB).')
         return value
 
+    def validate_display_color_override(self, value: str | None) -> str | None:
+        return self.validate_display_color(value)
+
     def validate_seed_rate_unit(self, value):
         """Normalize legacy seed rate unit values and validate supported units."""
         return _normalize_seed_rate_unit_value(value)
@@ -1329,6 +1346,13 @@ class CropSerializer(serializers.ModelSerializer):
         self._validate_supplier_data_rows(attrs, errors)
         self._resolve_supplier_from_name(attrs)
         self._normalize_variety(attrs)
+        if 'display_color_override' in attrs:
+            override = attrs.pop('display_color_override')
+            variety = attrs.get('variety', getattr(self.instance, 'variety', ''))
+            if variety:
+                attrs['display_color'] = override or ''
+            elif override is not None:
+                errors['display_color_override'] = 'Only crop varieties can have a color override.'
         self._validate_standing_time(attrs, errors)
         self._normalize_tags(attrs)
         if 'plant_health' in attrs:

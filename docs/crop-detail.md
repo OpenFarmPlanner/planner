@@ -80,8 +80,12 @@ pest/disease assignments and the existing prevention/general notes. Assignments
 use a field label within that section, with the main heading also visible when
 assignments are its only filled field. Identity, spacing, yield and germination retain their shared
 form order; project tags, rotation breaks, timing windows, tasks and supplier data
-and library metadata remain in their own contexts. Display colour remains an
-identity/header control in read views and an editable form section.
+and library metadata remain in their own contexts. Project crop details and
+forms show the effective display colour. Varieties start with the colour of
+their general crop and can save or reset an individual colour. Crop selection
+also offers a confirmed reset for the selected variety overrides, with Undo
+and a revision in each variety's history. If any selected variety changes
+before confirmation is saved, the selection is reloaded for a new confirmation.
 
 The assignment label and documented-host dialog title have contextual info
 buttons. Existing help text opens on hover or keyboard focus; click/tap keeps it

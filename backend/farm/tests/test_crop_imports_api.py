@@ -3,6 +3,7 @@
 
 from rest_framework.test import APITestCase as DRFAPITestCase
 
+from crops.models import CropSpecies
 from farm.crops.serializers import CropSerializer
 from farm.models import (
     Crop,
@@ -12,6 +13,7 @@ from farm.models import (
     ProjectMembership,
     Supplier,
 )
+from farm.services.crop_import.field_specs import INHERIT_DISPLAY_COLOR
 from farm.services.demo_project import populate_demo_project
 from farm.tests.api_base import User
 
@@ -376,6 +378,74 @@ class CropImportAPITest(DRFAPITestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['created_count'], 0)
         self.assertIn('display_color', response.data['errors'][0]['error'])
+
+    def test_variety_color_preview_and_import_distinguish_omitted_explicit_and_inherit(self):
+        species = CropSpecies.objects.create(name='Lettuce color fixture')
+        url = '/openfarmplanner/api/crops/import/'
+        rows = [
+            {'name': species.name, 'variety': 'Inherited', 'display_color': ''},
+            {'name': species.name, 'variety': 'Explicit', 'display_color': '#227744'},
+            {'name': species.name, 'display_color': '#227744'},
+        ]
+        response = self.client.post(f'{url}apply/', {
+            'items': rows, 'confirm_updates': False,
+        }, format='json')
+        self.assertEqual(response.data['created_count'], 3, response.data)
+        rows_by_species = Crop.objects.filter(project=self.project, crop_species=species)
+        crops = {row.variety: row for row in rows_by_species}
+        self.assertEqual(crops[''].display_color, '#227744')
+        self.assertEqual(crops['Inherited'].display_color, '')
+        self.assertEqual(crops['Explicit'].display_color, '#227744')
+
+        variety = {'name': species.name, 'variety': 'Explicit'}
+        for color_data in ({}, {'display_color': ''}, {'display_color': None}):
+            updates = [{**variety, **color_data}]
+            preview = self.client.post(f'{url}preview/', updates, format='json')
+            self.assertEqual(preview.data['results'][0]['diff'], [])
+            self.client.post(f'{url}apply/', {
+                'items': updates, 'confirm_updates': True,
+            }, format='json')
+            crops['Explicit'].refresh_from_db()
+            self.assertEqual(crops['Explicit'].display_color, '#227744')
+
+        updates = [{**variety, 'display_color': 'inherit'}]
+        preview = self.client.post(f'{url}preview/', updates, format='json')
+        self.assertEqual(preview.data['results'][0]['diff'], [
+            {'field': 'display_color', 'current': '#227744', 'new': 'inherit'},
+        ])
+        self.client.post(f'{url}apply/', {'items': updates, 'confirm_updates': True}, format='json')
+        crops['Explicit'].refresh_from_db()
+        self.assertEqual(crops['Explicit'].display_color, '')
+        exported = self.client.post(f'{url}preview/', [
+            {**variety, 'display_color': '#227744'}, {**rows[0], 'display_color': 'inherit'},
+        ], format='json')
+        self.assertEqual(exported.data['results'][0]['diff'], [
+            {'field': 'display_color', 'current': 'inherit', 'new': '#227744'},
+        ])
+        self.assertEqual(exported.data['results'][1]['diff'], [])
+
+        errors = self.client.post(f'{url}preview/', [
+            {'name': species.name, 'display_color': 'inherit'},
+            {**variety, 'display_color': 'blue'},
+        ], format='json').data['results']
+        self.assertEqual(
+            [row['error_code'] for row in errors],
+            ['color_inherit_requires_variety', 'invalid_color'],
+        )
+
+    def test_import_can_implicitly_create_the_base_color(self):
+        species = CropSpecies.objects.create(name='Implicit color fixture')
+        response = self.client.post('/openfarmplanner/api/crops/import/apply/', {
+            'items': [{'name': species.name, 'variety': 'Green'}], 'confirm_updates': False,
+        }, format='json')
+        self.assertEqual(response.data['created_count'], 1, response.data)
+        rows = Crop.objects.filter(project=self.project, crop_species=species)
+        general = rows.get(variety_normalized__isnull=True)
+        variety = rows.get(variety='Green')
+        self.assertRegex(general.display_color, r'^#[0-9a-f]{6}$')
+        self.assertEqual(variety.display_color, '')
+        result = CropSerializer(variety).data
+        self.assertEqual(result['effective_display_color'], general.display_color)
 
     def test_import_preview_creates_no_supplier(self):
         """A preview only reports; cancelling it must leave no new supplier behind."""
@@ -762,6 +832,8 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         rows = []
         for crop in Crop.objects.filter(project=self.source).select_related('supplier').order_by('id'):
             data = dict(CropSerializer(crop).data)
+            if crop.variety_normalized:
+                data['display_color'] = data['display_color_override'] or INHERIT_DISPLAY_COLOR
             data['supplier_name'] = crop.supplier.name if crop.supplier else crop.seed_supplier
             # Empty cells are left out on import, exactly like here.
             rows.append({
@@ -776,6 +848,8 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
         rows = []
         for crop in Crop.objects.filter(project=self.source).select_related('supplier').order_by('id'):
             data = dict(CropSerializer(crop).data)
+            if crop.variety_normalized:
+                data['display_color'] = data['display_color_override'] or INHERIT_DISPLAY_COLOR
             row = {key: data.get(key) for key in SPREADSHEET_COLUMN_KEYS}
             # What importUtils.normalizeImportCropEntry sends for `supplierName`.
             row['supplier_name'] = crop.supplier.name if crop.supplier else None
@@ -814,10 +888,12 @@ class CropSpreadsheetRoundTripTest(DRFAPITestCase):
 
     @staticmethod
     def _effective_columns(project: Project) -> dict[tuple[str, str], dict]:
-        """Per crop, each sheet column's value as the app shows it, inheritance included."""
+        """Compare effective growing data and the portable color intent."""
         result = {}
         for crop in Crop.objects.filter(project=project).select_related('supplier'):
             data = dict(CropSerializer(crop).data)
+            if crop.variety_normalized:
+                data['display_color'] = data['display_color_override'] or INHERIT_DISPLAY_COLOR
             data['supplier_name'] = crop.supplier.name if crop.supplier else crop.seed_supplier
             effective = data.get('effective_values') or {}
             result[(crop.name, crop.variety or '')] = {

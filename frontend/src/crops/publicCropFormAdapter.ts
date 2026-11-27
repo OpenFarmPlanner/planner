@@ -123,7 +123,6 @@ export function publicCropToCropFormData(crop: PublicCrop): Crop {
     thousand_kernel_weight_g: crop.thousand_kernel_weight_g ?? undefined,
     seeding_requirement: crop.seeding_requirement ?? undefined,
     seeding_requirement_type: crop.seeding_requirement_type ?? '',
-    display_color: crop.display_color ?? '',
     seed_packages: crop.seed_packages ?? [],
   };
 }
@@ -216,7 +215,6 @@ export function buildPublicCropUpdatePayload(
     thousand_kernel_weight_g: draft.thousand_kernel_weight_g ?? null,
     seeding_requirement: draft.seeding_requirement ?? null,
     seeding_requirement_type: normalizeSeedingRequirementType(draft.seeding_requirement_type),
-    display_color: draft.display_color ?? '',
     seed_packages: draft.seed_packages ?? [],
   };
 }

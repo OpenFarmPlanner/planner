@@ -1861,21 +1861,6 @@ export default function PublicCropLibraryPage() {
                           !useCompactLibraryLayout && detailHeaderTitleColumnSx,
                         ]}
                       >
-                        {selectedCrop.display_color ? (
-                          <Box
-                            sx={{
-                              width: 4,
-                              borderRadius: 1,
-                              backgroundColor: selectedCrop.display_color,
-                              opacity: 0.75,
-                              my: 0.5,
-                              alignSelf: 'stretch',
-                              flexShrink: 0,
-                            }}
-                            aria-label={t('library.page.fields.displayColor')}
-                            title={selectedCrop.display_color}
-                          />
-                        ) : null}
                         <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', py: 0.25 }}>
                           {useCompactLibraryLayout ? (
                             <CropTitleSelectorButton

@@ -303,6 +303,10 @@
     "sowingDepthRangeError": "Il massimo deve essere almeno pari al minimo.",
     "displayColor": "Colore visualizzato",
     "displayColorError": "Formato colore non valido (usa #RRGGBB).",
+    "colorInherited": "Colore ereditato",
+    "colorOwn": "Colore personalizzato",
+    "colorUseOwn": "Usa un colore personalizzato",
+    "colorReset": "Usa il colore della coltura",
     "seedRateSectionTitle": "Fabbisogno di sementi",
     "seedRateDirectSectionTitle": "Fabbisogno di sementi per semina diretta",
     "seedRatePreCultivationSectionTitle": "Fabbisogno di sementi per trapianto",
@@ -637,6 +641,7 @@
       "undo": "Annulla questa azione"
     },
     "import": {
+    "colorInheritRequiresVariety": "Solo le varietà accettano il valore inherit nella colonna del colore.",
       "summary_one": "{{count}} coltura importata",
       "summary_other": "{{count}} colture importate",
       "actions": "Azioni di importazione",
@@ -808,7 +813,7 @@
         "required": "È obbligatoria solo la colonna «{{name}}». Tutte le altre colonne possono restare vuote o mancare del tutto. L’ordine delle colonne non conta.",
         "numbers": "Scrivi i numeri con la virgola o il punto, es. 1,5 o 1.5.",
         "multipleValues": "Separa più valori in una cella con «;», es. tipi di coltivazione «{{example}}».",
-        "color": "Indica «{{column}}» come codice esadecimale, es. #2E7D32. Se manca, viene assegnato automaticamente un colore."
+        "color": "Indica «{{column}}» nel formato #RRGGBB, ad esempio #2E7D32. Con una cella vuota, le nuove varietà ereditano il colore della coltura e le righe esistenti mantengono il loro colore. Inserisci inherit per ripristinare il colore ereditato di una varietà."
       },
       "varieties": {
         "withoutVariety": "Una riga senza «{{variety}}» descrive la coltura stessa.",
@@ -1854,6 +1859,20 @@
       "previous": "precedente, coltura",
       "next": "successiva, coltura"
     }
+  },
+  "colorReset": {
+    "action": "Ripristina i colori delle varietà",
+    "confirm_one": "Ripristinare il colore di {{count}} varietà selezionata in «{{project}}»? Userà il colore della sua coltura.",
+    "confirm_many": "Ripristinare i colori di {{count}} varietà selezionate in «{{project}}»? Useranno i colori delle rispettive colture.",
+    "confirm_other": "Ripristinare i colori di {{count}} varietà selezionate in «{{project}}»? Useranno i colori delle rispettive colture.",
+    "done_one": "Colore di {{count}} varietà ripristinato.",
+    "done_many": "Colori di {{count}} varietà ripristinati.",
+    "done_other": "Colori di {{count}} varietà ripristinati.",
+    "restored_one": "Recuperato il colore di {{count}} varietà.",
+    "restored_many": "Recuperati i colori di {{count}} varietà.",
+    "restored_other": "Recuperati i colori di {{count}} varietà.",
+    "failed": "Impossibile ripristinare i colori selezionati. Ricarica le colture e riprova.",
+    "undoFailed": "Impossibile annullare il ripristino. Consulta la cronologia della varietà."
   },
   "bulkDelete": {
     "title": "Eliminare la selezione?",

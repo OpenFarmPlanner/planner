@@ -71,6 +71,7 @@ import { YieldSection } from './sections/YieldSection';
 import { SpacingSection } from './sections/SpacingSection';
 import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
+import { getCropDisplayColor } from './displayColor';
 import { NotesSection } from './sections/NotesSection';
 import { CompanionsSection } from './sections/CompanionsSection';
 import { CropCompanionsSection } from './CropCompanionsSection';
@@ -1586,7 +1587,18 @@ export function CropForm({
             {isProjectForm
               ? crop ? <CropCompanionsSection crop={crop} crops={(crops ?? []) as Crop[]} onEdit={isSaving ? undefined : onEditCompanions} /> : null
               : <CompanionsSection state={companionRows} disabled={isSaving} />}
-            <ColorSection formData={formData} errors={errors} onChange={handleChange} t={t} defaultColor={DEFAULT_DISPLAY_COLOR} />
+            {isProjectForm ? (
+              <ColorSection
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
+                t={t}
+                defaultColor={DEFAULT_DISPLAY_COLOR}
+                isVariety={formKind === 'variety'}
+                parentColor={isSpeciesLinkedVariety && selectedSpeciesCrop?.crop_species === formData.crop_species
+                  ? getCropDisplayColor(selectedSpeciesCrop) : undefined}
+              />
+            ) : null}
             {isProjectForm ? (
               <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} getFieldPinProps={getFieldPinProps} />
             ) : null}

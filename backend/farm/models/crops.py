@@ -919,7 +919,7 @@ class Crop(TimestampedModel):
         'sowing_calculation_safety_percent_direct', 'seed_rate_pre_cultivation_value',
         'seed_rate_pre_cultivation_unit', 'sowing_calculation_safety_percent_pre_cultivation',
         'thousand_kernel_weight_g', 'seeding_requirement',
-        'seeding_requirement_type', 'display_color', 'supplier_id', 'supplier_product_url', 'image_file_id',
+        'seeding_requirement_type', 'supplier_id', 'supplier_product_url', 'image_file_id',
         'selected_seed_demand_supplier_id',
     }
 
@@ -948,13 +948,17 @@ class Crop(TimestampedModel):
         if self.source_public_crop_id and not self.derived_from_public_crop_id:
             self.derived_from_public_crop_id = self.source_public_crop_id
 
-        # Generate display color on creation if not set.
-        if not self.pk and not self.display_color:
-            self.display_color = self._generate_display_color()
-
         # Always update normalized fields based on current values
         self.name_normalized = normalize_text(self.name) or ''
         self.variety_normalized = normalize_text(self.variety)
+        # A blank variety color is inherited. Only general crops own a base color.
+        update_fields = kwargs.get('update_fields')
+        if not self.variety_normalized and not self.display_color and (
+            update_fields is None or {'variety', 'display_color'}.intersection(update_fields)
+        ):
+            self.display_color = self._generate_display_color()
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'display_color'}
 
         previous, current = self._save_crop_row(previous, *args, **kwargs)
         changed_fields = self._compute_changed_fields(previous, current)

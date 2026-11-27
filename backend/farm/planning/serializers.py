@@ -35,6 +35,7 @@ from farm.services.crop_display import format_crop_label, resolve_crop_display_n
 from farm.services.crop_inheritance import (
     build_general_crop_index,
     plan_cultivation_type,
+    resolve_crop_display_color,
     resolve_crop_field,
     resolve_plants_per_m2,
 )
@@ -67,7 +68,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
     crop_variety = serializers.CharField(source='crop.variety', read_only=True, allow_blank=True, allow_null=True)
     crop_display_name = serializers.SerializerMethodField(read_only=True)
     crop_display_language_code = serializers.SerializerMethodField(read_only=True)
-    crop_display_color = serializers.CharField(source='crop.display_color', read_only=True, allow_blank=True, allow_null=True)
+    crop_display_color = serializers.SerializerMethodField()
     # Crop timing/cultivation values the Gantt calendar plans from. Served as
     # *effective* values so a Sorte that only overrides some fields still drives
     # the calendar with its general Kultur's remaining values.
@@ -209,6 +210,11 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
 
     def get_crop_propagation_duration_days(self, obj: PlantingPlan) -> int | None:
         return self._effective_crop_value(obj, 'propagation_duration_days')
+
+    def get_crop_display_color(self, obj: PlantingPlan) -> str | None:
+        if obj.crop is None:
+            return None
+        return resolve_crop_display_color(obj.crop, self._general_crop_index(obj))
 
     def get_crop_cultivation_type(self, obj: PlantingPlan) -> str | None:
         return self._effective_crop_value(obj, 'cultivation_type')

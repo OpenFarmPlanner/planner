@@ -26,6 +26,7 @@ import {
 import { HighlightedText } from '../components/HighlightedText';
 import { useSearchExpandedGroups } from './useSearchExpandedGroups';
 import { CropBulkSelectionActions, CropBulkSelectionRow } from './CropBulkSelectionControls';
+import { CropColorSwatch } from './CropColorSwatch';
 import type { ProjectCropSelection } from './useProjectCropSelection';
 
 const EMPTY_MATCHED_GROUP_ROW_IDS: ReadonlySet<string> = new Set();
@@ -45,6 +46,7 @@ interface CropMobileSelectorDialogProps {
   matchedGroupRowIds?: ReadonlySet<string>;
   bulkSelection?: ProjectCropSelection;
   bulkVisibleCropIds?: number[];
+  onResetColors?: () => void;
   t: TFunction<'crops'>;
 }
 
@@ -65,6 +67,7 @@ export function CropMobileSelectorDialog({
   matchedGroupRowIds = EMPTY_MATCHED_GROUP_ROW_IDS,
   bulkSelection,
   bulkVisibleCropIds,
+  onResetColors,
   t,
 }: CropMobileSelectorDialogProps) {
   useOverlayHistory({
@@ -111,7 +114,8 @@ export function CropMobileSelectorDialog({
       <DialogContent sx={{ px: 1.5, pb: 2 }}>
         {selectorControl}
         {bulkSelection && bulkVisibleCropIds ? (
-          <CropBulkSelectionActions selection={bulkSelection} onOpenPreview={onClose} visibleIds={bulkVisibleCropIds} />
+          <CropBulkSelectionActions selection={bulkSelection} onOpenPreview={onClose} visibleIds={bulkVisibleCropIds}
+            onResetColors={onResetColors} />
         ) : null}
         {visibleRows.length === 0 ? (
           <Typography variant="body2" color="text.secondary" sx={{ px: 1.5, py: 2 }}>
@@ -180,6 +184,7 @@ export function CropMobileSelectorDialog({
                     sx={mobileCropChevronButtonSx}
                     placeholderWidth={MOBILE_TOUCH_TARGET_SIZE}
                   />
+                  {crop ? <CropColorSwatch crop={crop} /> : null}
                   <ListItemText
                     primary={highlightQuery
                       ? <HighlightedText text={rowLabel} query={highlightQuery} />

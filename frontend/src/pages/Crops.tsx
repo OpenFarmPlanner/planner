@@ -18,7 +18,7 @@ import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
-import type { CropBulkDeleteResult, CropHistoryEntry } from '../api/types';
+import type { CropBulkDeleteResult, CropColorResetEntry, CropHistoryEntry } from '../api/types';
 import { CropDetail } from '../crops/CropDetail';
 import { CropBulkDeletionDialog } from '../crops/CropBulkDeletionDialog';
 import { useProjectCropSelection } from '../crops/useProjectCropSelection';
@@ -88,9 +88,14 @@ function Crops() {
   const setTopbarContextActions = outletContext?.setTopbarContextActions;
   const activeSeasonLoaded = outletContext?.activeSeasonLoaded ?? true;
   const isMissingActiveSeason = Boolean(outletContext) && activeSeasonLoaded && !outletContext?.activeSeason;
-  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId } = useProjectRequirement();
+  const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId, activeProjectMembership } = useProjectRequirement();
   const [bulkUndo, setBulkUndo] = useState<{ projectId: number; result: CropBulkDeleteResult } | null>(null);
   const recoveringBulk = useRef(false);
+  const [colorResetTarget, setColorResetTarget] = useState<{
+    projectId: number; varieties: CropColorResetEntry[];
+  } | null>(null);
+  const [colorResetUndo, setColorResetUndo] = useState<{ projectId: number; token: string; count: number } | null>(null);
+  const [savingColorReset, setSavingColorReset] = useState(false);
   const { selectedCropId, updateSelectedCropId } = useSelectedCropSync();
   const fallbackHistoryActorLabel = user?.display_label || user?.display_name || user?.email || undefined;
 
@@ -267,6 +272,48 @@ function Crops() {
     bulkSelection.completeTarget();
     setBulkUndo({ projectId, result });
     void loadCrops(undefined, projectId);
+  };
+
+  const resetSelectedColors = async () => {
+    if (!colorResetTarget || colorResetTarget.projectId !== activeProjectId || savingColorReset) return;
+    const { projectId, varieties } = colorResetTarget;
+    setSavingColorReset(true);
+    try {
+      const { data } = await cropAPI.resetVarietyColors(projectId, varieties);
+      if (Number(window.localStorage.getItem('activeProjectId')) !== projectId) return;
+      setColorResetTarget(null);
+      bulkSelection.cancel();
+      setColorResetUndo(data.undo_token ? { projectId, token: data.undo_token, count: data.updated_count } : null);
+      await loadCrops(undefined, projectId);
+    } catch {
+      if (Number(window.localStorage.getItem('activeProjectId')) === projectId) {
+        setColorResetTarget(null);
+        showSnackbar(t('colorReset.failed'), 'error');
+        await loadCrops(undefined, projectId);
+      }
+    } finally {
+      setSavingColorReset(false);
+    }
+  };
+
+  const undoSelectedColorReset = async () => {
+    if (!colorResetUndo || colorResetUndo.projectId !== activeProjectId || savingColorReset) return;
+    const { projectId, token } = colorResetUndo;
+    setSavingColorReset(true);
+    try {
+      const { data } = await cropAPI.undoVarietyColorReset(projectId, token);
+      if (Number(window.localStorage.getItem('activeProjectId')) !== projectId) return;
+      setColorResetUndo(null);
+      if (await loadCrops(undefined, projectId)) {
+        showSnackbar(t('colorReset.restored', { count: data.updated_count }), 'success');
+      }
+    } catch {
+      if (Number(window.localStorage.getItem('activeProjectId')) === projectId) {
+        showSnackbar(t('colorReset.undoFailed'), 'error');
+      }
+    } finally {
+      setSavingColorReset(false);
+    }
   };
 
   const recoverBulkDeletion = async () => {
@@ -724,6 +771,8 @@ function Crops() {
               name: crop.name,
               crop_species: savedCrop.crop_species ?? crop.crop_species,
               variety: firstVariety.name,
+              display_color: undefined,
+              display_color_override: null,
               copy_values_to_crop: firstVariety.copyValuesToCrop,
             });
             const varietyResponse = await cropAPI.create(varietyPayload as Crop);
@@ -917,6 +966,11 @@ function Crops() {
           }}
           onDeleteCrop={handleDelete}
           bulkSelection={bulkSelection}
+          onResetColors={() => {
+            if (activeProjectId && bulkSelection.colorResetSelection.length) {
+              setColorResetTarget({ projectId: activeProjectId, varieties: bulkSelection.colorResetSelection });
+            }
+          }}
           onUnlinkPublicCrop={handleRequestUnlinkPublicCrop}
           canCreatePlan={canCreatePlantingPlan}
           createPlanDisabledTooltip={createPlanDisabledTooltip}
@@ -1077,9 +1131,21 @@ function Crops() {
           onComplete={result => completeBulkDeletion(bulkTarget.expected_project_id, result)}
         />
       ) : null}
-
-
-
+      <ConfirmationDialog
+        open={colorResetTarget != null && colorResetTarget.projectId === activeProjectId}
+        title={t('colorReset.action')}
+        message={t('colorReset.confirm', {
+          count: colorResetTarget?.varieties.length ?? 0,
+          project: activeProjectMembership?.project_name ?? '',
+        })}
+        cancelLabel={t('common:actions.cancel')}
+        confirmLabel={t('colorReset.action')}
+        onCancel={() => { if (!savingColorReset) setColorResetTarget(null); }}
+        onConfirm={() => void resetSelectedColors()}
+        confirmButtonProps={{ disabled: savingColorReset }}
+        cancelButtonProps={{ disabled: savingColorReset }}
+        disableBackdropClose
+      />
       <AlertSnackbar
         open={snackbar.open}
         autoHideDuration={4200}
@@ -1120,6 +1186,18 @@ function Crops() {
           testId="bulk-crop-undo-snackbar"
           onClose={() => setBulkUndo(null)}
           onUndo={() => void recoverBulkDeletion()}
+        />
+      ) : null}
+      {colorResetUndo && colorResetUndo.projectId === activeProjectId ? (
+        <DeleteUndoSnackbar
+          key={colorResetUndo.token}
+          open
+          message={t('colorReset.done', { count: colorResetUndo.count })}
+          undoLabel={t('common:actions.undo')}
+          offsetIndex={pendingCropDeletions.length + (bulkUndo ? 1 : 0)}
+          testId="crop-color-reset-undo"
+          onClose={() => setColorResetUndo(null)}
+          onUndo={() => void undoSelectedColorReset()}
         />
       ) : null}
     </PageContainer>

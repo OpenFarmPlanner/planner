@@ -16,6 +16,53 @@ async function activeCropIds(page: Page) {
   return rows.results.map(crop => crop.id);
 }
 
+test('edits an inherited color by keyboard and undoes a selected reset on a phone', async ({ page, request }, info) => {
+  test.setTimeout(90_000);
+  const scenario = `crop-color-phone-${randomUUID().slice(0, 8)}`;
+  try {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
+    const species = await apiRequest<PaginatedResponse<{ id: number }>>(page, 'GET', '/crop-species/?page_size=10');
+    const general = await apiRequest<Crop>(page, 'POST', '/crops/', {
+      name: 'Farbtest', crop_species: species.results[0].id, display_color: '#227744',
+    });
+    const variety = await apiRequest<Crop>(page, 'POST', '/crops/', {
+      name: general.name, crop_species: general.crop_species, variety: 'Farbsorte',
+    });
+    const detail = `/app/crops?cropId=${variety.id}`;
+    await page.goto(`${detail}&action=edit`);
+    const editor = page.getByRole('dialog', { name: de.form.editVarietyTitle, exact: true });
+    await expect(editor.getByText(de.form.colorInherited, { exact: true })).toBeVisible();
+    await expect(editor.getByText('#227744', { exact: true })).toBeVisible();
+    const own = editor.getByRole('button', { name: de.form.colorUseOwn, exact: true });
+    await own.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: info.outputPath('inherited-color-phone.png'), animations: 'disabled' });
+    await own.press('Enter');
+    await expect(editor.getByRole('button', { name: de.form.colorReset, exact: true })).toBeFocused();
+    await editor.getByRole('button', { name: de.form.save, exact: true }).click();
+    const varietyUrl = `/crops/${variety.id}/`;
+    await expect.poll(async () => (await apiRequest<Crop>(page, 'GET', varietyUrl)).display_color_override).toBe('#227744');
+    await apiRequest(page, 'PATCH', `/crops/${general.id}/`, { display_color: '#993355' });
+    await page.goto(detail);
+    await expect(page.getByText(`${de.form.colorOwn} · #227744`, { exact: true })).toBeVisible();
+
+    await page.getByRole('button', { name: de.selectCrop, exact: true }).tap();
+    const picker = page.getByRole('dialog', { name: de.selectCrop, exact: true });
+    await picker.getByRole('button', { name: de.library.batchImport.selectCultures, exact: true }).tap();
+    await picker.getByRole('textbox', { name: de.searchPlaceholder, exact: true }).fill('Farbsorte');
+    await picker.getByRole('checkbox', { name: /Farbsorte/ }).tap();
+    await picker.getByRole('button', { name: de.colorReset.action, exact: true }).tap();
+    const confirmation = page.getByRole('dialog', { name: de.colorReset.action, exact: true });
+    await expect(confirmation.getByRole('button', { name: common.actions.cancel, exact: true })).toBeFocused();
+    await confirmation.getByRole('button', { name: de.colorReset.action, exact: true }).tap();
+    await expect(page.getByText(`${de.form.colorInherited} · #993355`, { exact: true })).toBeVisible();
+    await page.getByTestId('crop-color-reset-undo').getByRole('button', { name: common.actions.undo }).tap();
+    await expect(page.getByText(`${de.form.colorOwn} · #227744`, { exact: true })).toBeVisible();
+  } finally {
+    await resetE2EScenario(request, scenario);
+  }
+});
+
 async function filterByOrigin(page: Page, label: string) {
   await page.getByRole('button', { name: de.filters.openAdvanced }).click();
   await page.getByRole('combobox', { name: de.bulkDelete.origin.label }).click();

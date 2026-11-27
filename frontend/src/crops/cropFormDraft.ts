@@ -140,7 +140,6 @@ export const buildDraftFromPublicCrop = (publicCrop: PublicCrop): Partial<Crop> 
   thousand_kernel_weight_g: publicCrop.thousand_kernel_weight_g ?? undefined,
   seeding_requirement: publicCrop.seeding_requirement ?? undefined,
   seeding_requirement_type: publicCrop.seeding_requirement_type ?? '',
-  display_color: publicCrop.display_color ?? '',
   seed_packages: publicCrop.seed_packages ?? [],
 });
 
