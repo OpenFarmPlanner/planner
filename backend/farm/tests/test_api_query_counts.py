@@ -827,17 +827,22 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             }
             PlantingPlan.objects.create(parcel=self.field, **shared)
             PlantingPlan.objects.create(bed=self.bed, individual_bed=True, **shared)
+            PlantingPlan.objects.create(site=self.location, **shared)
             if index == 0:
                 with CaptureQueriesContext(connection) as baseline:
                     response = self.client.get(url)
-                self.assertEqual(response.data['count'], 2)
+                self.assertEqual(response.data['count'], 3)
         with self.assertNumQueries(len(baseline)):
             response = self.client.get(url)
-        self.assertEqual(response.data['count'], 2 * ROW_COUNT)
+        self.assertEqual(response.data['count'], 3 * ROW_COUNT)
         self.assertEqual(
             {(plan['placement_mode'], plan['parcel_location_id'])
              for plan in response.data['results']},
-            {('individual_parcel', self.location.pk), ('individual_bed', self.location.pk)},
+            {
+                ('individual_parcel', self.location.pk),
+                ('individual_bed', self.location.pk),
+                ('individual_site', self.location.pk),
+            },
         )
 
     def test_individual_hierarchy_summaries_keep_query_count_constant(self):
