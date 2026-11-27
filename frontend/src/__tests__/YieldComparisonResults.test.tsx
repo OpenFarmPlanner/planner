@@ -96,7 +96,7 @@ it('shows a measured zero and a missing matrix cell without inventing a trend', 
       { season_id: 1, status: 'missing', value: null, partial: false, below_resolution: false },
       { season_id: 2, status: 'measured', value: '0', partial: false, below_resolution: false },
     ],
-  }]} seasons={[current, missing]} groups={[]} locale="de-DE" onOpen={() => undefined} />);
+  }]} seasons={[missing, current]} groups={[]} locale="de-DE" onOpen={() => undefined} />);
   const cells = within(screen.getByRole('row', { name: /^Lauch/ })).getAllByRole('cell');
   expect(within(cells[0]).getByText('Nicht erfasst')).toBeInTheDocument();
   expect(within(cells[1]).getByText('0 kg/m²')).toBeVisible();
