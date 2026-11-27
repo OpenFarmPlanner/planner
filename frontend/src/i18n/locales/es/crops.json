@@ -1864,10 +1864,13 @@
   "colorReset": {
     "action": "Restablecer los colores de las variedades",
     "confirm_one": "¿Restablecer el color de {{count}} variedad seleccionada en «{{project}}»? Usará el color de su cultivo.",
+    "confirm_many": "¿Restablecer los colores de {{count}} variedades seleccionadas en «{{project}}»? Usarán los colores de sus cultivos.",
     "confirm_other": "¿Restablecer los colores de {{count}} variedades seleccionadas en «{{project}}»? Usarán los colores de sus cultivos.",
     "done_one": "Se ha restablecido el color de {{count}} variedad.",
+    "done_many": "Se han restablecido los colores de {{count}} variedades.",
     "done_other": "Se han restablecido los colores de {{count}} variedades.",
     "restored_one": "Se ha recuperado el color de {{count}} variedad.",
+    "restored_many": "Se han recuperado los colores de {{count}} variedades.",
     "restored_other": "Se han recuperado los colores de {{count}} variedades.",
     "failed": "No se han podido restablecer los colores seleccionados. Vuelve a cargar los cultivos e inténtalo de nuevo.",
     "undoFailed": "No se ha podido deshacer el cambio. Consulta el historial de la variedad."

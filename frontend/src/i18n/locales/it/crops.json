@@ -1863,10 +1863,13 @@
   "colorReset": {
     "action": "Ripristina i colori delle varietà",
     "confirm_one": "Ripristinare il colore di {{count}} varietà selezionata in «{{project}}»? Userà il colore della sua coltura.",
+    "confirm_many": "Ripristinare i colori di {{count}} varietà selezionate in «{{project}}»? Useranno i colori delle rispettive colture.",
     "confirm_other": "Ripristinare i colori di {{count}} varietà selezionate in «{{project}}»? Useranno i colori delle rispettive colture.",
     "done_one": "Colore di {{count}} varietà ripristinato.",
+    "done_many": "Colori di {{count}} varietà ripristinati.",
     "done_other": "Colori di {{count}} varietà ripristinati.",
     "restored_one": "Recuperato il colore di {{count}} varietà.",
+    "restored_many": "Recuperati i colori di {{count}} varietà.",
     "restored_other": "Recuperati i colori di {{count}} varietà.",
     "failed": "Impossibile ripristinare i colori selezionati. Ricarica le colture e riprova.",
     "undoFailed": "Impossibile annullare il ripristino. Consulta la cronologia della varietà."

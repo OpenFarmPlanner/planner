@@ -1864,10 +1864,13 @@
   "colorReset": {
     "action": "Réinitialiser les couleurs des variétés",
     "confirm_one": "Réinitialiser la couleur de {{count}} variété sélectionnée dans « {{project}} » ? Elle reprendra la couleur de sa culture.",
+    "confirm_many": "Réinitialiser les couleurs de {{count}} variétés sélectionnées dans « {{project}} » ? Elles reprendront les couleurs de leurs cultures.",
     "confirm_other": "Réinitialiser les couleurs de {{count}} variétés sélectionnées dans « {{project}} » ? Elles reprendront les couleurs de leurs cultures.",
     "done_one": "Couleur de {{count}} variété réinitialisée.",
+    "done_many": "Couleurs de {{count}} variétés réinitialisées.",
     "done_other": "Couleurs de {{count}} variétés réinitialisées.",
     "restored_one": "Couleur de {{count}} variété restaurée.",
+    "restored_many": "Couleurs de {{count}} variétés restaurées.",
     "restored_other": "Couleurs de {{count}} variétés restaurées.",
     "failed": "Impossible de réinitialiser les couleurs sélectionnées. Rechargez les cultures et réessayez.",
     "undoFailed": "Impossible d’annuler la réinitialisation. Consultez l’historique de la variété."

@@ -1863,10 +1863,13 @@
   "colorReset": {
     "action": "Repor as cores das variedades",
     "confirm_one": "Repor a cor de {{count}} variedade selecionada em «{{project}}»? A variedade passará a usar a cor da sua cultura.",
+    "confirm_many": "Repor as cores de {{count}} variedades selecionadas em «{{project}}»? As variedades passarão a usar as cores das respetivas culturas.",
     "confirm_other": "Repor as cores de {{count}} variedades selecionadas em «{{project}}»? As variedades passarão a usar as cores das respetivas culturas.",
     "done_one": "Cor de {{count}} variedade reposta.",
+    "done_many": "Cores de {{count}} variedades repostas.",
     "done_other": "Cores de {{count}} variedades repostas.",
     "restored_one": "Cor anterior de {{count}} variedade recuperada.",
+    "restored_many": "Cores anteriores de {{count}} variedades recuperadas.",
     "restored_other": "Cores anteriores de {{count}} variedades recuperadas.",
     "failed": "Não foi possível repor as cores selecionadas. Recarregue as culturas e tente novamente.",
     "undoFailed": "Não foi possível anular a reposição. Consulte o histórico da variedade."
