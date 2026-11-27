@@ -1,5 +1,6 @@
 import { expect, test, type Locator } from '@playwright/test';
 import common from '../src/i18n/locales/de/common.json' with { type: 'json' };
+import navigation from '../src/i18n/locales/de/navigation.json' with { type: 'json' };
 import plans from '../src/i18n/locales/de/plantingPlans.json' with { type: 'json' };
 import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, resetE2EScenario } from './utils';
 
@@ -133,10 +134,10 @@ test.describe('planting plan setup and empty grid layout', () => {
             await expect(draft).toHaveCount(0);
             await expectReadableGridMessage(grid);
           } else {
-            const dialog = page.getByRole('dialog', {
-              name: withSeason ? plans.mobile.createTitle : /^Saison .* anlegen\?$/,
-            });
+            const dialog = withSeason ? page.getByRole('dialog', { name: plans.mobile.createTitle })
+              : page.getByRole('dialog', { name: navigation.firstSeason.title, exact: true });
             await expect(dialog).toBeVisible();
+            if (!withSeason) await expect(dialog.getByLabel(navigation.firstSeason.year, { exact: true })).toBeVisible();
             await page.keyboard.press('Escape');
             await expect(dialog).toBeHidden();
           }

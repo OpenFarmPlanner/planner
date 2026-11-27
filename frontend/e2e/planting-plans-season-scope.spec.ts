@@ -32,8 +32,9 @@ test('an empty project opens season creation directly from the Crop Calendar', a
       await create.focus();
       await expect(create).toBeFocused();
       await create.press('Enter');
-      const dialog = page.getByRole('dialog', { name: /^Saison .* anlegen\?$/ });
+      const dialog = page.getByRole('dialog', { name: navigation.firstSeason.title, exact: true });
       await expect(dialog).toBeVisible();
+      await expect(dialog.getByLabel(navigation.firstSeason.year, { exact: true })).toBeVisible();
       await expect(page).toHaveURL(/\/app\/gantt-chart(?:\?|$)/);
       await page.keyboard.press('Escape');
       await expect(dialog).toBeHidden();
