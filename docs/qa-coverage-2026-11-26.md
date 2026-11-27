@@ -37,7 +37,8 @@ tasks on individual plant markers, #1655).
 | --- | --- | --- |
 | All 19 app routes: crawl for page errors, failed API calls, overflow, raw i18n keys, screenshots | all four, 7 languages (non-German at 2) | Pass |
 | German UI text leaking into en/fr/es/it/pt/nl | 1440, 375 | Pass (only German demo user data) |
-| Public pages (landing, about, legal × 7 languages), login, register, forgot password, demo | 1440, 375 | Pass, each in its own language |
+| Localized public pages | 1440, 375 | All 35 registered variants passed a follow-up on the same baseline. The original sweep recorded 20 without listing them. |
+| Login, register, forgot password, demo | 1440, 375 | Pass, each in its own language |
 | Sign-in / reset / account messages per language | 1440 | **Fail**: [#1657](https://github.com/OpenFarmPlanner/planner/issues/1657) |
 | New-user journey: dashboard checklist → parcel → bed → crop dialog → season → planting plan (keyboard entry) | 1440 | Pass |
 | Invitation acceptance via login, reused link | 1440, 375 | Pass |
