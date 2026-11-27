@@ -25,7 +25,8 @@ confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
 
 ## 0. Sync: remove Accepted rows
 
-1. Start from current trusted `main`. Freeze a candidate manifest the way the launcher does: preview with
+1. Start from current trusted `main`. Freeze a candidate manifest the way the
+   launcher does: preview with
    `python3 scripts/local_qa/start.py sync --preview`, then build the manifest
    with `live_queue()`, `metadata()`, `references()`/`issue_links()` and
    `plan('sync', …)` from `scripts/local_qa/rounds.py` (its `launch()` needs
@@ -36,10 +37,12 @@ confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
    `decisionRevision`; compare with the manifest, since revisions above 1 are
    normal. The card's reviewed PR is merged and its merge commit equals the
    card's `commit` and is an ancestor of `origin/main`. Every
-   `closedByPullRequestsReferences` PR is merged, and no cross-referenced or
-   connected PR is open or closed unmerged (check `timelineItems`). The row has
-   no `PR #N` gate. Skip anything changed or uncertain and say why. Rows
-   already absent are local-only reconciliations.
+   `closedByPullRequestsReferences` PR is merged. Inspect cross-referenced and
+   connected PRs in `timelineItems` for implementation work. Use the PR's
+   closing references and diff to confirm the relationship. An open
+   or closed-unmerged implementation PR or an explicit `PR #N` gate prevents
+   removal. Skip anything changed or uncertain and say why. Rows already absent
+   are local-only reconciliations.
 3. Show the eligible rows (with their manual hints), the skips and each
    explicit QA follow-up. Follow-ups keep their own rows; never remove them
    with the original.
