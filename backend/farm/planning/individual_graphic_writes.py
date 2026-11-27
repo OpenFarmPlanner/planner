@@ -32,10 +32,14 @@ from .individual_planting import (
 )
 
 
+class GraphicPlacementPointSerializer(GraphicPointSerializer):
+    id = serializers.UUIDField(required=False)
+
+
 class GraphicPlacementRequestSerializer(serializers.Serializer):
     request_id = serializers.UUIDField()
     scene = GraphicSceneSerializer()
-    points = GraphicPointSerializer(
+    points = GraphicPlacementPointSerializer(
         many=True, allow_empty=False, max_length=MAX_INDIVIDUAL_POSITIONS
     )
     plan = serializers.IntegerField(min_value=1, required=False)
@@ -72,6 +76,10 @@ class GraphicPlacementRequestSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     'Choose a crop, planting date and cultivation type.'
                 )
+            if any('id' in point for point in attrs['points']):
+                raise serializers.ValidationError({
+                    'points': 'New positions cannot specify a plant ID.',
+                })
             if ('pending_parent' in attrs) != (attrs.get('individual_count') is not None):
                 raise serializers.ValidationError(
                     'Choose which parent keeps the unpositioned plants.'
@@ -95,6 +103,8 @@ def _group_points(scene, points):
     groups = {}
     for point in points:
         area, stem = scene.resolve(point)
+        if 'id' in point:
+            stem['id'] = str(point['id'])
         key = area.parent['kind'], area.entity.pk
         groups.setdefault(key, []).append(stem)
     return groups
@@ -217,7 +227,11 @@ def _new_plans(view, data, groups):
 
 
 def _fill_plan(view, source, groups, data):
-    old_positions = source.individual_positions
+    moved_ids = [stem['id'] for stems in groups.values() for stem in stems if 'id' in stem]
+    previous_ids = {stem['id'] for stem in source.individual_positions}
+    if len(moved_ids) != len(set(moved_ids)) or not previous_ids.issuperset(moved_ids):
+        raise PlacementConflict()
+    old_positions = [stem for stem in source.individual_positions if stem['id'] not in moved_ids]
     if 'existing_positions' in data:
         old_positions = _normalize_positions(
             data['existing_positions'], old_positions, source.placement_parent
@@ -239,7 +253,7 @@ def _fill_plan(view, source, groups, data):
         and not within_parent
         and exact_count in (None, cross_parent_count)
     ):
-        # Keep the source ID when all of its previously unplaced plants change parent.
+        # Keep the source ID when the source has no remaining plants at its old parent.
         retained_parent = next(iter(groups))
         within_parent = groups.pop(retained_parent)
         cross_parent_count -= len(within_parent)
@@ -261,7 +275,7 @@ def _fill_plan(view, source, groups, data):
 
 
 def _with_ids(stems):
-    return [{**stem, 'id': str(uuid4())} for stem in stems]
+    return [stem if 'id' in stem else {**stem, 'id': str(uuid4())} for stem in stems]
 
 
 def _request_hash(data):

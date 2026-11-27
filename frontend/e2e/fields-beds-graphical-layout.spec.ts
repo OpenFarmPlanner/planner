@@ -649,10 +649,10 @@ test.describe('location spacing in a touch-capable browser', () => {
     await selectLocation(page, 'Hofgarten');
     await expect(page.getByRole('button', { name: /^Layoutprüfung/ })).toHaveCount(0);
     const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
-    const dialog = page.getByRole('dialog', { name: 'Abstände (Wege)' });
+    const dialog = page.getByRole('dialog', { name: 'Abstände' });
     const bed = dialog.getByRole('textbox', { name: 'Zwischen Beeten (cm)' });
     const parcel = dialog.getByRole('textbox', { name: 'Zwischen Parzellen (cm)' });
-    const checkbox = dialog.getByRole('checkbox', { name: 'Beim Verschieben an Abständen einrasten' });
+    const checkbox = dialog.getByRole('checkbox', { name: 'Pflanzen und Flächen an Abständen einrasten' });
     const apply = dialog.getByRole('button', { name: 'Übernehmen' });
     await trigger.focus();
     await page.keyboard.press('Enter');
@@ -698,14 +698,14 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
-    for (const [locale, button, title, edit, shift, details, workspaceLabel, modeLabel] of [
-      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Arbeitsbereichsmenü', 'Kulturen & Aufgaben'],
-      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/, 'View details', 'Workspace menu', 'Crops & tasks'],
-      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Menu de l’espace de travail', 'Cultures et tâches'],
-      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Menú del área de trabajo', 'Cultivos y tareas'],
-      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Menu dell’area di lavoro', 'Colture e attività'],
-      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Menu da área de trabalho', 'Culturas e tarefas'],
-      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Werkruimtemenu', 'Gewassen en taken'],
+    for (const [locale, button, edit, shift, details, workspaceLabel, modeLabel] of [
+      ['de', 'Abstände', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Arbeitsbereichsmenü', 'Kulturen & Aufgaben'],
+      ['en', 'Spacing', 'Edit graphic', /Hold Shift/, 'View details', 'Workspace menu', 'Crops & tasks'],
+      ['fr', 'Espacement', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Menu de l’espace de travail', 'Cultures et tâches'],
+      ['es', 'Distancias', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Menú del área de trabajo', 'Cultivos y tareas'],
+      ['it', 'Distanze', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Menu dell’area di lavoro', 'Colture e attività'],
+      ['pt', 'Espaçamento', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Menu da área de trabalho', 'Culturas e tarefas'],
+      ['nl', 'Afstanden', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Werkruimtemenu', 'Gewassen en taken'],
     ] as const) {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
       await page.setViewportSize({ width: 375, height: 800 });
@@ -734,7 +734,7 @@ test.describe('location spacing in a touch-capable browser', () => {
       const spacingItem = page.getByRole('menuitem', { name: button, exact: true });
       await expect.poll(async () => (await spacingItem.boundingBox())?.height ?? 0).toBeGreaterThanOrEqual(44);
       await spacingItem.tap();
-      const translated = page.getByRole('dialog', { name: title });
+      const translated = page.getByRole('dialog', { name: button, exact: true });
       await expect(translated).toBeVisible();
       await expect(translated.getByRole('textbox').first()).toBeFocused();
       await expect(translated.getByText(shift)).toHaveCount(0);
@@ -856,8 +856,8 @@ test('snaps real bed and parcel edges and permits closer placement with Shift or
   expect(storedAfterShift.field_layouts.find(layout => layout.field === fields[1].id)!.x).toBeGreaterThan(fieldTarget + 5);
 
   await page.getByRole('button', { name: 'Abstände', exact: true }).click();
-  const spacing = page.getByRole('dialog', { name: 'Abstände (Wege)' });
-  await spacing.getByRole('checkbox', { name: 'Beim Verschieben an Abständen einrasten' }).uncheck();
+  const spacing = page.getByRole('dialog', { name: 'Abstände' });
+  await spacing.getByRole('checkbox', { name: 'Pflanzen und Flächen an Abständen einrasten' }).uncheck();
   await spacing.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
   await startDrag(fieldId, 188, 0.1);
@@ -977,7 +977,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       await expect(spacing).toHaveCount(0);
       await display.press('Enter');
       await page.getByRole('menuitem', { name: 'Abstände', exact: true }).press('Enter');
-      await expect(page.getByRole('dialog', { name: 'Abstände (Wege)' })).toBeVisible();
+      await expect(page.getByRole('dialog', { name: 'Abstände' })).toBeVisible();
       await page.keyboard.press('Escape');
       await expect(display).toBeFocused();
       await expect(location).toHaveAccessibleName(`Standort · ${longLocationName}`);

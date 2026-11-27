@@ -152,6 +152,46 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         capacity = calculate_bed_capacity(self.bed, start=date(2026, 5, 1), end=date(2026, 6, 1))
         self.assertTrue(capacity.has_unmeasured_placement)
 
+    def test_graphic_draft_move_preserves_stem_ids_counts_and_retries(self):
+        scene = self.graphic_scene()
+        original = self.create_plan(individual_count=4).json()
+        moved, retained = original['individual_positions']
+        destination = {**self.graphic_point(self.bed, 2, 3), 'id': moved['id']}
+        data = {
+            'request_id': str(uuid4()), 'scene': scene, 'plan': original['id'],
+            'placement_updated_at': original['updated_at'],
+        }
+        url = f'{URL}graphic-placement/'
+        for changes in (
+            {'points': [destination, destination]},
+            {'points': [{**destination, 'id': str(uuid4())}]},
+            {'points': [destination], 'existing_positions': [moved, retained]},
+        ):
+            with self.subTest(changes=changes):
+                response = self.client.post(url, {**data, **changes}, format='json')
+                self.assertIn(response.status_code, (400, 409), response.data)
+                current = self.client.get(f'{URL}{original["id"]}/').json()
+                self.assertEqual(current['individual_positions'], [moved, retained])
+                self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
+
+        data.update(points=[destination], existing_positions=[retained])
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        source, target = response.json()['plans']
+        self.assertEqual(source['id'], original['id'])
+        self.assertEqual(source['individual_positions'], [retained])
+        self.assertEqual((source['plants_count'], source['pending_plants_count']), (3, 2))
+        self.assertEqual(target['bed'], self.bed.pk)
+        self.assertEqual(target['individual_positions'], [{'id': moved['id'], 'x_m': 1, 'y_m': 2}])
+        self.assertEqual(target['plants_count'], 1)
+        retried = self.client.post(url, data, format='json')
+        self.assertEqual(retried.status_code, 200, retried.data)
+        keys = ('id', 'individual_positions', 'plants_count', 'pending_plants_count')
+        self.assertCountEqual(
+            [tuple(plan[key] for key in keys) for plan in retried.json()['plans']],
+            [tuple(plan[key] for key in keys) for plan in (source, target)],
+        )
+
     def test_harvest_suggestion_names_the_direct_site(self):
         self.graphic_scene()
         plan = self.create_plan(
@@ -197,6 +237,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertIsNone(created['area_usage_sqm'])
         self.assertEqual(created['plants_count'], 2)
         self.assertEqual(created['recommended_plant_spacing_m'], 4)
+        self.assertEqual(created['recommended_within_row_spacing_m'], 4)
         self.assertEqual(Decimal(created['estimated_canopy_diameter_m']), Decimal('3.50'))
         self.assertEqual(created['clearing_date'], '2038-04-18')
 
@@ -231,6 +272,23 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         empty = self.client.get('/openfarmplanner/api/young-plant-demand/').json()['results'][0]
         self.assertEqual(empty['plant_count'], 0)
         self.assertEqual(PlantingPlan.objects.filter(parcel=self.field).count(), 1)
+
+    def test_within_row_recommendation_does_not_use_row_or_canopy_spacing(self):
+        self.apple.distance_within_row_m = None
+        self.apple.row_spacing_m = 3
+        self.apple.save()
+        plan = self.create_plan().json()
+        self.assertEqual(plan['recommended_plant_spacing_m'], 3)
+        self.assertIsNone(plan['recommended_within_row_spacing_m'])
+
+    def test_within_row_recommendation_applies_variety_inheritance_and_override(self):
+        variety = self.variety_inheriting_from_apple()
+        inherited = self.create_plan(crop=variety.pk).json()
+        self.assertEqual(inherited['recommended_within_row_spacing_m'], 4)
+        variety.distance_within_row_m = 1.5
+        variety.save()
+        overridden = self.client.get(f'{URL}{inherited["id"]}/').json()
+        self.assertEqual(overridden['recommended_within_row_spacing_m'], 1.5)
 
     def test_rejects_foreign_parcel_and_malformed_placement_without_writes(self):
         other = Project.objects.create(name='Other project', slug='other-placements')

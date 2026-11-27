@@ -100,6 +100,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         help_text='Current updated_at value required when changing individual positions or canopy.',
     )
     recommended_plant_spacing_m = serializers.SerializerMethodField()
+    recommended_within_row_spacing_m = serializers.SerializerMethodField()
     harvest_date = serializers.SerializerMethodField(read_only=True)
     harvest_end_date = serializers.SerializerMethodField(read_only=True)
     seasonal_harvest = serializers.SerializerMethodField(
@@ -199,13 +200,18 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         return obj.individual_total - len(obj.individual_positions) if obj.is_individual else None
 
     def get_recommended_plant_spacing_m(self, obj: PlantingPlan) -> float | None:
+        return self.get_recommended_within_row_spacing_m(obj) or self._positive_individual_spacing(
+            obj, 'row_spacing_m',
+        )
+
+    def get_recommended_within_row_spacing_m(self, obj: PlantingPlan) -> float | None:
+        return self._positive_individual_spacing(obj, 'distance_within_row_m')
+
+    def _positive_individual_spacing(self, obj: PlantingPlan, field: str) -> float | None:
         if not obj.is_individual or obj.crop_id is None:
             return None
-        for field in ('distance_within_row_m', 'row_spacing_m'):
-            value = self._effective_crop_value(obj, field)
-            if value and isfinite(value) and value > 0:
-                return value
-        return None
+        value = self._effective_crop_value(obj, field)
+        return value if value and isfinite(value) and value > 0 else None
 
     def _general_crop_index(self, obj: PlantingPlan) -> dict[int, Crop]:
         """The project's general Kulturen, built once per request (not per row)."""

@@ -1,7 +1,7 @@
 import type { GraphicPlacementScene, GraphicStemPoint, Location, StemCoordinates } from '../api/types';
 import { getBedWorldRect, type GraphicalParcel } from './graphicalAreaGeometry';
 import { FIELD_WORLD_PX_PER_METER } from './graphicalFieldsGeometry';
-import { canvasToStem, parcelMeters, matchesPlacementParent, type PlacementParent } from './individualPlantGeometry';
+import { canvasToStem, parcelMeters, matchesPlacementParent, stemToCanvas, type PlacementParent } from './individualPlantGeometry';
 import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
 
 type PlacementFrame = Rect & {
@@ -131,7 +131,11 @@ export function createGraphicPlacementContext(location: Location, boundary: Rect
     const metric = localToMetric(source, stem);
     return frame?.measured && metric ? toLocal(frame, metric) : null;
   };
-  return { scene, resolveWorld, resolveLocal, generationGeometry, projectBetweenParents };
+  const projectToWorld = (parent: PlacementParent, stem: StemCoordinates) => {
+    const point = localToMetric(parent, stem);
+    return point ? stemToCanvas({ x_m: point.x, y_m: point.y }, location, boundary, rotation) : null;
+  };
+  return { scene, resolveWorld, resolveLocal, generationGeometry, projectBetweenParents, projectToWorld };
 }
 
 /** Preserve measured-parent placement for sites that predate location dimensions. */
@@ -167,7 +171,22 @@ export function createParentLocalPlacement(parent: PlacementParent, parcels: rea
     const stem = canvasToStem(point, { width_m: meters.width, length_m: meters.height }, world, orientation);
     return stem ? resolveLocal(parent, stem) : { error: 'geometryUnknown' };
   };
+  const projectToWorld = (source: PlacementParent, stem: StemCoordinates) => {
+    if (source.kind === 'field' && source.id === parcel.rect.id && parcel.layout.pixelsPerMeter) {
+      return stemToCanvas(stem, parcel.field, parcel.rect, rotation);
+    }
+    if (source.kind !== 'bed') return null;
+    const peer = parcel.layout.bedRects.find(item => item.id === source.id && item.supportsMetricSpacing);
+    if (!peer || (!parcel.layout.pixelsPerMeter && peer !== bed)) return null;
+    const surface = getBedWorldRect(parcel, peer);
+    const across = peer.placementRotation % 180 !== 0;
+    return stemToCanvas(stem, {
+      width_m: (across ? surface.height : surface.width) / FIELD_WORLD_PX_PER_METER,
+      length_m: (across ? surface.width : surface.height) / FIELD_WORLD_PX_PER_METER,
+    }, surface, peer.placementRotation);
+  };
   return { scene: undefined, surface: world, resolveLocal, resolveWorld,
+    projectToWorld,
     generationGeometry: (target: PlacementParent) => matchesPlacementParent(target, parent) ? { bounds, excluded } : null,
     projectBetweenParents: (source: PlacementParent, target: PlacementParent, stem: StemCoordinates) =>
       matchesPlacementParent(source, target) ? stem : null };

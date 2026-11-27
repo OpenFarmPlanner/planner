@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { LocationLayoutsResponse, PaginatedResponse, YoungPlantDemand } from '../src/api/types';
-import { activateCanvasTool, apiRequest, canvasInteractionPoint, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, graphicDisplayButton, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
 
 type Stem = { id: string; x_m: number; y_m: number };
 type Plan = {
@@ -36,6 +36,15 @@ async function individualPlans(page: Page, locationId: number) {
     page, 'GET', `/planting-plans/?individual_location=${locationId}`,
   );
   return data.results;
+}
+
+async function distanceGuide(page: Page) {
+  return page.evaluate(() => {
+    const konva = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva;
+    const stage = konva?.stages.find(item => item.container()?.isConnected);
+    const guide = stage?.findOne(node => node.getAttr('data-testid') === 'individual-distance-guide');
+    return guide ? { snapped: guide.getAttr('data-snapped'), label: guide.findOne<Konva.Text>('Text')?.text() } : null;
+  });
 }
 
 test.use({ serviceWorkers: 'block' });
@@ -108,6 +117,117 @@ test('places stems at three actual parents in one operation and reassigns a drag
   expect(updated.individual_positions[0].id).toBe(stem.id);
   await page.reload();
   await expect.poll(() => shape(page, `individual-stem-${stem.id}`)).not.toBeNull();
+});
+
+test('snaps to an occupied neighbouring bed, previews its parent and supports Shift bypass', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'graphic-stem-spacing', {
+    demoProject: true, demoYear: 2026, loginAsAdmin: true,
+  });
+  const { results: sites } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  const site = sites.find(item => item.name === 'Hofgarten')!;
+  const { results: beds } = await apiRequest<{ results: { id: number; name: string; field: number }[] }>(page, 'GET', '/beds/');
+  const bed = beds.find(item => item.name === 'Salat 1')!;
+  const { results: seasons } = await apiRequest<PaginatedResponse<{ id: number; start_date: string }>>(page, 'GET', '/seasons/');
+  const season = seasons.find(item => item.start_date === '2026-01-01')!;
+  const anchorCrop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Mehrjährige Referenzpflanze', life_cycle: 'perennial', standing_time_years: 10,
+    cultivation_types: ['direct_sowing'],
+  });
+  const anchor = await apiRequest<Plan>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: anchorCrop.id, bed: bed.id, placement_mode: 'individual_bed', planting_date: '2026-05-01',
+    cultivation_type: 'direct_sowing', individual_positions: [{ x_m: 0.37, y_m: 2.3 }],
+  });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Kultur mit Pflanzabstand', life_cycle: 'annual', growth_duration_days: 30,
+    cultivation_types: ['direct_sowing'], distance_within_row_cm: 210, row_spacing_cm: 90,
+    estimated_canopy_diameter_m: 4.8,
+  });
+  await page.goto(`/app/fields-beds?individualPlan=${anchor.id}&locationId=${site.id}`);
+  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await activateCanvasTool(page, 'Einzelpflanzen hinzufügen');
+  await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+  await page.getByRole('option', { name: 'Kultur mit Pflanzabstand', exact: true }).click();
+  await activateCanvasTool(page, 'Alles einpassen');
+  const status = panel.getByRole('status').filter({ hasText: 'Anbaufläche ·' });
+  const stemTestId = `individual-stem-${anchor.individual_positions[0].id}`;
+  await expect.poll(() => shape(page, stemTestId)).not.toBeNull();
+  const nearBed = async () => {
+    const stem = centre((await shape(page, stemTestId))!.screen);
+    const bedShape = (await shape(page, `bed-rect-${bed.id}`))!.screen;
+    const along = bedShape.width > bedShape.height ? 'x' : 'y';
+    const longEdge = Math.max(bedShape.width, bedShape.height);
+    const direction = Math.sign(stem[along] - centre(bedShape)[along]);
+    return { ...stem, [along]: stem[along] + direction * 2.38 * longEdge / 12 };
+  };
+  let pointer = await nearBed();
+  await page.mouse.move(pointer.x, pointer.y);
+  await expect(status).toContainText('Salat 1');
+  await expect.poll(() => distanceGuide(page)).toEqual({ snapped: true, label: '2,1 m' });
+  await page.keyboard.down('Shift');
+  await expect(status).toContainText('Frühbeete Nord');
+  await expect.poll(() => distanceGuide(page)).toMatchObject({ snapped: false });
+  await page.keyboard.up('Shift');
+  await expect(status).toContainText('Salat 1');
+  await expect.poll(() => distanceGuide(page)).toEqual({ snapped: true, label: '2,1 m' });
+  await testInfo.attach('stem-spacing-parent-preview', { body: await page.screenshot(), contentType: 'image/png' });
+  pointer = await nearBed();
+  await expect.poll(() => page.evaluate(point => document.elementFromPoint(point.x, point.y)?.tagName, pointer)).toBe('CANVAS');
+  await page.mouse.move(pointer.x, pointer.y);
+  await page.mouse.down();
+  await expect(status).toContainText('Salat 1');
+  await page.mouse.up();
+  await expect(panel.getByRole('list', { name: 'Pflanzen nach Anbaufläche' })).toContainText('Salat 1');
+  await panel.getByRole('button', { name: 'Platzierung beenden', exact: true }).click();
+  await expect.poll(() => distanceGuide(page)).toBeNull();
+  const save = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/graphic-placement/'));
+  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+  const saved = await save;
+  expect(saved.status(), await saved.text()).toBe(200);
+  const { plans: [placed] } = await saved.json() as { plans: Plan[] };
+  expect(placed).toMatchObject({ crop: crop.id, bed: bed.id });
+  const [point] = placed.individual_positions;
+  expect(Math.hypot(point.x_m - 0.37, point.y_m - 2.3)).toBeCloseTo(2.1, 2);
+  await page.reload();
+  const persisted = await apiRequest<Plan>(page, 'GET', `/planting-plans/${placed.id}/`);
+  expect(persisted.individual_positions).toEqual([point]);
+
+  const reloadedPanel = panel.getByRole('button', { name: 'Schließen', exact: true });
+  if (await reloadedPanel.isVisible()) await reloadedPanel.click();
+  await toggleGraphicEdit(page);
+  await activateCanvasTool(page, 'Alles einpassen');
+  const placedTestId = `individual-stem-${point.id}`;
+  const original = await canvasInteractionPoint(page, placedTestId);
+  const parcel = (await shape(page, `field-rect-${bed.field}`))!.screen;
+  const free = { x: parcel.x + 0.25 * parcel.width, y: parcel.y + 0.65 * parcel.height };
+  const waitForMove = () => page.waitForResponse(response => response.request().method() === 'POST'
+    && response.url().endsWith(`/planting-plans/${placed.id}/graphic-move/`));
+  const firstMove = waitForMove();
+  await dragScreen(page, original, { x: free.x - original.x, y: free.y - original.y });
+  const firstResponse = await firstMove;
+  expect(firstResponse.status(), await firstResponse.text()).toBe(200);
+  expect((await firstResponse.json()).plans[0]).toMatchObject({ parcel: bed.field, bed: null });
+  const movedStem = await canvasInteractionPoint(page, placedTestId);
+  pointer = await nearBed();
+  await page.mouse.move(movedStem.x, movedStem.y);
+  await page.mouse.down();
+  await page.mouse.move(pointer.x, pointer.y, { steps: 12 });
+  await expect.poll(() => distanceGuide(page)).toEqual({ snapped: true, label: '2,1 m' });
+  await expectCanopyCentered(page, point.id);
+  const secondMove = waitForMove();
+  await page.mouse.up();
+  const secondResponse = await secondMove;
+  expect(secondResponse.status(), await secondResponse.text()).toBe(200);
+  const movedBack = (await secondResponse.json()).plans[0] as Plan;
+  expect(movedBack).toMatchObject({ id: placed.id, bed: bed.id, parcel: null, plants_count: 1 });
+  const [afterDrag] = movedBack.individual_positions;
+  expect(afterDrag.id).toBe(point.id);
+  expect(Math.hypot(afterDrag.x_m - 0.37, afterDrag.y_m - 2.3)).toBeCloseTo(2.1, 2);
+  await expect.poll(() => distanceGuide(page)).toBeNull();
+  const untouched = await apiRequest<Plan>(page, 'GET', `/planting-plans/${anchor.id}/`);
+  expect(untouched.individual_positions).toEqual(anchor.individual_positions);
 });
 
 test('creates a count-only plan from a location row and shows its pending count in List', async ({ page, request }) => {
@@ -755,7 +875,7 @@ test.describe('individual plants on a phone', () => {
     await toggleGraphicEdit(page, 'touch');
     await activateCanvasTool(page, 'Alles einpassen', 'touch');
     const touch = await page.context().newCDPSession(page);
-    const dragStart = async () => {
+    const dragStart = async (snapping: boolean) => {
       const origin = await canvasInteractionPoint(page, `individual-stem-${stem.id}`);
       const before = await expectCanopyCentered(page, stem.id);
       await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
@@ -765,7 +885,13 @@ test.describe('individual plants on a phone', () => {
           type: 'touchMove', touchPoints: [{ x: origin.x - step, y: origin.y }],
         });
         const next = await expectCanopyCentered(page, stem.id);
-        expect(Math.hypot(next.x - before.x, next.y - before.y)).toBeGreaterThan(6);
+        if (step === 10 && snapping) {
+          await expect.poll(() => distanceGuide(page)).toMatchObject({ snapped: true });
+          expect(next).not.toEqual(before);
+        } else {
+          expect(Math.hypot(next.x - before.x, next.y - before.y)).toBeGreaterThan(6);
+        }
+        if (!snapping) expect(await distanceGuide(page)).toBeNull();
       }
       return before;
     };
@@ -773,13 +899,22 @@ test.describe('individual plants on a phone', () => {
     page.on('request', request => {
       if (request.method() === 'POST' && request.url().endsWith('/graphic-move/')) writes += 1;
     });
-    const original = await dragStart();
+    const original = await dragStart(true);
     await testInfo.attach('canopy-during-touch-drag', { body: await page.screenshot(), contentType: 'image/png' });
     await touch.send('Input.dispatchTouchEvent', { type: 'touchCancel', touchPoints: [] });
     expect(await expectCanopyCentered(page, stem.id)).toEqual(original);
+    await expect.poll(() => distanceGuide(page)).toBeNull();
     expect(writes).toBe(0);
 
-    await dragStart();
+    await graphicDisplayButton(page).tap();
+    await page.getByRole('menuitem', { name: 'Abstände', exact: true }).tap();
+    const spacing = page.getByRole('dialog', { name: 'Abstände', exact: true });
+    const snap = spacing.getByRole('checkbox', { name: 'Pflanzen und Flächen an Abständen einrasten' });
+    await expect(snap).toBeChecked();
+    await snap.tap();
+    await spacing.getByRole('button', { name: 'Übernehmen', exact: true }).tap();
+    await expect(spacing).toBeHidden();
+    await dragStart(false);
     const saved = page.waitForResponse(response => response.request().method() === 'POST'
       && new URL(response.url()).pathname === `/api/planting-plans/${orchard.id}/graphic-move/`);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });

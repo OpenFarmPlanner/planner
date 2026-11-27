@@ -1449,7 +1449,7 @@ export interface GraphicPlacementScene {
 export interface GraphicPlacementInput {
   request_id: string;
   scene: GraphicPlacementScene;
-  points: GraphicStemPoint[];
+  points: (GraphicStemPoint & { id?: string })[];
   plan?: number;
   placement_updated_at?: string;
   crop?: number;
@@ -1502,6 +1502,7 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   placement_updated_at?: string;
   estimated_canopy_diameter_m?: number | string | null;
   recommended_plant_spacing_m?: number | null;
+  recommended_within_row_spacing_m?: number | null;
   season?: number | null;
   planting_date: string | null;
   clearing_date?: string | null;
