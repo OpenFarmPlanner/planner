@@ -209,14 +209,15 @@ def preceding_season_copy_source(project: Project, target_start: date) -> Season
 
 def compute_first_future_pattern_period(
     pattern: SeasonPattern, latest_season: Season,
-) -> tuple[date, date]:
+) -> tuple[date, date] | None:
     """Return the first full pattern period that starts after `latest_season` ends."""
     anchor_year = latest_season.start_date.year + 1
-    next_start, next_end = compute_season_period(pattern, anchor_year)
-    while next_start <= latest_season.end_date:
-        anchor_year += 1
+    while anchor_year < date.max.year:
         next_start, next_end = compute_season_period(pattern, anchor_year)
-    return next_start, next_end
+        if next_start > latest_season.end_date:
+            return next_start, next_end
+        anchor_year += 1
+    return None
 
 
 def compute_due_season_period(project: Project, today: date | None = None) -> tuple[date, date]:
@@ -239,8 +240,10 @@ def find_due_but_missing_season(
     if latest_season is None:
         return compute_period_containing(pattern, today or date.today())
 
-    next_start, next_end = compute_first_future_pattern_period(pattern, latest_season)
-
+    next_period = compute_first_future_pattern_period(pattern, latest_season)
+    if next_period is None:
+        return None
+    next_start, next_end = next_period
     overlaps_existing = Season.objects.filter(
         project=project,
         start_date__lte=next_end,

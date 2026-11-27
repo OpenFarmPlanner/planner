@@ -720,8 +720,10 @@ class SeasonPatternPreviewView(APIView):
                 'end_date': latest_season.end_date.isoformat(),
                 'label': latest_season.label,
             }
-            future_start, _ = compute_first_future_pattern_period(pattern, latest_season)
-            raw_transition = analyze_period_transition(latest_season.end_date, future_start)
+            future_period = compute_first_future_pattern_period(pattern, latest_season)
+            raw_transition = future_period and analyze_period_transition(
+                latest_season.end_date, future_period[0],
+            )
             if raw_transition is not None:
                 transition = serialize_period_transition(raw_transition)
         return Response({

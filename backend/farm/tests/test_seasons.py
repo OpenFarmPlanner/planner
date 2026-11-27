@@ -2097,6 +2097,18 @@ class FirstSeasonApiTest(ProjectApiTestCase):
         self.assertFalse(Season.objects.filter(project=other).exists())
         self.assertFalse(SeasonPattern.objects.filter(project=other).exists())
 
+    def test_latest_supported_first_season_keeps_season_views_available(self):
+        response = self.create_first(9998, 10)
+        self.assertEqual(response.status_code, 201, response.data)
+        self.assertEqual(response.data['end_date'], '9999-09-30')
+        self.assertEqual(self.client.get(f'{self.root_url}due-suggestion/').data, {'due': False})
+        options = self.client.get(f'{self.root_url}creation-options/')
+        self.assertEqual(options.status_code, 200, options.data)
+        self.assertIsNone(options.data['due_period'])
+        preview = self.client.get('/openfarmplanner/api/season-pattern/preview/')
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertIsNone(preview.data['transition'])
+
 
 class SeasonSetupApiTest(ProjectApiTestCase):
     def test_status_reports_unassigned_plans(self):
