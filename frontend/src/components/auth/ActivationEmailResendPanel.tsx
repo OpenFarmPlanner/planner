@@ -1,6 +1,6 @@
 import { Alert, Button, Stack, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
-import { AuthApiError } from '../../auth/authApi';
+import { AuthApiError, getAuthErrorMessage } from '../../auth/authApi';
 import { useAuth } from '../../auth/useAuth';
 import { useTranslation } from '../../i18n';
 import { authSecondaryButtonSx } from '../../pages/auth/authPageStyles';
@@ -71,7 +71,7 @@ export default function ActivationEmailResendPanel({ email, senderEmail }: Activ
       } else {
         setFeedback({
           severity: 'error',
-          message: error instanceof Error ? error.message : t('auth:activationEmail.resendFailed'),
+          message: getAuthErrorMessage(error, t('auth:activationEmail.resendFailed')),
         });
       }
     } finally {

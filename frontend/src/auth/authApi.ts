@@ -97,11 +97,12 @@ function extractError(response: Response, raw: string): AuthApiError {
   try {
     const parsed = JSON.parse(raw) as Record<string, unknown>;
     const code = typeof parsed.code === 'string' ? parsed.code : undefined;
-    const detail = code === GUEST_DEMO_RESTRICTED_CODE
-      ? translateOrFallback('common:guestDemo.restricted', fallbackMessage)
-      : toUserFriendlyErrorMessage(parsed);
+    const messageKey = code ? authErrorMessageKeys.get(code) : undefined;
+    const message = messageKey
+      ? translateOrFallback(messageKey, fallbackMessage)
+      : formatFieldErrors(parsed.field_errors) || fallbackMessage;
     const scheduledDeletionAt = typeof parsed.scheduled_deletion_at === 'string' ? parsed.scheduled_deletion_at : undefined;
-    return new AuthApiError(detail || fallbackMessage, {
+    return new AuthApiError(message, {
       code,
       scheduledDeletionAt,
       status: response.status,
@@ -113,127 +114,83 @@ function extractError(response: Response, raw: string): AuthApiError {
   }
 }
 
-const authFieldLabelFallbacks: Record<string, string> = {
-  email: 'E-Mail',
-  password: 'Passwort',
-  password_confirm: 'Passwort bestätigen',
-  uid: 'Benutzerkennung',
-  token: 'Token',
-  display_name: 'Anzeigename',
-  public_display_name: 'Name bei Veröffentlichungen',
-  document: 'Dokument',
-  detail: 'Fehler',
-  non_field_errors: 'Fehler',
-};
+const authErrorMessageKeys = new Map([
+  [GUEST_DEMO_RESTRICTED_CODE, 'common:guestDemo.restricted'],
+  ['invalid_credentials', 'auth:error.messages.invalidCredentials'],
+  ['invalid_restore_credentials', 'auth:error.messages.invalidCredentials'],
+  ['account_not_activated', 'auth:login.accountNotActivated'],
+  ['account_pending_deletion', 'auth:error.messages.accountPendingDeletion'],
+  ['invalid_password', 'auth:error.messages.invalidCurrentPassword'],
+  ['deletion_grace_period_expired', 'auth:error.messages.deletionGracePeriodExpired'],
+  ['invalid_activation_link', 'auth:activate.invalidLink'],
+  ['invalid_activation_token', 'auth:activate.invalidLink'],
+  ['invalid_password_reset_link', 'auth:resetPassword.invalidLink'],
+  ['invalid_password_reset_token', 'auth:resetPassword.invalidLink'],
+  ['invalid_email_change_link', 'account:emailConfirm.invalid'],
+  ['email_already_exists', 'auth:error.messages.emailAlreadyExists'],
+  ['email_send_failed', 'auth:error.messages.emailSendFailed'],
+  ['turnstile_failed', 'auth:register.turnstile.rejected'],
+  ['turnstile_unavailable', 'auth:register.turnstile.unavailable'],
+  ['activation_resend_limit_reached', 'auth:activationEmail.limitReached'],
+]);
 
-const knownValidationMessageKeys: Record<string, string> = {
-  'This field is required.': 'required',
-  'Enter a valid email address.': 'invalidEmail',
-  'This password is too common.': 'passwordTooCommon',
-  'This password is too short.': 'passwordTooShort',
-  'This password is entirely numeric.': 'passwordEntirelyNumeric',
-  'Unable to log in with provided credentials.': 'invalidCredentials',
-  'Die E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org).': 'emailSendFailed',
-  'Dein Konto wurde erstellt, aber die Aktivierungs-E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org), damit wir dein Konto aktivieren oder dir den Link erneut senden können.': 'activationEmailSendFailed',
-  'Dieser Name wird bereits verwendet.': 'publicDisplayNameTaken',
-  'Dieser Name ist reserviert. Bitte wähle einen anderen.': 'publicDisplayNameReserved',
-};
+const validationMessageKeys = new Map([
+  ['required', 'auth:error.messages.required'],
+  ['blank', 'auth:error.messages.required'],
+  ['null', 'auth:error.messages.required'],
+  ['min_length', 'auth:error.messages.tooShort'],
+  ['max_length', 'auth:error.messages.tooLong'],
+  ['password_mismatch', 'auth:register.passwordMismatch'],
+  ['password_too_short', 'auth:error.messages.passwordTooShort'],
+  ['password_too_common', 'auth:error.messages.passwordTooCommon'],
+  ['password_too_similar', 'auth:error.messages.passwordTooSimilar'],
+  ['password_entirely_numeric', 'auth:error.messages.passwordEntirelyNumeric'],
+  ['email_already_exists', 'auth:error.messages.emailAlreadyExists'],
+  ['disposable_email', 'auth:error.messages.disposableEmail'],
+  ['email_unchanged', 'auth:error.messages.emailUnchanged'],
+  ['public_display_name_taken', 'auth:error.messages.publicDisplayNameTaken'],
+  ['public_display_name_reserved', 'auth:error.messages.publicDisplayNameReserved'],
+]);
 
-function translateOrFallback(key: string, fallback: string, options?: Record<string, unknown>): string {
-  const translated = i18n.t(key, options);
-  return translated === key ? fallback : translated;
+function translateOrFallback(key: string, fallback: string): string {
+  return i18n.t(key, { defaultValue: fallback });
 }
 
-function localizeBackendMessage(message: string): string {
-  const trimmed = message.trim();
-  const looksLikeHtml = /^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed) || /<body[\s>]/i.test(trimmed);
-  if (looksLikeHtml) {
-    return translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
-  }
-  const mappedKey = knownValidationMessageKeys[trimmed];
-  if (mappedKey) {
-    return translateOrFallback(`auth:error.messages.${mappedKey}`, trimmed);
-  }
+function getFieldErrors(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
 
-  const minLengthMatch = /^Ensure this field has at least (\d+) characters\.$/.exec(trimmed);
-  if (minLengthMatch) {
-    return translateOrFallback('auth:error.messages.minLength', trimmed, { count: Number(minLengthMatch[1]) });
-  }
-
-  const maxLengthMatch = /^Ensure this field has no more than (\d+) characters\.$/.exec(trimmed);
-  if (maxLengthMatch) {
-    return translateOrFallback('auth:error.messages.maxLength', trimmed, { count: Number(maxLengthMatch[1]) });
-  }
-
-  return trimmed;
+function localizeFieldErrors(field: string, value: unknown): string[] {
+  const codes: unknown[] = Array.isArray(value) ? value : [value];
+  return codes.filter((code): code is string => typeof code === 'string').map((code) => {
+    const key = code === 'invalid' && (field === 'email' || field === 'new_email')
+      ? 'auth:error.messages.invalidEmail'
+      : validationMessageKeys.get(code) ?? 'auth:error.messages.invalid';
+    return i18n.t(key);
+  });
 }
 
 /** Localized validation messages the backend returned for one field, if any. */
 export function getLocalizedFieldError(error: unknown, field: string): string | null {
-  if (!(error instanceof AuthApiError) || !error.payload) {
+  if (!(error instanceof AuthApiError)) {
     return null;
   }
-  const messages = flattenErrorStrings(error.payload[field]).map((message) => localizeBackendMessage(message));
-  return messages.length > 0 ? messages.join(' ') : null;
+  const errors = getFieldErrors(error.payload?.field_errors);
+  return localizeFieldErrors(field, errors[field]).join(' ') || null;
 }
 
-function flattenErrorStrings(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => flattenErrorStrings(entry));
-  }
-  if (typeof value === 'string') {
-    return [value];
-  }
-  if (value && typeof value === 'object' && 'message' in value && typeof value.message === 'string') {
-    return [value.message];
-  }
-  return [];
+function formatFieldErrors(value: unknown): string {
+  return Object.entries(getFieldErrors(value)).flatMap(([field, codes]) => {
+    const label = field === 'non_field_errors' ? '' : i18n.t(`auth:error.fields.${field}`, { defaultValue: '' });
+    return localizeFieldErrors(field, codes).map((message) => label ? `${label}: ${message}` : message);
+  }).join('\n');
 }
 
-function resolveFieldLabel(field: string): string {
-  const translated = i18n.t(`auth:error.fields.${field}`);
-  if (translated !== `auth:error.fields.${field}`) {
-    return translated;
-  }
-  return authFieldLabelFallbacks[field] ?? field;
-}
-
-// Envelope metadata that accompanies an error but is not a per-field validation message.
-const NON_FIELD_ERROR_KEYS = new Set(['code', 'detail', 'message', 'scheduled_deletion_at', 'sender_email', 'retry_after']);
-
-function toUserFriendlyErrorMessage(payload: Record<string, unknown>): string {
-  const explicitMessage = typeof payload.message === 'string' ? localizeBackendMessage(payload.message) : '';
-  const explicitDetail = typeof payload.detail === 'string' ? localizeBackendMessage(payload.detail) : '';
-  const formattedErrors: string[] = [];
-
-  for (const [field, value] of Object.entries(payload)) {
-    if (NON_FIELD_ERROR_KEYS.has(field)) {
-      continue;
-    }
-    const localizedMessages = flattenErrorStrings(value).map((message) => localizeBackendMessage(message));
-    if (localizedMessages.length === 0) {
-      continue;
-    }
-
-    if (field === 'non_field_errors') {
-      formattedErrors.push(...localizedMessages);
-      continue;
-    }
-
-    const fieldLabel = resolveFieldLabel(field);
-    formattedErrors.push(...localizedMessages.map((message) => `${fieldLabel}: ${message}`));
-  }
-
-  if (formattedErrors.length > 0) {
-    return formattedErrors.join('\n');
-  }
-  if (explicitMessage) {
-    return explicitMessage;
-  }
-  if (explicitDetail) {
-    return explicitDetail;
-  }
-  return translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
+/** AuthApiError contains UI text selected by the auth client. */
+export function getAuthErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof AuthApiError ? error.message : fallback;
 }
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {

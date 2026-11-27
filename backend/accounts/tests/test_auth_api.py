@@ -143,6 +143,8 @@ class AuthApiTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
         self.assertIn('password', response.data)
+        self.assertEqual(response.data['field_errors']['email'], ['invalid'])
+        self.assertEqual(response.data['field_errors']['password'], ['min_length'])
         email_error = ' '.join(response.data['email'])
         password_error = ' '.join(response.data['password'])
         self.assertNotIn('Enter a valid email address', email_error)
@@ -434,6 +436,16 @@ class AuthApiTest(APITestCase):
             format='json',
         )
         self.assertEqual(login_response.status_code, status.HTTP_200_OK)
+
+    def test_password_reset_request_has_the_same_response_for_unknown_email(self) -> None:
+        url = '/openfarmplanner/api/auth/password-reset/?language=fr'
+        existing = self.client.post(url, {'email': self.user.email}, format='json', HTTP_ACCEPT_LANGUAGE='fr')
+        missing = self.client.post(url, {'email': 'missing@example.com'}, format='json', HTTP_ACCEPT_LANGUAGE='fr')
+
+        self.assertEqual(existing.status_code, status.HTTP_200_OK)
+        self.assertEqual(missing.status_code, existing.status_code)
+        self.assertEqual(missing.data, existing.data)
+        self.assertEqual(len(mail.outbox), 1)
 
     def test_password_reset_confirm_rejects_invalid_token(self) -> None:
         uid = urlsafe_base64_encode(str(self.user.pk).encode('utf-8'))
@@ -837,6 +849,7 @@ class AuthApiTest(APITestCase):
             )
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, name)
             self.assertIn('Dieser Name ist reserviert.', str(response.data['public_display_name']))
+            self.assertEqual(response.data['field_errors']['public_display_name'], ['public_display_name_reserved'])
         self.assertFalse(PublicProfile.objects.filter(user=self.user).exists())
 
         response = self.client.patch(

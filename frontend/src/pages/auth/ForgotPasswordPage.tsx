@@ -2,6 +2,7 @@ import { Alert, Box, Button, Stack, TextField } from '@mui/material';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router';
+import { getAuthErrorMessage } from '../../auth/authApi';
 import { useAuth } from '../../auth/useAuth';
 import { useTranslation } from '../../i18n';
 import AuthPageShell from './AuthPageShell';
@@ -13,16 +14,18 @@ export default function ForgotPasswordPage() {
   const location = useLocation();
   const prefillEmail = (location.state as { email?: string } | null)?.email ?? '';
   const [email, setEmail] = useState(prefillEmail);
-  const [message, setMessage] = useState<string | null>(null);
+  const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
+    setSent(false);
     try {
-      setMessage(await requestPasswordReset(email.trim().toLowerCase()));
+      await requestPasswordReset(email.trim().toLowerCase());
+      setSent(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('forgotPassword.failed'));
+      setError(getAuthErrorMessage(err, t('forgotPassword.failed')));
     }
   };
 
@@ -30,7 +33,7 @@ export default function ForgotPasswordPage() {
     <AuthPageShell title={t('forgotPassword.title')} subtitle={t('forgotPassword.subtitle')}>
       <Box component="form" onSubmit={handleSubmit} sx={authFormSx}>
         <Stack spacing={2.25}>
-          {message ? <Alert severity="success">{message}</Alert> : null}
+          {sent ? <Alert severity="success">{t('forgotPassword.sent')}</Alert> : null}
           {error ? <Alert severity="error">{error}</Alert> : null}
           <TextField
             label={t('forgotPassword.email')}

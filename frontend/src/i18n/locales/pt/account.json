@@ -2,6 +2,7 @@
   "title": "Definições da conta",
   "email": "E-mail",
   "displayName": "Nome de apresentação",
+  "profileSaved": "O perfil foi guardado.",
   "sections": {
     "profile": "Perfil",
     "publicProfile": "Biblioteca de culturas",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Alterar palavra-passe",
     "newPassword": "Nova palavra-passe",
     "repeatNewPassword": "Repetir nova palavra-passe",
-    "noPasswordHint": "Esta conta inicia sessão com o Google ou a Microsoft e não tem palavra-passe. É possível definir uma através de «Esqueceu-se da palavra-passe?» na página de início de sessão."
+    "noPasswordHint": "Esta conta inicia sessão com o Google ou a Microsoft e não tem palavra-passe. É possível definir uma através de «Esqueceu-se da palavra-passe?» na página de início de sessão.",
+    "emailConfirmationSent": "Enviámos uma ligação de confirmação para o novo endereço de e-mail. Continue a iniciar sessão com o endereço atual até confirmares a alteração.",
+    "passwordChanged": "A palavra-passe foi alterada."
   },
   "loginMethods": {
     "title": "Métodos de início de sessão",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "Confirmar alteração de e-mail",
     "loading": "A verificar confirmação…",
-    "invalid": "A ligação de confirmação é inválida ou expirou."
+    "invalid": "A ligação de confirmação é inválida ou expirou.",
+    "success": "O endereço de e-mail foi alterado."
   },
   "developer": {
     "title": "Programação",

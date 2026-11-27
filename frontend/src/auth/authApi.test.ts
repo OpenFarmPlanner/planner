@@ -130,32 +130,33 @@ describe('authApi error mapping', () => {
     expect(demoInit?.headers).toMatchObject({ 'Accept-Language': 'en' });
   });
 
-  it('does not expose non_field_errors and translates typical login messages', async () => {
+  it('shows a French login error from the code even when the detail is German', async () => {
+    await i18n.changeLanguage('fr');
     installFetchMock([
       { ok: true, status: 200, body: { detail: 'ok' } },
-      {
-        ok: false,
-        status: 400,
-        body: {
-          non_field_errors: ['Unable to log in with provided credentials.'],
-          password: ['This field is required.'],
-        },
-      },
+      { ok: false, status: 401, body: { code: 'invalid_credentials', detail: 'Ungültige Zugangsdaten.' } },
     ]);
 
-    try {
-      await login('demo@example.com', '');
-      throw new Error('Expected login to fail');
-    } catch (error: unknown) {
-      expect(error).toBeInstanceOf(AuthApiError);
-      const authError = error as AuthApiError;
-      expect(authError.message).toContain('Anmeldung mit den eingegebenen Zugangsdaten ist fehlgeschlagen.');
-      expect(authError.message).toContain('Passwort: Dieses Feld ist erforderlich.');
-      expect(authError.message).not.toContain('non_field_errors');
-    }
+    await expect(login('demo@example.com', 'wrong')).rejects.toMatchObject({
+      code: 'invalid_credentials',
+      message: 'La connexion avec les identifiants saisis a échoué.',
+    });
   });
 
-  it('translates common Django password and email validation messages to German', async () => {
+  it('shows a French fallback for a new code and ignores server prose', async () => {
+    await i18n.changeLanguage('fr');
+    installFetchMock([
+      { ok: false, status: 400, body: { code: 'future_error', detail: 'Interne Meldung', message: 'Technical details' } },
+    ]);
+
+    await expect(request('/auth/login/')).rejects.toMatchObject({
+      code: 'future_error',
+      message: i18n.t('auth:error.requestFailed'),
+    });
+  });
+
+  it('translates Django password and email validation codes to German', async () => {
+    await i18n.changeLanguage('de');
     installFetchMock([
       { ok: true, status: 200, body: { detail: 'ok' } },
       {
@@ -164,6 +165,12 @@ describe('authApi error mapping', () => {
         body: {
           email: ['Enter a valid email address.'],
           password: ['This password is too common.', 'This password is too short.'],
+          non_field_errors: ['Untranslated detail.'],
+          field_errors: {
+            email: ['invalid'],
+            password: ['password_too_common', 'password_too_short'],
+            non_field_errors: ['unknown_validation_code'],
+          },
         },
       },
     ]);
@@ -177,10 +184,13 @@ describe('authApi error mapping', () => {
       expect(authError.message).toContain('E-Mail: Bitte gib eine gültige E-Mail-Adresse ein.');
       expect(authError.message).toContain('Passwort: Dieses Passwort ist zu häufig.');
       expect(authError.message).toContain('Passwort: Dieses Passwort ist zu kurz.');
+      expect(authError.message).toContain('Überprüfe diese Eingabe.');
+      expect(authError.message).not.toMatch(/non_field_errors|Untranslated detail/);
     }
   });
 
-  it('uses structured message field for email_send_failed responses', async () => {
+  it('translates email failures by code', async () => {
+    await i18n.changeLanguage('de');
     installFetchMock([
       { ok: true, status: 200, body: { detail: 'ok' } },
       {
@@ -194,12 +204,13 @@ describe('authApi error mapping', () => {
     ]);
 
     await expect(register('bad-email', '123', '123')).rejects.toMatchObject({
-      message: 'Dein Konto wurde erstellt, aber die Aktivierungs-E-Mail konnte nicht gesendet werden.',
+      message: i18n.t('auth:error.messages.emailSendFailed'),
       code: 'email_send_failed',
     });
   });
 
   it('keeps envelope metadata such as sender_email and retry_after out of the error message', async () => {
+    await i18n.changeLanguage('de');
     installFetchMock([
       { ok: true, status: 200, body: { detail: 'ok' } },
       {
@@ -216,11 +227,11 @@ describe('authApi error mapping', () => {
     ]);
 
     await expect(login('pending@example.com', 'secret')).rejects.toMatchObject({
-      message: 'Das Konto ist noch nicht aktiviert.',
+      message: i18n.t('auth:login.accountNotActivated'),
       payload: expect.objectContaining({ sender_email: 'info@example.org' }),
     });
     await expect(resendActivation('pending@example.com')).rejects.toMatchObject({
-      message: 'Bitte warte kurz.',
+      message: i18n.t('auth:error.requestFailed'),
       retryAfterSeconds: 42,
     });
   });

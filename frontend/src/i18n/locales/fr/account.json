@@ -2,6 +2,7 @@
   "title": "Paramètres du compte",
   "email": "E-mail",
   "displayName": "Nom d'affichage",
+  "profileSaved": "Votre profil a été enregistré.",
   "sections": {
     "profile": "Profil",
     "publicProfile": "Bibliothèque de cultures",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Changer le mot de passe",
     "newPassword": "Nouveau mot de passe",
     "repeatNewPassword": "Répéter le nouveau mot de passe",
-    "noPasswordHint": "Ce compte se connecte avec Google ou Microsoft et n'a pas de mot de passe. Vous pouvez en définir un via « Mot de passe oublié » sur la page de connexion."
+    "noPasswordHint": "Ce compte se connecte avec Google ou Microsoft et n'a pas de mot de passe. Vous pouvez en définir un via « Mot de passe oublié » sur la page de connexion.",
+    "emailConfirmationSent": "Nous avons envoyé un lien de confirmation à votre nouvelle adresse e-mail. Continuez à utiliser votre adresse actuelle pour vous connecter jusqu’à la confirmation.",
+    "passwordChanged": "Votre mot de passe a été modifié."
   },
   "loginMethods": {
     "title": "Méthodes de connexion",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "Confirmer le changement d'e-mail",
     "loading": "Vérification de la confirmation…",
-    "invalid": "Le lien de confirmation n'est pas valide ou a expiré."
+    "invalid": "Le lien de confirmation n'est pas valide ou a expiré.",
+    "success": "Votre adresse e-mail a été modifiée."
   },
   "developer": {
     "title": "Développeur",

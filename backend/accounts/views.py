@@ -126,6 +126,14 @@ TURNSTILE_UNAVAILABLE_MESSAGE = (
 )
 
 
+class AccountAPIView(APIView):
+    def handle_exception(self, exc: Exception) -> Response:
+        response = super().handle_exception(exc)
+        if isinstance(exc, serializers.ValidationError) and isinstance(response.data, dict):
+            response.data = {**response.data, 'field_errors': exc.get_codes()}
+        return response
+
+
 def _email_send_failed_response(message: str, status_code: int) -> Response:
     """Build the shared email-delivery failure envelope."""
     return api_error_response(
@@ -176,14 +184,14 @@ def _turnstile_error_response(request: Request, client_ip: str | None) -> Respon
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
-class CsrfTokenView(APIView):
+class CsrfTokenView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request: Request) -> Response:
         return Response({'detail': _de(_('CSRF cookie set'))})
 
 
-class RegisterView(RegistrationAlertMixin, APIView):
+class RegisterView(RegistrationAlertMixin, AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_register'
     # Opts this view into the globally registered EmailDomainRateThrottle.
@@ -238,7 +246,7 @@ class RegisterView(RegistrationAlertMixin, APIView):
         )
 
 
-class ActivateView(RegistrationAlertMixin, APIView):
+class ActivateView(RegistrationAlertMixin, AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_activation'
 
@@ -279,7 +287,7 @@ class ActivateView(RegistrationAlertMixin, APIView):
         return Response(UserSerializer(user).data)
 
 
-class GuestDemoStartView(APIView):
+class GuestDemoStartView(AccountAPIView):
     """Start an isolated, anonymous demo session."""
 
     permission_classes = [permissions.AllowAny]
@@ -303,7 +311,7 @@ class GuestDemoStartView(APIView):
         return Response(UserSerializer(demo_session.user).data, status=status.HTTP_201_CREATED)
 
 
-class GuestDemoEndView(APIView):
+class GuestDemoEndView(AccountAPIView):
     """End the current guest session and delete its temporary data."""
 
     def post(self, request: Request) -> Response:
@@ -317,7 +325,7 @@ class GuestDemoEndView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class LoginView(APIView):
+class LoginView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_login'
 
@@ -357,13 +365,13 @@ class LoginView(APIView):
         return Response(UserSerializer(user).data)
 
 
-class LogoutView(APIView):
+class LogoutView(AccountAPIView):
     def post(self, request: Request) -> Response:
         logout(request)
         return Response({'detail': _de(_('Logged out.'))})
 
 
-class MeView(APIView):
+class MeView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request: Request) -> Response:
@@ -377,7 +385,7 @@ class MeView(APIView):
         return Response({'authenticated': True, **UserSerializer(request.user).data})
 
 
-class ConsentAcceptView(APIView):
+class ConsentAcceptView(AccountAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request: Request) -> Response:
@@ -389,7 +397,7 @@ class ConsentAcceptView(APIView):
         return Response(UserSerializer(request.user).data)
 
 
-class AccountProfileView(APIView):
+class AccountProfileView(AccountAPIView):
     def patch(self, request: Request) -> Response:
         serializer = AccountProfileSerializer(data=request.data)
         _validate_serializer_in_german(serializer)
@@ -399,7 +407,7 @@ class AccountProfileView(APIView):
         return Response({'detail': PROFILE_UPDATED_MESSAGE, 'user': UserSerializer(request.user).data})
 
 
-class AccountPublicProfileView(APIView):
+class AccountPublicProfileView(AccountAPIView):
     def patch(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
@@ -409,11 +417,13 @@ class AccountPublicProfileView(APIView):
         try:
             PublicProfile.objects.update_or_create(user=request.user, defaults={'public_display_name': public_display_name})
         except IntegrityError:
-            raise serializers.ValidationError({'public_display_name': ['Dieser Name wird bereits verwendet.']})
+            raise serializers.ValidationError(
+                {'public_display_name': ['Dieser Name wird bereits verwendet.']}, code='public_display_name_taken',
+            )
         return Response({'detail': PROFILE_UPDATED_MESSAGE, 'user': UserSerializer(request.user).data})
 
 
-class AccountLanguageView(APIView):
+class AccountLanguageView(AccountAPIView):
     """Reads and stores the signed-in user's personal UI language preference.
 
     Deliberately a user-level setting and not a project setting: members of the
@@ -443,7 +453,7 @@ class AccountLanguageView(APIView):
         return Response({'ui_language': ui_language, 'user': UserSerializer(request.user).data})
 
 
-class AccountTableEditHintView(APIView):
+class AccountTableEditHintView(AccountAPIView):
     """Reads and updates the shared state of the inline table edit hint.
 
     One flag and one counter for all inline-editing tables, stored per user so
@@ -462,7 +472,7 @@ class AccountTableEditHintView(APIView):
         return Response(state)
 
 
-class AccountEmailChangeRequestView(APIView):
+class AccountEmailChangeRequestView(AccountAPIView):
     throttle_scope = 'auth_password_reset_request'
 
     def post(self, request: Request) -> Response:
@@ -505,7 +515,7 @@ class AccountEmailChangeRequestView(APIView):
         return Response({'detail': EMAIL_CHANGE_CONFIRMATION_SENT_MESSAGE})
 
 
-class AccountEmailChangeConfirmView(APIView):
+class AccountEmailChangeConfirmView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_password_reset_confirm'
 
@@ -566,7 +576,7 @@ class AccountEmailChangeConfirmView(APIView):
         return Response({'detail': EMAIL_CHANGE_CONFIRMATION_SUCCESS_MESSAGE})
 
 
-class AccountPasswordChangeView(APIView):
+class AccountPasswordChangeView(AccountAPIView):
     def post(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
@@ -586,7 +596,7 @@ class AccountPasswordChangeView(APIView):
         return Response({'detail': PASSWORD_UPDATED_MESSAGE})
 
 
-class AccountDeleteRequestView(APIView):
+class AccountDeleteRequestView(AccountAPIView):
     """Mark the authenticated account for delayed deletion after password confirmation."""
 
     def post(self, request: Request) -> Response:
@@ -637,7 +647,7 @@ class AccountDeleteRequestView(APIView):
         )
 
 
-class AccountRestoreView(APIView):
+class AccountRestoreView(AccountAPIView):
     """Restore an account that is pending deletion within the grace period."""
 
     permission_classes = [permissions.AllowAny]
@@ -689,7 +699,7 @@ class AccountRestoreView(APIView):
         return Response(UserSerializer(user).data)
 
 
-class AccountStatusView(APIView):
+class AccountStatusView(AccountAPIView):
     """Return deletion scheduling state for the authenticated account."""
 
     def get(self, request: Request) -> Response:
@@ -703,7 +713,7 @@ class AccountStatusView(APIView):
         )
 
 
-class AccountDataExportView(APIView):
+class AccountDataExportView(AccountAPIView):
     """Return a structured JSON export of the authenticated user's data."""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -718,7 +728,7 @@ class AccountDataExportView(APIView):
         return response
 
 
-class ResendActivationView(RegistrationAlertMixin, APIView):
+class ResendActivationView(RegistrationAlertMixin, AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_resend_activation'
 
@@ -780,7 +790,7 @@ def _resend_limited_response(limit_reached: bool, retry_after_seconds: int) -> R
     return response
 
 
-class PasswordResetRequestView(APIView):
+class PasswordResetRequestView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_password_reset_request'
 
@@ -806,7 +816,7 @@ class PasswordResetRequestView(APIView):
         return Response({'detail': GENERIC_EMAIL_SENT_MESSAGE})
 
 
-class PasswordResetConfirmView(APIView):
+class PasswordResetConfirmView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_password_reset_confirm'
 
@@ -842,7 +852,7 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': _de(_('Password has been reset successfully.'))})
 
 
-class AccountTaskDragHintView(APIView):
+class AccountTaskDragHintView(AccountAPIView):
     """Retire the optional task-moving introduction for the authenticated user."""
 
     permission_classes = [permissions.IsAuthenticated]

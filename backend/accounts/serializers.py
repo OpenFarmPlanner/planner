@@ -232,16 +232,17 @@ class RegisterSerializer(serializers.Serializer):
     def validate_email(self, value: str) -> str:
         normalized = normalize_email_lower(value)
         if User.objects.filter(email__iexact=normalized).exists():
-            raise serializers.ValidationError(_de(_('An account with this email already exists.')))
+            raise serializers.ValidationError(_de(_('An account with this email already exists.')), code='email_already_exists')
         if is_disposable_email_domain(normalized):
             raise serializers.ValidationError(
                 _de(_('Please use a permanent email address instead of a disposable one.')),
+                code='disposable_email',
             )
         return normalized
 
     def validate(self, attrs: dict[str, object]) -> dict[str, object]:
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({'password_confirm': _de(_('Passwords do not match.'))})
+            raise serializers.ValidationError({'password_confirm': _de(_('Passwords do not match.'))}, code='password_mismatch')
         validate_password(str(attrs['password']))
         return attrs
 
@@ -287,7 +288,7 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
 
     def validate(self, attrs: dict[str, str]) -> dict[str, str]:
         if attrs['password'] != attrs['password_confirm']:
-            raise serializers.ValidationError({'password_confirm': _de(_('Passwords do not match.'))})
+            raise serializers.ValidationError({'password_confirm': _de(_('Passwords do not match.'))}, code='password_mismatch')
         validate_password(attrs['password'])
         return attrs
 
@@ -340,13 +341,13 @@ class AccountPublicProfileSerializer(serializers.Serializer):
         if not value:
             return value
         if value.casefold().startswith(RESERVED_PUBLIC_NAME_PREFIXES):
-            raise serializers.ValidationError('Dieser Name ist reserviert. Bitte wähle einen anderen.')
+            raise serializers.ValidationError('Dieser Name ist reserviert. Bitte wähle einen anderen.', code='public_display_name_reserved')
         request = self.context.get('request')
         queryset = PublicProfile.objects.filter(public_display_name__iexact=value)
         if request is not None:
             queryset = queryset.exclude(user=request.user)
         if queryset.exists():
-            raise serializers.ValidationError('Dieser Name wird bereits verwendet.')
+            raise serializers.ValidationError('Dieser Name wird bereits verwendet.', code='public_display_name_taken')
         return value
 
 
@@ -359,9 +360,9 @@ class AccountEmailChangeRequestSerializer(serializers.Serializer):
         normalized = normalize_email_lower(value)
         user: User = self.context['request'].user
         if normalized == normalize_email_lower(user.email):
-            raise serializers.ValidationError('Die neue E-Mail-Adresse muss sich von der aktuellen unterscheiden.')
+            raise serializers.ValidationError('Die neue E-Mail-Adresse muss sich von der aktuellen unterscheiden.', code='email_unchanged')
         if User.objects.filter(email__iexact=normalized).exclude(pk=user.pk).exists():
-            raise serializers.ValidationError(_de(_('An account with this email already exists.')))
+            raise serializers.ValidationError(_de(_('An account with this email already exists.')), code='email_already_exists')
         return normalized
 
 
@@ -378,7 +379,7 @@ class AccountPasswordChangeSerializer(serializers.Serializer):
 
     def validate(self, attrs: dict[str, str]) -> dict[str, str]:
         if attrs['new_password'] != attrs['new_password_confirm']:
-            raise serializers.ValidationError({'new_password_confirm': _de(_('Passwords do not match.'))})
+            raise serializers.ValidationError({'new_password_confirm': _de(_('Passwords do not match.'))}, code='password_mismatch')
         validate_password(attrs['new_password'], user=self.context['request'].user)
         return attrs
 

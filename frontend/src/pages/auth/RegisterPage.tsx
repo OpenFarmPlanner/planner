@@ -5,7 +5,7 @@ import type { FormEvent } from 'react';
 import { Trans } from 'react-i18next';
 import { Link as RouterLink, useLocation, useNavigate } from 'react-router';
 import { projectAPI, type InvitationPublicStatus } from '../../api/api';
-import { AuthApiError } from '../../auth/authApi';
+import { AuthApiError, getAuthErrorMessage } from '../../auth/authApi';
 import { resolveTurnstileSiteKey } from '../../auth/turnstile';
 import { useAuth } from '../../auth/useAuth';
 import { useEndGuestDemoOnAuthPage } from '../../auth/useEndGuestDemoOnAuthPage';
@@ -132,7 +132,7 @@ export default function RegisterPage() {
       if (turnstileMessageKey) {
         setError(t(turnstileMessageKey));
       } else {
-        setError(err instanceof Error ? err.message : t('auth:register.failed'));
+        setError(getAuthErrorMessage(err, t('auth:register.failed')));
       }
     } finally {
       setSubmitting(false);
@@ -149,7 +149,7 @@ export default function RegisterPage() {
     try {
       await logout();
     } catch (logoutError) {
-      setError(logoutError instanceof Error ? logoutError.message : t('auth:register.logoutToCreateFailed'));
+      setError(getAuthErrorMessage(logoutError, t('auth:register.logoutToCreateFailed')));
     }
   };
 

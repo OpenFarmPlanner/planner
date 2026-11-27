@@ -30,7 +30,7 @@ describe('ForgotPasswordPage', () => {
 
   it('submits the reset request and shows the confirmation message', async () => {
     const user = userEvent.setup();
-    requestPasswordResetMock.mockResolvedValueOnce('E-Mail wurde versendet.');
+    requestPasswordResetMock.mockResolvedValueOnce(undefined);
 
     render(
       <MemoryRouter>
@@ -42,7 +42,7 @@ describe('ForgotPasswordPage', () => {
     await user.click(screen.getByRole('button', { name: 'Reset-E-Mail senden' }));
 
     await waitFor(() => {
-      expect(screen.getByText('E-Mail wurde versendet.')).toBeInTheDocument();
+      expect(screen.getByText('Falls das Konto existiert, wurde eine E-Mail gesendet.')).toBeInTheDocument();
     });
     expect(requestPasswordResetMock).toHaveBeenCalledWith('demo@example.com');
   });

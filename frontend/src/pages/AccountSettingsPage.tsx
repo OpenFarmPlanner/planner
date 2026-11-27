@@ -19,6 +19,7 @@ import {
 import {
   changePassword,
   getAccountDataExport,
+  getAuthErrorMessage,
   requestEmailChange,
   updateProfile,
   updatePublicDisplayName,
@@ -63,12 +64,12 @@ export default function AccountSettingsPage() {
   const [newPassword, setNewPassword] = useState('');
   const [repeatPassword, setRepeatPassword] = useState('');
 
-  const profileSection = useSectionSubmit(t('errors.generic'));
-  const publicProfileSection = useSectionSubmit(t('errors.generic'));
-  const moderatorRequestSection = useSectionSubmit(t('errors.generic'));
-  const emailSection = useSectionSubmit(t('errors.generic'));
-  const passwordSection = useSectionSubmit(t('errors.generic'));
-  const dataExportSection = useSectionSubmit(t('errors.generic'));
+  const profileSection = useSectionSubmit(t('profileSaved'), t('errors.generic'));
+  const publicProfileSection = useSectionSubmit(t('profileSaved'), t('errors.generic'));
+  const moderatorRequestSection = useSectionSubmit(t('moderatorRequest.success'), t('errors.generic'));
+  const emailSection = useSectionSubmit(t('security.emailConfirmationSent'), t('errors.generic'));
+  const passwordSection = useSectionSubmit(t('security.passwordChanged'), t('errors.generic'));
+  const dataExportSection = useSectionSubmit(t('dataExport.success'), t('errors.generic'));
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
@@ -186,10 +187,7 @@ export default function AccountSettingsPage() {
       return;
     }
     await moderatorRequestSection.submit(
-      async () => {
-        await publicLibraryModeratorRequestAPI.create(moderatorMotivation.trim());
-        return { detail: t('moderatorRequest.success') };
-      },
+      () => publicLibraryModeratorRequestAPI.create(moderatorMotivation.trim()),
       () => {
         setModeratorMotivation('');
         setModeratorRequestStatus('pending');
@@ -218,7 +216,6 @@ export default function AccountSettingsPage() {
       link.click();
       link.remove();
       URL.revokeObjectURL(url);
-      return { detail: t('dataExport.success') };
     });
   };
 
@@ -242,7 +239,7 @@ export default function AccountSettingsPage() {
       setDeleteDialogOpen(false);
       navigate('/login', { replace: true, state: { deletionScheduled: response.scheduled_deletion_at } });
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : t('errors.delete'));
+      setDeleteError(getAuthErrorMessage(error, t('errors.delete')));
     } finally {
       setDeleteSubmitting(false);
     }

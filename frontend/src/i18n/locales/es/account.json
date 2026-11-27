@@ -2,6 +2,7 @@
   "title": "Ajustes de la cuenta",
   "email": "Correo electrónico",
   "displayName": "Nombre visible",
+  "profileSaved": "Se ha guardado tu perfil.",
   "sections": {
     "profile": "Perfil",
     "publicProfile": "Biblioteca de cultivos",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Cambiar contraseña",
     "newPassword": "Contraseña nueva",
     "repeatNewPassword": "Repetir contraseña nueva",
-    "noPasswordHint": "Esta cuenta inicia sesión con Google o Microsoft y no tiene contraseña. Puedes definir una mediante «¿Has olvidado la contraseña?» en la página de inicio de sesión."
+    "noPasswordHint": "Esta cuenta inicia sesión con Google o Microsoft y no tiene contraseña. Puedes definir una mediante «¿Has olvidado la contraseña?» en la página de inicio de sesión.",
+    "emailConfirmationSent": "Hemos enviado un enlace de confirmación a tu nueva dirección de correo. Puedes iniciar sesión con la dirección actual hasta que confirmes el cambio.",
+    "passwordChanged": "Se ha cambiado tu contraseña."
   },
   "loginMethods": {
     "title": "Métodos de inicio de sesión",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "Confirmar cambio de correo",
     "loading": "Comprobando la confirmación…",
-    "invalid": "El enlace de confirmación no es válido o ha caducado."
+    "invalid": "El enlace de confirmación no es válido o ha caducado.",
+    "success": "Se ha cambiado tu dirección de correo electrónico."
   },
   "developer": {
     "title": "Desarrollo",

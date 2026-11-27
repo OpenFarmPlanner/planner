@@ -2,6 +2,7 @@
   "title": "Impostazioni account",
   "email": "E-mail",
   "displayName": "Nome visualizzato",
+  "profileSaved": "Il tuo profilo è stato salvato.",
   "sections": {
     "profile": "Profilo",
     "publicProfile": "Biblioteca delle colture",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Cambia password",
     "newPassword": "Nuova password",
     "repeatNewPassword": "Ripeti nuova password",
-    "noPasswordHint": "Questo account accede con Google o Microsoft e non ha una password. Puoi impostarne una con «Password dimenticata» nella pagina di accesso."
+    "noPasswordHint": "Questo account accede con Google o Microsoft e non ha una password. Puoi impostarne una con «Password dimenticata» nella pagina di accesso.",
+    "emailConfirmationSent": "Abbiamo inviato un link di conferma al tuo nuovo indirizzo e-mail. Continua a usare l’indirizzo attuale per accedere finché non confermi la modifica.",
+    "passwordChanged": "La tua password è stata modificata."
   },
   "loginMethods": {
     "title": "Metodi di accesso",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "Conferma cambio e-mail",
     "loading": "Verifica della conferma…",
-    "invalid": "Il link di conferma non è valido o è scaduto."
+    "invalid": "Il link di conferma non è valido o è scaduto.",
+    "success": "Il tuo indirizzo e-mail è stato modificato."
   },
   "developer": {
     "title": "Sviluppatore",

@@ -67,7 +67,8 @@ vi.mock('../auth/socialAuth', async () => {
   };
 });
 
-vi.mock('../auth/authApi', () => ({
+vi.mock('../auth/authApi', async () => ({
+  ...await vi.importActual<typeof import('../auth/authApi')>('../auth/authApi'),
   updateProfile: vi.fn(async () => ({ detail: 'Profil aktualisiert.', user: authState.user })),
   updatePublicDisplayName: vi.fn(async () => ({ detail: 'Profil aktualisiert.', user: authState.user })),
   requestEmailChange: vi.fn(async () => ({ detail: 'Bestätigungslink gesendet.' })),

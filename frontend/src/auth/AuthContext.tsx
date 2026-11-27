@@ -302,17 +302,10 @@ export function AuthProvider({
       },
       resendActivation: (email) => resendActivationRequest(email),
       requestPasswordReset: async (email) => {
-        const response = await requestPasswordResetRequest(email);
-        return response.detail;
+        await requestPasswordResetRequest(email);
       },
       confirmPasswordReset: async (uid, token, password, passwordConfirm) => {
-        const response = await confirmPasswordResetRequest(
-          uid,
-          token,
-          password,
-          passwordConfirm,
-        );
-        return response.detail;
+        await confirmPasswordResetRequest(uid, token, password, passwordConfirm);
       },
       requestAccountDeletion: async (password) => {
         const generation = beginAuthMutation();

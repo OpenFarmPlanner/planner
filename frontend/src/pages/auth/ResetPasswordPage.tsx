@@ -2,6 +2,7 @@ import { Alert, Box, Button, Stack } from '@mui/material';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link as RouterLink, useSearchParams } from 'react-router';
+import { getAuthErrorMessage } from '../../auth/authApi';
 import { useAuth } from '../../auth/useAuth';
 import { AuthPasswordField } from './AuthPasswordField';
 import { useTranslation } from '../../i18n';
@@ -16,20 +17,21 @@ export default function ResetPasswordPage() {
   const [passwordConfirm, setPasswordConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError(null);
-    setMessage(null);
+    setSaved(false);
     const uid = searchParams.get('uid') ?? '';
     const token = searchParams.get('token') ?? '';
 
     try {
-      setMessage(await confirmPasswordReset(uid, token, password, passwordConfirm));
+      await confirmPasswordReset(uid, token, password, passwordConfirm);
+      setSaved(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('resetPassword.failed'));
+      setError(getAuthErrorMessage(err, t('resetPassword.failed')));
     }
   };
 
@@ -37,7 +39,7 @@ export default function ResetPasswordPage() {
     <AuthPageShell title={t('resetPassword.title')} subtitle={t('resetPassword.subtitle')}>
       <Box component="form" onSubmit={handleSubmit} sx={authFormSx}>
         <Stack spacing={2.25}>
-          {message ? <Alert severity="success">{message}</Alert> : null}
+          {saved ? <Alert severity="success">{t('resetPassword.success')}</Alert> : null}
           {error ? <Alert severity="error">{error}</Alert> : null}
           <AuthPasswordField
             label={t('resetPassword.password')}

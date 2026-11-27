@@ -30,13 +30,13 @@ export interface AuthContextValue {
   acceptConsent: (document: string) => Promise<AuthUser>;
   activate: (uid: string, token: string) => Promise<AuthUser>;
   resendActivation: (email: string) => Promise<ResendActivationResponse>;
-  requestPasswordReset: (email: string) => Promise<string>;
+  requestPasswordReset: (email: string) => Promise<void>;
   confirmPasswordReset: (
     uid: string,
     token: string,
     password: string,
     passwordConfirm: string,
-  ) => Promise<string>;
+  ) => Promise<void>;
   requestAccountDeletion: (
     password: string,
   ) => Promise<{ detail: string; scheduled_deletion_at: string }>;

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Button, Container, Link, Stack, Typography } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import { useAuth } from './useAuth';
+import { getAuthErrorMessage } from './authApi';
 import { useTranslation } from '../i18n';
 import { usePublicPageLanguage } from '../seo/usePublicPagePath';
 import { publicPagePath, type PublicPageId } from '../seo/seoConfig';
@@ -47,7 +48,7 @@ export default function ConsentGate() {
     try {
       await acceptConsent(documentKey);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('reconsent.failed'));
+      setError(getAuthErrorMessage(err, t('reconsent.failed')));
     } finally {
       setSubmitting(false);
     }
@@ -58,7 +59,7 @@ export default function ConsentGate() {
     try {
       await logout();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('reconsent.failed'));
+      setError(getAuthErrorMessage(err, t('reconsent.failed')));
     }
   };
 
