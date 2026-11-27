@@ -183,6 +183,18 @@ test('shows phases and shared plan tasks on orchard and mixed-bed markers in all
     shape(page, `individual-label-${position.id}`)))).some(label => label?.listening === false);
   await expect.poll(() => hasLabel(orchard.individual_positions)).toBe(true);
   await expect.poll(() => hasLabel(plan.individual_positions)).toBe(true);
+  const labelTexts = await page.evaluate(() => {
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+      .find(item => item.container()?.isConnected);
+    return (stage?.find('Group') ?? [])
+      .filter(group => String(group.getAttr('data-testid') ?? '').startsWith('individual-label-'))
+      .map(group => (group as Konva.Group).find('Text').map(text => (text as Konva.Text).text()));
+  });
+  expect(labelTexts.length).toBeGreaterThan(0);
+  for (const texts of labelTexts) {
+    expect(texts).toHaveLength(1);
+    expect(texts[0]).not.toMatch(/Geplante|Geplantes|Ernte|Wachstum|Belegung/);
+  }
   await page.screenshot({ path: info.outputPath('individual-crop-labels-zoom.png') });
   expect(await apiRequest(page, 'GET', `/planting-plans/${area.id}/`)).toMatchObject({ placement_mode: 'area' });
 });

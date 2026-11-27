@@ -23,7 +23,7 @@ export interface CanvasStem extends StemCoordinates {
   phase?: BedCultivationEntry['phase'];
   phaseColor?: string;
   neutralCrop?: boolean;
-  label?: { name: string; phase: string | null; x: number; y: number; width: number; height: number };
+  label?: { name: string; x: number; y: number; width: number; height: number };
 }
 
 type Press = KonvaEventObject<MouseEvent | TouchEvent>;
@@ -193,8 +193,6 @@ export function GraphicalIndividualPlantsLayer({
               stroke={theme.palette.divider} strokeWidth={1} />
             <Text x={5} y={3} width={label.width - 10} height={12} text={label.name} fontSize={11} fontFamily="Arial, sans-serif"
               wrap="none" ellipsis fill={theme.palette.text.primary} />
-            {label.phase && <Text x={5} y={17} width={label.width - 10} height={12} text={label.phase} fontSize={11} fontFamily="Arial, sans-serif"
-              wrap="none" ellipsis fill={theme.palette.text.secondary} />}
           </Group>}
         </Group>;
       })}

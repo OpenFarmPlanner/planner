@@ -1390,7 +1390,7 @@ export default function GraphicalFields({
                 const label = plantLabels?.get(stem.id);
                 return { ...stem, key: stem.id, planId: plan.id, phase, phaseColor, urgency, neutralCrop,
                   objectKey: browseIndividualPlants ? object?.key : undefined, canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
-                  label: label && object ? { ...label, name: object.name, phase: object.phase } : undefined,
+                  label: label && object ? { ...label, name: object.name } : undefined,
                   selected: key === overlayKey || Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey };
               });
             });

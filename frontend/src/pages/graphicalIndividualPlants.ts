@@ -117,9 +117,9 @@ export function getIndividualPlantLabels(
     if (labels.size >= 36) break;
     if (point.x < inset || point.x >= right || point.y < inset || point.y >= size.height - inset) continue;
     const remembered = measuredPlans.get(plant.id);
-    const width = remembered ?? Math.min(185, Math.ceil(Math.max(measure(plant.name), measure(plant.phase ?? ''))) + 10);
+    const width = remembered ?? Math.min(185, Math.ceil(measure(plant.name)) + 10);
     measuredPlans.set(plant.id, width);
-    const height = plant.phase ? 31 : 17;
+    const height = 17;
     const top = point.y - height / 2;
     const choices = [point.x + 18, point.x - 18 - width];
     for (const x of choices) {

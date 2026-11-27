@@ -287,6 +287,10 @@ workspace controls also reserve screen space. The layer follows camera
 changes and drag previews without saving positions or changing the geometry.
 When a full name cannot fit, the canvas hides that annotation. The existing
 hover, selection, keyboard focus and detail routes expose the full name.
+Bed crop labels and individual-plant labels show only the compact crop and
+variety name. The crop phase, occupancy and dates stay in the hover tooltip
+and the preview, and the phase colors are explained by the legend. Label
+sizes and collision bounds are measured from that visible name alone.
 The location also keeps a fixed preview button when its boundary is unmeasured
 or outside the viewport.
 
