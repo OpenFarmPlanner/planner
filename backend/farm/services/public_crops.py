@@ -88,6 +88,7 @@ from farm.services.crop_inheritance import (
     crop_group_rows_to_sync,
     crop_identity_write,
     ensure_general_crop_for_variety,
+    find_general_crop,
     forces_species_invariant_inheritance,
     get_general_crop,
     is_unset_crop_value,
@@ -3975,14 +3976,7 @@ def _ensure_local_general_crop(
     """
     if not public_crop.variety_normalized or public_crop.crop_species_id is None:
         return
-    # Crop.variety_normalized is left NULL (not '') for an empty variety
-    # (see Crop.save()), unlike PublicCrop's - filter on the raw field.
-    already_local = Crop.objects.filter(
-        project=project,
-        crop_species_id=public_crop.crop_species_id,
-        variety='',
-    ).exists()
-    if already_local:
+    if find_general_crop(project.pk, public_crop.crop_species_id):
         return
     general_public = find_general_public_crop(public_crop.crop_species)
     if general_public is None:

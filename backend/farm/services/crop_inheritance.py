@@ -630,7 +630,7 @@ def build_general_crop_index(project_id: int | None) -> GeneralCropIndex:
         return {}
     general_crops = (
         Crop.objects
-        .filter(project_id=project_id, crop_species__isnull=False, variety_normalized__isnull=True)
+        .filter(GENERAL_CROP_ROW_Q, project_id=project_id, crop_species__isnull=False)
         # Descending, so the lowest primary key is the one left standing below.
         .order_by('-pk')
     )
@@ -656,17 +656,7 @@ def get_general_crop(
     cached = getattr(crop, '_resolved_general_crop', _UNRESOLVED)
     if cached is not _UNRESOLVED:
         return cached
-    resolved = (
-        Crop.objects
-        .filter(
-            project_id=crop.project_id,
-            crop_species_id=crop.crop_species_id,
-            variety_normalized__isnull=True,
-        )
-        .exclude(pk=crop.pk)
-        .order_by('pk')
-        .first()
-    )
+    resolved = find_general_crop(crop.project_id, crop.crop_species_id, exclude_pk=crop.pk)
     crop._resolved_general_crop = resolved
     return resolved
 

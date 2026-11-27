@@ -1836,6 +1836,21 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.assertEqual(self.sorte.display_color, '#445566')
         self.assertEqual(other.display_color, '#772211')
 
+    def test_legacy_general_row_provides_color_and_cannot_be_reset(self):
+        Crop.objects.filter(pk=self.general.pk).update(variety_normalized='')
+        url = '/openfarmplanner/api/crops/'
+        inheriting = self.client.get(f'{url}{self.sorte.pk}/').data
+        self.assertEqual(inheriting['effective_display_color'], self.general.display_color)
+        self.assertEqual(inheriting['general_crop'], self.general.pk)
+        response = self.client.post(f'{url}reset-colors/', {
+            'expected_project_id': self.project.pk,
+            'crops': [{'id': self.general.pk, 'updated_at': self.general.updated_at.isoformat()}],
+        }, format='json')
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(
+            Crop.objects.get(pk=self.general.pk).display_color, self.general.display_color,
+        )
+
     def test_seed_type_is_set_on_a_sorte_and_defaults_to_blank(self):
         url = f'/openfarmplanner/api/crops/{self.sorte.id}/'
         self.assertEqual(self.client.get(url).data['seed_type'], '')

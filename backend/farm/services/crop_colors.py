@@ -7,7 +7,7 @@ from django.db import transaction
 
 from farm.history.records import HISTORY_RETENTION_DAYS, revision_actor
 from farm.models import Crop
-from farm.services.crop_inheritance import lock_crop_project
+from farm.services.crop_inheritance import GENERAL_CROP_ROW_Q, is_variety_crop, lock_crop_project
 
 _RESET_SALT = 'farm.crop-color-reset'
 
@@ -18,9 +18,9 @@ class CropColorResetConflict(Exception):
 
 def _selected_varieties(project_id: int, crop_ids: set[int]) -> list[Crop]:
     crops = list(Crop.objects.select_for_update().filter(
-        project_id=project_id, pk__in=crop_ids, variety_normalized__isnull=False,
-    ).order_by('pk'))
-    if len(crops) != len(crop_ids):
+        project_id=project_id, pk__in=crop_ids,
+    ).exclude(GENERAL_CROP_ROW_Q).order_by('pk'))
+    if len(crops) != len(crop_ids) or any(not is_variety_crop(crop) for crop in crops):
         raise CropColorResetConflict
     return crops
 
