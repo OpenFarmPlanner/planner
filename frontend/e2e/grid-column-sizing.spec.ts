@@ -76,11 +76,16 @@ test('planting plan resize, auto-fit and reset preserve sorting and visibility',
 
 test('growing areas use their own persisted width and support menu auto-fit', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  await loginWithDeterministicProject(page, request, 'growing-area-grid-sizing', { demoProject: true, loginAsAdmin: true });
+  await loginWithDeterministicProject(page, request, 'ga', { loginAsAdmin: true });
+  const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Hof' });
+  const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Süd', location: location.id });
+  await apiRequest(page, 'POST', '/beds/', { name: 'Kurzes Beet', field: field.id });
   await page.goto('/app/fields-beds?view=list');
   const name = header(page, 'name');
   await expect(name).toBeVisible();
   await expect(gridRoot(page)).toHaveAttribute('aria-busy', 'false');
+  await expect(page.getByTestId('hierarchy-name-text').filter({ hasText: 'Kurzes Beet' })).toBeVisible();
+  await expect.poll(() => width(name)).toBeLessThan(235);
   const original = await width(name);
   await dragDivider(page, name, 120);
   await expect.poll(() => width(name)).toBeGreaterThan(original + 90);
@@ -93,9 +98,19 @@ test('growing areas use their own persisted width and support menu auto-fit', as
   await name.locator('.MuiDataGrid-menuIconButton').click();
   await page.getByRole('menuitem', { name: 'Spaltenbreite automatisch anpassen' }).click();
   await expect.poll(() => width(name)).not.toBe(wide);
+
+  await dragDivider(page, name, -110);
+  await expect.poll(() => width(name)).toBe(152);
+  const fieldRow = page.locator(`[role="row"][data-id="field-${field.id}"]`);
+  const actions = fieldRow.getByTestId('hierarchy-name-actions-overlay');
+  await fieldRow.hover({ position: { x: 90, y: 20 } });
+  await expect(actions).toHaveCSS('opacity', '1');
+  await expect(actions.getByRole('button')).toHaveCount(1);
+  await actions.getByRole('button', { name: 'Aktionen' }).click();
+  await expect(page.getByRole('menuitem', { name: /^Beet hinzufügen/ })).toBeVisible();
 });
 
-test('growing areas fit collapsed bed names and reserve their row actions', async ({ page, request }, testInfo) => {
+test('growing areas fit collapsed bed names and overlay actions without moving the label', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'collapsed-hierarchy-sizing', { loginAsAdmin: true });
   const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Acker am Bach' });
@@ -137,11 +152,40 @@ test('growing areas fit collapsed bed names and reserve their row actions', asyn
   await expect(label).toHaveText(bedName);
   const overflow = () => label.evaluate(node => node.scrollWidth - node.clientWidth);
   await expect.poll(overflow).toBeLessThanOrEqual(1);
+  expect(await label.evaluate(node => {
+    const text = document.createRange();
+    text.selectNodeContents(node);
+    return node.getBoundingClientRect().right - text.getBoundingClientRect().right;
+  })).toBeLessThan(28);
+  const nameCell = row.getByRole('gridcell').and(row.locator('[data-field="name"]'));
+  const overlay = row.getByTestId('hierarchy-name-actions-overlay');
+  const labelBounds = await label.boundingBox();
+  const rowHeight = (await row.boundingBox())?.height;
   await row.hover({ position: { x: 180, y: 25 } });
-  await expect(row.getByTestId('hierarchy-name-actions-overlay')).toHaveCSS('opacity', '1');
+  await expect(overlay).toHaveCSS('opacity', '1');
+  await expect(overlay).toHaveCSS('position', 'absolute');
+  const overlayBounds = (await overlay.boundingBox())!;
+  const cellBounds = (await nameCell.boundingBox())!;
+  expect(overlayBounds.x).toBeGreaterThan(labelBounds!.x);
+  expect(overlayBounds.x).toBeLessThan(labelBounds!.x + labelBounds!.width);
+  expect(overlayBounds.x + overlayBounds.width).toBeLessThanOrEqual(cellBounds.x + cellBounds.width);
+  expect(await label.boundingBox()).toEqual(labelBounds);
+  expect((await row.boundingBox())?.height).toBe(rowHeight);
   await expect.poll(overflow).toBeLessThanOrEqual(1);
   expect(await width(name)).toBe(fitted);
   const search = page.getByRole('searchbox', { name: 'Anbauflächen durchsuchen' });
+  await search.hover();
+  await expect(overlay).toHaveCSS('opacity', '0');
+  await nameCell.click({ position: { x: 120, y: 18 } });
+  await search.hover();
+  await nameCell.press('ArrowRight');
+  await expect(row.locator('[role="gridcell"]:focus-visible')).toHaveCount(1);
+  await expect(overlay).toHaveCSS('opacity', '1');
+  await expect(overlay).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await page.screenshot({ path: testInfo.outputPath('growing-areas-keyboard-overlay.png') });
+  await page.keyboard.press('Shift+F10');
+  await expect(page.getByRole('menuitem', { name: 'Löschen', exact: true })).toBeVisible();
+  await page.keyboard.press('Escape');
   await search.fill('E2E Project');
   await expect(row).toHaveCount(0);
   await expect(name).toBeVisible();
@@ -158,6 +202,43 @@ test('growing areas fit collapsed bed names and reserve their row actions', asyn
   await page.getByRole('button', { name: 'Spalten', exact: true }).click();
   await page.getByRole('button', { name: 'Spaltenbreiten zurücksetzen' }).click();
   await expect.poll(() => width(name)).toBe(420);
+});
+
+test.describe('touch hierarchy overlays', () => {
+  test.use({ hasTouch: true, viewport: { width: 850, height: 900 } });
+
+  test('growing areas keep actions available at the minimum Name width', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'touch-hierarchy-sizing', { loginAsAdmin: true });
+    const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Hof' });
+    const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Lange Parzelle', location: location.id });
+    const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', { name: 'Langer Name für ein schmales Beet', field: field.id });
+    await page.goto('/app/fields-beds?view=list');
+    const name = header(page, 'name');
+    const locationRow = page.locator(`[role="row"][data-id="location-${location.id}"]`);
+    const fieldRow = page.locator(`[role="row"][data-id="field-${field.id}"]`);
+    const row = page.locator(`[role="row"][data-id="${bed.id}"]`);
+    await expect(row).toBeVisible();
+    await dragDivider(page, name, -250);
+    await expect.poll(() => width(name)).toBe(152);
+
+    const overlay = row.getByTestId('hierarchy-name-actions-overlay');
+    const nameCell = row.locator('[data-field="name"]');
+    const text = row.getByTestId('hierarchy-name-text');
+    const cellBounds = (await nameCell.boundingBox())!;
+    const textBounds = (await text.boundingBox())!;
+    expect(cellBounds.x + cellBounds.width - textBounds.x - textBounds.width).toBeLessThan(16);
+    await expect(overlay).toHaveCSS('position', 'absolute');
+    await overlay.getByRole('button', { name: 'Aktionen' }).tap();
+    await expect(page.getByRole('menuitem', { name: 'Löschen', exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+
+    await fieldRow.getByTestId('expand-icon-slot').getByRole('button', { name: 'Eintrag zuklappen' }).tap();
+    await expect(row).toHaveCount(0);
+    await fieldRow.getByTestId('expand-icon-slot').getByRole('button', { name: 'Eintrag aufklappen' }).tap();
+    await expect(row).toBeVisible();
+    await locationRow.getByRole('button', { name: 'Aktionen' }).tap();
+    await expect(page.getByRole('menuitem', { name: /^Parzelle hinzufügen/ })).toBeVisible();
+  });
 });
 
 test('variety comparison sizes only the selected column and keeps overflow inside the table', async ({ page, request }, testInfo) => {

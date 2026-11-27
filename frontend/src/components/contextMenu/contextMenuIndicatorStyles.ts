@@ -88,29 +88,6 @@ export const contextMenuActionsCellTextSx: SystemStyleObject<Theme> = {
   whiteSpace: 'nowrap',
 };
 
-/**
- * In-flow counterpart to `contextMenuActionsOverlaySx` for cells that keep a
- * fixed slot for their actions (Growing Areas name column, #1576): the icons
- * fade in on hover inside space the text never uses, so nothing is covered
- * and the text does not move. Hidden on touch devices, like the overlay.
- */
-export function contextMenuActionsSlotSx(hoverSelector: string): SystemStyleObject<Theme> {
-  return {
-    flex: '0 0 auto',
-    display: 'inline-flex',
-    alignItems: 'center',
-    gap: 0.5,
-    ml: 0.5,
-    opacity: 0,
-    pointerEvents: 'none',
-    transition: 'opacity 120ms ease-in-out',
-    '@media (hover: hover)': {
-      [hoverSelector]: revealOnHoverOrFocus,
-      [`${hoverSelector} .${CONTEXT_MENU_INDICATOR_CLASS}`]: revealOnHoverOrFocus,
-    },
-  };
-}
-
 export function contextMenuActionsOverlaySx(
   hoverSelector: string,
   focusWithinSelector?: string,

@@ -363,7 +363,8 @@ describe('hierarchy components and behaviors', () => {
     render(<>{renderedCell}</>);
 
     expect(actionOverlay?.props.sx).toMatchObject({
-      flex: '0 0 auto',
+      position: 'absolute',
+      right: 0,
       opacity: 0,
       '@media (hover: hover)': {
         '.MuiDataGrid-row:hover &': {
@@ -371,16 +372,13 @@ describe('hierarchy components and behaviors', () => {
           pointerEvents: 'auto',
         },
       },
-      '.MuiDataGrid-row--editing:hover &': {
-        opacity: 0,
-        pointerEvents: 'none',
-      },
+      '.MuiDataGrid-row--editing &': { display: 'none' },
     });
     expect(screen.getByRole('button', { name: 'Aktionen' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
   });
 
-  it('renders hover actions for empty unsaved row names even in edit mode', () => {
+  it('keeps actions outside the layout of an empty unsaved row', () => {
     const columns = createHierarchyColumns(
       vi.fn(),
       vi.fn(),
@@ -407,7 +405,8 @@ describe('hierarchy components and behaviors', () => {
     render(<>{renderedCell}</>);
 
     expect(actionOverlay?.props.sx).toMatchObject({
-      flex: '0 0 auto',
+      position: 'absolute',
+      right: 0,
       opacity: 0,
       '@media (hover: hover)': {
         '.MuiDataGrid-row:hover &': {
@@ -415,10 +414,7 @@ describe('hierarchy components and behaviors', () => {
           pointerEvents: 'auto',
         },
       },
-      '.MuiDataGrid-row--editing:hover &': {
-        opacity: 0,
-        pointerEvents: 'none',
-      },
+      '.MuiDataGrid-row--editing &': { display: 'none' },
     });
     expect(screen.getByRole('button', { name: 'Aktionen' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Löschen' })).toBeInTheDocument();
@@ -496,9 +492,9 @@ describe('hierarchy components and behaviors', () => {
       width: '100%',
       maxWidth: 'none',
     });
-    // The actions keep their own slot beside the name instead of covering it (#1576).
     expect(actionOverlay?.props.sx).toMatchObject({
-      flex: '0 0 auto',
+      position: 'absolute',
+      right: 0,
       opacity: 0,
       pointerEvents: 'none',
       '@media (hover: hover)': {
@@ -506,10 +502,10 @@ describe('hierarchy components and behaviors', () => {
           opacity: 1,
           pointerEvents: 'auto',
         },
-      },
-      '.MuiDataGrid-row--editing:hover &': {
-        opacity: 0,
-        pointerEvents: 'none',
+        '.MuiDataGrid-row:has(:focus-visible) &': {
+          opacity: 1,
+          pointerEvents: 'auto',
+        },
       },
     });
   });

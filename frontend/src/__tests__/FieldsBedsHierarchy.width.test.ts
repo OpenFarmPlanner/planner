@@ -10,20 +10,21 @@ describe('fields-beds hierarchy name column width', () => {
   const bed: HierarchyRow = { id: 'bed-1', name: 'Gründüngungsversuch', level: 2, type: 'bed', bedId: 1 };
   const plan: HierarchyRow = { id: 'plan-1', name: 'Karotten', level: 3, type: 'individualPlan', individualPlantCount: 3 };
 
-  it('includes the reserved action slot in each row width, accounting for depth and row type', () => {
-    expect(measureHierarchyName(bed, t, false, false)).toMatchObject({ text: bed.name, extra: 194 });
-    expect(measureHierarchyName(bed, t, true, false)).toMatchObject({ text: bed.name, extra: 140 });
-    expect(measureHierarchyName(plan, t, false, true)).toMatchObject({ text: 'Karotten · 3 Einzelpflanzen', extra: 174 });
+  it('measures indentation, expand slots and leading icons without allocating action space', () => {
+    expect(measureHierarchyName(bed, t, false)).toMatchObject({ text: bed.name, extra: 100 });
+    expect(measureHierarchyName({ ...bed, level: 1 }, t, false)).toMatchObject({ text: bed.name, extra: 76 });
+    expect(measureHierarchyName({ ...bed, bedId: undefined }, t, false)).toEqual(measureHierarchyName(bed, t, false));
+    expect(measureHierarchyName(plan, t, true)).toMatchObject({ text: 'Karotten · 3 Einzelpflanzen', extra: 140 });
   });
 
   it('caps defaults and uses the widest complete row for an explicit fit', () => {
     const longPlan = { ...plan, name: 'Lang'.repeat(30) };
-    const withWideControls = { ...bed, level: 5 };
+    const deeperBed = { ...bed, level: 5 };
     const column = { field: 'name', headerName: 'Name' };
-    const content = { cell: (row: HierarchyRow) => measureHierarchyName(row, t, false, false), defaultMax: 420 };
+    const content = { cell: (row: HierarchyRow) => measureHierarchyName(row, t, false), defaultMax: 420 };
     const measure = ({ text }: { text: string }) => text.length * 8;
-    expect(measureGridColumn(column, [withWideControls, longPlan], content, measure, true)).toBe(420);
-    expect(measureGridColumn(column, [withWideControls, longPlan], content, measure, false)).toBe(1156);
+    expect(measureGridColumn(column, [deeperBed, longPlan], content, measure, true)).toBe(420);
+    expect(measureGridColumn(column, [deeperBed, longPlan], content, measure, false)).toBe(1122);
   });
 });
 

@@ -1850,10 +1850,10 @@ function FieldsBedsHierarchy({
   const sizingContents = useMemo<GridSizingContents<HierarchyRow>>(() => ({
     rows: sizingRows,
     ready: !loading && !individualHierarchyLoading && rotationStatus !== 'loading',
-    scope: `${gridLocale}:${activeSeasonId ?? ''}:${showPersistentContextMenuButton}:${showInlineIndividualCount}`,
+    scope: `${gridLocale}:${activeSeasonId ?? ''}:${isMobileViewport}:${showInlineIndividualCount}`,
     measurements: {
       name: {
-        cell: row => measureHierarchyName(row, t, showPersistentContextMenuButton, showInlineIndividualCount),
+        cell: row => measureHierarchyName(row, t, showInlineIndividualCount),
         headerExtra: isMobileViewport ? 0 : 72,
         defaultMax: 420,
       },
@@ -1868,7 +1868,7 @@ function FieldsBedsHierarchy({
       },
     },
   }), [sizingRows, loading, individualHierarchyLoading, rotationStatus, gridLocale, activeSeasonId,
-    showPersistentContextMenuButton, showInlineIndividualCount, isMobileViewport, t]);
+    showInlineIndividualCount, isMobileViewport, t]);
   const columnSizing = useGridColumnSizing(columns, "fieldsBedsHierarchy", userId, projectId, sizingContents);
   useGridColumnAutoFit(gridApiRef, columnSizing.autoFit);
 

@@ -1,10 +1,10 @@
-import { Box, IconButton } from '@mui/material';
+import { Box, IconButton, type Theme } from '@mui/material';
 import type { GridRenderCellParams } from '@mui/x-data-grid';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import type { TFunction } from 'i18next';
 import type { HierarchyRow } from './utils/types';
-import { contextMenuActionsSlotSx } from '../contextMenu/contextMenuIndicatorStyles';
+import { CONTEXT_MENU_INDICATOR_CLASS } from '../contextMenu/contextMenuIndicatorStyles';
 import { renderInlineActions, renderMoreActionsButton } from './hierarchyRowActions';
 import {
   NON_BLOCKING_TOOLTIP_PROPS,
@@ -15,11 +15,18 @@ import { AppTooltip } from '../AppTooltip';
 import { TruncatedTextWithTooltip } from '../TruncatedTextWithTooltip';
 import { IndividualPlantIcon } from '../../planting-plans/individualPlantActions';
 import {
-  hierarchyNameText, HIERARCHY_EXPAND_MARGIN_PX, HIERARCHY_EXPAND_SLOT_PX, HIERARCHY_NAME_GAP_PX,
+  getHierarchyNameTextOffsetPx, hierarchyNameText, HIERARCHY_EXPAND_MARGIN_PX, HIERARCHY_EXPAND_SLOT_PX, HIERARCHY_NAME_GAP_PX,
   HIERARCHY_NAME_INDENT_PX, HIERARCHY_TOUCH_ACTION_PX,
 } from './utils/hierarchyNameColumnWidth';
 
 export { getHierarchyNameTextOffsetPx } from './utils/hierarchyNameColumnWidth';
+
+const revealActions = { opacity: 1, pointerEvents: 'auto' as const };
+const hoverRow = '.MuiDataGrid-row:hover &';
+const keyboardFocusedRow = '.MuiDataGrid-row:has(:focus-visible) &';
+const overlaySurface = '--ofp-hierarchy-overlay-surface';
+// Space needed to show all three actions without reaching the expander.
+const actionsWidth = 96;
 
 export function renderNameCell(
   params: GridRenderCellParams<HierarchyRow>,
@@ -54,9 +61,13 @@ export function renderNameCell(
       })
     : null;
   const text = hierarchyNameText(row, params.value, t, Boolean(options.showInlineIndividualCount));
+  const quickActionsMinWidth = getHierarchyNameTextOffsetPx(row.level) + HIERARCHY_NAME_GAP_PX + actionsWidth;
 
   return (
-    <Box sx={{ display: 'flex', alignItems: 'center', pl: `${baseIndent}px`, width: '100%', minWidth: 0, gap: `${HIERARCHY_NAME_GAP_PX}px` }}>
+    <Box sx={{
+      position: 'relative', containerType: 'inline-size', containerName: 'hierarchy-name',
+      display: 'flex', alignItems: 'center', width: '100%', minWidth: 0, gap: `${HIERARCHY_NAME_GAP_PX}px`,
+    }}>
       <Box
         sx={{
           width: HIERARCHY_EXPAND_SLOT_PX,
@@ -65,6 +76,7 @@ export function renderNameCell(
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
+          ml: `${baseIndent}px`,
           mr: `${HIERARCHY_EXPAND_MARGIN_PX}px`,
           pointerEvents: hasExpandToggle ? 'auto' : 'none',
         }}
@@ -96,7 +108,6 @@ export function renderNameCell(
 
       <Box
         sx={{
-          position: 'relative',
           display: 'inline-flex',
           alignItems: 'center',
           minWidth: 0,
@@ -126,22 +137,54 @@ export function renderNameCell(
             px: row.type === 'bed' ? 0.5 : 0,
           }}
         />
-
-        {persistentContextMenuButton}
-
-        {inlineActions ? (
-          <Box
-            data-testid="hierarchy-name-actions-overlay"
-            sx={{
-              ...contextMenuActionsSlotSx('.MuiDataGrid-row:hover &'),
-              ...(isStandaloneRender ? { opacity: 1, pointerEvents: 'auto' } : {}),
-              '.MuiDataGrid-row--editing:hover &': { opacity: 0, pointerEvents: 'none' },
-            }}
-          >
-            {inlineActions}
-          </Box>
-        ) : null}
       </Box>
+      {persistentContextMenuButton || inlineActions ? (
+        <Box
+          data-testid="hierarchy-name-actions-overlay"
+          sx={{
+            position: 'absolute',
+            right: 0,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            px: 0.25,
+            borderRadius: 1,
+            [overlaySurface]: (theme: Theme) => theme.palette.background.paper,
+            bgcolor: `var(${overlaySurface})`,
+            opacity: 0,
+            pointerEvents: 'none',
+            transition: 'opacity 120ms ease-in-out',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              inset: '0 100% 0 auto',
+              width: 12,
+              pointerEvents: 'none',
+              background: `linear-gradient(to right, transparent, var(${overlaySurface}))`,
+            },
+            [hoverRow]: {
+              [overlaySurface]: (theme: Theme) => theme.palette.surface?.surfaceHoverBackground ?? theme.palette.background.paper,
+            },
+            '.MuiDataGrid-row.Mui-selected:hover .MuiDataGrid-cell--editable:not(:hover, :focus-within) &': {
+              [overlaySurface]: (theme: Theme) => theme.palette.surface?.surfaceBackground ?? theme.palette.background.paper,
+            },
+            '@media (hover: hover)': {
+              [hoverRow]: revealActions,
+              [keyboardFocusedRow]: revealActions,
+              [`${hoverRow} .${CONTEXT_MENU_INDICATOR_CLASS}`]: revealActions,
+              [`${keyboardFocusedRow} .${CONTEXT_MENU_INDICATOR_CLASS}`]: revealActions,
+            },
+            [`@container hierarchy-name (width < ${quickActionsMinWidth}px)`]: {
+              [`& .action-icons > :not(.${CONTEXT_MENU_INDICATOR_CLASS})`]: { display: 'none' },
+            },
+            ...(isStandaloneRender || persistentContextMenuButton ? revealActions : {}),
+            '.MuiDataGrid-row--editing &': { display: 'none' },
+          }}
+        >
+          {persistentContextMenuButton ?? inlineActions}
+        </Box>
+      ) : null}
     </Box>
   );
 }

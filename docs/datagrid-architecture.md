@@ -1183,7 +1183,8 @@ Planting Plans, Growing Areas List, and the varieties comparison in Cultures
 and the public Crop Library share `useGridColumnSizing`. Defaults fit localized
 headings, controls and formatted cell text up to each column's automatic limit.
 The table leaves extra space to the right. Growing Areas measures each full
-name with its own indentation, icons and reserved row actions.
+name with its own indentation and icons. Row actions overlay the trailing end of
+the name without contributing to column width.
 
 Drag a divider to set a width or double-click it to fit that column to its full
 loaded content and heading. Manual widths and explicit auto-fit may exceed
