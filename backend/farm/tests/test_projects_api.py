@@ -611,10 +611,14 @@ class ProjectsApiTests(APITestCase):
         self.assertTrue(crops.filter(name='Tomate', variety='').exists())
         self.assertTrue(crops.filter(name='Tomate', variety='Roma').exists())
         plans = PlantingPlan.objects.filter(project=project)
-        self.assertEqual(plans.count(), 74)
+        self.assertEqual(plans.count(), 75)
         orchard = plans.get(parcel__isnull=False)
         self.assertEqual(orchard.crop.variety, 'Topaz')
         self.assertEqual(len(orchard.individual_positions), 3)
+        direct = plans.get(site__isnull=False)
+        self.assertEqual(direct.site_id, orchard.parcel.location_id)
+        self.assertEqual(direct.crop_id, orchard.crop_id)
+        self.assertEqual(len(direct.individual_positions), 1)
 
         me_response = self.client.get('/openfarmplanner/api/auth/me/')
         demo_membership = next(
