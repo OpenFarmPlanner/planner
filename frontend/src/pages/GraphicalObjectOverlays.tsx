@@ -291,8 +291,8 @@ export function GraphicalObjectOverlays({
         const rect = object.rect ? projectViewportRect(object.rect, viewport) : null;
         const visibleLabel = object.type === 'location' && showLocationLabel;
         const active = selection?.key === object.key || menuObject?.key === object.key;
-        const x = Math.max(0, Math.min(stageWidth - 36, rect?.x ?? 12));
-        const y = Math.max(36, Math.min(stageHeight - 36, rect?.y ?? 50));
+        const x = visibleLabel ? 12 : Math.max(0, Math.min(stageWidth - 36, rect?.x ?? 12));
+        const y = visibleLabel ? 50 : Math.max(36, Math.min(stageHeight - 36, rect?.y ?? 50));
         return (
           <Box component="button" type="button" key={object.key}
             ref={(node: HTMLButtonElement | null) => {
@@ -311,7 +311,7 @@ export function GraphicalObjectOverlays({
             onFocus={() => {
               if (object.type === 'plant') setKeyboardPlants(current => current[object.id] === object.key
                 ? current : { ...current, [object.id]: object.key });
-              if (!menuObject && rect && (rect.x + rect.width < 0 || rect.y + rect.height < 0
+              if (!visibleLabel && !menuObject && rect && (rect.x + rect.width < 0 || rect.y + rect.height < 0
                 || rect.x > stageWidth || rect.y > stageHeight) && object.rect) onFocusObject(object.rect);
             }}
             onClick={event => {

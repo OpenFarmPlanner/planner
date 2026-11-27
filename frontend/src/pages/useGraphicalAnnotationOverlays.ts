@@ -29,7 +29,8 @@ export function useGraphicalAnnotationOverlays(root: RefObject<HTMLDivElement | 
     const resize = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
     const mutations = new MutationObserver(schedule);
     resize?.observe(canvas);
-    mutations.observe(canvas, { childList: true, subtree: true });
+    mutations.observe(canvas, { childList: true, subtree: true, attributes: true,
+      attributeFilter: ['data-graphical-annotation-obstacle'] });
     measure();
     return () => {
       mutations.disconnect();

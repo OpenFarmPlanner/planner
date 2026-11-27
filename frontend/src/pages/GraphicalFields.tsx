@@ -56,6 +56,7 @@ import {
   clampInsideBoundary,
   clampInsideParent,
   isRectOutsideBoundary,
+  rectsOverlap,
   DEFAULT_GRAPHICAL_ROTATION,
   rotateRect,
   rotateRectBetweenSizes,
@@ -1161,7 +1162,10 @@ export default function GraphicalFields({
             ? getIndividualPlantLabels([...plantObjects.values()], [...areaObjects.values()].flatMap(object =>
               object.type === 'bed' && object.rect ? [object.rect] : []), viewport,
               { width: stageWidth, height: stageHeight }, measureText.plant) : null;
-          const showFallbackLocationLabel = !boundary;
+          const viewportSize = { width: stageWidth, height: stageHeight };
+          const projectedBoundary = boundary && projectViewportRect(boundary, viewport);
+          const showFallbackLocationLabel = !projectedBoundary
+            || !rectsOverlap(projectedBoundary, { x: 0, y: 0, ...viewportSize });
           const locationLabel = boundary ? t("fields:graphical.locationBoundaryLabel", {
             name: location.name,
             width: formatLocalizedNumber(location.width_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
@@ -1174,8 +1178,8 @@ export default function GraphicalFields({
             const obstacles: AreaAnnotationObstacle[] = annotationOverlays.map(rect => ({ rect }));
             const subjects: AreaAnnotationSubject[] = [];
             const bedRotations = new Map<number, GraphicalRotation>();
-            if (boundary) {
-              const footprint = project(boundary);
+            if (boundary && projectedBoundary) {
+              const footprint = projectedBoundary;
               const { x, y, width, height } = footprint;
               const siteEdges = [
                 { x, y: y - 1, width, height: 2 }, { x, y: y + height - 1, width, height: 2 },
@@ -1228,7 +1232,7 @@ export default function GraphicalFields({
                 : stemToCanvas(stem, area.metrics, area.rect, bedRotation ?? rotation);
               if (point) reserveStem(point);
             }
-            return layoutAreaAnnotations(subjects, obstacles, { width: stageWidth, height: stageHeight });
+            return layoutAreaAnnotations(subjects, obstacles, viewportSize);
           })();
           const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
           const focusArea = (rect: PlacementRect): void => {

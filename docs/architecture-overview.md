@@ -259,6 +259,8 @@ workspace controls also reserve screen space. The layer follows camera
 changes and drag previews without saving positions or changing the geometry.
 When a full name cannot fit, the canvas hides that annotation. The existing
 hover, selection, keyboard focus and detail routes expose the full name.
+The location also keeps a fixed preview button when its boundary is unmeasured
+or outside the viewport.
 
 `useGraphicalStageSize` measures the selected canvas width and its actual top
 edge below the rendered header, leaving the main content's bottom gutter.

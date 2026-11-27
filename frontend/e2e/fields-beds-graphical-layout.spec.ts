@@ -1344,6 +1344,24 @@ test('draws a sized location boundary and flags plots that cross it', async ({ p
     expect(boundary.bounds.x + boundary.bounds.width).toBeLessThanOrEqual(boundary.stage.width + 1);
     await page.screenshot({ path: testInfo.outputPath(`boundary-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
   }
+  await apiRequest(page, 'PUT', `/locations/${location.id}/layouts/`, {
+    location_boundary: { x: 0, y: 0 },
+    field_layouts: [{ field: inside.id, x: 20, y: 20 }, { field: outside.id, x: 5000, y: 0 }],
+    bed_layouts: [],
+  });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.reload();
+  await page.getByRole('button', { name: /^Layoutprüfung/ }).click();
+  await page.getByRole('button', { name: 'Zu groß in der Grafik anzeigen', exact: true }).click();
+  await expect.poll(async () => {
+    const { bounds, stage } = (await canvasRects(page, `location-boundary-${location.id}`))[0];
+    return bounds.x + bounds.width <= 0 || bounds.x >= stage.width
+      || bounds.y + bounds.height <= 0 || bounds.y >= stage.height;
+  }).toBe(true);
+  const site = page.getByRole('button', { name: 'Standort · Grenzhof', exact: true });
+  await expect(site).toBeInViewport();
+  await site.click();
+  await expect(page.getByTestId('graphical-object-preview')).toHaveAccessibleName('Grenzhof');
 });
 
 test('keeps a dragged plot inside the location boundary at any zoom and viewport', async ({ page, request }, testInfo) => {
