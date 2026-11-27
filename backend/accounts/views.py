@@ -126,6 +126,46 @@ TURNSTILE_UNAVAILABLE_MESSAGE = (
 )
 
 
+def _field_error_entries(
+    codes: object, field: serializers.Field | None,
+) -> list[dict[str, str | int]]:
+    entries = []
+    for code in codes if isinstance(codes, list) else [codes]:
+        if not isinstance(code, str):
+            continue
+        entry: dict[str, str | int] = {'code': code}
+        if code in ('min_length', 'max_length'):
+            limit = getattr(field, code, None)
+            if limit is not None:
+                entry['limit'] = limit
+        entries.append(entry)
+    return entries
+
+
+class AccountAPIView(APIView):
+    _validation_serializer: serializers.Serializer | None = None
+
+    def validate_serializer(self, serializer: serializers.Serializer) -> None:
+        self._validation_serializer = serializer
+        _validate_serializer_in_german(serializer)
+
+    def handle_exception(self, exc: Exception) -> Response:
+        response = super().handle_exception(exc)
+        if isinstance(exc, serializers.ValidationError) and isinstance(response.data, dict):
+            serializer = self._validation_serializer
+            fields = serializer.fields if serializer is not None else {}
+            codes = exc.get_codes()
+            if isinstance(codes, dict):
+                response.data = {
+                    **response.data,
+                    'field_errors': {
+                        field: _field_error_entries(errors, fields.get(field))
+                        for field, errors in codes.items()
+                    },
+                }
+        return response
+
+
 def _email_send_failed_response(message: str, status_code: int) -> Response:
     """Build the shared email-delivery failure envelope."""
     return api_error_response(
@@ -176,14 +216,14 @@ def _turnstile_error_response(request: Request, client_ip: str | None) -> Respon
 
 
 @method_decorator(ensure_csrf_cookie, name='dispatch')
-class CsrfTokenView(APIView):
+class CsrfTokenView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request: Request) -> Response:
         return Response({'detail': _de(_('CSRF cookie set'))})
 
 
-class RegisterView(RegistrationAlertMixin, APIView):
+class RegisterView(RegistrationAlertMixin, AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_register'
     # Opts this view into the globally registered EmailDomainRateThrottle.
@@ -207,7 +247,7 @@ class RegisterView(RegistrationAlertMixin, APIView):
             return turnstile_error
 
         serializer = RegisterSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         # The guest's resolved UI language becomes the new account's
         # preference, like a guest choice is promoted on sign-in.
         user = serializer.save(ui_language=normalize_language_tag(request.query_params.get('language')))
@@ -238,13 +278,13 @@ class RegisterView(RegistrationAlertMixin, APIView):
         )
 
 
-class ActivateView(RegistrationAlertMixin, APIView):
+class ActivateView(RegistrationAlertMixin, AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_activation'
 
     def post(self, request: Request) -> Response:
         serializer = ActivateSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
             return api_error_response(
@@ -279,7 +319,7 @@ class ActivateView(RegistrationAlertMixin, APIView):
         return Response(UserSerializer(user).data)
 
 
-class GuestDemoStartView(APIView):
+class GuestDemoStartView(AccountAPIView):
     """Start an isolated, anonymous demo session."""
 
     permission_classes = [permissions.AllowAny]
@@ -303,7 +343,7 @@ class GuestDemoStartView(APIView):
         return Response(UserSerializer(demo_session.user).data, status=status.HTTP_201_CREATED)
 
 
-class GuestDemoEndView(APIView):
+class GuestDemoEndView(AccountAPIView):
     """End the current guest session and delete its temporary data."""
 
     def post(self, request: Request) -> Response:
@@ -317,13 +357,13 @@ class GuestDemoEndView(APIView):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
-class LoginView(APIView):
+class LoginView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_login'
 
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         email = _normalize_email(serializer.validated_data['email'])
         password = serializer.validated_data['password']
@@ -357,13 +397,13 @@ class LoginView(APIView):
         return Response(UserSerializer(user).data)
 
 
-class LogoutView(APIView):
+class LogoutView(AccountAPIView):
     def post(self, request: Request) -> Response:
         logout(request)
         return Response({'detail': _de(_('Logged out.'))})
 
 
-class MeView(APIView):
+class MeView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
 
     def get(self, request: Request) -> Response:
@@ -377,43 +417,46 @@ class MeView(APIView):
         return Response({'authenticated': True, **UserSerializer(request.user).data})
 
 
-class ConsentAcceptView(APIView):
+class ConsentAcceptView(AccountAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = ConsentAcceptSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         record_acceptance(request.user, serializer.validated_data['document'])
         return Response(UserSerializer(request.user).data)
 
 
-class AccountProfileView(APIView):
+class AccountProfileView(AccountAPIView):
     def patch(self, request: Request) -> Response:
         serializer = AccountProfileSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         display_name = serializer.validated_data['display_name'].strip()
         request.user.first_name = display_name
         request.user.save(update_fields=['first_name'])
         return Response({'detail': PROFILE_UPDATED_MESSAGE, 'user': UserSerializer(request.user).data})
 
 
-class AccountPublicProfileView(APIView):
+class AccountPublicProfileView(AccountAPIView):
     def patch(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountPublicProfileSerializer(data=request.data, context={'request': request})
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         public_display_name = serializer.validated_data['public_display_name'].strip()
         try:
             PublicProfile.objects.update_or_create(user=request.user, defaults={'public_display_name': public_display_name})
         except IntegrityError:
-            raise serializers.ValidationError({'public_display_name': ['Dieser Name wird bereits verwendet.']})
+            raise serializers.ValidationError(
+                {'public_display_name': ['Dieser Name wird bereits verwendet.']},
+                code='public_display_name_taken',
+            ) from None
         return Response({'detail': PROFILE_UPDATED_MESSAGE, 'user': UserSerializer(request.user).data})
 
 
-class AccountLanguageView(APIView):
+class AccountLanguageView(AccountAPIView):
     """Reads and stores the signed-in user's personal UI language preference.
 
     Deliberately a user-level setting and not a project setting: members of the
@@ -433,7 +476,7 @@ class AccountLanguageView(APIView):
 
     def put(self, request: Request) -> Response:
         serializer = AccountLanguageSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         ui_language = serializer.validated_data['ui_language']
         UserProjectSettings.objects.update_or_create(
             user=request.user,
@@ -443,7 +486,7 @@ class AccountLanguageView(APIView):
         return Response({'ui_language': ui_language, 'user': UserSerializer(request.user).data})
 
 
-class AccountTableEditHintView(APIView):
+class AccountTableEditHintView(AccountAPIView):
     """Reads and updates the shared state of the inline table edit hint.
 
     One flag and one counter for all inline-editing tables, stored per user so
@@ -462,14 +505,14 @@ class AccountTableEditHintView(APIView):
         return Response(state)
 
 
-class AccountEmailChangeRequestView(APIView):
+class AccountEmailChangeRequestView(AccountAPIView):
     throttle_scope = 'auth_password_reset_request'
 
     def post(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountEmailChangeRequestSerializer(data=request.data, context={'request': request})
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         if not _password_confirmation_is_valid(request.user, serializer.validated_data.get('current_password', '')):
             return api_error_response(
@@ -505,13 +548,13 @@ class AccountEmailChangeRequestView(APIView):
         return Response({'detail': EMAIL_CHANGE_CONFIRMATION_SENT_MESSAGE})
 
 
-class AccountEmailChangeConfirmView(APIView):
+class AccountEmailChangeConfirmView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_password_reset_confirm'
 
     def post(self, request: Request) -> Response:
         serializer = AccountEmailChangeConfirmSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
@@ -566,12 +609,12 @@ class AccountEmailChangeConfirmView(APIView):
         return Response({'detail': EMAIL_CHANGE_CONFIRMATION_SUCCESS_MESSAGE})
 
 
-class AccountPasswordChangeView(APIView):
+class AccountPasswordChangeView(AccountAPIView):
     def post(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountPasswordChangeSerializer(data=request.data, context={'request': request})
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         if not request.user.check_password(serializer.validated_data['current_password']):
             return api_error_response(
@@ -586,14 +629,14 @@ class AccountPasswordChangeView(APIView):
         return Response({'detail': PASSWORD_UPDATED_MESSAGE})
 
 
-class AccountDeleteRequestView(APIView):
+class AccountDeleteRequestView(AccountAPIView):
     """Mark the authenticated account for delayed deletion after password confirmation."""
 
     def post(self, request: Request) -> Response:
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountDeleteRequestSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         user = request.user
         if not _password_confirmation_is_valid(user, serializer.validated_data.get('password', '')):
@@ -637,7 +680,7 @@ class AccountDeleteRequestView(APIView):
         )
 
 
-class AccountRestoreView(APIView):
+class AccountRestoreView(AccountAPIView):
     """Restore an account that is pending deletion within the grace period."""
 
     permission_classes = [permissions.AllowAny]
@@ -645,7 +688,7 @@ class AccountRestoreView(APIView):
 
     def post(self, request: Request) -> Response:
         serializer = AccountRestoreSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         email = _normalize_email(serializer.validated_data['email'])
         password = serializer.validated_data['password']
 
@@ -689,7 +732,7 @@ class AccountRestoreView(APIView):
         return Response(UserSerializer(user).data)
 
 
-class AccountStatusView(APIView):
+class AccountStatusView(AccountAPIView):
     """Return deletion scheduling state for the authenticated account."""
 
     def get(self, request: Request) -> Response:
@@ -703,7 +746,7 @@ class AccountStatusView(APIView):
         )
 
 
-class AccountDataExportView(APIView):
+class AccountDataExportView(AccountAPIView):
     """Return a structured JSON export of the authenticated user's data."""
 
     permission_classes = [permissions.IsAuthenticated]
@@ -718,13 +761,13 @@ class AccountDataExportView(APIView):
         return response
 
 
-class ResendActivationView(RegistrationAlertMixin, APIView):
+class ResendActivationView(RegistrationAlertMixin, AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_resend_activation'
 
     def post(self, request: Request) -> Response:
         serializer = ResendActivationSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         email = _normalize_email(serializer.validated_data['email'])
 
         # Checked before the account lookup so unknown, active and pending
@@ -780,13 +823,13 @@ def _resend_limited_response(limit_reached: bool, retry_after_seconds: int) -> R
     return response
 
 
-class PasswordResetRequestView(APIView):
+class PasswordResetRequestView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_password_reset_request'
 
     def post(self, request: Request) -> Response:
         serializer = PasswordResetRequestSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         email = _normalize_email(serializer.validated_data['email'])
 
         user = User.objects.filter(email__iexact=email, is_active=True).first()
@@ -806,13 +849,13 @@ class PasswordResetRequestView(APIView):
         return Response({'detail': GENERIC_EMAIL_SENT_MESSAGE})
 
 
-class PasswordResetConfirmView(APIView):
+class PasswordResetConfirmView(AccountAPIView):
     permission_classes = [permissions.AllowAny]
     throttle_scope = 'auth_password_reset_confirm'
 
     def post(self, request: Request) -> Response:
         serializer = PasswordResetConfirmSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
             return api_error_response(
@@ -842,7 +885,7 @@ class PasswordResetConfirmView(APIView):
         return Response({'detail': _de(_('Password has been reset successfully.'))})
 
 
-class AccountTaskDragHintView(APIView):
+class AccountTaskDragHintView(AccountAPIView):
     """Retire the optional task-moving introduction for the authenticated user."""
 
     permission_classes = [permissions.IsAuthenticated]

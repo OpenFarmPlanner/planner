@@ -2,6 +2,7 @@
   "title": "Account settings",
   "email": "Email",
   "displayName": "Display name",
+  "profileSaved": "Your profile was saved.",
   "sections": {
     "profile": "Profile",
     "publicProfile": "Crop library",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Change password",
     "newPassword": "New password",
     "repeatNewPassword": "Repeat new password",
-    "noPasswordHint": "This account signs in with Google or Microsoft and has no password. You can set one via \"Forgot password\" on the sign in page."
+    "noPasswordHint": "This account signs in with Google or Microsoft and has no password. You can set one via \"Forgot password\" on the sign in page.",
+    "emailConfirmationSent": "We sent a confirmation link to your new email address. Keep using your current address to sign in until you confirm the change.",
+    "passwordChanged": "Your password was changed."
   },
   "loginMethods": {
     "title": "Login methods",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "Confirm email change",
     "loading": "Checking confirmation…",
-    "invalid": "The confirmation link is invalid or has expired."
+    "invalid": "The confirmation link is invalid or has expired.",
+    "success": "Your email address was changed."
   },
   "developer": {
     "title": "Developer",

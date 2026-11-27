@@ -38,7 +38,10 @@ class DrfRequestSafetyTests(APITestCase):
                 )
 
                 self.assertEqual(response.status_code, 400)
-                self.assertEqual(set(response.data), {'email', 'password'})
+                self.assertEqual(set(response.data), {'email', 'password', 'field_errors'})
+                for field in ('email', 'password'):
+                    self.assertEqual(response.data[field][0].code, 'required')
+                    self.assertEqual(response.data['field_errors'][field], [{'code': 'required'}])
 
     def test_oversized_accept_tokens_do_not_reach_the_parameter_parser(self) -> None:
         header = ','.join(f'text/x-test{i}; x{i}="' + ';' * 8100 + '"' for i in range(2))

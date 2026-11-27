@@ -4,7 +4,7 @@ import type { FormEvent } from 'react';
 import { Link as RouterLink, Navigate, useLocation, useNavigate } from 'react-router';
 import { projectAPI, type InvitationPublicStatus } from '../../api/api';
 import { useAuth } from '../../auth/useAuth';
-import { AuthApiError } from '../../auth/authApi';
+import { AuthApiError, getAuthErrorMessage } from '../../auth/authApi';
 import { getAuthenticatedAppDestination } from '../../auth/authDestination';
 import { useEndGuestDemoOnAuthPage } from '../../auth/useEndGuestDemoOnAuthPage';
 import { useTranslation } from '../../i18n';
@@ -76,6 +76,7 @@ export default function LoginPage() {
     setSubmitting(true);
     setError(null);
     setUnactivatedAccount(null);
+    setPendingDeletionAt(null);
     const normalizedEmail = email.trim().toLowerCase();
 
     try {
@@ -86,13 +87,13 @@ export default function LoginPage() {
     } catch (err) {
       if (err instanceof AuthApiError && err.code === 'account_pending_deletion') {
         setPendingDeletionAt(err.scheduledDeletionAt ?? null);
-        setError(err.message);
+        if (!err.scheduledDeletionAt) setError(err.message);
       } else if (err instanceof AuthApiError && err.code === 'account_not_activated') {
         const senderEmail = err.payload?.sender_email;
         setUnactivatedAccount({ email: normalizedEmail, senderEmail: typeof senderEmail === 'string' ? senderEmail : null });
         setError(t('auth:login.accountNotActivated'));
       } else {
-        setError(err instanceof Error ? err.message : t('auth:login.failed'));
+        setError(getAuthErrorMessage(err, t('auth:login.failed')));
       }
     } finally {
       setSubmitting(false);
@@ -106,7 +107,7 @@ export default function LoginPage() {
       const me = await restoreAccount(email.trim().toLowerCase(), password);
       navigate(nextPath ?? getAuthenticatedAppDestination(me), { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth:login.restoreFailed'));
+      setError(getAuthErrorMessage(err, t('auth:login.restoreFailed')));
     } finally {
       setSubmitting(false);
     }

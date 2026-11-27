@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link as RouterLink, useNavigate, useParams, useSearchParams } from 'react-router';
 import { projectAPI } from '../../api/api';
 import { useAuth } from '../../auth/useAuth';
+import { getAuthErrorMessage } from '../../auth/authApi';
 import { getAuthenticatedAppDestination } from '../../auth/authDestination';
 import { useTranslation } from '../../i18n';
 import { buildInvitationAcceptPath, getStoredInvitationNext, getStoredInvitationToken } from '../invitationAcceptance';
@@ -99,7 +100,7 @@ export default function ActivatePage() {
         setTimeout(() => navigate(appDestination, { replace: true }), 1200);
       } catch (err) {
         setStatus('error');
-        setMessage(err instanceof Error ? err.message : t('auth:activate.failed'));
+        setMessage(getAuthErrorMessage(err, t('auth:activate.failed')));
       }
     })();
   }, [activate, navigate, searchParams, switchActiveProject, t, tokenFromPath, uidFromPath]);

@@ -189,8 +189,8 @@ describe('ConsentGate', () => {
     expect(await tooltipOf(user, acceptingButton)).toHaveTextContent('Aktion wird gerade verarbeitet.');
   });
 
-  it('shows an error message when accepting fails', async () => {
-    acceptConsentMock.mockRejectedValueOnce(new Error('Netzwerkfehler'));
+  it('shows a localized fallback when accepting fails with an unexpected error', async () => {
+    acceptConsentMock.mockRejectedValueOnce(new Error('Technical consent failure'));
     const user = userEvent.setup();
     render(
       <MemoryRouter>
@@ -200,7 +200,8 @@ describe('ConsentGate', () => {
 
     await user.click(screen.getByRole('button', { name: 'Akzeptieren' }));
 
-    expect(await screen.findByText('Netzwerkfehler')).toBeInTheDocument();
+    expect(await screen.findByRole('alert')).toHaveTextContent('Das hat leider nicht funktioniert. Bitte versuche es erneut.');
+    expect(screen.queryByText('Technical consent failure')).not.toBeInTheDocument();
   });
 
   it('renders nothing when there are no pending consents', () => {

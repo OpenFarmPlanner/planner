@@ -2,6 +2,7 @@
   "title": "Kontoeinstellungen",
   "email": "E-Mail",
   "displayName": "Anzeigename",
+  "profileSaved": "Dein Profil wurde gespeichert.",
   "sections": {
     "profile": "Profil",
     "publicProfile": "Kulturbibliothek",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Passwort ändern",
     "newPassword": "Neues Passwort",
     "repeatNewPassword": "Neues Passwort wiederholen",
-    "noPasswordHint": "Dieses Konto meldet sich über Google oder Microsoft an und hat kein Passwort. Über „Passwort vergessen“ auf der Anmeldeseite kannst du eines festlegen."
+    "noPasswordHint": "Dieses Konto meldet sich über Google oder Microsoft an und hat kein Passwort. Über „Passwort vergessen“ auf der Anmeldeseite kannst du eines festlegen.",
+    "emailConfirmationSent": "Wir haben einen Bestätigungslink an die neue E-Mail-Adresse gesendet. Bis du ihn bestätigst, meldest du dich mit der bisherigen Adresse an.",
+    "passwordChanged": "Dein Passwort wurde geändert."
   },
   "loginMethods": {
     "title": "Anmeldemethoden",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "E-Mail-Änderung bestätigen",
     "loading": "Bestätigung wird geprüft …",
-    "invalid": "Der Bestätigungslink ist ungültig oder abgelaufen."
+    "invalid": "Der Bestätigungslink ist ungültig oder abgelaufen.",
+    "success": "Deine E-Mail-Adresse wurde geändert."
   },
   "developer": {
     "title": "Entwickler",

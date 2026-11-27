@@ -2,6 +2,7 @@
   "title": "Accountinstellingen",
   "email": "E-mail",
   "displayName": "Weergavenaam",
+  "profileSaved": "Je profiel is opgeslagen.",
   "sections": {
     "profile": "Profiel",
     "publicProfile": "Gewassenbibliotheek",
@@ -55,7 +56,9 @@
     "changePasswordTitle": "Wachtwoord wijzigen",
     "newPassword": "Nieuw wachtwoord",
     "repeatNewPassword": "Nieuw wachtwoord herhalen",
-    "noPasswordHint": "Dit account meldt zich aan met Google of Microsoft en heeft geen wachtwoord. Je kunt er een instellen via ‘Wachtwoord vergeten’ op de aanmeldpagina."
+    "noPasswordHint": "Dit account meldt zich aan met Google of Microsoft en heeft geen wachtwoord. Je kunt er een instellen via ‘Wachtwoord vergeten’ op de aanmeldpagina.",
+    "emailConfirmationSent": "We hebben een bevestigingslink naar je nieuwe e-mailadres gestuurd. Blijf je huidige adres gebruiken om in te loggen totdat je de wijziging bevestigt.",
+    "passwordChanged": "Je wachtwoord is gewijzigd."
   },
   "loginMethods": {
     "title": "Aanmeldmethoden",
@@ -88,7 +91,8 @@
   "emailConfirm": {
     "title": "E-mailwijziging bevestigen",
     "loading": "Bevestiging controleren…",
-    "invalid": "De bevestigingslink is ongeldig of verlopen."
+    "invalid": "De bevestigingslink is ongeldig of verlopen.",
+    "success": "Je e-mailadres is gewijzigd."
   },
   "developer": {
     "title": "Ontwikkelaar",

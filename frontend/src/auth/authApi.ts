@@ -64,8 +64,13 @@ export function parsePositiveSeconds(value: unknown): number | undefined {
   return Math.ceil(parsed);
 }
 
-function parseRetrySecondsFromDetail(detail: string): number | undefined {
-  const match = /available in (\d+(?:\.\d+)?) seconds/i.exec(detail);
+export function getGuestDemoRetryAfterSeconds(error: AuthApiError): number | undefined {
+  const structuredWait = parsePositiveSeconds(error.retryAfterSeconds) ?? parsePositiveSeconds(error.payload?.retry_after);
+  if (structuredWait !== undefined) return structuredWait;
+
+  // Older demo servers only include the wait duration in the DRF response text.
+  const detail = error.payload?.detail;
+  const match = typeof detail === 'string' ? /available in (\d+(?:\.\d+)?) seconds/i.exec(detail) : null;
   return match ? parsePositiveSeconds(match[1]) : undefined;
 }
 
@@ -73,167 +78,119 @@ function resolveRetryAfterSeconds(
   response: Response,
   payload?: Record<string, unknown>,
 ): number | undefined {
-  const headerSeconds = parsePositiveSeconds(response.headers.get('Retry-After'));
-  if (headerSeconds !== undefined) {
-    return headerSeconds;
-  }
-
-  const payloadSeconds = parsePositiveSeconds(payload?.retry_after);
-  if (payloadSeconds !== undefined) {
-    return payloadSeconds;
-  }
-
-  return typeof payload?.detail === 'string' ? parseRetrySecondsFromDetail(payload.detail) : undefined;
+  return parsePositiveSeconds(response.headers.get('Retry-After')) ?? parsePositiveSeconds(payload?.retry_after);
 }
 
-function serverUnavailableMessage(): string {
-  return translateOrFallback('auth:error.serverUnavailable', 'Der Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.');
+function statusErrorMessage(status: number, retryAfterSeconds?: number): string {
+  if (status === 429) {
+    return retryAfterSeconds === undefined
+      ? i18n.t('auth:error.rateLimited')
+      : i18n.t('auth:error.rateLimitedWithWait', { seconds: retryAfterSeconds });
+  }
+  return i18n.t(status >= 500 ? 'auth:error.serverUnavailable' : 'auth:error.requestFailed');
 }
 
 function extractError(response: Response, raw: string): AuthApiError {
-  const fallbackMessage = response.status >= 500
-    ? serverUnavailableMessage()
-    : translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
+  let payload: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const code = typeof parsed.code === 'string' ? parsed.code : undefined;
-    const detail = code === GUEST_DEMO_RESTRICTED_CODE
-      ? translateOrFallback('common:guestDemo.restricted', fallbackMessage)
-      : toUserFriendlyErrorMessage(parsed);
-    const scheduledDeletionAt = typeof parsed.scheduled_deletion_at === 'string' ? parsed.scheduled_deletion_at : undefined;
-    return new AuthApiError(detail || fallbackMessage, {
-      code,
-      scheduledDeletionAt,
-      status: response.status,
-      retryAfterSeconds: resolveRetryAfterSeconds(response, parsed),
-      payload: parsed,
-    });
+    payload = asRecord(JSON.parse(raw));
   } catch {
-    return new AuthApiError(fallbackMessage, { status: response.status });
+    payload = {};
   }
+  const code = typeof payload.code === 'string' ? payload.code : undefined;
+  const messageKey = code ? authErrorMessageKeys.get(code) : undefined;
+  const retryAfterSeconds = resolveRetryAfterSeconds(response, payload);
+  const message = messageKey
+    ? i18n.t(messageKey)
+    : formatFieldErrors(payload.field_errors) || statusErrorMessage(response.status, retryAfterSeconds);
+  return new AuthApiError(message, {
+    code,
+    scheduledDeletionAt: typeof payload.scheduled_deletion_at === 'string' ? payload.scheduled_deletion_at : undefined,
+    status: response.status,
+    retryAfterSeconds,
+    payload,
+  });
 }
 
-const authFieldLabelFallbacks: Record<string, string> = {
-  email: 'E-Mail',
-  password: 'Passwort',
-  password_confirm: 'Passwort bestätigen',
-  uid: 'Benutzerkennung',
-  token: 'Token',
-  display_name: 'Anzeigename',
-  public_display_name: 'Name bei Veröffentlichungen',
-  document: 'Dokument',
-  detail: 'Fehler',
-  non_field_errors: 'Fehler',
-};
+const authErrorMessageKeys = new Map([
+  [GUEST_DEMO_RESTRICTED_CODE, 'common:guestDemo.restricted'],
+  ['invalid_credentials', 'auth:error.messages.invalidCredentials'],
+  ['invalid_restore_credentials', 'auth:error.messages.invalidCredentials'],
+  ['account_not_activated', 'auth:login.accountNotActivated'],
+  ['account_pending_deletion', 'auth:error.messages.accountPendingDeletion'],
+  ['invalid_password', 'auth:error.messages.invalidCurrentPassword'],
+  ['deletion_grace_period_expired', 'auth:error.messages.deletionGracePeriodExpired'],
+  ['invalid_activation_link', 'auth:activate.invalidLink'],
+  ['invalid_activation_token', 'auth:activate.invalidLink'],
+  ['invalid_password_reset_link', 'auth:resetPassword.invalidLink'],
+  ['invalid_password_reset_token', 'auth:resetPassword.invalidLink'],
+  ['invalid_email_change_link', 'account:emailConfirm.invalid'],
+  ['email_already_exists', 'auth:error.messages.emailAlreadyExists'],
+  ['email_send_failed', 'auth:error.messages.emailSendFailed'],
+  ['turnstile_failed', 'auth:register.turnstile.rejected'],
+  ['turnstile_unavailable', 'auth:register.turnstile.unavailable'],
+  ['activation_resend_limit_reached', 'auth:activationEmail.limitReached'],
+]);
 
-const knownValidationMessageKeys: Record<string, string> = {
-  'This field is required.': 'required',
-  'Enter a valid email address.': 'invalidEmail',
-  'This password is too common.': 'passwordTooCommon',
-  'This password is too short.': 'passwordTooShort',
-  'This password is entirely numeric.': 'passwordEntirelyNumeric',
-  'Unable to log in with provided credentials.': 'invalidCredentials',
-  'Die E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org).': 'emailSendFailed',
-  'Dein Konto wurde erstellt, aber die Aktivierungs-E-Mail konnte nicht gesendet werden. Bitte kontaktiere [info@openfarmplanner.org](mailto:info@openfarmplanner.org), damit wir dein Konto aktivieren oder dir den Link erneut senden können.': 'activationEmailSendFailed',
-  'Dieser Name wird bereits verwendet.': 'publicDisplayNameTaken',
-  'Dieser Name ist reserviert. Bitte wähle einen anderen.': 'publicDisplayNameReserved',
-};
+const validationMessageKeys = new Map([
+  ['required', 'auth:error.messages.required'],
+  ['blank', 'auth:error.messages.required'],
+  ['null', 'auth:error.messages.required'],
+  ['min_length', 'auth:error.messages.tooShort'],
+  ['max_length', 'auth:error.messages.tooLong'],
+  ['password_mismatch', 'auth:register.passwordMismatch'],
+  ['password_too_short', 'auth:error.messages.passwordTooShort'],
+  ['password_too_common', 'auth:error.messages.passwordTooCommon'],
+  ['password_too_similar', 'auth:error.messages.passwordTooSimilar'],
+  ['password_entirely_numeric', 'auth:error.messages.passwordEntirelyNumeric'],
+  ['email_already_exists', 'auth:error.messages.emailAlreadyExists'],
+  ['disposable_email', 'auth:error.messages.disposableEmail'],
+  ['email_unchanged', 'auth:error.messages.emailUnchanged'],
+  ['public_display_name_taken', 'auth:error.messages.publicDisplayNameTaken'],
+  ['public_display_name_reserved', 'auth:error.messages.publicDisplayNameReserved'],
+]);
 
-function translateOrFallback(key: string, fallback: string, options?: Record<string, unknown>): string {
-  const translated = i18n.t(key, options);
-  return translated === key ? fallback : translated;
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
-function localizeBackendMessage(message: string): string {
-  const trimmed = message.trim();
-  const looksLikeHtml = /^<!doctype html/i.test(trimmed) || /^<html/i.test(trimmed) || /<body[\s>]/i.test(trimmed);
-  if (looksLikeHtml) {
-    return translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
-  }
-  const mappedKey = knownValidationMessageKeys[trimmed];
-  if (mappedKey) {
-    return translateOrFallback(`auth:error.messages.${mappedKey}`, trimmed);
-  }
-
-  const minLengthMatch = /^Ensure this field has at least (\d+) characters\.$/.exec(trimmed);
-  if (minLengthMatch) {
-    return translateOrFallback('auth:error.messages.minLength', trimmed, { count: Number(minLengthMatch[1]) });
-  }
-
-  const maxLengthMatch = /^Ensure this field has no more than (\d+) characters\.$/.exec(trimmed);
-  if (maxLengthMatch) {
-    return translateOrFallback('auth:error.messages.maxLength', trimmed, { count: Number(maxLengthMatch[1]) });
-  }
-
-  return trimmed;
+function localizeFieldErrors(field: string, value: unknown): string[] {
+  const entries: unknown[] = Array.isArray(value) ? value : [];
+  return entries.flatMap((entry) => {
+    const { code, limit } = asRecord(entry);
+    if (typeof code !== 'string') return [];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit >= 0) {
+      if (code === 'min_length') return [i18n.t('auth:error.messages.minLength', { count: limit })];
+      if (code === 'max_length') return [i18n.t('auth:error.messages.maxLength', { count: limit })];
+    }
+    const key = code === 'invalid' && (field === 'email' || field === 'new_email')
+      ? 'auth:error.messages.invalidEmail'
+      : validationMessageKeys.get(code) ?? 'auth:error.messages.invalid';
+    return [i18n.t(key)];
+  });
 }
 
 /** Localized validation messages the backend returned for one field, if any. */
 export function getLocalizedFieldError(error: unknown, field: string): string | null {
-  if (!(error instanceof AuthApiError) || !error.payload) {
+  if (!(error instanceof AuthApiError)) {
     return null;
   }
-  const messages = flattenErrorStrings(error.payload[field]).map((message) => localizeBackendMessage(message));
-  return messages.length > 0 ? messages.join(' ') : null;
+  const errors = asRecord(error.payload?.field_errors);
+  return localizeFieldErrors(field, errors[field]).join(' ') || null;
 }
 
-function flattenErrorStrings(value: unknown): string[] {
-  if (Array.isArray(value)) {
-    return value.flatMap((entry) => flattenErrorStrings(entry));
-  }
-  if (typeof value === 'string') {
-    return [value];
-  }
-  if (value && typeof value === 'object' && 'message' in value && typeof value.message === 'string') {
-    return [value.message];
-  }
-  return [];
+function formatFieldErrors(value: unknown): string {
+  return Object.entries(asRecord(value)).flatMap(([field, entries]) => {
+    const label = field === 'non_field_errors' ? '' : i18n.t(`auth:error.fields.${field}`, { defaultValue: '' });
+    return localizeFieldErrors(field, entries).map((message) => label ? `${label}: ${message}` : message);
+  }).join('\n');
 }
 
-function resolveFieldLabel(field: string): string {
-  const translated = i18n.t(`auth:error.fields.${field}`);
-  if (translated !== `auth:error.fields.${field}`) {
-    return translated;
-  }
-  return authFieldLabelFallbacks[field] ?? field;
-}
-
-// Envelope metadata that accompanies an error but is not a per-field validation message.
-const NON_FIELD_ERROR_KEYS = new Set(['code', 'detail', 'message', 'scheduled_deletion_at', 'sender_email', 'retry_after']);
-
-function toUserFriendlyErrorMessage(payload: Record<string, unknown>): string {
-  const explicitMessage = typeof payload.message === 'string' ? localizeBackendMessage(payload.message) : '';
-  const explicitDetail = typeof payload.detail === 'string' ? localizeBackendMessage(payload.detail) : '';
-  const formattedErrors: string[] = [];
-
-  for (const [field, value] of Object.entries(payload)) {
-    if (NON_FIELD_ERROR_KEYS.has(field)) {
-      continue;
-    }
-    const localizedMessages = flattenErrorStrings(value).map((message) => localizeBackendMessage(message));
-    if (localizedMessages.length === 0) {
-      continue;
-    }
-
-    if (field === 'non_field_errors') {
-      formattedErrors.push(...localizedMessages);
-      continue;
-    }
-
-    const fieldLabel = resolveFieldLabel(field);
-    formattedErrors.push(...localizedMessages.map((message) => `${fieldLabel}: ${message}`));
-  }
-
-  if (formattedErrors.length > 0) {
-    return formattedErrors.join('\n');
-  }
-  if (explicitMessage) {
-    return explicitMessage;
-  }
-  if (explicitDetail) {
-    return explicitDetail;
-  }
-  return translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
+/** AuthApiError contains UI text selected by the auth client. */
+export function getAuthErrorMessage(error: unknown, fallback: string): string {
+  return error instanceof AuthApiError ? error.message : fallback;
 }
 
 export async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -260,8 +217,8 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   } catch (error) {
     throw new AuthApiError(
       error instanceof DOMException && error.name === 'TimeoutError'
-        ? serverUnavailableMessage()
-        : translateOrFallback('auth:error.network', 'Die Anfrage konnte nicht gesendet werden.'),
+        ? i18n.t('auth:error.serverUnavailable')
+        : i18n.t('auth:error.network'),
       { isNetworkError: true },
     );
   }
@@ -278,7 +235,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     return await response.json() as T;
   } catch {
     throw new AuthApiError(
-      translateOrFallback('auth:error.unexpectedResponse', 'Die Antwort des Servers konnte nicht gelesen werden.'),
+      i18n.t('auth:error.unexpectedResponse'),
       { status: response.status, code: 'unexpected_response' },
     );
   }
@@ -389,7 +346,14 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 
 export async function startGuestDemo(): Promise<AuthUser> {
   await ensureCsrfCookie();
-  return request<AuthUser>('/auth/guest-demo/start/', { method: 'POST', headers: csrfHeader(), body: JSON.stringify({}) });
+  try {
+    return await request<AuthUser>('/auth/guest-demo/start/', { method: 'POST', headers: csrfHeader(), body: JSON.stringify({}) });
+  } catch (error) {
+    if (error instanceof AuthApiError && error.status === 429) {
+      error.retryAfterSeconds = getGuestDemoRetryAfterSeconds(error);
+    }
+    throw error;
+  }
 }
 
 export async function endGuestDemo(): Promise<void> {

@@ -1,7 +1,7 @@
 import { Alert, Box, CircularProgress, Typography } from '@mui/material';
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { confirmEmailChange } from '../../auth/authApi';
+import { confirmEmailChange, getAuthErrorMessage } from '../../auth/authApi';
 import { useTranslation } from '../../i18n';
 
 export default function ConfirmEmailChangePage() {
@@ -12,7 +12,7 @@ export default function ConfirmEmailChangePage() {
   const requestId = searchParams.get('request_id');
   const hasRequiredParams = Boolean(uid && token && requestId);
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState<unknown>(null);
 
   useEffect(() => {
     if (!uid || !token || !requestId) {
@@ -21,18 +21,16 @@ export default function ConfirmEmailChangePage() {
 
     void (async () => {
       try {
-        const response = await confirmEmailChange(uid, token, requestId);
+        await confirmEmailChange(uid, token, requestId);
         setStatus('success');
-        setMessage(response.detail);
-      } catch (error) {
+      } catch (confirmationError) {
         setStatus('error');
-        setMessage(error instanceof Error ? error.message : t('emailConfirm.invalid'));
+        setError(confirmationError);
       }
     })();
-  }, [requestId, t, token, uid]);
+  }, [requestId, token, uid]);
 
   const effectiveStatus = hasRequiredParams ? status : 'error';
-  const effectiveMessage = hasRequiredParams ? message : t('emailConfirm.invalid');
 
   return (
     <Box sx={{ maxWidth: 640, mx: 'auto', mt: 8, p: 3 }}>
@@ -45,8 +43,8 @@ export default function ConfirmEmailChangePage() {
           <Typography>{t('emailConfirm.loading')}</Typography>
         </Box>
       ) : null}
-      {effectiveStatus === 'success' ? <Alert severity="success">{effectiveMessage}</Alert> : null}
-      {effectiveStatus === 'error' ? <Alert severity="error">{effectiveMessage}</Alert> : null}
+      {effectiveStatus === 'success' ? <Alert severity="success">{t('emailConfirm.success')}</Alert> : null}
+      {effectiveStatus === 'error' ? <Alert severity="error">{getAuthErrorMessage(error, t('emailConfirm.invalid'))}</Alert> : null}
     </Box>
   );
 }
