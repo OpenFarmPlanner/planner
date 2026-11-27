@@ -4,6 +4,10 @@
     "load": "Yield overview could not be loaded."
   },
   "filters": {
+    "grouping": "Grouping",
+    "byCrop": "By crop",
+    "byVariety": "By variety",
+    "generalVariety": "{{crop}} (no specific variety)",
     "clearCrops": "Clear crop selection",
     "selectedCrops": "Selected crops",
     "seasonWindow": "Seasons",
@@ -21,6 +25,7 @@
     "month": "Month"
   },
   "chart": {
+    "forecastTable": "Forecast data table",
     "title": "Yield distribution",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Period",
@@ -37,6 +42,7 @@
     "openCrop": "Open crop"
   },
   "empty": {
+    "noYieldForSelection": "No yield forecast for this selection",
     "noPlansTitle": "No yield forecast available yet",
     "description": "Yield forecasts become available once planting plans with harvest periods exist.",
     "createPlanAction": "Add planting plan",

@@ -1402,6 +1402,10 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         all -- without them the endpoint returns an empty list, and a count
         assertion over nothing would pass while measuring nothing."""
         for crop in self.crops:
+            if crop.variety:
+                Crop.objects.create(
+                    name=crop.name, project=self.project, crop_species=crop.crop_species,
+                )
             crop.expected_yield = 2
             crop.harvest_method = 'per_sqm'
             crop.save(update_fields=['expected_yield', 'harvest_method'])
@@ -1414,6 +1418,13 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             response = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026')
         self.assertEqual(response.status_code, 200)
         self.assertGreater(len(response.data), 0)
+        url = '/openfarmplanner/api/yield-calendar/?year=2026&include_incomplete=true'
+        with self.assertNumQueries(6):
+            forecast = self.client.get(url)
+        self.assertEqual(forecast.status_code, 200)
+        groups = forecast.data['crop_groups']
+        self.assertEqual(len(groups), ROW_COUNT)
+        self.assertTrue(any(group['general_crop_id'] != group['crop_id'] for group in groups))
 
     def test_global_history_list_query_count(self):
         """`/history/global/` is unpaginated and covers 30 days of crop

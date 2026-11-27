@@ -4,6 +4,10 @@
     "load": "Impossible de charger l'aperçu des rendements."
   },
   "filters": {
+    "grouping": "Regroupement",
+    "byCrop": "Par culture",
+    "byVariety": "Par variété",
+    "generalVariety": "{{crop}} (sans variété précisée)",
     "clearCrops": "Effacer la sélection de cultures",
     "selectedCrops": "Cultures sélectionnées",
     "seasonWindow": "Saisons",
@@ -21,6 +25,7 @@
     "month": "Mois"
   },
   "chart": {
+    "forecastTable": "Tableau des prévisions",
     "title": "Répartition des rendements",
     "tooltip": "{{period}} · {{crop}} : {{yield}} kg",
     "tooltipPeriod": "Période",
@@ -37,6 +42,7 @@
     "openCrop": "Ouvrir la culture"
   },
   "empty": {
+    "noYieldForSelection": "Aucune prévision de rendement pour cette sélection",
     "noPlansTitle": "Aucune prévision de rendement disponible pour l'instant",
     "description": "Les prévisions de rendement sont disponibles dès qu'il existe des séries avec des périodes de récolte.",
     "createPlanAction": "Ajouter une série",

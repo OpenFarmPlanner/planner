@@ -4,6 +4,10 @@
     "load": "Não foi possível carregar a visão geral dos rendimentos."
   },
   "filters": {
+    "grouping": "Agrupamento",
+    "byCrop": "Por cultura",
+    "byVariety": "Por variedade",
+    "generalVariety": "{{crop}} (sem variedade especificada)",
     "clearCrops": "Limpar a seleção de culturas",
     "selectedCrops": "Culturas selecionadas",
     "seasonWindow": "Épocas",
@@ -21,6 +25,7 @@
     "month": "Mês"
   },
   "chart": {
+    "forecastTable": "Tabela de previsões",
     "title": "Distribuição dos rendimentos",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Período",
@@ -37,6 +42,7 @@
     "openCrop": "Abrir cultura"
   },
   "empty": {
+    "noYieldForSelection": "Sem previsão de rendimento para esta seleção",
     "noPlansTitle": "Ainda não existe previsão de rendimentos",
     "description": "As previsões de rendimentos ficam disponíveis quando existirem séries com períodos de colheita.",
     "createPlanAction": "Adicionar série",

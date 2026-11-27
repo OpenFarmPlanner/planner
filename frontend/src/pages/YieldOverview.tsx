@@ -30,9 +30,13 @@ import { YieldDistributionChart } from "./YieldDistributionChart";
 import {
   ALL_CROPS,
   type ChartPeriod,
-  type YieldCropMeta,
 } from "./yieldOverviewUtils";
-import { getCropDisplayName } from "../crops/cropDisplay";
+import {
+  buildForecastCropIndex,
+  forecastCropMatches,
+  projectForecastWeeks,
+  type YieldForecastGrouping,
+} from './yieldForecastGrouping';
 import { segmentedToggleButtonGroupSx, segmentedToggleButtonSx } from "../components/buttons/segmentedControlStyles";
 import { YieldSeasonComparison } from "./YieldSeasonComparison";
 import { DEFAULT_YIELD_COMPARISON_FILTERS } from "./yieldComparisonFilters";
@@ -48,7 +52,9 @@ export default function YieldOverviewPage() {
   const activeSeason = outletContext?.activeSeason ?? null;
   const scope = `${activeProjectId ?? ''}:${activeSeason?.id ?? ''}`;
   const [view, setView] = useState<YieldView>('calendar');
+  const [grouping, setGrouping] = useState<YieldForecastGrouping>('crop');
   const [selectedCropId, setSelectedCropId] = useState(ALL_CROPS);
+  const [selectedVarietyId, setSelectedVarietyId] = useState(ALL_CROPS);
   const [comparisonFilterState, setComparisonFilterState] = useState({
     projectId: activeProjectId, filters: DEFAULT_YIELD_COMPARISON_FILTERS,
   });
@@ -112,27 +118,21 @@ export default function YieldOverviewPage() {
     };
   }, [scope, shouldShowProjectRequiredState, t, retryAttempt]);
 
-  const crops = useMemo(() => {
-    const cropMap = new Map<number, YieldCropMeta>();
-    weeklyYield.forEach((week) => {
-      week.crops.forEach((crop) => {
-        cropMap.set(crop.crop_id, {
-          id: crop.crop_id,
-          name: getCropDisplayName(crop),
-          color: crop.color,
-        });
-      });
-    });
-    return [...cropMap.values()].sort((left, right) =>
-      left.name.localeCompare(
-        right.name,
-        i18n.resolvedLanguage ?? i18n.language,
-      ),
-    );
-  }, [i18n.language, i18n.resolvedLanguage, weeklyYield]);
-
+  const locale = i18n.resolvedLanguage ?? i18n.language;
+  const { crops, varieties, byId } = useMemo(() => buildForecastCropIndex(
+    forecast, locale, (crop) => t('filters.generalVariety', { crop }),
+  ), [forecast, locale, t]);
   const calendarCropId = crops.some(crop => String(crop.id) === selectedCropId)
     ? selectedCropId : ALL_CROPS;
+  const cropVarieties = varieties.filter(variety =>
+    calendarCropId === ALL_CROPS || String(variety.generalCrop.id) === calendarCropId,
+  );
+  const calendarVarietyId = grouping === 'variety'
+    && cropVarieties.some(variety => String(variety.id) === selectedVarietyId)
+    ? selectedVarietyId : ALL_CROPS;
+  const forecastWeeks = useMemo(() => projectForecastWeeks(
+    weeklyYield, byId, grouping, calendarCropId, calendarVarietyId,
+  ), [weeklyYield, byId, grouping, calendarCropId, calendarVarietyId]);
 
   const viewControls = useMemo(() => shouldShowProjectRequiredState ? null : (
     <ToggleButtonGroup
@@ -166,12 +166,14 @@ export default function YieldOverviewPage() {
     );
   }
 
-  const hasYieldData = weeklyYield.length > 0;
-  const hasRelevantPlans = plantingPlans.length > 0 || hasYieldData || incompletePlans.length > 0;
-  const visibleIncompletePlans = calendarCropId === ALL_CROPS
-    ? incompletePlans
-    // Older responses omit crop_id. Keep their warnings visible until they can be scoped reliably.
-    : incompletePlans.filter(plan => plan.crop_id === undefined || String(plan.crop_id) === calendarCropId);
+  const hasYieldData = forecastWeeks.some(week => week.crops.length > 0);
+  const hasRelevantPlans = plantingPlans.length > 0 || weeklyYield.length > 0 || incompletePlans.length > 0;
+  const visibleIncompletePlans = incompletePlans.filter(plan => {
+    // Older responses omitted crop_id. Keep those warnings visible.
+    if (plan.crop_id === undefined) return true;
+    if (plan.crop_id === null) return calendarCropId === ALL_CROPS && calendarVarietyId === ALL_CROPS;
+    return forecastCropMatches(plan.crop_id, byId, calendarCropId, calendarVarietyId);
+  });
 
   const calendar = loading ? (
     <Typography variant="body1" role="status">{t("loading")}</Typography>
@@ -185,8 +187,16 @@ export default function YieldOverviewPage() {
       <YieldFilterBar
         crops={crops}
         selectedCropId={calendarCropId}
+        varieties={cropVarieties}
+        selectedVarietyId={calendarVarietyId}
+        grouping={grouping}
         period={period}
-        onCropChange={setSelectedCropId}
+        onCropChange={id => {
+          setSelectedCropId(id);
+          setSelectedVarietyId(ALL_CROPS);
+        }}
+        onVarietyChange={setSelectedVarietyId}
+        onGroupingChange={setGrouping}
         onPeriodChange={setPeriod}
       >
         {visibleIncompletePlans.length > 0 && (
@@ -209,14 +219,15 @@ export default function YieldOverviewPage() {
         />
       ) : hasYieldData ? (
         <YieldDistributionChart
-          weeklyYield={weeklyYield}
-          selectedCropId={calendarCropId}
+          weeklyYield={forecastWeeks}
+          filterKey={`${grouping}:${calendarCropId}:${calendarVarietyId}`}
+          showBreakdown={grouping === 'variety'}
           period={period}
           activeSeason={activeSeason}
         />
       ) : (
         <EmptyStateCard
-          title={t("empty.noYieldTitle")}
+          title={t(weeklyYield.length ? 'empty.noYieldForSelection' : 'empty.noYieldTitle')}
           description={t("empty.noYieldDescription")}
           actions={[
             { label: t("empty.openPlansAction"), to: "/app/planting-plans" },

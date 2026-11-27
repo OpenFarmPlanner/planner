@@ -4,6 +4,10 @@
     "load": "Het opbrengstoverzicht kon niet worden geladen."
   },
   "filters": {
+    "grouping": "Groepering",
+    "byCrop": "Per gewas",
+    "byVariety": "Per ras",
+    "generalVariety": "{{crop}} (zonder opgegeven ras)",
     "clearCrops": "Gewasselectie wissen",
     "selectedCrops": "Geselecteerde gewassen",
     "seasonWindow": "Seizoenen",
@@ -21,6 +25,7 @@
     "month": "Maand"
   },
   "chart": {
+    "forecastTable": "Tabel met prognosegegevens",
     "title": "Opbrengstverdeling",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Periode",
@@ -37,6 +42,7 @@
     "openCrop": "Gewas openen"
   },
   "empty": {
+    "noYieldForSelection": "Geen opbrengstprognose voor deze selectie",
     "noPlansTitle": "Nog geen opbrengstprognose beschikbaar",
     "description": "Opbrengstprognoses zijn beschikbaar zodra er teelten met oogstperiodes bestaan.",
     "createPlanAction": "Teelt toevoegen",

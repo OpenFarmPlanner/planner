@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router";
-import { Box, Button, Card, CardContent, Divider, MenuItem, Typography } from "@mui/material";
+import {
+  Box, Button, Card, CardContent, Divider, MenuItem,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
+} from "@mui/material";
 import { type YieldCalendarWeek } from "../api/api";
 import { type Season } from "../api/types";
 import { YieldYearBoundaryMarker } from "./YieldYearBoundaryMarker";
@@ -19,6 +22,7 @@ import { YieldChartSegment } from "./YieldChartSegment";
 import { useYieldChartData } from "./useYieldChartData";
 import { getCropDisplayName } from "../crops/cropDisplay";
 import {
+  ALL_CROPS,
   formatCompactYield,
   getYieldAxisLabelStep,
   type ChartPeriod,
@@ -35,25 +39,32 @@ const DEFAULT_LEGEND_CROP_LIMIT = 15;
 
 interface YieldDistributionChartProps {
   weeklyYield: YieldCalendarWeek[];
-  selectedCropId: string;
+  filterKey: string;
+  showBreakdown: boolean;
   period: ChartPeriod;
   activeSeason: Season | null;
 }
 
 export function YieldDistributionChart({
   weeklyYield,
-  selectedCropId,
+  filterKey,
+  showBreakdown,
   period,
   activeSeason,
 }: YieldDistributionChartProps) {
   const { t, i18n } = useTranslation(["yieldOverview", "common"]);
+  const locale = i18n.resolvedLanguage ?? i18n.language;
   const yieldUnitLabel = t('common:units.kilograms');
+  const [isBreakdownOpen, setBreakdownOpen] = useState(false);
+  const formatBreakdownYield = useMemo(
+    () => new Intl.NumberFormat(locale, { maximumFractionDigits: 2 }), [locale],
+  );
   const navigate = useNavigate();
   const { chartData, chartCrops, maxTotalYield, yearBoundary } = useYieldChartData(
     weeklyYield,
-    selectedCropId,
+    ALL_CROPS,
     period,
-    i18n.resolvedLanguage ?? i18n.language,
+    locale,
   );
 
   // Only mark the calendar-year boundary when the active season deliberately
@@ -278,7 +289,7 @@ export function YieldDistributionChart({
   // collapsed legend still shows the most relevant entries instead of hiding
   // every crop behind a count button.
   const legendCropCount = chartCrops.length;
-  const legendExpansionResetKey = `${legendCropCount}:${period}:${selectedCropId}`;
+  const legendExpansionResetKey = `${legendCropCount}:${period}:${filterKey}`;
   const [legendExpansionState, setLegendExpansionState] = useState({
     resetKey: legendExpansionResetKey,
     expanded: false,
@@ -590,6 +601,40 @@ export function YieldDistributionChart({
             </Box>
           </Box>
         </Box>
+        {showBreakdown && (
+          <Box component="details" open={isBreakdownOpen}
+            onToggle={event => setBreakdownOpen(event.currentTarget.open)}>
+            <Typography component="summary" variant="body2"
+              sx={{ cursor: 'pointer', fontWeight: 600, lineHeight: '44px' }}>
+              {t('chart.forecastTable')}
+            </Typography>
+            {isBreakdownOpen && (
+              <TableContainer tabIndex={0} role="region" aria-label={t('chart.forecastTable')}
+                sx={{ maxHeight: 360, maxWidth: '100%' }}>
+                <Table stickyHeader size="small" sx={{ tableLayout: 'fixed', overflowWrap: 'anywhere' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell scope="col" sx={{ width: '24%' }}>{t('chart.tooltipPeriod')}</TableCell>
+                      <TableCell scope="col">{t('filters.variety')}</TableCell>
+                      <TableCell scope="col" align="right" sx={{ width: '25%' }}>
+                        {t('chart.tooltipYield')} ({yieldUnitLabel})
+                      </TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {chartData.flatMap(column => column.crops.map(crop => (
+                      <TableRow key={`${column.id}:${crop.crop_id}`}>
+                        <TableCell>{column.primaryLabel} {column.secondaryLabel}</TableCell>
+                        <TableCell component="th" scope="row">{getCropDisplayName(crop)}</TableCell>
+                        <TableCell align="right">{formatBreakdownYield.format(crop.yield)}</TableCell>
+                      </TableRow>
+                    )))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        )}
       </CardContent>
     </Card>
     <CustomContextMenu

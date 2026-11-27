@@ -3,6 +3,47 @@ import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProje
 
 test.use({ serviceWorkers: 'block' });
 
+test.describe('forecast grouping', () => {
+  test.use({ hasTouch: true });
+
+  test('groups lettuce by crop and opens the variety breakdown on a phone', async ({ page, request }, info) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await loginWithDeterministicProject(page, request, 'yield-forecast-grouping-phone', {
+      loginAsAdmin: true, demoProject: true, demoYear: 2026,
+    });
+    await page.goto('/app/yield-overview');
+    const byCrop = page.getByRole('button', { name: 'Nach Kultur', exact: true });
+    await expect(byCrop).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.getByRole('button', { name: /^Salat [\d,]+ kg$/ })).toHaveCount(1);
+    const crop = page.getByRole('combobox', { name: 'Kultur', exact: true });
+    await crop.tap();
+    const lettuce = page.getByRole('option', { name: 'Salat', exact: true });
+    await expect(lettuce).toHaveCount(1);
+    await lettuce.tap();
+    await expectNoHorizontalPageOverflow(page);
+    await page.screenshot({ path: info.outputPath('forecast-by-crop-phone.png'), animations: 'disabled' });
+
+    await page.getByRole('button', { name: 'Nach Sorte', exact: true }).tap();
+    await expect(page.getByRole('button', { name: /^Salat \(Lollo Bionda\) [\d,]+ kg$/ })).toBeVisible();
+    await expect(page.getByRole('button', { name: /^Salat \(Maikönig\) [\d,]+ kg$/ })).toBeVisible();
+    const variety = page.getByRole('combobox', { name: 'Sorte', exact: true });
+    await variety.tap();
+    await page.getByRole('option', { name: 'Salat (Maikönig)', exact: true }).tap();
+    const breakdown = page.locator('summary').filter({ hasText: 'Prognosedaten als Tabelle' });
+    await breakdown.press('Enter');
+    const table = page.getByRole('table');
+    await expect(table.getByRole('rowheader', { name: 'Salat (Maikönig)', exact: true }).first()).toBeVisible();
+    await expect(table.getByRole('rowheader', { name: 'Salat (Lollo Bionda)', exact: true })).toHaveCount(0);
+    await expectNoHorizontalPageOverflow(page);
+    await page.screenshot({ path: info.outputPath('forecast-by-variety-phone.png'), animations: 'disabled' });
+
+    await byCrop.press('Enter');
+    await expect(variety).toHaveCount(0);
+    await expect(crop).toHaveText('Salat');
+    await expect(page.getByRole('button', { name: /^Salat [\d,]+ kg$/ })).toHaveCount(1);
+  });
+});
+
 test('offers guidance when a season has no planting plans or recorded harvests', async ({ page, request }) => {
   await loginWithDeterministicProject(page, request, 'yield-comparison-empty-catalog', { loginAsAdmin: true });
   await apiRequest(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
