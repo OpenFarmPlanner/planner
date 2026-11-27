@@ -72,21 +72,19 @@ describe('renderNameCell', () => {
       renderCell({ row: row({ level: 0 }) });
 
       expect(nameText().closest('[class*="MuiBox"]')).toBeInTheDocument();
-      expect(slot().parentElement).toHaveStyle({ paddingLeft: '0px' });
+      expect(slot()).toHaveStyle({ marginLeft: '0px' });
     });
 
     it('indents each level by a fixed step', () => {
       renderCell({ row: row({ type: 'field', level: 1 }) });
 
-      // 24px per level, so a bed under a field under a location reads as
-      // three steps in rather than as three similar rows.
-      expect(slot().parentElement).toHaveStyle({ paddingLeft: '24px' });
+      expect(slot()).toHaveStyle({ marginLeft: '24px' });
     });
 
     it('indents a third level twice as far', () => {
       renderCell({ row: row({ type: 'bed', level: 2 }) });
 
-      expect(slot().parentElement).toHaveStyle({ paddingLeft: '48px' });
+      expect(slot()).toHaveStyle({ marginLeft: '48px' });
     });
 
     it('reserves the toggle slot even where there is no toggle', () => {
@@ -236,22 +234,13 @@ describe('renderNameCell', () => {
   });
 
   describe('the persistent actions button', () => {
-    /**
-     * The hover overlay carries its own "Aktionen" button, so the two are
-     * told apart by where they sit: this one is a direct child of the name
-     * area, outside the overlay.
-     */
-    const persistentButtons = (): HTMLElement[] =>
-      screen
-        .getAllByRole('button', { name: 'Aktionen' })
-        .filter((button) => button.closest('[data-testid="hierarchy-name-actions-overlay"]') === null);
+    const overlay = () => screen.getByTestId('hierarchy-name-actions-overlay');
+    const actions = () => within(overlay()).getByRole('button', { name: 'Aktionen' });
 
     it('stays away unless the caller asks for it', () => {
       renderCell({ row: row({ type: 'location' }) });
 
-      // The grid reveals its actions on hover; a permanently visible button
-      // per row would be three icons of noise in a long tree.
-      expect(persistentButtons()).toHaveLength(0);
+      expect(overlay()).toHaveStyle({ opacity: '0', pointerEvents: 'none' });
     });
 
     it('is offered when the caller asks, for a row that has a menu', () => {
@@ -260,18 +249,16 @@ describe('renderNameCell', () => {
         options: { showPersistentContextMenuButton: true },
       });
 
-      expect(persistentButtons()).toHaveLength(1);
+      expect(overlay()).toHaveStyle({ position: 'absolute', opacity: '1', pointerEvents: 'auto' });
+      expect(within(overlay()).getAllByRole('button')).toEqual([actions()]);
     });
 
-    it('is offered for every row type that supports a menu', () => {
-      (['location', 'field', 'bed'] as const).forEach((type) => {
-        const { unmount } = renderCell({
-          row: row({ type, level: 0 }),
-          options: { showPersistentContextMenuButton: true },
-        });
-        expect(persistentButtons()).toHaveLength(1);
-        unmount();
+    it.each(['location', 'field', 'bed', 'individualPlan'] as const)('is offered on a %s row', (type) => {
+      renderCell({
+        row: row({ type }),
+        options: { showPersistentContextMenuButton: true },
       });
+      expect(actions()).toBeVisible();
     });
 
     it('is large enough to hit, unlike the hover-revealed one', () => {
@@ -282,7 +269,7 @@ describe('renderNameCell', () => {
 
       // This is the variant the touch layouts turn on, so it carries a
       // 40px target rather than the compact hover icon's.
-      expect(persistentButtons()[0]).toHaveStyle({ width: '40px', height: '40px' });
+      expect(actions()).toHaveStyle({ width: '40px', height: '40px' });
     });
   });
 
