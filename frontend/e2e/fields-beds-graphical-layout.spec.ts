@@ -727,6 +727,8 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
+    const scaleNames = { de: 'Maßstab', en: 'Metric scale', fr: 'Échelle métrique', es: 'Escala métrica',
+      it: 'Scala metrica', pt: 'Escala métrica', nl: 'Metrische schaal' };
     for (const [locale, button, layerLabel, edit, shift, details, workspaceLabel, modeLabel] of [
       ['de', 'Grafikeinstellungen', 'Ebenen', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Arbeitsbereichsmenü', 'Kulturen & Aufgaben'],
       ['en', 'Graphic settings', 'Layers', 'Edit graphic', /Hold Shift/, 'View details', 'Workspace menu', 'Crops & tasks'],
@@ -746,6 +748,8 @@ test.describe('location spacing in a touch-capable browser', () => {
       const date = page.getByTestId('graphical-crop-date');
       await expect(editButton).toHaveCount(0);
       await expect(layers).toHaveAccessibleName(`${layerLabel} · ${modeLabel}`);
+      await expect(page.getByTestId('graphical-scale-indicator').getByRole('img'))
+        .toHaveAccessibleName(new RegExp(`^${scaleNames[locale]} · `));
       await expect(spacingButton).toHaveCount(0);
       await expect.poll(async () => {
         const [dateBox, menuBox] = await Promise.all([date.boundingBox(), workspace.boundingBox()]);
@@ -1670,6 +1674,159 @@ test('shows dimensions along the selected Graphic location axes throughout a ful
     }
   }
   expect(await apiRequest(page, 'GET', `/locations/${location.id}/`)).toMatchObject(dimensions);
+});
+
+test('uses one metric zoom range for fitting a large site and working on a small measured bed', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'graphical-metric-zoom', { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  await apiRequest(page, 'PATCH', `/locations/${location.id}/`, { length_m: 2000, width_m: 1000 });
+  const parcel = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Messparzelle', location: location.id, length_m: 6, width_m: 4,
+  });
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    name: 'Kleines Messbeet', field: parcel.id, length_m: 0.8, width_m: 0.5,
+  });
+  const approximate = await apiRequest<{ id: number; name: string }>(page, 'POST', '/locations/', { name: 'Zweiter Standort ohne Maße' });
+  await apiRequest(page, 'POST', '/fields/', { name: 'Schematische Parzelle', location: approximate.id });
+  const layoutURL = `/locations/${location.id}/layouts/`;
+  const layoutBefore = await apiRequest(page, 'GET', layoutURL);
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, location.name);
+  await activateCanvasTool(page, 'Alles einpassen');
+  const overview = await activeCamera(page);
+  expect(overview.scale).toBeLessThan(0.035);
+  const zoomOut = page.getByRole('button', { name: 'Herauszoomen', exact: true });
+  const zoomIn = page.getByRole('button', { name: 'Hineinzoomen', exact: true });
+  const scale = page.getByTestId('graphical-scale-indicator');
+  await expect(zoomOut).toBeDisabled();
+  await expect(scale.getByRole('img', { name: /Maßstab.*m/ })).toBeVisible();
+  await page.keyboard.press('ArrowLeft');
+  await page.keyboard.press('-');
+  expect(await activeCamera(page)).toEqual(overview);
+  await page.keyboard.press('+');
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeCloseTo(overview.scale * 1.2, 7);
+  await page.keyboard.press('-');
+  await expect(zoomOut).toBeDisabled();
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeCloseTo(overview.scale, 9);
+  await page.screenshot({ path: testInfo.outputPath('metric-large-site-overview.png') });
+
+  const zoomTo = page.getByRole('menuitem', { name: 'Auf Auswahl zoomen', exact: true });
+  const parcelTarget = page.getByRole('button', { name: 'Parzelle · Messparzelle' });
+  await parcelTarget.press('Shift+F10');
+  await zoomTo.press('Enter');
+  await expect(parcelTarget).toBeFocused();
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(3);
+  const point = await canvasInteractionPoint(page, `bed-rect-${bed.id}`);
+  await page.mouse.click(point.x, point.y, { button: 'right' });
+  await zoomTo.click();
+  await expect(zoomIn).toBeDisabled();
+  const detail = await activeCamera(page);
+  expect(detail.scale * 18).toBeCloseTo(500, 8);
+  await expect(scale.getByRole('img', { name: /Maßstab.*10\s*cm/ })).toBeVisible();
+  expect((await page.getByTestId('graphical-metric-scale-bar').boundingBox())?.width).toBeCloseTo(50, 1);
+  const bedAtLimit = await canvasInteractionPoint(page, `bed-rect-${bed.id}`);
+  await page.mouse.move(bedAtLimit.x, bedAtLimit.y);
+  await page.mouse.wheel(0, -120);
+  await page.keyboard.press('+');
+  expect(await activeCamera(page)).toEqual(detail);
+  for (const mode of ['Anbauflächen', 'Kulturen', 'Aufgaben', 'Kulturen & Aufgaben']) {
+    await selectGraphicDisplay(page, mode);
+    expect(await activeCamera(page)).toEqual(detail);
+  }
+  await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeCloseTo(detail.scale, 8);
+  await canvasInteractionPoint(page, `bed-rect-${bed.id}`);
+  await toggleGraphicEdit(page);
+  await page.getByRole('button', { name: 'Beet · Kleines Messbeet' }).press('Shift+F10');
+  await expect(page.getByRole('menuitem')).toHaveCount(1);
+  await zoomTo.press('Enter');
+  await expect(page.getByRole('button', { name: 'Grafik bearbeiten', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await toggleGraphicEdit(page);
+  await activateCanvasTool(page, 'Vollbild öffnen');
+  await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+  await expect(scale.getByRole('img', { name: /Maßstab.*10\s*cm/ })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath('metric-bed-fullscreen.png') });
+  await activateCanvasTool(page, 'Vollbild schließen');
+  await selectLocation(page, approximate.name);
+  await expect(scale).toContainText('Schematische Darstellung');
+  await expect(page.getByTestId('graphical-metric-scale-bar')).toHaveCount(0);
+  await selectLocation(page, location.name);
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeCloseTo(detail.scale, 8);
+  await activateCanvasTool(page, 'Alles einpassen');
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeLessThan(0.035);
+  await page.reload();
+  expect(await apiRequest(page, 'GET', layoutURL)).toEqual(layoutBefore);
+  expect(await apiRequest(page, 'GET', `/beds/${bed.id}/`)).toMatchObject({ length_m: 0.8, width_m: 0.5 });
+});
+
+test.describe('metric zoom on a touch-capable phone', () => {
+  test.use({ hasTouch: true, viewport: { width: 375, height: 800 } });
+
+  test('anchors a moving pinch and fits a bed through its read-only long-press menu', async ({ page, request, browserName }, testInfo) => {
+    test.skip(browserName !== 'chromium', 'Uses real two-finger touch input through Chromium');
+    await loginWithDeterministicProject(page, request, 'graphical-metric-pinch', { loginAsAdmin: true });
+    const { results: [location] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+    await apiRequest(page, 'PATCH', `/locations/${location.id}/`, { length_m: 60, width_m: 42 });
+    const parcel = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+      name: 'Parzelle zum Einpassen', location: location.id, length_m: 12, width_m: 8,
+    });
+    const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+      name: 'Beet zum Einpassen', field: parcel.id, length_m: 3, width_m: 2,
+    });
+    await page.route('**/api/auth/me/', async route => {
+      const response = await route.fetch();
+      const user = await response.json();
+      const memberships = user.memberships.map((membership: { project_id: number }) => ({ ...membership, project_id: -1 }));
+      await route.fulfill({ response, json: { ...user, memberships } });
+    });
+    const writes: string[] = [];
+    page.on('request', request => {
+      if (request.method() !== 'GET' && /\/(layouts|graphic-move|graphic-placement)\/$/.test(new URL(request.url()).pathname)) {
+        writes.push(request.url());
+      }
+    });
+    await page.goto('/app/fields-beds');
+    await page.getByRole('button', { name: 'Grafik', exact: true }).tap();
+    await activateCanvasTool(page, 'Alles einpassen', 'touch');
+    await expect(graphicWorkspaceMenu(page)).toHaveCount(0);
+    for (let step = 0; step < 10; step++) await activateCanvasTool(page, 'Hineinzoomen', 'touch');
+    const before = await activeCamera(page);
+    const canvas = (await page.locator('.konvajs-content').boundingBox())!;
+    const center = { x: canvas.x + canvas.width * 0.48, y: canvas.y + canvas.height * 0.58 };
+    const next = { x: center.x + 14, y: center.y + 8 };
+    const fingers = ({ x, y }: { x: number; y: number }, separation: number) => [
+      { id: 0, x: x - separation, y }, { id: 1, x: x + separation, y },
+    ];
+    const touch = await page.context().newCDPSession(page);
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: fingers(center, 22) });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(center, 34) });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: fingers(next, 56) });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(before.scale * 1.3);
+    const after = await activeCamera(page);
+    expect((next.x - canvas.x - after.x) / after.scale).toBeCloseTo((center.x - canvas.x - before.x) / before.scale, 1);
+    expect((next.y - canvas.y - after.y) / after.scale).toBeCloseTo((center.y - canvas.y - before.y) / before.scale, 1);
+    await expect(page.getByTestId('graphical-object-preview')).toHaveCount(0);
+
+    await activateCanvasTool(page, 'Alles einpassen', 'touch');
+    const target = await canvasInteractionPoint(page, `bed-rect-${bed.id}`);
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [target] });
+    const zoomTo = page.getByRole('menuitem', { name: 'Auf Auswahl zoomen', exact: true });
+    await expect(zoomTo).toBeVisible();
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await zoomTo.tap();
+    await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(3);
+    const bar = page.getByTestId('graphical-scale-indicator');
+    await expect(bar.getByRole('img', { name: /Maßstab/ })).toBeVisible();
+    const barBounds = (await bar.boundingBox())!;
+    const toolBounds = (await page.getByTestId('graphical-canvas-tools').boundingBox())!;
+    expect(toolBounds.y + toolBounds.height).toBeLessThan(barBounds.y);
+    expect(writes).toEqual([]);
+    await expect(zoomTo).toHaveCount(0);
+    await page.screenshot({ path: testInfo.outputPath('metric-read-only-touch.png'), animations: 'disabled' });
+  });
 });
 
 test('shows the only location with its name and gross area in the list and the graphic', async ({ page, request }, testInfo) => {

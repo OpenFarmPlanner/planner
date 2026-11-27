@@ -167,6 +167,12 @@
     "disableLocationEditMode": "Grafisch bewerken voor locatie ‘{{name}}’ stoppen",
     "zoomIn": "Inzoomen",
     "zoomOut": "Uitzoomen",
+    "zoomToArea": "Inzoomen op selectie",
+    "scaleBar": {
+      "label": "Metrische schaal",
+      "measuredOnly": "Alleen met maten",
+      "approximate": "Schematische weergave"
+    },
     "panUp": "Omhoog schuiven",
     "panDown": "Omlaag schuiven",
     "panLeft": "Naar links schuiven",

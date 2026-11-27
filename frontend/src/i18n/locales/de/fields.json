@@ -167,6 +167,12 @@
     "disableLocationEditMode": "Grafikbearbeitung für Standort „{{name}}“ beenden",
     "zoomIn": "Hineinzoomen",
     "zoomOut": "Herauszoomen",
+    "zoomToArea": "Auf Auswahl zoomen",
+    "scaleBar": {
+      "label": "Maßstab",
+      "measuredOnly": "Nur Flächen mit Maßen",
+      "approximate": "Schematische Darstellung"
+    },
     "panUp": "Ansicht nach oben verschieben",
     "panDown": "Ansicht nach unten verschieben",
     "panLeft": "Ansicht nach links verschieben",

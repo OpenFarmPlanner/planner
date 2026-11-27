@@ -14,6 +14,7 @@ export interface Rect extends Position, RectSize {}
 
 export type GraphicalRotation = 0 | 90 | 180 | 270;
 export const DEFAULT_GRAPHICAL_ROTATION: GraphicalRotation = 90;
+export const FIELD_WORLD_PX_PER_METER = 18;
 
 /** The stored length axis runs vertically before the schematic rotation. */
 export function isGraphicalLengthHorizontal(rotation: GraphicalRotation): boolean {

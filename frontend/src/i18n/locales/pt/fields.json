@@ -172,6 +172,12 @@
     "disableLocationEditMode": "Terminar edição gráfica da exploração «{{name}}»",
     "zoomIn": "Ampliar",
     "zoomOut": "Reduzir",
+    "zoomToArea": "Ampliar seleção",
+    "scaleBar": {
+      "label": "Escala métrica",
+      "measuredOnly": "Só áreas com medidas",
+      "approximate": "Esquema aproximado"
+    },
     "panUp": "Deslocar para cima",
     "panDown": "Deslocar para baixo",
     "panLeft": "Deslocar para a esquerda",

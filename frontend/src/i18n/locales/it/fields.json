@@ -172,6 +172,12 @@
     "disableLocationEditMode": "Termina la modifica grafica del sito «{{name}}»",
     "zoomIn": "Ingrandisci",
     "zoomOut": "Riduci",
+    "zoomToArea": "Ingrandisci l’area",
+    "scaleBar": {
+      "label": "Scala metrica",
+      "measuredOnly": "Solo aree con misure",
+      "approximate": "Schema approssimativo"
+    },
     "panUp": "Sposta in alto",
     "panDown": "Sposta in basso",
     "panLeft": "Sposta a sinistra",

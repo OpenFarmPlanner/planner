@@ -49,6 +49,89 @@ async function distanceGuide(page: Page) {
 
 test.use({ serviceWorkers: 'block' });
 
+test('snaps and moves an individual stem with centimetre precision at the metric limit', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'deep-metric-plant-placement', { loginAsAdmin: true });
+  const { results: [site] } = await apiRequest<PaginatedResponse<{ id: number }>>(page, 'GET', '/locations/');
+  await apiRequest(page, 'PATCH', `/locations/${site.id}/`, { length_m: 12, width_m: 10, snap_to_path_spacing: true });
+  const parcel = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Kleine Parzelle', location: site.id, length_m: 3, width_m: 2,
+  });
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    name: 'Pflanzbeet', field: parcel.id, length_m: 1.2, width_m: 1,
+  });
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Zentimetergenaue Kultur', life_cycle: 'annual', growth_duration_days: 60, cultivation_types: ['direct_sowing'],
+    distance_within_row_cm: 20, row_spacing_cm: 20, estimated_canopy_diameter_m: 0.25,
+  });
+  const reference = await apiRequest<Plan>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: crop.id, bed: bed.id, placement_mode: 'individual_bed', planting_date: '2026-05-01',
+    cultivation_type: 'direct_sowing', individual_positions: [{ x_m: 0.5, y_m: 0.4 }],
+  });
+  const [anchor] = reference.individual_positions;
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  const bedTarget = page.getByRole('button', { name: 'Beet · Pflanzbeet' });
+  const focusBed = async () => {
+    await bedTarget.press('Shift+F10');
+    await page.getByRole('menuitem', { name: 'Auf Auswahl zoomen', exact: true }).press('Enter');
+    await expect(page.getByRole('button', { name: 'Hineinzoomen', exact: true })).toBeDisabled();
+  };
+  await focusBed();
+  await activateCanvasTool(page, 'Einzelpflanzen hinzufügen');
+  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+  await page.getByRole('option', { name: 'Zentimetergenaue Kultur', exact: true }).click();
+  await page.getByRole('button', { name: 'Alles einpassen', exact: true }).focus();
+  const referenceShape = `individual-stem-${anchor.id}`;
+  await expect.poll(() => shape(page, referenceShape)).not.toBeNull();
+  const center = centre((await shape(page, referenceShape))!.screen);
+  const probe = { x: center.x + 103, y: center.y };
+  await expect.poll(() => page.evaluate(({ x, y }) => {
+    if (document.elementFromPoint(x, y)?.tagName !== 'CANVAS') return null;
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+      .find(item => item.container()?.isConnected);
+    if (!stage) return null;
+    const canvas = stage.getContent().getBoundingClientRect();
+    return stage.getIntersection({ x: x - canvas.x, y: y - canvas.y })?.getAttr('data-testid');
+  }, probe)).toBe('individual-free-placement-surface');
+  await page.mouse.move(probe.x, probe.y);
+  await expect.poll(() => distanceGuide(page)).toMatchObject({ snapped: true });
+  await page.keyboard.down('Shift');
+  await expect.poll(() => distanceGuide(page)).toMatchObject({ snapped: false });
+  await page.keyboard.up('Shift');
+  await page.mouse.click(probe.x, probe.y);
+  await panel.getByRole('button', { name: 'Platzierung beenden', exact: true }).click();
+  const save = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/graphic-placement/'));
+  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+  const response = await save;
+  expect(response.status(), await response.text()).toBe(200);
+  const { plans: [placed] } = await response.json() as { plans: Plan[] };
+  expect(placed.bed).toBe(bed.id);
+  const [stem] = placed.individual_positions;
+  expect(Math.hypot(stem.x_m - anchor.x_m, stem.y_m - anchor.y_m)).toBeCloseTo(0.2, 2);
+  await page.reload();
+  await focusBed();
+  await toggleGraphicEdit(page);
+  const start = await canvasInteractionPoint(page, `individual-stem-${stem.id}`);
+  const moved = page.waitForResponse(response => response.request().method() === 'POST' && response.url().endsWith('/graphic-move/'));
+  await page.keyboard.down('Shift');
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(start.x + 15, start.y, { steps: 3 });
+  await page.mouse.move(start.x + 5, start.y, { steps: 2 });
+  await page.mouse.up();
+  await page.keyboard.up('Shift');
+  expect((await moved).status()).toBe(200);
+  const updated = await apiRequest<Plan>(page, 'GET', `/planting-plans/${placed.id}/`);
+  const [next] = updated.individual_positions;
+  expect(updated.bed).toBe(bed.id);
+  expect(Math.hypot(next.x_m - stem.x_m, next.y_m - stem.y_m)).toBeCloseTo(0.01, 3);
+  await page.screenshot({ path: testInfo.outputPath('individual-stem-centimetre-zoom.png') });
+});
+
 test('places stems at three actual parents in one operation and reassigns a dragged stem', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.clock.setFixedTime(new Date(2026, 4, 15, 12));

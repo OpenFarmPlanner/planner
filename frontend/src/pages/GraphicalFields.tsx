@@ -53,6 +53,7 @@ import { useGraphicalAnnotationOverlays } from './useGraphicalAnnotationOverlays
 import { layoutAreaAnnotations, type AreaAnnotationObstacle, type AreaAnnotationSubject } from './graphicalAnnotationLayout';
 import { createGraphicPlacementContext, createParentLocalPlacement, type GraphicPlacementContext, type GraphicPlacementResolution } from "./graphicalPlantPlacement";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
+import { GraphicalScaleIndicator, QUALIFIED_SCALE_INDICATOR_CLEARANCE, SCALE_INDICATOR_CLEARANCE } from './GraphicalScaleIndicator';
 import { GraphicalPlantDistanceGuide, GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import { analyzeGraphicalGeometry, getBedWorldRect, getGeometryOutlines, getGraphicalBedLayout, getGraphicalFreeRects, getSchematicLocationLayout, previewPosition, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
 import ModeToggle from "../components/ModeToggle";
@@ -72,15 +73,22 @@ import {
 import {
   clampViewportToStage,
   fitBoundsToStage,
+  getBoundsSize,
   getContentBoundsFromRects,
   getVisibleElements,
+  getZoomLimits,
+  GRAPHICAL_APPROXIMATE_MAX_SCALE,
+  GRAPHICAL_MAX_SCALE,
+  isValidViewport,
   panViewport,
   projectViewportRect,
+  rotateViewport,
   startPanSession,
   toContentBounds,
   type ContentBounds,
   type PanSession,
   type ViewportState,
+  type ZoomLimits,
   zoomAroundPoint,
 } from "./graphicalViewport";
 import {
@@ -144,8 +152,11 @@ export default function GraphicalFields({
 }: GraphicalFieldsProps) {
   const { t } = useTranslation(["fields", "common", "ganttChart"]);
   const theme = useTheme();
-  const getOutlineProps = (kind: OutlineKind | undefined, color: string, width: number) =>
-    kind ? graphicalGeometryOutline(theme, kind) : { stroke: color, strokeWidth: width };
+  const getOutlineProps = (kind: OutlineKind | undefined, color: string, width: number, scale: number, approximate: boolean) => {
+    const outline = kind ? graphicalGeometryOutline(theme, kind)
+      : { stroke: color, strokeWidth: width, dash: approximate ? [6, 4] : undefined };
+    return { ...outline, dash: outline.dash?.map(length => length / scale), strokeScaleEnabled: false };
+  };
   const internalHierarchyData = useHierarchyData(hierarchyData === undefined);
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
   const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
@@ -204,15 +215,17 @@ export default function GraphicalFields({
   const setCameraState = onCameraStateChange ?? setLocalCameraState;
   const { viewports: viewportByLocation, rotations: rotationByLocation } = cameraState;
   const setViewportByLocation = (update: (current: Record<number, ViewportState>) => Record<number, ViewportState>): void => {
-    setCameraState(current => ({ ...current, viewports: update(current.viewports) }));
+    setCameraState(current => {
+      const viewports = update(current.viewports);
+      return viewports === current.viewports ? current : { ...current, viewports };
+    });
   };
-  const setRotationByLocation = (update: (current: Record<number, GraphicalRotation>) => Record<number, GraphicalRotation>): void => {
-    setCameraState(current => ({ ...current, rotations: update(current.rotations) }));
-  };
-  const objectInteractionEnabled = Boolean(activeLocationId && !loading && !error && layoutReady && !layoutFailed
-    && !globalEditMode && editableLocationId !== activeLocationId && !individualPlants.editor.placing);
+  const areaZoomOnly = globalEditMode || editableLocationId === activeLocationId;
+  const areaInteractionEnabled = Boolean(activeLocationId && !loading && !error && layoutReady && !layoutFailed
+    && !individualPlants.editor.placing);
+  const objectInteractionEnabled = areaInteractionEnabled && !areaZoomOnly;
   const browseIndividualPlants = objectInteractionEnabled && !individualPlants.editor.draft;
-  const objects = useGraphicalObjectInteraction(objectInteractionEnabled, activeLocationId, displayMode);
+  const objects = useGraphicalObjectInteraction(areaInteractionEnabled, activeLocationId, displayMode, areaZoomOnly);
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
   const selectedPlantKey = objects.selection?.startsWith('plant:') ? objects.selection : null;
   const showTasks = includesTasks(displayMode);
@@ -288,6 +301,7 @@ export default function GraphicalFields({
   const pinchStateRef = useRef<
     Record<number, { distance: number; center: Point } | null>
   >({});
+  const activePinches = useRef(new Set<number>());
   const {
     stageWidth,
     stageHeight,
@@ -311,6 +325,7 @@ export default function GraphicalFields({
     Object.keys(pinchStateRef.current).forEach((key) => {
       pinchStateRef.current[Number(key)] = null;
     });
+    activePinches.current.clear();
   };
 
   const stopKonvaDragging = (): void => {
@@ -489,6 +504,17 @@ export default function GraphicalFields({
     const contentBounds = getContentBoundsFromRects([...(boundary ? [boundary] : []), ...fieldViewModels, ...bedBounds]);
     return { parcels, fieldRectsById, spacing, savedGeometry, contentBounds };
   }, [activeLayout, beds, layoutsByBed]);
+  const hasMetricGeometry = Boolean(activeLayout?.boundary || activeScene?.parcels.some(parcel => parcel.layout.pixelsPerMeter));
+  const hasApproximateGeometry = !activeLayout?.boundary || Boolean(activeScene?.parcels.some(({ layout }) =>
+    !layout.pixelsPerMeter || layout.bedRects.some(bed => !bed.supportsMetricSpacing)));
+  const scaleClearance = hasMetricGeometry && hasApproximateGeometry ? QUALIFIED_SCALE_INDICATOR_CLEARANCE : SCALE_INDICATOR_CLEARANCE;
+  const zoomCeiling = hasMetricGeometry ? GRAPHICAL_MAX_SCALE : GRAPHICAL_APPROXIMATE_MAX_SCALE;
+  const canvasSize = { width: stageWidth, height: stageHeight };
+  const stagePadding = getFitViewportPadding(stageWidth, stageHeight);
+  const fitPadding = { ...stagePadding, bottom: Math.max(stagePadding.bottom, scaleClearance) };
+  const fitCanvas = (bounds: ContentBounds) => fitBoundsToStage(bounds, canvasSize, fitPadding, zoomCeiling);
+  const readViewport = (saved: ViewportState | undefined, overview: ViewportState) =>
+    isValidViewport(saved) && saved.scale <= zoomCeiling ? saved : overview;
   const placementContext = useMemo(() => activeLayout && activeScene ? createGraphicPlacementContext(
     activeLayout.location, activeLayout.boundary,
     boundaryOriginByLocation[activeLayout.location.id!] ?? activeLayout.unsavedBoundaryOrigin,
@@ -583,8 +609,7 @@ export default function GraphicalFields({
     const rect = objectModel.get(graphicalObjectKey(parent.kind, parent.id))?.rect;
     const bounds = rect ? getContentBoundsFromRects([rect]) : null;
     if (!bounds) return;
-    const next = fitBoundsToStage(bounds, { width: stageWidth, height: stageHeight },
-      getFitViewportPadding(stageWidth, stageHeight));
+    const next = fitCanvas(bounds);
     setViewportByLocation(previous => ({ ...previous, [activeLocationId]: next }));
     locationCanvasRefs.current[activeLocationId]?.scrollIntoView({ block: 'nearest' });
   };
@@ -639,66 +664,58 @@ export default function GraphicalFields({
 
   const resetViewport = (locationId: number): void => {
     objects.close();
-    setViewportByLocation((prev) => {
-      const contentBounds = getContentBoundsForLocation(locationId);
-      const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
-      return {
-        ...prev,
-        [locationId]: fitBoundsToStage(
-          contentBounds,
-          { width: stageWidth, height: stageHeight },
-          fitPadding,
-        ),
-      };
-    });
+    const next = fitCanvas(getContentBoundsForLocation(locationId));
+    setViewportByLocation(previous => ({ ...previous, [locationId]: next }));
   };
 
   const updateViewport = (
     locationId: number,
-    updater: (current: ViewportState) => ViewportState,
+    updater: (current: ViewportState, limits: ZoomLimits) => ViewportState,
   ): void => {
+    const bounds = getContentBoundsForLocation(locationId);
+    const overview = fitCanvas(bounds);
     setViewportByLocation((prev) => {
-      const contentBounds = getContentBoundsForLocation(locationId);
-      const fitPadding = getFitViewportPadding(stageWidth, stageHeight);
-      const current =
-        prev[locationId] ??
-        fitBoundsToStage(
-          contentBounds,
-          { width: stageWidth, height: stageHeight },
-          fitPadding,
-        );
-      const nextRaw = updater(current);
-      const nextClamped = clampViewportToStage(
-        nextRaw,
-        contentBounds,
-        { width: stageWidth, height: stageHeight },
-      );
-      return { ...prev, [locationId]: nextClamped };
+      const current = readViewport(prev[locationId], overview);
+      const next = updater(current, getZoomLimits(overview.scale, zoomCeiling, current.scale));
+      if (next === current) return prev;
+      const clamped = clampViewportToStage(next, bounds, canvasSize, fitPadding);
+      if (clamped.scale === current.scale && Math.abs(clamped.x - current.x) < 1e-8
+        && Math.abs(clamped.y - current.y) < 1e-8) return prev;
+      return { ...prev, [locationId]: clamped };
     });
   };
 
-  const handleZoom = (locationId: number, factor: number): void => {
+  const handleZoom = (locationId: number, factor: number, anchor = { x: stageWidth / 2, y: stageHeight / 2 }): void => {
     objects.close();
-    updateViewport(locationId, (current) =>
-      zoomAroundPoint(current, current.scale * factor, {
-        x: stageWidth / 2,
-        y: stageHeight / 2,
-      }),
-    );
+    updateViewport(locationId, (current, limits) => zoomAroundPoint(current, current.scale * factor, anchor, limits));
   };
 
   const handleRotate = (locationId: number, direction: -1 | 1): void => {
+    const layout = locationLayouts.find(item => item.location.id === locationId);
+    if (!layout) return;
     objects.close();
     stopKonvaDragging();
     resetTransientInteractionState();
-    setRotationByLocation(prev => ({
-      ...prev,
-      [locationId]: turnRotation(prev[locationId] ?? DEFAULT_GRAPHICAL_ROTATION, direction),
-    }));
-    setViewportByLocation(prev => {
-      const next = { ...prev };
-      delete next[locationId];
-      return next;
+    const bounds = getContentBoundsForLocation(locationId);
+    const overview = fitCanvas(bounds);
+    const turn = turnRotation(0, direction);
+    const size = { width: layout.contentWidth, height: layout.contentHeight };
+    const rotatedBounds = getContentBoundsFromRects([
+      rotateRect({ x: bounds.minX, y: bounds.minY, ...getBoundsSize(bounds) }, size, turn),
+    ]);
+    setCameraState(previous => {
+      const rotations = { ...previous.rotations,
+        [locationId]: turnRotation(previous.rotations[locationId] ?? DEFAULT_GRAPHICAL_ROTATION, direction) };
+      const viewports = { ...previous.viewports };
+      const saved = readViewport(viewports[locationId], overview);
+      if (rotatedBounds && (Math.abs(saved.scale - overview.scale) > 1e-8
+        || Math.abs(saved.x - overview.x) > 1e-8 || Math.abs(saved.y - overview.y) > 1e-8)) {
+        const next = rotateViewport(saved, size, canvasSize, turn, fitPadding);
+        viewports[locationId] = clampViewportToStage(next, rotatedBounds, canvasSize, fitPadding);
+      } else {
+        delete viewports[locationId];
+      }
+      return { rotations, viewports };
     });
   };
 
@@ -719,16 +736,11 @@ export default function GraphicalFields({
     locationId: number,
     event: KonvaEventObject<WheelEvent>,
   ): void => {
-    event.evt.preventDefault();
-    objects.close();
     const pointer = stageRefs.current[locationId]?.getPointerPosition();
-    if (!pointer) {
-      return;
-    }
+    if (!pointer || !event.evt.deltaY) return;
+    event.evt.preventDefault();
     const direction = event.evt.deltaY > 0 ? 1 / ZOOM_STEP : ZOOM_STEP;
-    updateViewport(locationId, (current) =>
-      zoomAroundPoint(current, current.scale * direction, pointer),
-    );
+    handleZoom(locationId, direction, pointer);
   };
 
   const handleStageDoubleTap = (locationId: number): void => {
@@ -794,6 +806,14 @@ export default function GraphicalFields({
     panSessionRef.current[locationId] = null;
   };
 
+  const cancelObjectGesturesForPinch = (locationId: number): void => {
+    if (activePinches.current.has(locationId)) return;
+    activePinches.current.add(locationId);
+    objects.close();
+    endPanSession(locationId);
+    stopKonvaDragging();
+  };
+
   const handleStageTouchMove = (
     locationId: number,
     event: KonvaEventObject<TouchEvent>,
@@ -817,14 +837,13 @@ export default function GraphicalFields({
       return;
     }
 
-    endPanSession(locationId);
+    cancelObjectGesturesForPinch(locationId);
     event.evt.preventDefault();
     const first = touches[0];
     const second = touches[1];
-    const center = {
-      x: (first.clientX + second.clientX) / 2,
-      y: (first.clientY + second.clientY) / 2,
-    };
+    const canvas = stage.getContent().getBoundingClientRect();
+    const center = { x: (first.clientX + second.clientX) / 2 - canvas.left,
+      y: (first.clientY + second.clientY) / 2 - canvas.top };
     const distance = Math.hypot(
       second.clientX - first.clientX,
       second.clientY - first.clientY,
@@ -837,18 +856,8 @@ export default function GraphicalFields({
     }
 
     const scaleFactor = distance / Math.max(lastPinch.distance, 1);
-    updateViewport(locationId, (current) => {
-      const zoomed = zoomAroundPoint(
-        current,
-        current.scale * scaleFactor,
-        center,
-      );
-      return {
-        ...zoomed,
-        x: zoomed.x + (center.x - lastPinch.center.x),
-        y: zoomed.y + (center.y - lastPinch.center.y),
-      };
-    });
+    updateViewport(locationId, (current, limits) =>
+      zoomAroundPoint(current, current.scale * scaleFactor, lastPinch.center, limits, center));
 
     pinchStateRef.current[locationId] = { center, distance };
   };
@@ -885,10 +894,8 @@ export default function GraphicalFields({
       beginPanSession(locationId, viewport, event);
       return;
     }
-    if (touches.length === 2) {
-      objects.close();
-      endPanSession(locationId);
-      stopKonvaDragging();
+    if (touches.length > 1) {
+      cancelObjectGesturesForPinch(locationId);
     }
   };
 
@@ -917,7 +924,7 @@ export default function GraphicalFields({
       neighbors: fieldViewModels,
       snapping,
       constrain,
-      blocked: () => hasPendingFieldLayout(locationId),
+      blocked: () => activePinches.current.has(locationId) || hasPendingFieldLayout(locationId),
       onGuides: setActiveGuides,
       onPreview: position => setGeometryPreview(position && { type: "field", id: fieldId, locationId, position }),
       onDrop: position => {
@@ -951,6 +958,7 @@ export default function GraphicalFields({
       area: bedVm,
       neighbors: bedViewModels,
       snapping,
+      blocked: () => activePinches.current.has(locationId),
       constrain: position => clampInsideParent(position, bedVm, fieldInnerSize),
       offset: fieldInnerSize,
       onPreview: position => setGeometryPreview(position && { type: "bed", id: bedVm.id, locationId, position }),
@@ -981,9 +989,11 @@ export default function GraphicalFields({
     };
   };
 
-  const handleStageTouchEnd = (locationId: number): void => {
+  const handleStageTouchEnd = (locationId: number, remainingTouches: number): void => {
     endPanSession(locationId);
     pinchStateRef.current[locationId] = null;
+    // Konva can emit tap after touchend in the same event.
+    if (remainingTouches === 0) queueMicrotask(() => { activePinches.current.delete(locationId); });
   };
 
   const effectiveActivePanLocationId = activeLocationId;
@@ -998,6 +1008,13 @@ export default function GraphicalFields({
       }
       const step = event.shiftKey ? PAN_FAST_STEP : PAN_STEP;
       switch (event.key) {
+        case '+':
+        case '=':
+        case '-':
+          if (event.ctrlKey || event.metaKey || event.altKey) break;
+          event.preventDefault();
+          handleZoom(effectiveActivePanLocationId, event.key === '-' ? 1 / ZOOM_STEP : ZOOM_STEP);
+          break;
         case "Shift":
           areaDrag.preview(true);
           plantDragReapply.current?.(true);
@@ -1051,7 +1068,7 @@ export default function GraphicalFields({
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("keyup", handleKeyUp);
     };
-  }, [areaDrag, effectiveActivePanLocationId, handlePanByOffset, individualPlants, layoutFailed, layoutReady]);
+  }, [areaDrag, effectiveActivePanLocationId, handlePanByOffset, handleZoom, individualPlants, layoutFailed, layoutReady]);
 
   if (loading || !layoutReady) {
     return (
@@ -1234,13 +1251,13 @@ export default function GraphicalFields({
             || renderedPlantPlans.some(({ plan }) => Number(plan.estimated_canopy_diameter_m ?? 0) > 0);
           // In graphic edit mode a placed stem is its own drag target, above beds and parcels (#1579).
           const draggableStemPlans = locationIsEditable ? getDirectlyDraggableStemPlans(individualPlants) : undefined;
-          const viewport =
-            viewportByLocation[locationId] ??
-            fitBoundsToStage(
-              contentBounds,
-              { width: stageWidth, height: stageHeight },
-              getFitViewportPadding(stageWidth, stageHeight),
-            );
+          const overview = fitCanvas(contentBounds);
+          const viewport = readViewport(viewportByLocation[locationId], overview);
+          const zoomLimits = getZoomLimits(overview.scale, zoomCeiling, viewport.scale);
+          const markerMargin = 32 / viewport.scale;
+          const plantViewport = { x: -viewport.x / viewport.scale - markerMargin,
+            y: -viewport.y / viewport.scale - markerMargin, width: stageWidth / viewport.scale + 2 * markerMargin,
+            height: stageHeight / viewport.scale + 2 * markerMargin };
           const visibility = getVisibleElements(viewport.scale);
           const locationKey = graphicalObjectKey('location', locationId);
           const details = (object: GraphicalObject) => {
@@ -1335,6 +1352,12 @@ export default function GraphicalFields({
               y: stageHeight / 2 - (rect.y + rect.height / 2) * viewport.scale,
             } }));
           };
+          const zoomToArea = (rect: PlacementRect): void => {
+            const bounds = getContentBoundsFromRects([rect]);
+            if (!bounds) return;
+            const next = clampViewportToStage(fitCanvas(bounds), contentBounds, canvasSize, fitPadding);
+            setViewportByLocation(previous => ({ ...previous, [locationId]: next }));
+          };
           const canEditPlant = (plant: GraphicalIndividualPlant) => individualPlants.canEdit && Boolean(plant.plan.updated_at)
             && !individualPlants.editor.draft && !individualPlants.movingPlans.has(plant.id);
           const editPlant = (plant: GraphicalIndividualPlant, action: IndividualPlacementAction) => {
@@ -1351,7 +1374,8 @@ export default function GraphicalFields({
             placementRotation: GraphicalRotation) => {
             if (!parcelMeters(dimensions)) return null;
             const draft = matchesPlacementParent(stemDraft?.parent, parent) ? stemDraft : null;
-            const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
+            const parentKey = graphicalObjectKey(parent.kind, parent.id);
+            const parentPlans = plansByParent.get(parentKey) ?? [];
             const stems: CanvasStem[] = parentPlans.flatMap(({ plan, crop, cropProjected }) => {
               if (plan.id === draft?.planId) return [];
               const summary = showTasks && !locationIsEditable ? plantTaskSummaries.get(plan.id) : undefined;
@@ -1376,8 +1400,13 @@ export default function GraphicalFields({
             if (!stems.length) return null;
             const dragPlacement = placementContext ?? (draggableStemPlans && pathSpacing.snap_to_path_spacing
               ? createParentLocalPlacement(parent, parcels, rotation) : null);
+            const footprint = areaObjects.get(parentKey)?.rect;
+            const visibleRect = footprint && !geometryPreview ? { ...plantViewport,
+              x: plantViewport.x - footprint.x + surface.x, y: plantViewport.y - footprint.y + surface.y } : undefined;
             return <GraphicalIndividualPlantsLayer field={dimensions} surface={surface}
-              rotation={placementRotation} zoom={viewport.scale} stems={stems}
+              rotation={placementRotation} zoom={viewport.scale} stems={stems} visibleRect={visibleRect}
+              activeDragKey={movingStem?.key}
+              shouldCancelDrag={() => activePinches.current.has(locationId)}
               editablePlanId={(draft || added.length) && !individualPlants.editor.saving && !placingStems
                 ? stemDraft?.planId ?? null : undefined}
               draggablePlanIds={draggableStemPlans}
@@ -1469,6 +1498,7 @@ export default function GraphicalFields({
                   <GraphicalCanvasTools key={activeSeasonId ?? 'no-season'}
                     width={stageWidth} height={stageHeight} fullscreen={fullscreenLocationId === locationId}
                     layers={onDisplayModeChange && <GraphicalLayersControl mode={displayMode} onMode={onDisplayModeChange} />}
+                    bottomInset={scaleClearance} atZoomLimit={{ in: viewport.scale >= zoomLimits.max, out: viewport.scale <= zoomLimits.min }}
                     onTriggerChange={button => { canvasToolsRefs.current[locationId] = button; }}
                     onZoom={direction => handleZoom(locationId, direction === 1 ? ZOOM_STEP : 1 / ZOOM_STEP)}
                     onFit={() => resetViewport(locationId)}
@@ -1527,7 +1557,7 @@ export default function GraphicalFields({
                     }}
                   >
                     {t("fields:graphical.zoomLevel", {
-                      value: viewport.scale.toFixed(2),
+                      value: viewport.scale.toFixed(Math.max(2, Math.ceil(-Math.log10(viewport.scale)) + 1)),
                     })}
                   </Typography>
                   <Stage
@@ -1557,7 +1587,7 @@ export default function GraphicalFields({
                     onWheel={(event) => handleStageWheel(locationId, event)}
                     onDblTap={() => {
                       // A finished long press must not also trigger Konva's double-tap zoom.
-                      if (!objects.didLongPress()) handleStageDoubleTap(locationId);
+                      if (!objects.didLongPress() && !activePinches.current.has(locationId)) handleStageDoubleTap(locationId);
                     }}
                     onDblClick={() => handleStageDoubleTap(locationId)}
                     onTouchStart={(event) =>
@@ -1569,12 +1599,12 @@ export default function GraphicalFields({
                     }}
                     onTouchEnd={event => {
                       objects.endTouch(event.evt);
-                      handleStageTouchEnd(locationId);
+                      handleStageTouchEnd(locationId, event.evt.touches.length);
                     }}
                     onTouchCancel={event => {
                       objects.endTouch(event.evt);
                       objects.cancelPress();
-                      handleStageTouchEnd(locationId);
+                      handleStageTouchEnd(locationId, event.evt.touches.length);
                     }}
                     ref={(node) => {
                       stageRefs.current[locationId] = node;
@@ -1591,7 +1621,7 @@ export default function GraphicalFields({
                             stroke={theme.palette.text.secondary}
                             strokeWidth={2}
                             strokeScaleEnabled={false}
-                            dash={[8, 6]}
+                            dash={[8 / viewport.scale, 6 / viewport.scale]}
                             listening={objectInteractionEnabled}
                             hitStrokeWidth={8 / viewport.scale}
                             data-graphical-object-key={locationKey}
@@ -1640,8 +1670,7 @@ export default function GraphicalFields({
                             <Rect
                               width={currentFieldRect.width}
                               height={currentFieldRect.height}
-                              dash={pixelsPerMeter ? undefined : [6, 4]}
-                              {...getOutlineProps(fieldWarning, theme.palette.primary.main, 2)}
+                              {...getOutlineProps(fieldWarning, theme.palette.primary.main, 2, viewport.scale, !pixelsPerMeter)}
                               data-geometry-issue={fieldWarning}
                               data-testid={`field-rect-${fieldId}`}
                               data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
@@ -1671,8 +1700,8 @@ export default function GraphicalFields({
                                       width={bedVm.width}
                                       height={bedVm.height}
                                       fill={fill ?? theme.palette.info.light}
-                                      dash={bedVm.supportsMetricSpacing ? undefined : [6, 4]}
-                                      {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1)}
+                                      {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1,
+                                        viewport.scale, !bedVm.supportsMetricSpacing)}
                                       data-geometry-issue={bedWarnings.get(bedVm.id)}
                                       data-task-urgency={urgency}
                                       data-crop-phase={phase ?? (entries.length > 1 ? 'mixed' : undefined)}
@@ -1694,7 +1723,9 @@ export default function GraphicalFields({
                       {boundary && renderPlacement({ kind: 'location', id: locationId }, location, boundary, rotation)}
                       {placingStems && <GraphicalFreePlantPlacement viewport={viewport} size={{ width: stageWidth, height: stageHeight }}
                         surface={localPlacement?.surface} point={cursorPoint} preview={placementPreview}
-                        onPreview={previewPlacement} onPlace={addStemAt} />}
+                        onPreview={previewPlacement} onPlace={(point, bypass) => {
+                          if (!activePinches.current.has(locationId)) addStemAt(point, bypass);
+                        }} />}
 
                       {highlight && <Rect {...highlight} listening={false} cornerRadius={3} strokeWidth={3}
                         strokeScaleEnabled={false} stroke={theme.palette.success.dark}
@@ -1715,6 +1746,8 @@ export default function GraphicalFields({
                     geometryOutlines={new Set([...parcelWarnings.values(), ...bedWarnings.values()])}
                     hasStems={hasDraftStems || renderedPlantPlans.length > 0}
                     hasCanopies={hasCanopies}
+                    scaleIndicator={<GraphicalScaleIndicator scale={viewport.scale} compact={stageWidth < 600}
+                      measured={hasMetricGeometry} approximate={hasApproximateGeometry} />}
                     canvasHint={device && !objects.selection && (device === 'touch' ? showTouchContextMenuHint : showContextMenuHint) && (
                       <GraphicalObjectHint device={device} onClose={device === 'touch' ? closeTouchContextMenuHint : closeContextMenuHint} />
                     )}
@@ -1726,9 +1759,10 @@ export default function GraphicalFields({
                       </Typography>
                     )}
                   />
-                  {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
+                  {areaInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
-                    openDetails={details} onOpenCrop={onOpenIndividualCrop} onFocusObject={focusArea}
+                    openDetails={details} onOpenCrop={onOpenIndividualCrop} onFocusObject={focusArea} onZoomObject={zoomToArea}
+                    zoomOnly={areaZoomOnly}
                     canEditPlant={canEditPlant} onEditPlant={editPlant} bedTasks={previewTasks} plantTasks={bedTasks} cropPreview={cropPreview}
                     onStartIndividualPlan={individualSeason && individualPlants.canEdit && !individualPlants.editor.draft ? object => {
                       const parent = { kind: object.type, id: object.id };

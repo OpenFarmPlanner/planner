@@ -895,7 +895,10 @@ describe("GraphicalFields", async () => {
     const startX = Number(stage.getAttribute("data-x"));
     const startY = Number(stage.getAttribute("data-y"));
     const stageObject = {};
-    const nonStageTarget = { getStage: () => stageObject, hasName: () => false };
+    const nonStageTarget = {
+      getStage: () => stageObject, hasName: () => false,
+      getAttrs: () => ({ 'data-graphical-object-key': 'field:10' }),
+    };
 
     act(() => {
       mockStageApi.setPointer(120, 140);
