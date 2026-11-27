@@ -699,6 +699,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               restoredPosition={restoredListPosition}
               onAddIndividualPlants={onAddIndividualPlants}
               individualHierarchy={individualHierarchy}
+              individualHierarchyLoading={individualList.loading}
               viewSwitch={<CompactViewSwitch actions={viewModeActions} label={t('fields:representation.ariaLabel')} />}
             />
           ) : (

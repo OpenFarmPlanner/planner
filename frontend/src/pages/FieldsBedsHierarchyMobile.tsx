@@ -57,6 +57,7 @@ interface FieldsBedsHierarchyMobileProps {
   graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
   onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
   individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
+  individualHierarchyLoading?: boolean;
   viewSwitch?: ReactNode;
   onOpenDetails?: (path: string, position: GrowingAreaListPosition) => void;
   restoredPosition?: GrowingAreaListPosition;
@@ -77,6 +78,7 @@ function FieldsBedsHierarchyMobile({
   graphicalRotations,
   onAddIndividualPlants,
   individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
+  individualHierarchyLoading = false,
   viewSwitch,
   onOpenDetails,
   restoredPosition,
@@ -113,13 +115,13 @@ function FieldsBedsHierarchyMobile({
   } = hierarchyData ?? internalHierarchyData;
   useEffect(() => {
     const saved = restoreListPosition.current;
-    if (loading || !saved) return;
+    if (loading || individualHierarchyLoading || !saved) return;
     const frame = requestAnimationFrame(() => {
       restoreListPosition.current = null;
       window.scrollTo({ top: saved.top, behavior: 'instant' });
     });
     return () => cancelAnimationFrame(frame);
-  }, [loading]);
+  }, [individualHierarchyLoading, loading]);
 
   const { expandedRows, toggleExpand, expandAll, ensureExpanded } = useExpandedState("fieldsBedsHierarchy");
   const { sortModel } = usePersistentSortModel({

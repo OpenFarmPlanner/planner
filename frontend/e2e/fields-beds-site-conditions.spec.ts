@@ -122,7 +122,9 @@ test.describe('growing-area details on a phone', () => {
     const toolbar = page.getByTestId('growing-area-search-toolbar');
     await toolbar.getByRole('searchbox').fill('Hofgarten');
     const row = page.locator(`[data-hierarchy-mobile-row-id="${bed.id}"]`);
+    const individualRow = page.locator('[data-hierarchy-mobile-row-type="individualPlan"]').first();
     await expect(row).toBeVisible();
+    await expect(individualRow).toBeVisible();
     await page.evaluate(() => window.scrollTo({ top: 150, behavior: 'instant' }));
     await row.scrollIntoViewIfNeeded();
     const scroll = await page.evaluate(() => window.scrollY);
@@ -166,9 +168,25 @@ test.describe('growing-area details on a phone', () => {
     await tasks.getByRole('button', { name: new RegExp(`${bedTask}.*als erledigt markieren`) }).tap();
     await expect(status).toContainText(`${before - 1} offene Aufgabe`);
     await expect(tasks.getByRole('button', { name: new RegExp(`${bedTask}.*als erledigt markieren`) })).toHaveCount(0);
-    await back.tap();
-    await expect(page).toHaveURL(new RegExp(sortedList.replace('?', '\\?') + '$'));
-    await expect(toolbar.getByRole('searchbox')).toHaveValue('Hofgarten');
+    let releasePlans = () => {};
+    const delayedPlans = new Promise<void>(resolve => { releasePlans = resolve; });
+    let plansRequested = false;
+    await page.route(url => url.pathname.endsWith('/planting-plans/') && url.searchParams.get('individual_only') === 'true',
+      async route => {
+        plansRequested = true;
+        await delayedPlans;
+        await route.continue();
+      }, { times: 1 });
+    try {
+      await back.tap();
+      await expect(page).toHaveURL(new RegExp(sortedList.replace('?', '\\?') + '$'));
+      await expect(toolbar.getByRole('searchbox')).toHaveValue('Hofgarten');
+      await expect.poll(() => plansRequested).toBe(true);
+      await expect(row).toBeAttached();
+    } finally {
+      releasePlans();
+    }
+    await expect(individualRow).toBeVisible();
     await expect(row).toBeInViewport();
     await expect.poll(async () => Math.abs(await page.evaluate(() => window.scrollY) - scroll)).toBeLessThanOrEqual(5);
     await expect(page.getByRole('dialog', { name: 'Beet bearbeiten', exact: true })).toHaveCount(0);
