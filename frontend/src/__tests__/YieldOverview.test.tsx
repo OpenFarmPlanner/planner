@@ -5,13 +5,14 @@ import { FocusManagerProvider } from "../focus/FocusManager";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { LONG_PRESS_THRESHOLD_MS } from "../utils/contextMenu";
 import YieldOverviewPage from "../pages/YieldOverview";
-import type { IncompleteYieldPlan } from "../api/types";
+import type { IncompleteYieldPlan, YieldForecastCropGroup } from "../api/types";
 import { getYieldAxisLabelStep } from "../pages/yieldOverviewUtils";
 
 const mocks = vi.hoisted(() => ({
   planList: vi.fn(),
   yieldList: vi.fn(),
   incompletePlans: [] as IncompleteYieldPlan[],
+  cropGroups: [] as YieldForecastCropGroup[],
   navigate: vi.fn(),
 }));
 const projectRequirementState = vi.hoisted(() => ({
@@ -27,7 +28,11 @@ vi.mock("../api/api", async () => {
     plantingPlanAPI: { list: mocks.planList, listAll: async () => (await mocks.planList()).data },
     yieldCalendarAPI: {
       forecast: async () => ({
-        data: { weeks: (await mocks.yieldList()).data, incomplete_plans: mocks.incompletePlans },
+        data: {
+          weeks: (await mocks.yieldList()).data,
+          incomplete_plans: mocks.incompletePlans,
+          crop_groups: mocks.cropGroups,
+        },
       }),
     },
   };
@@ -72,6 +77,7 @@ beforeEach(() => {
   });
   mocks.yieldList.mockResolvedValue({ data: [] });
   mocks.incompletePlans = [];
+  mocks.cropGroups = [];
 });
 
 describe("YieldOverviewPage", () => {
@@ -1641,6 +1647,69 @@ describe("YieldFilterBar", () => {
     await user.click(await screen.findByRole("option", { name: "Alle Kulturen" }));
 
     expect(await screen.findByTestId("yield-bar-2026-W13-1")).toBeInTheDocument();
+  });
+
+  it('groups by crop, drills into named varieties and retains the selection when switching', async () => {
+    const user = userEvent.setup();
+    const lettuce = { crop_name: 'Salat', color: '#226644' };
+    const rows = [
+      { ...lettuce, crop_id: 10, yield: 4 }, { ...lettuce, crop_id: 11, yield: 5 },
+      { ...lettuce, crop_id: 12, yield: 3 }, { crop_name: 'Karotte', crop_id: 20, yield: 2, color: '#aa5511' },
+    ];
+    mocks.yieldList.mockResolvedValue({ data: [{
+      iso_week: '2026-W13', week_start: '2026-03-23', week_end: '2026-03-30', crops: rows,
+    }] });
+    mocks.cropGroups = rows.map((crop, index) => ({
+      ...crop,
+      crop_variety: ['', 'Lollo Bionda', 'Maikönig', ''][index],
+      general_crop_id: index === 3 ? crop.crop_id : 10,
+      general_crop_name: crop.crop_name,
+      effective_color: crop.color,
+      has_color_override: index === 2,
+    }));
+    mocks.cropGroups.push({
+      ...lettuce, crop_id: 13, crop_variety: 'Ohne Einheit', general_crop_id: 10,
+      general_crop_name: 'Salat', effective_color: lettuce.color, has_color_override: false,
+    });
+    mocks.incompletePlans = [{
+      plan_id: 21, crop_id: 13, crop_name: 'Salat', crop_display_name: null,
+      crop_display_language_code: '', crop_variety: 'Ohne Einheit', bed_name: '',
+      planting_date: null, calculation_blockers: ['missing_yield_unit'],
+    }];
+    renderPage();
+
+    expect(await screen.findByRole('button', { name: 'Salat 12 kg' })).toBeVisible();
+    expect(screen.getByRole('button', { name: 'Nach Kultur' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.queryByTestId('yield-bar-2026-W13-11')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('combobox', { name: 'Kultur', exact: true }));
+    expect(await screen.findAllByRole('option', { name: 'Salat', exact: true })).toHaveLength(1);
+    await user.click(screen.getByRole('option', { name: 'Salat', exact: true }));
+    expect(screen.getByRole('button', { name: '1 ohne Prognose' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Nach Sorte' }));
+
+    for (const label of ['Salat (ohne Sorte) 4 kg', 'Salat (Lollo Bionda) 5 kg', 'Salat (Maikönig) 3 kg']) {
+      expect(screen.getByRole('button', { name: label })).toBeVisible();
+    }
+    expect(screen.queryByTestId('yield-bar-2026-W13-20')).not.toBeInTheDocument();
+    await user.click(screen.getByText('Prognosedaten als Tabelle'));
+    const table = await screen.findByRole('table');
+    expect(within(table).getAllByRole('row')).toHaveLength(4);
+    expect(within(table).getByRole('rowheader', { name: 'Salat (Lollo Bionda)' })).toBeVisible();
+    await user.click(screen.getByRole('combobox', { name: 'Sorte', exact: true }));
+    await user.click(await screen.findByRole('option', { name: 'Salat (Lollo Bionda)' }));
+    expect(screen.queryByTestId('yield-bar-2026-W13-12')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '1 ohne Prognose' })).not.toBeInTheDocument();
+    expect(within(table).getAllByRole('row')).toHaveLength(2);
+
+    await user.click(screen.getByRole('button', { name: 'Nach Kultur' }));
+    expect(screen.getByRole('button', { name: 'Salat 12 kg' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Nach Sorte' }));
+    expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Salat (Lollo Bionda)');
+    expect(screen.getByRole('button', { name: 'Salat (Lollo Bionda) 5 kg' })).toBeVisible();
+    await user.click(screen.getByRole('combobox', { name: 'Sorte', exact: true }));
+    await user.click(await screen.findByRole('option', { name: 'Salat (Ohne Einheit)' }));
+    expect(screen.getByText('Keine Ertragsprognose für diese Auswahl')).toBeVisible();
+    expect(screen.getByRole('button', { name: '1 ohne Prognose' })).toBeVisible();
   });
 
   it("scopes the warning to the forecast crop without losing unknown diagnostics from older responses", async () => {

@@ -4,6 +4,10 @@
     "load": "No se ha podido cargar el resumen de rendimientos."
   },
   "filters": {
+    "grouping": "Agrupación",
+    "byCrop": "Por cultivo",
+    "byVariety": "Por variedad",
+    "generalVariety": "{{crop}} (sin variedad especificada)",
     "clearCrops": "Borrar la selección de cultivos",
     "selectedCrops": "Cultivos seleccionados",
     "seasonWindow": "Temporadas",
@@ -21,6 +25,7 @@
     "month": "Mes"
   },
   "chart": {
+    "forecastTable": "Tabla de previsiones",
     "title": "Distribución de rendimientos",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Periodo",
@@ -37,6 +42,7 @@
     "openCrop": "Abrir cultivo"
   },
   "empty": {
+    "noYieldForSelection": "No hay previsión de rendimiento para esta selección",
     "noPlansTitle": "Todavía no hay previsión de rendimiento",
     "description": "Las previsiones de rendimiento están disponibles en cuanto existan series con periodos de cosecha.",
     "createPlanAction": "Añadir serie",

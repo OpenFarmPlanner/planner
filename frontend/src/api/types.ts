@@ -2113,6 +2113,14 @@ export interface YieldCalendarWeek {
   crops: YieldCalendarCrop[];
 }
 
+export interface YieldForecastCropGroup extends Omit<YieldCalendarCrop, 'yield'> {
+  crop_variety?: string | null;
+  general_crop_id: number;
+  general_crop_name: string;
+  effective_color: string;
+  has_color_override: boolean;
+}
+
 export interface IncompleteYieldPlan {
   plan_id: number;
   crop_id?: number | null;
@@ -2137,6 +2145,7 @@ export interface IncompleteYieldPlan {
 export interface YieldCalendarForecast {
   weeks: YieldCalendarWeek[];
   incomplete_plans: IncompleteYieldPlan[];
+  crop_groups?: YieldForecastCropGroup[];
 }
 
 export type YieldComparisonCropTiming = Pick<PlantingPlan,

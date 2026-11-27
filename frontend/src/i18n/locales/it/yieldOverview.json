@@ -4,6 +4,10 @@
     "load": "Impossibile caricare la panoramica delle rese."
   },
   "filters": {
+    "grouping": "Raggruppamento",
+    "byCrop": "Per coltura",
+    "byVariety": "Per varietà",
+    "generalVariety": "{{crop}} (senza varietà specificata)",
     "clearCrops": "Cancella la selezione delle colture",
     "selectedCrops": "Colture selezionate",
     "seasonWindow": "Stagioni",
@@ -21,6 +25,7 @@
     "month": "Mese"
   },
   "chart": {
+    "forecastTable": "Tabella delle previsioni",
     "title": "Distribuzione delle rese",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Periodo",
@@ -37,6 +42,7 @@
     "openCrop": "Apri coltura"
   },
   "empty": {
+    "noYieldForSelection": "Nessuna previsione di resa per questa selezione",
     "noPlansTitle": "Nessuna previsione delle rese ancora disponibile",
     "description": "Le previsioni delle rese sono disponibili quando esistono serie con periodi di raccolta.",
     "createPlanAction": "Aggiungi serie",

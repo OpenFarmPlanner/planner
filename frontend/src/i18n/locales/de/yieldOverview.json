@@ -4,6 +4,10 @@
     "load": "Ertragsübersicht konnte nicht geladen werden."
   },
   "filters": {
+    "grouping": "Gruppierung",
+    "byCrop": "Nach Kultur",
+    "byVariety": "Nach Sorte",
+    "generalVariety": "{{crop}} (ohne Sorte)",
     "clearCrops": "Kulturauswahl leeren",
     "selectedCrops": "Ausgewählte Kulturen",
     "seasonWindow": "Saisonen",
@@ -21,6 +25,7 @@
     "month": "Monat"
   },
   "chart": {
+    "forecastTable": "Prognosedaten als Tabelle",
     "title": "Ertragsverteilung",
     "tooltip": "{{period}} · {{crop}}: {{yield}} kg",
     "tooltipPeriod": "Zeitraum",
@@ -37,6 +42,7 @@
     "openCrop": "Kultur öffnen"
   },
   "empty": {
+    "noYieldForSelection": "Keine Ertragsprognose für diese Auswahl",
     "noPlansTitle": "Noch keine Ertragsprognose verfügbar",
     "description": "Ertragsprognosen werden verfügbar, sobald Anbaupläne mit Erntezeiträumen vorhanden sind.",
     "createPlanAction": "Anbauplan hinzufügen",

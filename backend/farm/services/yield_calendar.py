@@ -9,12 +9,13 @@ from decimal import ROUND_HALF_UP, Decimal
 from django.db.models import BooleanField, Case, F, Q, QuerySet, Value, When
 from django.db.models.functions import Coalesce
 
-from farm.models import PlantingPlan, Project, Season
+from farm.models import Crop, PlantingPlan, Project, Season
 from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
     get_general_crop,
+    is_variety_crop,
     resolve_crop_display_color,
     resolve_crop_field,
 )
@@ -205,39 +206,77 @@ def build_yield_forecast(
     """Build weekly yield rows and, if requested, explain omitted planting plans."""
     start, end = _forecast_bounds(iso_year, season)
     if start > end:
-        return {'weeks': [], 'incomplete_plans': []}
+        return {'weeks': [], 'incomplete_plans': [], 'crop_groups': []}
 
     plans = _forecast_plans(
         project, start, end, season, season_id,
         include_incomplete=include_incomplete, whole_season=iso_year is None,
     )
     general_crops = build_general_crop_index(project.pk)
-    weekly_data: dict[date, dict[tuple, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
+    weekly_data: dict[date, dict[int, Decimal]] = defaultdict(lambda: defaultdict(Decimal))
+    crop_groups: dict[int, dict] = {}
     incomplete_plans = []
     for plan, schedule in distinct_forecast_plans(plans, general_crops):
-        if schedule is None:
-            if not plan.legacy_forecast_candidate:
-                continue
-            projections = legacy_harvest_projection(plan, start, end)
-        else:
-            if season is not None and not recurring_plan_visible_in_season(plan, season, schedule):
-                continue
-            projections = schedule.project(start, end)
-            unscheduled = plan.planting_date is None and plan.legacy_forecast_candidate
-            if not projections and not unscheduled:
-                continue
+        projections = _forecast_projections(plan, schedule, season, start, end)
+        if projections is None:
+            continue
         expected = compute_plan_expected_yield(plan, general_crops)
+        if plan.crop_id is not None and plan.crop_id not in crop_groups:
+            crop_groups[plan.crop_id] = _forecast_crop_group(
+                plan.crop, general_crops, language_code, project.region,
+            )
         if expected.kilograms is not None and projections:
             for projection in projections:
-                _accumulate_plan_yield(
-                    weekly_data, plan, expected.kilograms, projection,
-                    language_code, project.region, general_crops,
-                )
+                _accumulate_plan_yield(weekly_data, plan.crop_id, expected.kilograms, projection)
         elif include_incomplete:
             blockers = expected.blockers + (() if projections else ('missing_harvest_period',))
             incomplete_plans.append(_incomplete_plan(plan, blockers, language_code, project.region))
 
-    return {'weeks': _build_response_rows(weekly_data), 'incomplete_plans': incomplete_plans}
+    return {
+        'weeks': _build_response_rows(weekly_data, crop_groups),
+        'incomplete_plans': incomplete_plans,
+        'crop_groups': list(crop_groups.values()),
+    }
+
+
+def _forecast_projections(
+    plan: PlantingPlan, schedule: RecurringHarvestSchedule | None, season: Season | None,
+    start: date, end: date,
+) -> list[HarvestProjection] | None:
+    """Return None for out-of-scope plans, or an empty list for unscheduled plans."""
+    if schedule is None:
+        return (
+            legacy_harvest_projection(plan, start, end) if plan.legacy_forecast_candidate else None
+        )
+    if season is not None and not recurring_plan_visible_in_season(plan, season, schedule):
+        return None
+    projections = schedule.project(start, end)
+    unscheduled = plan.planting_date is None and plan.legacy_forecast_candidate
+    return projections if projections or unscheduled else None
+
+
+def _forecast_crop_group(
+    crop: Crop, general_crops: GeneralCropIndex, language_code: str, region: str,
+) -> dict:
+    general = get_general_crop(crop, general_crops) or crop
+    display_name, display_language = resolve_crop_display_name(crop, language_code, region)
+    general_name = display_name
+    if general is not crop:
+        # The plan queryset already loaded this shared species and its translations.
+        general.crop_species = crop.crop_species
+        general_name = resolve_crop_display_name(general, language_code, region)[0]
+    return {
+        'crop_id': crop.pk,
+        'crop_name': crop.name,
+        'crop_display_name': display_name,
+        'crop_display_language_code': display_language,
+        'crop_variety': crop.variety,
+        'general_crop_id': general.pk,
+        'general_crop_name': general_name or general.name,
+        'color': resolve_crop_display_color(general, general_crops),
+        'effective_color': resolve_crop_display_color(crop, general_crops),
+        'has_color_override': bool(is_variety_crop(crop) and crop.display_color),
+    }
 
 
 def _incomplete_plan(
@@ -296,13 +335,10 @@ def forecast_yield_for_projection(kilograms: Decimal, projection: HarvestProject
 
 
 def _accumulate_plan_yield(
-    weekly_data: dict[date, dict[tuple, Decimal]],
-    plan: PlantingPlan,
+    weekly_data: dict[date, dict[int, Decimal]],
+    crop_id: int,
     kilograms: Decimal,
     projection: HarvestProjection,
-    language_code: str,
-    region: str,
-    general_crops: GeneralCropIndex,
 ) -> None:
     """Allocate the rounded cumulative yield between each pair of week boundaries."""
     first_day = projection.window_start.toordinal()
@@ -310,35 +346,34 @@ def _accumulate_plan_yield(
     start = projection.start_date.toordinal()
     limit = projection.end_date.toordinal() + 1
     first_week = start - projection.start_date.weekday()
-    display_name, display_language = resolve_crop_display_name(plan.crop, language_code, region)
-    general = get_general_crop(plan.crop, general_crops)
-    crop_key = (
-        plan.crop_id, plan.crop.name, display_name, display_language,
-        resolve_crop_display_color(general or plan.crop, general_crops),
-    )
-
     allocated = _plan_yield_through(kilograms, start - first_day, days)
     for week in range(first_week, limit, 7):
         overlap_limit = min(week + 7, limit)
         next_allocated = _plan_yield_through(kilograms, overlap_limit - first_day, days)
         if next_allocated > allocated:
-            weekly_data[date.fromordinal(week)][crop_key] += next_allocated - allocated
+            weekly_data[date.fromordinal(week)][crop_id] += next_allocated - allocated
         allocated = next_allocated
 
 
-def _build_response_rows(weekly_data: dict[date, dict[tuple, Decimal]]) -> list[dict]:
+def _build_response_rows(
+    weekly_data: dict[date, dict[int, Decimal]], crop_groups: dict[int, dict],
+) -> list[dict]:
     response_data = []
     for week_start, crops in sorted(weekly_data.items()):
         crops_payload = []
-        for key, kilograms in sorted(crops.items(), key=lambda item: item[0][2] or item[0][1]):
-            crop_id, crop_name, display_name, display_language, color = key
+        ordered = sorted(
+            crops,
+            key=lambda key: crop_groups[key]['crop_display_name'] or crop_groups[key]['crop_name'],
+        )
+        for crop_id in ordered:
+            metadata = crop_groups[crop_id]
             crops_payload.append({
                 'crop_id': crop_id,
-                'crop_name': crop_name,
-                'crop_display_name': display_name,
-                'crop_display_language_code': display_language,
-                'color': color,
-                'yield': float(kilograms),
+                'crop_name': metadata['crop_name'],
+                'crop_display_name': metadata['crop_display_name'],
+                'crop_display_language_code': metadata['crop_display_language_code'],
+                'color': metadata['color'],
+                'yield': float(crops[crop_id]),
             })
         response_data.append({
             'iso_week': iso_week_key(week_start),

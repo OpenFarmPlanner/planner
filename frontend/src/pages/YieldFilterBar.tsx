@@ -18,23 +18,60 @@ import {
   type ChartPeriod,
   type YieldCropMeta,
 } from "./yieldOverviewUtils";
+import type { YieldForecastGrouping } from './yieldForecastGrouping';
 
 interface YieldFilterBarProps {
   crops: Pick<YieldCropMeta, 'id' | 'name'>[];
   selectedCropId: string;
-  period?: ChartPeriod;
-  allCropsLabel?: string;
+  varieties: Pick<YieldCropMeta, 'id' | 'name'>[];
+  selectedVarietyId: string;
+  grouping: YieldForecastGrouping;
+  period: ChartPeriod;
   onCropChange: (cropId: string) => void;
-  onPeriodChange?: (period: ChartPeriod) => void;
+  onVarietyChange: (varietyId: string) => void;
+  onGroupingChange: (grouping: YieldForecastGrouping) => void;
+  onPeriodChange: (period: ChartPeriod) => void;
   children?: ReactNode;
+}
+
+function YieldSeriesFilter({ id, label, allLabel, options, value, onChange }: {
+  id: string;
+  label: string;
+  allLabel: string;
+  options: Pick<YieldCropMeta, 'id' | 'name'>[];
+  value: string;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <Stack spacing={0.5} sx={{ width: { xs: '100%', sm: 'auto' }, minWidth: { sm: 220 }, maxWidth: '100%' }}>
+      <Typography id={id} variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
+        {label}
+      </Typography>
+      <FormControl size="small" fullWidth>
+        <Select fullWidth labelId={id} value={value} sx={{ minHeight: 44 }}
+          onChange={event => onChange(String(event.target.value))}>
+          <MenuItem value={ALL_CROPS}>{allLabel}</MenuItem>
+          {options.map(option => (
+            <MenuItem key={option.id} value={String(option.id)} sx={{ whiteSpace: 'normal' }}>
+              {option.name}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    </Stack>
+  );
 }
 
 export function YieldFilterBar({
   crops,
   selectedCropId,
+  varieties,
+  selectedVarietyId,
+  grouping,
   period,
-  allCropsLabel,
   onCropChange,
+  onVarietyChange,
+  onGroupingChange,
   onPeriodChange,
   children,
 }: YieldFilterBarProps) {
@@ -47,34 +84,26 @@ export function YieldFilterBar({
       useFlexGap
       sx={{ width: "100%", flexWrap: "wrap", alignItems: "flex-end" }}
     >
-      <Stack spacing={0.5} sx={{ width: { xs: "100%", sm: "auto" }, minWidth: { sm: 220 } }}>
-        <Typography
-          id="yield-crop-filter-label"
-          variant="caption"
-          color="text.secondary"
-          sx={{ lineHeight: 1 }}
-        >
-          {t("filters.crop")}
+      <YieldSeriesFilter id="yield-crop-filter-label" label={t('filters.crop')}
+        allLabel={t('filters.allCrops')} options={crops} value={selectedCropId} onChange={onCropChange} />
+      {grouping === 'variety' && (
+        <YieldSeriesFilter id="yield-variety-filter-label" label={t('filters.variety')}
+          allLabel={t('filters.allVarieties')} options={varieties} value={selectedVarietyId}
+          onChange={onVarietyChange} />
+      )}
+      <Stack spacing={0.5} sx={{ maxWidth: '100%' }}>
+        <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
+          {t('filters.grouping')}
         </Typography>
-        <FormControl size="small" fullWidth>
-          <Select
-            fullWidth
-            labelId="yield-crop-filter-label"
-            value={selectedCropId}
-            sx={allCropsLabel ? { minHeight: 44 } : undefined}
-            onChange={(event) => onCropChange(String(event.target.value))}
-          >
-            <MenuItem value={ALL_CROPS}>{allCropsLabel ?? t("filters.allCrops")}</MenuItem>
-            {crops.map((crop) => (
-              <MenuItem key={crop.id} value={String(crop.id)}>
-                {crop.name}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+        <ToggleButtonGroup value={grouping} exclusive size="small" color="primary"
+          aria-label={t('filters.grouping')} sx={{ ...segmentedToggleButtonGroupSx, minHeight: 44 }}
+          onChange={(_, value: YieldForecastGrouping | null) => { if (value) onGroupingChange(value); }}>
+          <ToggleButton value="crop" sx={segmentedToggleButtonSx}>{t('filters.byCrop')}</ToggleButton>
+          <ToggleButton value="variety" sx={segmentedToggleButtonSx}>{t('filters.byVariety')}</ToggleButton>
+        </ToggleButtonGroup>
       </Stack>
 
-      {period && onPeriodChange && <Stack spacing={0.5}>
+      <Stack spacing={0.5}>
         <Typography
           variant="caption"
           color="text.secondary"
@@ -88,7 +117,7 @@ export function YieldFilterBar({
           size="small"
           color="primary"
           aria-label={t("filters.period")}
-          sx={{ ...segmentedToggleButtonGroupSx, height: 40 }}
+          sx={{ ...segmentedToggleButtonGroupSx, minHeight: 44 }}
           onChange={(_, value: ChartPeriod | null) => {
             if (value !== null) {
               onPeriodChange(value);
@@ -102,7 +131,7 @@ export function YieldFilterBar({
             {t("filters.month")}
           </ToggleButton>
         </ToggleButtonGroup>
-      </Stack>}
+      </Stack>
       {children}
     </Stack>
   );

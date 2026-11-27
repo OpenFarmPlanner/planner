@@ -119,6 +119,60 @@ class YieldCalendarAPITest(TestCase):
         forecast = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026').json()
         self.assertEqual(forecast[0]['crops'][0]['color'], '#654321')
 
+    def test_forecast_groups_preserve_plan_quantities_and_missing_input_diagnostics(self):
+        species = CropSpecies.objects.create(name='Forecast lettuce')
+        general = Crop.objects.create(
+            name='Lettuce', project=self.project, crop_species=species,
+            display_color='#123456', expected_yield=2, harvest_method='per_sqm',
+        )
+        equal_override = Crop.objects.create(
+            name=general.name, variety='Equal color', project=self.project, crop_species=species,
+            display_color='#123456', expected_yield=3, harvest_method='per_plant',
+            distance_within_row_m=0.5, row_spacing_m=1,
+        )
+        inherited = Crop.objects.create(
+            name=general.name, variety='Inherited', project=self.project, crop_species=species,
+        )
+        incomplete = Crop.objects.create(
+            name=general.name, variety='Legacy unit', project=self.project, crop_species=species,
+            harvest_method='unknown',
+        )
+        other_crop = Crop.objects.create(
+            name='Carrot', project=self.project, expected_yield=5, harvest_method='per_sqm',
+        )
+        start, end = date(2026, 3, 2), date(2026, 3, 5)
+        for crop in (general, equal_override, inherited, incomplete, other_crop):
+            self._create_plan(crop=crop, harvest_start=start, harvest_end=end)
+
+        url = '/openfarmplanner/api/yield-calendar/?year=2026'
+        forecast = self.client.get(f'{url}&include_incomplete=true').json()
+        weeks = forecast['weeks']
+        self.assertEqual(weeks, self.client.get(url).json())
+        self.assertEqual(len(weeks), 1)
+        yields = {row['crop_id']: row['yield'] for row in weeks[0]['crops']}
+        self.assertEqual(
+            yields, {general.pk: 2, equal_override.pk: 6, inherited.pk: 2, other_crop.pk: 5},
+        )
+
+        groups = {item['crop_id']: item for item in forecast['crop_groups']}
+        lettuce_crops = (general, equal_override, inherited, incomplete)
+        lettuce_plan_groups = (groups[crop.pk] for crop in lettuce_crops)
+        self.assertEqual({group['general_crop_id'] for group in lettuce_plan_groups}, {general.pk})
+        self.assertEqual(groups[other_crop.pk]['general_crop_id'], other_crop.pk)
+        self.assertEqual(groups[equal_override.pk]['effective_color'], '#123456')
+        self.assertTrue(groups[equal_override.pk]['has_color_override'])
+        self.assertFalse(groups[inherited.pk]['has_color_override'])
+        self.assertEqual(forecast['incomplete_plans'][0]['crop_id'], incomplete.pk)
+        self.assertIn('missing_yield_unit', forecast['incomplete_plans'][0]['calculation_blockers'])
+
+        general.display_color = '#654321'
+        general.save()
+        updated = self.client.get(f'{url}&include_incomplete=true').json()
+        colors = {item['crop_id']: item for item in updated['crop_groups']}
+        self.assertEqual(colors[inherited.pk]['effective_color'], '#654321')
+        self.assertEqual(colors[equal_override.pk]['effective_color'], '#123456')
+        self.assertEqual(colors[equal_override.pk]['color'], '#654321')
+
     def test_per_plant_forecast_uses_inherited_rate_unit_and_canonical_count(self):
         species = CropSpecies.objects.create(name='Yield inheritance fixture')
         Crop.objects.create(

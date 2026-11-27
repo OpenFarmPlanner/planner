@@ -67,6 +67,8 @@ declare module '@mui/material/styles' {
     /** Muted accent for the yield chart's calendar-year-boundary marker.
      * Deliberately outside the crop series palette. */
     yearBoundary: string;
+    /** Display-only accents for varieties whose inherited colors repeat. */
+    varietySeries: Record<'light' | 'dark', readonly string[]>;
   }
 
   interface BrandDarkPalette {
@@ -198,6 +200,16 @@ const theme = createTheme({
     surface: surfaceColors,
     chart: {
       yearBoundary: '#94a3b8',
+      varietySeries: {
+        light: [
+          '#2563a5', '#b45309', '#0a796c', '#973e78', '#6950a1', '#b54039',
+          '#467321', '#967025', '#186986', '#84492a', '#5759a8', '#6f495c',
+        ],
+        dark: [
+          '#80b5ef', '#f4a965', '#69d3be', '#e99bc8', '#bba6ee', '#f18e80',
+          '#a0cb67', '#e1c16d', '#7ac9e7', '#c99776', '#a7abec', '#daa5bb',
+        ],
+      },
     },
     brandDark: {
       background: '#1f3a22',

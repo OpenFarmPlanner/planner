@@ -250,11 +250,20 @@ description), one level down:
   Each weekly contribution is the difference between cumulative values at
   its boundaries, rounded to 0.01 kg. The same weeks have the same values in separate ISO-year
   requests and in the season response. The optional `include_incomplete=true`
-  response has `weeks` and `incomplete_plans`. It gives the yield overview the
-  scoped plan IDs and their calculation blockers. An unscheduled perennial
+  response has `weeks`, `crop_groups` and `incomplete_plans`. It gives the yield
+  overview stable crop IDs, base and effective colors, and the scoped plan IDs
+  and their calculation blockers. An unscheduled perennial
   draft is incomplete in its planting season. A scheduled, nonbearing plan
   contributes neither a forecast nor a blocker for that season. The default
   response is the array of weeks.
+- The forecast calendar starts **By crop**. It sums the calculated kilograms
+  for the general crop itself and its varieties under the same project-local
+  general-crop ID and base color. A crop with no canonical general entry uses
+  its own ID. **By variety** keeps each variety and the general crop's own
+  plans separately labelled. It keeps explicit project overrides and assigns
+  display-only chart colors when inherited colors repeat. The forecast table
+  lists the amounts by period and variety. Both grouping views sum forecast
+  weights after the per-plan unit conversion.
 - **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
   It starts with all crops, all locations and the three most recent season
   records. The crop picker groups varieties by species, with a crop-name

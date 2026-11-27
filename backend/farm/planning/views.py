@@ -335,8 +335,8 @@ class YieldCalendarListView(generics.GenericAPIView):
         description=(
             'Forecast kilograms by ISO week from each plan’s effective crop rate in kg/m² '
             'or kg/plant and its area or calculated plant count. The default response is '
-            'an array of weeks. With include_incomplete=true, the response contains weeks '
-            'and incomplete_plans with the reasons those plans are omitted.'
+            'an array of weeks. With include_incomplete=true, the response also includes '
+            'crop_groups and incomplete_plans with the reasons those plans are omitted.'
         ),
         parameters=[
             SEASON_HEADER_PARAMETER,
