@@ -145,7 +145,7 @@ describe("YieldOverviewPage", () => {
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
     fireEvent.click(retry);
     await waitFor(() => expect(mocks.planList).toHaveBeenCalledTimes(2));
-    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Kultur", exact: true })).toBeInTheDocument();
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 
@@ -1051,7 +1051,7 @@ describe("YieldDistributionChart roving tab stop", () => {
     // Filtering the chart down to Kohl takes the remembered segment with it.
     // Without the fallback the tab stop would point at a key that no longer
     // exists and the whole chart would drop out of the tab order.
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Kultur", exact: true }));
     await user.click(await screen.findByRole("option", { name: "Kohl" }));
 
     await waitFor(() =>
@@ -1464,7 +1464,7 @@ describe("YieldDistributionChart legend", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Karotte 2 kg" }));
     expect(screen.getByTestId("yield-bar-2026-W13-1")).toHaveStyle({ opacity: "0.28" });
 
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Kultur", exact: true }));
     await user.click(await screen.findByRole("option", { name: "Kohl" }));
 
     // The highlighted crop is gone, so nothing is highlighted -- leaving the
@@ -1635,7 +1635,7 @@ describe("YieldFilterBar", () => {
     renderPage();
     await screen.findByTestId("yield-bar-2026-W13-2");
 
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Kultur", exact: true }));
     await user.click(await screen.findByRole("option", { name: "Karotte" }));
 
     await waitFor(() =>
@@ -1643,7 +1643,7 @@ describe("YieldFilterBar", () => {
     );
     expect(screen.getByTestId("yield-bar-2026-W13-2")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Kultur", exact: true }));
     await user.click(await screen.findByRole("option", { name: "Alle Kulturen" }));
 
     expect(await screen.findByTestId("yield-bar-2026-W13-1")).toBeInTheDocument();
@@ -1702,7 +1702,9 @@ describe("YieldFilterBar", () => {
     expect(within(table).getAllByRole('row')).toHaveLength(2);
 
     await user.click(screen.getByRole('button', { name: 'Nach Kultur' }));
-    expect(screen.getByRole('button', { name: 'Salat 12 kg' })).toBeVisible();
+    expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Salat (Lollo Bionda)');
+    expect(screen.getByRole('button', { name: 'Salat 5 kg' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: 'Salat 12 kg' })).not.toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Nach Sorte' }));
     expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Salat (Lollo Bionda)');
     expect(screen.getByRole('button', { name: 'Salat (Lollo Bionda) 5 kg' })).toBeVisible();
@@ -1710,6 +1712,75 @@ describe("YieldFilterBar", () => {
     await user.click(await screen.findByRole('option', { name: 'Salat (Ohne Einheit)' }));
     expect(screen.getByText('Keine Ertragsprognose für diese Auswahl')).toBeVisible();
     expect(screen.getByRole('button', { name: '1 ohne Prognose' })).toBeVisible();
+  });
+
+  describe('variety filter across grouping and crop changes', () => {
+    beforeEach(() => {
+      const lettuce = { crop_name: 'Salat', color: '#226644' };
+      const rows = [
+        { ...lettuce, crop_id: 10, yield: 4 }, { ...lettuce, crop_id: 11, yield: 5 },
+        { ...lettuce, crop_id: 12, yield: 3 }, { crop_name: 'Karotte', crop_id: 20, yield: 2, color: '#aa5511' },
+      ];
+      mocks.yieldList.mockResolvedValue({ data: [{
+        iso_week: '2026-W13', week_start: '2026-03-23', week_end: '2026-03-30', crops: rows,
+      }] });
+      mocks.cropGroups = rows.map((crop, index) => ({
+        ...crop,
+        crop_variety: ['', 'Lollo Bionda', 'Maikönig', ''][index],
+        general_crop_id: index === 3 ? crop.crop_id : 10,
+        general_crop_name: crop.crop_name,
+        effective_color: crop.color,
+        has_color_override: false,
+      }));
+    });
+
+    const choose = async (user: ReturnType<typeof userEvent.setup>, field: string, option: string) => {
+      await user.click(screen.getByRole('combobox', { name: field, exact: true }));
+      await user.click(await screen.findByRole('option', { name: option, exact: true }));
+    };
+
+    it('offers the variety filter in both groupings and restores the whole crop when cleared', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      expect(await screen.findByRole('button', { name: 'Salat 12 kg' })).toBeVisible();
+      const variety = screen.getByRole('combobox', { name: 'Sorte', exact: true });
+      expect(variety).toHaveTextContent('Alle Sorten');
+
+      await choose(user, 'Sorte', 'Salat (Maikönig)');
+      expect(screen.getByRole('button', { name: 'Salat 3 kg' })).toBeVisible();
+      expect(screen.queryByTestId('yield-bar-2026-W13-20')).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Nach Sorte' }));
+      expect(screen.getByRole('button', { name: 'Salat (Maikönig) 3 kg' })).toBeVisible();
+      expect(screen.queryByRole('button', { name: 'Salat (Lollo Bionda) 5 kg' })).not.toBeInTheDocument();
+      await user.click(screen.getByRole('button', { name: 'Nach Kultur' }));
+      expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Salat (Maikönig)');
+
+      await choose(user, 'Sorte', 'Alle Sorten');
+      expect(screen.getByRole('button', { name: 'Salat 12 kg' })).toBeVisible();
+      await user.click(screen.getByRole('button', { name: 'Nach Sorte' }));
+      for (const label of ['Salat (ohne Sorte) 4 kg', 'Salat (Lollo Bionda) 5 kg', 'Salat (Maikönig) 3 kg']) {
+        expect(screen.getByRole('button', { name: label })).toBeVisible();
+      }
+    });
+
+    it('keeps a compatible variety and resets an incompatible one when the crop changes', async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole('button', { name: 'Salat 12 kg' });
+
+      await choose(user, 'Kultur', 'Salat');
+      await choose(user, 'Sorte', 'Salat (Lollo Bionda)');
+      await choose(user, 'Kultur', 'Alle Kulturen');
+      expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Salat (Lollo Bionda)');
+      expect(screen.getByRole('button', { name: 'Salat 5 kg' })).toBeVisible();
+
+      await choose(user, 'Kultur', 'Karotte');
+      expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Alle Sorten');
+      expect(screen.getByRole('button', { name: 'Karotte 2 kg' })).toBeVisible();
+      await choose(user, 'Kultur', 'Salat');
+      expect(screen.getByRole('combobox', { name: 'Sorte', exact: true })).toHaveTextContent('Alle Sorten');
+      expect(screen.getByRole('button', { name: 'Salat 12 kg' })).toBeVisible();
+    });
   });
 
   it("scopes the warning to the forecast crop without losing unknown diagnostics from older responses", async () => {
@@ -1726,7 +1797,7 @@ describe("YieldFilterBar", () => {
     expect(await screen.findByRole("button", { name: "2 ohne Prognose" })).toBeVisible();
 
     const selectCrop = async (name: string) => {
-      await user.click(screen.getByRole("combobox"));
+      await user.click(screen.getByRole("combobox", { name: "Kultur", exact: true }));
       await user.click(await screen.findByRole("option", { name }));
     };
     await selectCrop("Kohl");
@@ -1752,7 +1823,7 @@ describe("YieldFilterBar", () => {
     renderPage();
     await screen.findByText("6.0 kg");
 
-    await user.click(screen.getByRole("combobox"));
+    await user.click(screen.getByRole("combobox", { name: "Kultur", exact: true }));
     await user.click(await screen.findByRole("option", { name: "Karotte" }));
 
     // Otherwise a single crop would sit in the bottom third of a chart still

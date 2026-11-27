@@ -38,10 +38,44 @@ test.describe('forecast grouping', () => {
     await page.screenshot({ path: info.outputPath('forecast-by-variety-phone.png'), animations: 'disabled' });
 
     await byCrop.press('Enter');
-    await expect(variety).toHaveCount(0);
+    await expect(variety).toHaveText('Salat (Maikönig)');
     await expect(crop).toHaveText('Salat');
     await expect(page.getByRole('button', { name: /^Salat [\d,]+ kg$/ })).toHaveCount(1);
+    await expect(table.getByRole('rowheader', { name: 'Salat (Lollo Bionda)', exact: true })).toHaveCount(0);
+    await expectNoHorizontalPageOverflow(page);
   });
+});
+
+test('keeps the forecast toolbar in place when the grouping changes', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'yield-forecast-grouping-toolbar', {
+    loginAsAdmin: true, demoProject: true, demoYear: 2026,
+  });
+  await page.goto('/app/yield-overview');
+  const byCrop = page.getByRole('button', { name: 'Nach Kultur', exact: true });
+  const byVariety = page.getByRole('button', { name: 'Nach Sorte', exact: true });
+  const controls = [
+    page.getByRole('combobox', { name: 'Kultur', exact: true }),
+    page.getByRole('combobox', { name: 'Sorte', exact: true }),
+    byCrop,
+    byVariety,
+    page.getByRole('button', { name: 'Woche', exact: true }),
+    page.getByRole('button', { name: 'Monat', exact: true }),
+  ];
+  await expect(byCrop).toHaveAttribute('aria-pressed', 'true');
+  const boxes = async () => Promise.all(controls.map(async control => {
+    await expect(control).toBeEnabled();
+    return control.boundingBox();
+  }));
+  const initial = await boxes();
+  const centers = initial.map(box => (box?.y ?? 0) + (box?.height ?? 0) / 2);
+  expect(Math.max(...centers) - Math.min(...centers)).toBeLessThan(4);
+
+  for (const toggle of [byVariety, byCrop, byVariety, byCrop]) {
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    expect(await boxes()).toEqual(initial);
+  }
 });
 
 test('offers guidance when a season has no planting plans or recorded harvests', async ({ page, request }) => {

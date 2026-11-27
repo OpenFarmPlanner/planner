@@ -264,6 +264,13 @@ description), one level down:
   display-only chart colors when inherited colors repeat. The forecast table
   lists the amounts by period and variety. Both grouping views sum forecast
   weights after the per-plan unit conversion.
+- The toolbar always shows Crop, Variety, Grouping and Week/Month in that
+  order, so switching the grouping never reflows it. The crop and variety
+  filters select plan contributions first; the grouping then aggregates
+  what remains. A selected variety therefore stays effective in both
+  groupings (By crop shows it as its general crop's series). Changing the
+  crop keeps a variety that belongs to it and resets any other one to All
+  varieties.
 - **Compare seasons** in Yield overview reads `/yield-calendar/comparison/`.
   It starts with all crops, all locations and the three most recent season
   records. The crop picker groups varieties by species, with a crop-name

@@ -86,11 +86,9 @@ export function YieldFilterBar({
     >
       <YieldSeriesFilter id="yield-crop-filter-label" label={t('filters.crop')}
         allLabel={t('filters.allCrops')} options={crops} value={selectedCropId} onChange={onCropChange} />
-      {grouping === 'variety' && (
-        <YieldSeriesFilter id="yield-variety-filter-label" label={t('filters.variety')}
-          allLabel={t('filters.allVarieties')} options={varieties} value={selectedVarietyId}
-          onChange={onVarietyChange} />
-      )}
+      <YieldSeriesFilter id="yield-variety-filter-label" label={t('filters.variety')}
+        allLabel={t('filters.allVarieties')} options={varieties} value={selectedVarietyId}
+        onChange={onVarietyChange} />
       <Stack spacing={0.5} sx={{ maxWidth: '100%' }}>
         <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1 }}>
           {t('filters.grouping')}

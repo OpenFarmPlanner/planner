@@ -132,8 +132,7 @@ export default function YieldOverviewPage() {
   const cropVarieties = varieties.filter(variety =>
     calendarCropId === ALL_CROPS || String(variety.generalCrop.id) === calendarCropId,
   );
-  const calendarVarietyId = grouping === 'variety'
-    && cropVarieties.some(variety => String(variety.id) === selectedVarietyId)
+  const calendarVarietyId = cropVarieties.some(variety => String(variety.id) === selectedVarietyId)
     ? selectedVarietyId : ALL_CROPS;
   const forecastWeeks = useMemo(() => projectForecastWeeks(
     weeklyYield, byId, grouping, calendarCropId, calendarVarietyId,
@@ -198,7 +197,9 @@ export default function YieldOverviewPage() {
         period={period}
         onCropChange={id => {
           setSelectedCropId(id);
-          setSelectedVarietyId(ALL_CROPS);
+          const keepsVariety = id === ALL_CROPS || varieties.some(variety =>
+            String(variety.id) === calendarVarietyId && String(variety.generalCrop.id) === id);
+          setSelectedVarietyId(keepsVariety ? calendarVarietyId : ALL_CROPS);
         }}
         onVarietyChange={setSelectedVarietyId}
         onGroupingChange={setGrouping}
