@@ -103,6 +103,11 @@ const canvasPanOffsets = {
   up: [0, PAN_STEP], down: [0, -PAN_STEP], left: [PAN_STEP, 0], right: [-PAN_STEP, 0],
 } as const;
 
+function createCanvasTextMeasurer(font: string) {
+  const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
+  if (context) context.font = font;
+  return (value: string) => context?.measureText(value).width ?? Array.from(value).length * 6.5;
+}
 
 export default function GraphicalFields({
   showTitle = true,
@@ -144,14 +149,11 @@ export default function GraphicalFields({
   const showCrops = includesCrops(displayMode);
   const plantCropReference = showCrops ? cropReference : undefined;
   const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
-  const measureCanvasText = useMemo(() => {
-    const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
-    return (value: string, font = '11px Arial, sans-serif') => {
-      if (!context) return Array.from(value).length * 6.5;
-      context.font = font;
-      return context.measureText(value).width;
-    };
-  }, []);
+  const measureText = useMemo(() => ({
+    plant: createCanvasTextMeasurer('11px Arial, sans-serif'),
+    location: createCanvasTextMeasurer('12px Arial, sans-serif'),
+    parcel: createCanvasTextMeasurer('bold 12px Arial, sans-serif'),
+  }), []);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -1125,7 +1127,7 @@ export default function GraphicalFields({
           const plantLabels = showCrops && plantObjects.size
             ? getIndividualPlantLabels([...plantObjects.values()], [...areaObjects.values()].flatMap(object =>
               object.type === 'bed' && object.rect ? [object.rect] : []), viewport,
-              { width: stageWidth, height: stageHeight }, measureCanvasText) : null;
+              { width: stageWidth, height: stageHeight }, measureText.plant) : null;
           const showFallbackLocationLabel = !boundary || viewport.x + (boundary.x + boundary.width) * viewport.scale < 0
             || viewport.x + boundary.x * viewport.scale > stageWidth - 100
             || viewport.y + boundary.y * viewport.scale < 60 || viewport.y + boundary.y * viewport.scale > stageHeight;
@@ -1137,7 +1139,7 @@ export default function GraphicalFields({
           const locationLabelVisible = Boolean(boundary && (!showFallbackLocationLabel || !objectInteractionEnabled));
           const locationLabelBounds = boundary && locationLabelVisible ? {
             x: boundary.x * viewport.scale, y: boundary.y * viewport.scale,
-            width: measureCanvasText(locationLabel, '12px Arial, sans-serif'), height: 14,
+            width: measureText.location(locationLabel), height: 14,
           } : null;
           const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
           const focusArea = (rect: PlacementRect): void => {
@@ -1393,7 +1395,7 @@ export default function GraphicalFields({
                         const overlapsLocationLabel = showFieldLabel && locationLabelBounds && rectsOverlap(locationLabelBounds, {
                           x: currentFieldRect.x * viewport.scale + FIELD_LABEL_SCREEN_PADDING,
                           y: currentFieldRect.y * viewport.scale,
-                          width: Math.min(labelWidth, measureCanvasText(field.name, 'bold 12px Arial, sans-serif')),
+                          width: Math.min(labelWidth, measureText.parcel(field.name)),
                           height: 14,
                         });
                         const fieldDragProps = getFieldInteractionProps(

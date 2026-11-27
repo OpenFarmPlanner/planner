@@ -20,6 +20,15 @@ async function canvasRects(page: Page, prefix: string) {
   }, prefix);
 }
 
+async function waitForParcelDragTarget(page: Page, fieldId: number) {
+  await expect.poll(() => page.evaluate(fieldId => {
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+      .find(item => item.container()?.isConnected);
+    return stage?.find<Konva.Group>('Group').find(group => group.getAttr('data-testid') === `field-group-${fieldId}`)
+      ?.draggable() ?? false;
+  }, fieldId)).toBe(true);
+}
+
 test('fits unsaved plots together and shows readable beds in the schematic view', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, `graphical-layout-${testInfo.workerIndex}`, { loginAsAdmin: true });
@@ -1258,6 +1267,7 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
   const dragPlotBy = async (dx: number, dy: number) => {
     const plot = await fieldRect();
     const start = { x: plot.container.x + plot.bounds.x + plot.bounds.width / 2, y: plot.container.y + plot.bounds.y + plot.bounds.height / 2 };
+    await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, start)).toBe('CANVAS');
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
     const viewport = page.viewportSize()!;
@@ -1277,6 +1287,7 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     await selectLocation(page, 'Klemmhof');
     await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
     await toggleGraphicEdit(page);
+    await waitForParcelDragTarget(page, field.id);
     for (const zoomClicks of [0, 2]) {
       for (let i = 0; i < zoomClicks; i += 1) {
         await page.getByRole('button', { name: 'Herauszoomen', exact: true }).first().click();
@@ -1289,7 +1300,7 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     }
     await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`boundary-drag-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
-    if (viewport.width > 375) await page.getByRole('button', { name: 'Grafikbearbeitung beenden', exact: true }).click();
+    if (viewport.width > 375) await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true, pressed: true }).click();
     await page.waitForLoadState('networkidle');
   }
 
@@ -1351,6 +1362,7 @@ for (const input of ['mouse', 'touch'] as const) {
       await page.goto('/app/fields-beds');
       await activate('Grafik');
       await toggleGraphicEdit(page, input);
+      await waitForParcelDragTarget(page, field.id);
       await expect.poll(async () => (await bedOffsets()).length).toBe(2);
       const before = await plot();
       const offsets = await bedOffsets();
@@ -1359,6 +1371,7 @@ for (const input of ['mouse', 'touch'] as const) {
         x: Math.round(before.container.x + before.bounds.x + before.bounds.width * 0.22),
         y: Math.round(before.container.y + before.bounds.y + before.bounds.height * 0.21),
       };
+      await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, start)).toBe('CANVAS');
       const beginDrag = async () => {
         if (touch) {
           await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
