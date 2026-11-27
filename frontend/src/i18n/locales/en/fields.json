@@ -167,6 +167,12 @@
     "disableLocationEditMode": "Stop graphic editing for location \"{{name}}\"",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
+    "zoomToArea": "Zoom to area",
+    "scaleBar": {
+      "label": "Metric scale",
+      "measuredOnly": "Measured areas only",
+      "approximate": "Approximate layout"
+    },
     "panUp": "Pan up",
     "panDown": "Pan down",
     "panLeft": "Pan left",

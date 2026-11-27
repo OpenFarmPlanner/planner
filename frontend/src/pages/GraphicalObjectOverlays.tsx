@@ -1,7 +1,8 @@
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type RefObject } from 'react';
 import { Box, Button, IconButton, ListItemIcon, MenuItem, Paper, Stack, Typography } from '@mui/material';
 import { individualPlantCreationAction } from '../planting-plans/individualPlantActions';
 import CloseIcon from '@mui/icons-material/Close';
+import ZoomInMapOutlinedIcon from '@mui/icons-material/ZoomInMapOutlined';
 import { ContextMenuHint } from '../components/data-grid/ContextMenuHint';
 import { CustomContextMenu } from '../components/contextMenu/CustomContextMenu';
 import { renderGroupedContextMenuActions } from '../components/contextMenu/contextMenuGroups';
@@ -96,6 +97,8 @@ interface OverlayProps {
   canEditPlant: (plant: GraphicalIndividualPlant) => boolean;
   onEditPlant: (plant: GraphicalIndividualPlant, action: IndividualPlacementAction) => void;
   onFocusObject: (rect: Rect) => void;
+  onZoomObject: (rect: Rect) => void;
+  zoomOnly?: boolean;
   bedTasks: ReturnType<typeof useBedTasks>;
   plantTasks: ReturnType<typeof useBedTasks>;
   cropPreview?: CropPreviewData;
@@ -117,21 +120,46 @@ interface OverlayProps {
 const isGraphicalMenu = (target: EventTarget | null) => target instanceof Element
   && Boolean(target.closest('[data-graphical-object-target], .konvajs-content'));
 
+const objectTargetsSx = {
+  display: 'contents',
+  '& > [data-graphical-object-target]': {
+    position: 'absolute', zIndex: 1, left: 'var(--target-x)', top: 'var(--target-y)', borderRadius: 1,
+    width: 'var(--target-width)', height: 'var(--target-height)', font: 'inherit', pointerEvents: 'none',
+    overflow: 'hidden', whiteSpace: 'nowrap', color: 'transparent', bgcolor: 'transparent', border: 0,
+    '&[data-graphical-location-label]': {
+      width: 'auto', height: 'auto', minHeight: 36, pointerEvents: 'auto', cursor: 'pointer', border: '1px solid',
+      borderColor: 'divider', bgcolor: 'background.paper', color: 'text.primary', px: 1,
+      maxWidth: 'calc(100% - 118px)', whiteSpace: 'normal', overflowWrap: 'anywhere',
+      '&[aria-pressed="true"]': { borderColor: 'success.dark', bgcolor: 'success.50' },
+    },
+    '&:focus-visible': {
+      outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2,
+      left: 'min(var(--target-x), max(8px, calc(100% - 268px)))',
+      top: 'min(var(--target-y), max(36px, calc(100% - 168px)))',
+      width: 'auto', height: 'auto', minHeight: 28, maxWidth: 'min(260px, calc(100% - 16px))',
+      whiteSpace: 'normal', overflowWrap: 'anywhere', bgcolor: 'background.paper', color: 'text.primary', px: 1,
+    },
+  },
+} as const;
+
 export function GraphicalObjectOverlays({
   interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onOpenCrop, onStartIndividualPlan,
-  canEditPlant, onEditPlant, onFocusObject, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
+  canEditPlant, onEditPlant, onFocusObject, onZoomObject, zoomOnly, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
   canComplete, showLocationLabel,
 }: OverlayProps) {
   const { t, i18n } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard', 'plantingPlans']);
   const titleId = useId();
   const preview = useRef<HTMLDivElement>(null);
   const keyboardPreview = useRef<HTMLButtonElement | null>(null);
+  const zoomFocus = useRef<HTMLElement | null>(null);
   const targets = useRef(new Map<string, HTMLButtonElement>());
   const selection = interaction.selection ? objects.get(interaction.selection) : null;
   const hovered = interaction.hover ? objects.get(interaction.hover.key) : null;
   const menu = interaction.menu;
-  const menuObject = menu ? objects.get(menu.key) : null;
-  const individualAction = menuObject && menuObject.type !== 'plant' && onStartIndividualPlan
+  const candidate = menu ? objects.get(menu.key) : null;
+  const menuObject = zoomOnly && candidate?.type === 'location' ? null : candidate;
+  const zoomTarget = menuObject?.type === 'bed' || menuObject?.type === 'field' ? menuObject.rect : null;
+  const individualAction = !zoomOnly && menuObject && menuObject.type !== 'plant' && onStartIndividualPlan
     ? individualPlantCreationAction(t, () => onStartIndividualPlan(menuObject)) : null;
   const [keyboardPlants, setKeyboardPlants] = useState<Record<number, string>>({});
   const plantsByPlan = useMemo(() => {
@@ -182,14 +210,16 @@ export function GraphicalObjectOverlays({
     };
   }, [selection, close]);
 
+  const openMenuFromTarget = (trigger: HTMLButtonElement, key: string) => {
+    const anchor = trigger.getBoundingClientRect();
+    keyboardPreview.current = null;
+    interaction.openMenu(key, { x: anchor.left, y: anchor.bottom }, trigger);
+  };
   const keyboardMenu = (event: KeyboardEvent<HTMLButtonElement>, key: string) => {
     if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
     event.preventDefault();
     event.stopPropagation();
-    const trigger = event.currentTarget;
-    const anchor = trigger.getBoundingClientRect();
-    keyboardPreview.current = null;
-    interaction.openMenu(key, { x: anchor.left, y: anchor.bottom }, trigger);
+    openMenuFromTarget(event.currentTarget, key);
   };
 
   const keyboardPlant = (event: KeyboardEvent<HTMLButtonElement>, plant: GraphicalIndividualPlant) => {
@@ -203,9 +233,11 @@ export function GraphicalObjectOverlays({
     targets.current.get(related[next].key)?.focus({ preventScroll: true });
   };
 
-  const plantPositionLabel = (plant: GraphicalIndividualPlant) => t('individualPlants.positionInPlan', {
+  const plantPositionLabel = useCallback((plant: GraphicalIndividualPlant) => t('individualPlants.positionInPlan', {
     index: numberText(plant.index), total: numberText(plant.count),
-  });
+  }), [t]);
+  const plantTargetLabels = useMemo(() => new Map<string, string>([...plantsByPlan.values()].flatMap(plants =>
+    plants.map(plant => [plant.key, `${plant.name} · ${plantPositionLabel(plant)}`] as const))), [plantsByPlan, plantPositionLabel]);
   const plantFacts = (plant: GraphicalIndividualPlant, compact = false) => {
     const parent = objects.get(graphicalObjectKey(plant.parent.kind, plant.parent.id));
     const occupation = cropReference?.kind === 'range' && plant.cropProjected
@@ -272,40 +304,44 @@ export function GraphicalObjectOverlays({
     if (!summary?.outstanding || !summary.urgency) return t('graphical.objects.noOpenTasks');
     return `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`;
   };
-  const plantTaskDescription = (id: number) => {
-    if (!hoverLayerData?.bounds) return undefined;
-    if (plantTasks.planTasksFailed) return t('graphical.taskLayer.loadError');
-    if (plantTasks.planTasksLoading) return t('common:messages.loading');
-    const summary = hoverLayerData.plantSummaries.get(id);
-    return summary?.outstanding && summary.urgency
+  const includeTaskDescriptions = Boolean(hoverLayerData?.bounds);
+  const plantSummaries = hoverLayerData?.plantSummaries;
+  const taskLoadDescription = plantTasks.planTasksFailed ? t('graphical.taskLayer.loadError')
+    : plantTasks.planTasksLoading ? t('common:messages.loading') : null;
+  const plantTaskDescriptions = useMemo(() => new Map<number, string>(includeTaskDescriptions ? [...plantsByPlan.keys()].map(id => {
+    const summary = plantSummaries?.get(id);
+    const description = taskLoadDescription ?? (summary?.outstanding && summary.urgency
       ? `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`
-      : noPlantTasks;
-  };
+      : noPlantTasks);
+    return [id, description] as const;
+  }) : []), [includeTaskDescriptions, noPlantTasks, plantSummaries, plantsByPlan, t, taskLoadDescription]);
   const hoveredPlant = hovered?.type === 'plant' ? hovered : null;
   const hoveredPlantTasks = hoveredPlant && hoverLayerData?.bounds
     ? orderBedTasks((plantTasks.tasksByPlan.get(hoveredPlant.id) ?? []).filter(isOpenTask)) : [];
 
   return (
     <>
-      {[...objects.values()].map(object => {
+      <Box sx={objectTargetsSx}>{[...objects.values()].map(object => {
+        if (zoomOnly && (object.type === 'location' || object.type === 'plant' || !object.rect)) return null;
         const rect = object.rect ? projectViewportRect(object.rect, viewport) : null;
         const visibleLabel = object.type === 'location' && showLocationLabel;
         const active = selection?.key === object.key || menuObject?.key === object.key;
         const x = visibleLabel ? 12 : Math.max(0, Math.min(stageWidth - 36, rect?.x ?? 12));
         const y = visibleLabel ? 50 : Math.max(36, Math.min(stageHeight - 36, rect?.y ?? 50));
         return (
-          <Box component="button" type="button" key={object.key}
+          <button type="button" key={object.key}
             ref={(node: HTMLButtonElement | null) => {
               if (node) targets.current.set(object.key, node);
               else targets.current.delete(object.key);
             }}
             data-graphical-object-target={object.key}
             data-graphical-annotation-obstacle={visibleLabel || undefined}
+            data-graphical-location-label={visibleLabel || undefined}
             tabIndex={object.type === 'plant' && tabKeys.get(object.id) !== object.key ? -1 : undefined}
-            aria-label={object.type === 'plant' ? `${object.name} · ${plantPositionLabel(object)}`
+            aria-label={object.type === 'plant' ? plantTargetLabels.get(object.key)
               : `${t(`hierarchy:details.entityType.${object.type}`)} · ${object.name}`}
-            aria-description={object.type === 'bed' ? bedTaskDescription(object.id) : object.type === 'plant'
-              ? [object.phase, plantTaskDescription(object.id)].filter(Boolean).join(' · ') || undefined : undefined}
+            aria-description={!zoomOnly && object.type === 'bed' ? bedTaskDescription(object.id) : object.type === 'plant'
+              ? [object.phase, plantTaskDescriptions.get(object.id)].filter(Boolean).join(' · ') || undefined : undefined}
             aria-haspopup="menu" aria-keyshortcuts={object.type === 'plant'
               ? 'Shift+F10 ContextMenu ArrowLeft ArrowRight ArrowUp ArrowDown' : 'Shift+F10 ContextMenu'} aria-pressed={active}
             onFocus={() => {
@@ -315,6 +351,10 @@ export function GraphicalObjectOverlays({
                 || rect.x > stageWidth || rect.y > stageHeight) && object.rect) onFocusObject(object.rect);
             }}
             onClick={event => {
+              if (zoomOnly) {
+                if (event.detail === 0) openMenuFromTarget(event.currentTarget, object.key);
+                return;
+              }
               if (event.detail !== 0 && visibleLabel) return;
               keyboardPreview.current = event.currentTarget;
               if (selectedKey === object.key) preview.current?.focus({ preventScroll: true });
@@ -352,29 +392,15 @@ export function GraphicalObjectOverlays({
               interaction.noteDevice('desktop');
               interaction.openMenu(object.key, { x: event.clientX, y: event.clientY }, event.currentTarget, 'desktop');
             }}
-            sx={{
-              position: 'absolute', zIndex: 1, left: x, top: y, borderRadius: 1,
-              font: 'inherit', color: 'text.primary', pointerEvents: visibleLabel ? 'auto' : 'none',
-              ...(visibleLabel ? {
-                minHeight: 36, cursor: 'pointer', border: '1px solid', borderColor: active ? 'success.dark' : 'divider',
-                bgcolor: active ? 'success.50' : 'background.paper', px: 1, maxWidth: 'calc(100% - 118px)', overflowWrap: 'anywhere',
-              } : {
-                width: Math.min(stageWidth - x, Math.max(28, rect?.width ?? 28)),
-                height: Math.min(stageHeight - y, Math.max(22, rect?.height ?? 22)),
-                overflow: 'hidden', whiteSpace: 'nowrap', color: 'transparent', bgcolor: 'transparent', border: 0,
-              }),
-              '&:focus-visible': {
-                outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2,
-                left: Math.min(x, Math.max(8, stageWidth - 268)), top: Math.min(y, Math.max(36, stageHeight - 168)),
-                width: 'auto', height: 'auto', minHeight: 28, maxWidth: 'min(260px, calc(100% - 16px))',
-                whiteSpace: 'normal', overflowWrap: 'anywhere',
-                opacity: 1, bgcolor: 'background.paper', color: 'text.primary', px: 1,
-              },
-            }}>
+            style={{
+              '--target-x': `${x}px`, '--target-y': `${y}px`,
+              '--target-width': `${Math.min(stageWidth - x, Math.max(28, rect?.width ?? 28))}px`,
+              '--target-height': `${Math.min(stageHeight - y, Math.max(22, rect?.height ?? 22))}px`,
+            } as CSSProperties}>
             {object.name}
-          </Box>
+          </button>
         );
-      })}
+      })}</Box>
       {hovered && pointer && canvas && (
         <Paper role="tooltip" elevation={4} sx={{ position: 'absolute', pointerEvents: 'none', zIndex: 3, p: 1,
           left: Math.max(8, Math.min(stageWidth - tooltipWidth - 8, pointer.x - canvas.left + 12)),
@@ -444,11 +470,23 @@ export function GraphicalObjectOverlays({
       )}
       <CustomContextMenu open={Boolean(menuObject)} mouseX={menu?.point.x} mouseY={menu?.point.y}
         keyboardNavigation onClose={closeMenu} container={getGraphicalPortalContainer()} disableRestoreFocus
+        onTransitionExited={() => {
+          const target = zoomFocus.current;
+          zoomFocus.current = null;
+          if (target?.isConnected) target.focus({ preventScroll: true });
+        }}
         listLabel={menuObject?.name}>
         {menuObject?.type === 'plant' ? renderGroupedContextMenuActions(plantMenuActions(menuObject), action => (
           <MenuItem key={action.id} disabled={action.disabled} onClick={action.activate}>{action.label}</MenuItem>
         )) : [
-          <MenuItem key="details" onClick={() => { if (menuObject) openDetails(menuObject); }}>{detailsLabel}</MenuItem>,
+          !zoomOnly && <MenuItem key="details" onClick={() => { if (menuObject) openDetails(menuObject); }}>{detailsLabel}</MenuItem>,
+          zoomTarget && <MenuItem key="zoom" onClick={() => {
+            if (menu) zoomFocus.current = menu.trigger ?? targets.current.get(menu.key) ?? null;
+            onZoomObject(zoomTarget);
+            close();
+          }}>
+            <ListItemIcon><ZoomInMapOutlinedIcon fontSize="small" /></ListItemIcon>{t('graphical.zoomToArea')}
+          </MenuItem>,
           individualAction && <MenuItem key={individualAction.id} onClick={individualAction.onClick}>
             <ListItemIcon>{individualAction.icon}</ListItemIcon>{individualAction.label}
           </MenuItem>,

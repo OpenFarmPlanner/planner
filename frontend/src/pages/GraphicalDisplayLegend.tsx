@@ -23,6 +23,7 @@ interface Props {
   hasCanopies: boolean;
   canvasHint?: ReactNode;
   boundaryWarning?: ReactNode;
+  scaleIndicator?: ReactNode;
 }
 
 function LegendItem({ marker, children }: { marker: ReactNode; children: ReactNode }) {
@@ -39,7 +40,7 @@ function FillSwatch({ color }: { color: string }) {
 const legendList = { p: 0, m: 0, listStyle: 'none' };
 
 export function GraphicalDisplayLegend({
-  mode, compact, hasBoundary, hasBeds, freeSite, freeParcel, geometryOutlines, hasStems, hasCanopies, canvasHint, boundaryWarning,
+  mode, compact, hasBoundary, hasBeds, freeSite, freeParcel, geometryOutlines, hasStems, hasCanopies, canvasHint, boundaryWarning, scaleIndicator,
 }: Props) {
   const { t } = useTranslation(['fields', 'dashboard', 'hierarchy', 'help']);
   const theme = useTheme();
@@ -73,7 +74,7 @@ export function GraphicalDisplayLegend({
           }
         }}>
         {!open && canvasHint}
-        <Stack direction="row" spacing={1} sx={{ position: 'absolute', insetInline: 0, bottom: 0, alignItems: 'end' }}>
+        <Box sx={{ display: 'flex', gap: 1, position: 'absolute', insetInline: 0, bottom: 0, alignItems: 'end' }}>
           <Paper elevation={3} data-graphical-annotation-obstacle sx={{ borderRadius: 3, pointerEvents: 'auto', flexShrink: 0 }}>
             <AppTooltip title={compact && !open ? title : ''} placement="top" disableInteractive
               slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
@@ -86,7 +87,8 @@ export function GraphicalDisplayLegend({
             </AppTooltip>
           </Paper>
           {boundaryWarning}
-        </Stack>
+          {scaleIndicator}
+        </Box>
         {open && <Paper ref={panel} id={id} role="dialog" aria-labelledby={`${id}-title`} tabIndex={-1} elevation={4} data-graphical-annotation-obstacle
           sx={{ position: 'absolute', left: 0, bottom: 52, width: 340, maxWidth: 'calc(100% - 56px)',
             maxHeight: 'calc(100% - 52px)', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',

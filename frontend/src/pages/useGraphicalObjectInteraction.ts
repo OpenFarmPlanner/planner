@@ -28,7 +28,7 @@ function eventPoint(event: MouseEvent | TouchEvent): Point | undefined {
 }
 
 export function useGraphicalObjectInteraction(
-  enabled: boolean, scope: number | null, mode: GraphicalDisplayMode, onSelect?: (key: string) => boolean,
+  enabled: boolean, scope: number | null, mode: GraphicalDisplayMode, menuOnly = false,
 ) {
   const [selection, setSelection] = useState<{ key: string; scope: number | null } | null>(null);
   const [hover, setHover] = useState<{ key: string; point: Point; mode: GraphicalDisplayMode; menuSequence: number } | null>(null);
@@ -59,17 +59,13 @@ export function useGraphicalObjectInteraction(
   useEffect(() => {
     queueMicrotask(close);
     return cancelPress;
-  }, [enabled, scope, close, cancelPress]);
+  }, [enabled, scope, menuOnly, close, cancelPress]);
 
   const select = (key: string) => {
     cancelTap();
     setMenu(null);
     setHover(null);
-    if (onSelect?.(key)) {
-      setSelection(null);
-      return;
-    }
-    setSelection({ key, scope });
+    if (!menuOnly) setSelection({ key, scope });
   };
 
   const openMenu = (key: string, point: Point, trigger?: HTMLElement, gesture?: Device) => {
@@ -104,7 +100,7 @@ export function useGraphicalObjectInteraction(
     if (moved(point) || !press.current) return;
     const from = press.current;
     press.current = null;
-    if (from.key !== key) return;
+    if (menuOnly || from.key !== key) return;
     // Konva delivers the first click before it knows whether a second click
     // will zoom the stage. Wait through its double-click window before selecting.
     const previousTap = pendingTap.current;
@@ -119,6 +115,7 @@ export function useGraphicalObjectInteraction(
   };
 
   const hoverObject = (key: string | null, point: Point | undefined) => {
+    if (menuOnly) return;
     if (key && point) setDevice('desktop');
     setHover(current => key && point && !menu && !selection && !contextMenuOpen
       ? (current?.key === key && current.mode === mode && current.menuSequence === menuSequence
@@ -143,9 +140,9 @@ export function useGraphicalObjectInteraction(
   };
 
   return {
-    selection: enabled && selection?.scope === scope ? selection.key : null,
+    selection: enabled && !menuOnly && selection?.scope === scope ? selection.key : null,
     menu: enabled ? menu : null,
-    hover: enabled && !contextMenuOpen && hover?.mode === mode && hover.menuSequence === menuSequence ? hover : null,
+    hover: enabled && !menuOnly && !contextMenuOpen && hover?.mode === mode && hover.menuSequence === menuSequence ? hover : null,
     device,
     noteDevice: setDevice,
     select,
@@ -154,7 +151,7 @@ export function useGraphicalObjectInteraction(
     cancelPress,
     clearHover: () => setHover(null),
     hoverObject,
-    isObjectTarget: (event: StagePressEvent) => enabled && objectAt(event) !== null,
+    isObjectTarget: (event: StagePressEvent) => enabled && !menuOnly && objectAt(event) !== null,
     beginStage,
     moveStage: (event: StagePressEvent) => {
       if (!enabled) return;

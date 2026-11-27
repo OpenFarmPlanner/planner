@@ -123,7 +123,7 @@ export const WORKSPACE_MIN_WIDTH = 20000;
 export const WORKSPACE_MIN_HEIGHT = 20000;
 export const LOCATION_LAYOUT_PADDING = 20;
 export const LOCATION_FIELD_GAP = 24;
-export const FIELD_WORLD_PX_PER_METER = 18;
+export { FIELD_WORLD_PX_PER_METER } from './graphicalLayoutUtils';
 export const FIELD_WORLD_BASE_WIDTH = 560;
 export const FIELD_WORLD_MIN_WIDTH = 560;
 export const FIELD_WORLD_MAX_WIDTH = 920;

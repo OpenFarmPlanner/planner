@@ -2,14 +2,19 @@ import { describe, expect, it } from 'vitest';
 import {
   GRAPHICAL_MAX_SCALE,
   GRAPHICAL_MANUAL_MIN_SCALE,
+  GRAPHICAL_APPROXIMATE_MAX_SCALE,
   BED_LABEL_MIN_SCALE,
+  clampScale,
   clampViewportToStage,
   fitBoundsToStage,
   fitContentToStage,
   getContentBoundsFromRects,
+  getMetricScaleBar,
+  getZoomLimits,
   getVisibleElements,
   getBedLabelLayout,
   panViewport,
+  rotateViewport,
   shouldShowBedLabel,
   startPanSession,
   ZOOM_LEVEL_DETAIL,
@@ -49,7 +54,7 @@ describe('graphicalViewport helpers', () => {
   });
 
   it('keeps bed labels hidden when beds are truly too small to render any text', () => {
-    expect(shouldShowBedLabel({ width: 6, height: 4 }, GRAPHICAL_MAX_SCALE)).toBe(false);
+    expect(shouldShowBedLabel({ width: 0.6, height: 0.4 }, GRAPHICAL_MAX_SCALE)).toBe(false);
   });
 
   it('fits content into the available stage size', () => {
@@ -179,6 +184,73 @@ describe('graphicalViewport helpers', () => {
     const initial = { x: 0, y: 0, scale: 1 };
     const zoomed = zoomAroundPoint(initial, 0.05, { x: 100, y: 100 });
     expect(zoomed.scale).toBe(GRAPHICAL_MANUAL_MIN_SCALE);
+  });
+
+  it('keeps a large fitted site stable during a pan and allows zooming back out to fit', () => {
+    const bounds = { minX: 72, minY: 38, maxX: 200_072, maxY: 30_038 };
+    const stage = { width: 320, height: 420 };
+    const padding = { left: 16, top: 62, right: 64, bottom: 52 };
+    const overview = fitBoundsToStage(bounds, stage, padding);
+    expect(overview.scale).toBeCloseTo(0.0012, 12);
+    const limits = getZoomLimits(overview.scale, GRAPHICAL_MAX_SCALE);
+    const pointer = { x: 120, y: 230 };
+    const session = startPanSession(overview, pointer);
+    const panned = panViewport(session, { x: 200, y: 300 }, overview.scale);
+    const clamped = clampViewportToStage(panned, bounds, stage, padding);
+    expect(clamped.x).toBeCloseTo(overview.x, 10);
+    expect(clamped.y).toBeCloseTo(overview.y, 10);
+    expect(clamped.scale).toBe(overview.scale);
+    expect(zoomAroundPoint(overview, 0, pointer, limits)).toBe(overview);
+    const zoomed = zoomAroundPoint(overview, overview.scale * 1.2, pointer, limits);
+    expect(zoomed.scale).toBeCloseTo(overview.scale * 1.2);
+    const returned = zoomAroundPoint(zoomed, 0, pointer, limits);
+    expect(returned.scale).toBe(overview.scale);
+    expect(returned.x).toBeCloseTo(overview.x, 10);
+    expect(returned.y).toBeCloseTo(overview.y, 10);
+  });
+
+  it('uses the physical zoom ceiling for tiny measured areas and retains the schematic ceiling', () => {
+    const bounds = { minX: 3000, minY: 4000, maxX: 3012, maxY: 4008 };
+    const stage = { width: 900, height: 700 };
+    expect(fitBoundsToStage(bounds, stage).scale * 18).toBeCloseTo(500, 12);
+    expect(fitBoundsToStage(bounds, stage, 24, GRAPHICAL_APPROXIMATE_MAX_SCALE).scale).toBe(3);
+    const limits = getZoomLimits(0.4, GRAPHICAL_MAX_SCALE);
+    expect(clampScale(Infinity, limits)).toBe(GRAPHICAL_MAX_SCALE);
+    expect(clampScale(NaN, limits)).toBe(GRAPHICAL_MANUAL_MIN_SCALE);
+    expect(clampScale(limits.min * (1 + Number.EPSILON), limits)).toBe(limits.min);
+  });
+
+  it('keeps the world point under the pointer or moving pinch center through clamping', () => {
+    const initial = { x: -230, y: -740, scale: 10 };
+    const from = { x: 124, y: 280 };
+    const to = { x: 186, y: 245 };
+    const limits = getZoomLimits(0.1, GRAPHICAL_MAX_SCALE);
+    const zoomed = zoomAroundPoint(initial, 40, from, limits, to);
+    expect(zoomed.scale).toBe(GRAPHICAL_MAX_SCALE);
+    expect((to.x - zoomed.x) / zoomed.scale).toBeCloseTo((from.x - initial.x) / initial.scale, 10);
+    expect((to.y - zoomed.y) / zoomed.scale).toBeCloseTo((from.y - initial.y) / initial.scale, 10);
+    expect(zoomAroundPoint(zoomed, 45, to, limits)).toBe(zoomed);
+  });
+
+  it('rotates the world point under the fitted view center without resetting zoom', () => {
+    const viewport = { x: -30, y: -25, scale: 5 };
+    const content = { width: 240, height: 320 };
+    const stage = { width: 600, height: 500 };
+    const padding = { left: 20, top: 50, right: 80, bottom: 30 };
+    const rotated = rotateViewport(viewport, content, stage, 90, padding);
+    expect(rotated).toEqual({ x: -1045, y: -40, scale: 5 });
+    expect(rotateViewport(rotated, { width: 320, height: 240 }, stage, 270, padding)).toEqual(viewport);
+  });
+
+  it.each([
+    { scale: 0.02, meters: 200, width: 72 },
+    { scale: 1, meters: 5, width: 90 },
+    { scale: 3, meters: 1, width: 54 },
+    { scale: GRAPHICAL_MAX_SCALE, meters: 0.1, width: 50 },
+  ])('chooses a metric bar of $meters m at scale $scale', ({ scale, meters, width }) => {
+    expect(getMetricScaleBar(scale, 96)?.meters).toBeCloseTo(meters, 8);
+    expect(getMetricScaleBar(scale, 96)?.width).toBeCloseTo(width, 8);
+    expect(getMetricScaleBar(NaN, 96)).toBeNull();
   });
 });
 

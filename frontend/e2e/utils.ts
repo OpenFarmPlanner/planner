@@ -65,6 +65,7 @@ export async function toggleGraphicEdit(page: Page, input: 'mouse' | 'touch' = '
   const direct = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
   const activate = input === 'touch' ? 'tap' : 'click';
   const trigger = graphicWorkspaceMenu(page);
+  await expect(direct.or(trigger).filter({ visible: true }).first()).toBeVisible();
   if (await direct.isVisible()) await direct[activate]();
   else {
     await trigger[activate]();

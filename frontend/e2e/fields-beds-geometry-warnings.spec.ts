@@ -274,7 +274,7 @@ for (const mobile of [false, true]) {
       const ordinaryFill = (await getBed())?.fill;
       await expect.poll(() => findShape(page, 'graphical-free-area-site')).not.toBeNull();
       const legendButton = graphicLegendButton(page);
-      const zoom = page.getByRole('button', { name: 'Herauszoomen', exact: true });
+      const zoom = page.getByRole('button', { name: 'Hineinzoomen', exact: true });
       const input = mobile ? 'touch' : 'keyboard';
       await display.press('Enter');
       await expect(page.getByRole('menuitemradio')).toHaveCount(4);
@@ -355,9 +355,8 @@ for (const mobile of [false, true]) {
         await page.mouse.up();
         await expect(page).toHaveURL(/fields-beds$/);
       }
-      for (let step = 0; step < 5; step += 1) {
-        await page.getByRole('button', { name: 'Herauszoomen', exact: true }).click();
-      }
+      const zoomOut = page.getByRole('button', { name: 'Herauszoomen', exact: true });
+      for (let step = 0; step < 5 && await zoomOut.isEnabled(); step += 1) await zoomOut.click();
       await expect.poll(getBed).toMatchObject({ urgency: 'overdue', fill: colored?.fill, hasTaskIcon: false });
       await display.press('Enter');
       await expect(page.getByRole('menuitemradio', { name: 'Aufgaben', exact: true })).toHaveAttribute('aria-checked', 'true');

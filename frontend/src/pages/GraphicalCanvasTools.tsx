@@ -27,6 +27,7 @@ interface CanvasToolsProps {
   height: number;
   fullscreen: boolean;
   onZoom: (direction: -1 | 1) => void;
+  atZoomLimit?: { in: boolean; out: boolean };
   onFit: () => void;
   onFullscreen: () => void;
   onRotate: (direction: -1 | 1) => void;
@@ -34,6 +35,7 @@ interface CanvasToolsProps {
   onTriggerChange: (button: HTMLButtonElement | null) => void;
   warnings: ReactNode;
   layers?: ReactNode;
+  bottomInset?: number;
   individualPlants?: { active: boolean; toggle: () => void; add?: () => void };
 }
 
@@ -42,29 +44,33 @@ interface Tool {
   icon: ReactNode;
   action: () => void;
   active?: boolean;
+  disabled?: boolean;
   opensPanel?: boolean;
 }
 
-function CanvasToolButton({ label, icon, active, ref, ...buttonProps }: Pick<Tool, 'label' | 'icon' | 'active'>
+function CanvasToolButton({ label, icon, active, disabled, ref, onClick, ...buttonProps }: Pick<Tool, 'label' | 'icon' | 'active' | 'disabled'>
   & Pick<IconButtonProps, 'aria-haspopup' | 'aria-expanded' | 'aria-controls' | 'onClick'>
   & { ref?: Ref<HTMLButtonElement> }) {
   return (
     <AppTooltip title={label} placement="left" disableInteractive
       slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
-      <IconButton ref={ref} aria-label={label} aria-pressed={active} color={active ? 'success' : 'default'}
-        sx={touchTarget} {...buttonProps}>{icon}</IconButton>
+      <IconButton ref={ref} aria-label={label} aria-pressed={active} aria-disabled={disabled || undefined}
+        color={active ? 'success' : 'default'} onClick={disabled ? undefined : onClick}
+        sx={{ ...touchTarget, '&[aria-disabled="true"]': { color: 'action.disabled', cursor: 'default' } }} {...buttonProps}>
+        {icon}
+      </IconButton>
     </AppTooltip>
   );
 }
 
 export function GraphicalCanvasTools({
-  width, height, fullscreen, onZoom, onFit, onFullscreen, onRotate, onPan, onTriggerChange,
-  warnings, layers, individualPlants,
+  width, height, fullscreen, onZoom, atZoomLimit, onFit, onFullscreen, onRotate, onPan, onTriggerChange,
+  warnings, layers, bottomInset = 12, individualPlants,
 }: CanvasToolsProps) {
   const { t } = useTranslation('fields');
   const theme = useTheme();
   const compact = width < theme.breakpoints.values.lg;
-  const short = height < compactStripHeight + (layers ? 52 : 0) && width >= theme.breakpoints.values.sm;
+  const short = height < compactStripHeight + (layers ? 52 : 0) + bottomInset - 12 && width >= theme.breakpoints.values.sm;
   const menuId = useId();
   const [nextAction, setNextAction] = useState<(() => void) | null>(null);
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
@@ -83,8 +89,8 @@ export function GraphicalCanvasTools({
     { label: t('graphical.panDown'), icon: <KeyboardArrowDownIcon fontSize="small" />, action: () => onPan('down') },
   ];
   const core: Tool[] = [
-    { label: t('graphical.zoomIn'), icon: <AddIcon fontSize="small" />, action: () => onZoom(1) },
-    { label: t('graphical.zoomOut'), icon: <RemoveIcon fontSize="small" />, action: () => onZoom(-1) },
+    { label: t('graphical.zoomIn'), icon: <AddIcon fontSize="small" />, action: () => onZoom(1), disabled: atZoomLimit?.in },
+    { label: t('graphical.zoomOut'), icon: <RemoveIcon fontSize="small" />, action: () => onZoom(-1), disabled: atZoomLimit?.out },
     { label: t('graphical.fitToView'), icon: <FitScreenIcon fontSize="small" />, action: onFit },
     { label: t(fullscreen ? 'graphical.exitFullscreen' : 'graphical.enterFullscreen'),
       icon: fullscreen ? <FullscreenExitIcon fontSize="small" /> : <FullscreenIcon fontSize="small" />, action: onFullscreen },
@@ -107,7 +113,7 @@ export function GraphicalCanvasTools({
   useContextMenuOpenRegistration(hasMenu && menuOpen);
 
   const toolButton = (tool: Tool) => (
-    <CanvasToolButton key={tool.label} label={tool.label} icon={tool.icon} onClick={tool.action} />
+    <CanvasToolButton key={tool.label} label={tool.label} icon={tool.icon} onClick={tool.action} disabled={tool.disabled} />
   );
   const menuItem = (tool: Tool) => (
     <MenuItem key={tool.label} sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}
@@ -126,7 +132,7 @@ export function GraphicalCanvasTools({
   return (
     <>
       <Stack spacing={1} sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, alignItems: 'flex-end',
-        maxHeight: 'calc(100% - 24px)' }}>
+        maxHeight: `calc(100% - ${12 + bottomInset}px)` }}>
         {layers}
         <Paper elevation={3} data-testid="graphical-canvas-tools" data-graphical-annotation-obstacle role="group" aria-label={t('graphical.canvasTools')}
           sx={{ borderRadius: 3, overflow: 'auto', minHeight: 0, bgcolor: 'background.paper' }}>
@@ -149,7 +155,7 @@ export function GraphicalCanvasTools({
             </Stack>
           )}
           <Box sx={{ display: 'grid', gridTemplateColumns: short || !compact ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
-            <CanvasToolButton ref={zoomButtonRef} label={core[0].label} icon={core[0].icon} onClick={core[0].action} />
+            <CanvasToolButton ref={zoomButtonRef} label={core[0].label} icon={core[0].icon} onClick={core[0].action} disabled={core[0].disabled} />
             {core.slice(1).map(toolButton)}
           </Box>
         </Paper>

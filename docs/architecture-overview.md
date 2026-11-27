@@ -262,6 +262,14 @@ The overflow slot shows a tool's own button when only one action remains,
 such as Individual plants on a wide canvas. It groups multiple actions in
 More canvas tools and disappears when there are none.
 
+The schematic camera caps measured geometry at 500 CSS pixels per metre and
+allows zooming back to the fitted overview of a large site. The lower canvas
+edge shows a metric scale for areas with reliable dimensions. Schematic areas
+without dimensions keep their approximate navigation and have no metric scale.
+The parcel and bed menus offer Zoom to area using the current footprint and
+the same camera limits. Wheel and pinch zoom use the pointer or touch centre.
+The canvas buttons and the `+` and `-` keys zoom around the centre.
+
 Graphic shades reliable unoccupied location and parcel geometry by default.
 The footprint sweep clips children to the parent and counts their union once.
 It supplies the same calculation to the location and parcel details, which

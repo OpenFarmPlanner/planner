@@ -35,13 +35,15 @@ const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
 
 export function GraphicalIndividualPlantsLayer({
   field, surface, rotation, stems, zoom, editablePlanId, draggablePlanIds, captureStems, onSelect, onMove, onMoveWorld, onDragPreview,
-  resolveDragPoint, onDragReapply,
+  resolveDragPoint, onDragReapply, shouldCancelDrag, visibleRect, activeDragKey,
 }: {
   field: PlacementDimensions;
   surface: CanvasRect;
   rotation: GraphicalRotation;
   stems: CanvasStem[];
   zoom: number;
+  visibleRect?: CanvasRect;
+  activeDragKey?: string;
   editablePlanId?: number | null;
   /** Saved plans whose stems can be dragged directly, in graphic edit mode (#1579). */
   draggablePlanIds?: ReadonlySet<number>;
@@ -56,6 +58,7 @@ export function GraphicalIndividualPlantsLayer({
   onDragPreview?: (key: string, point: Position | null) => void;
   resolveDragPoint?: (stem: CanvasStem, raw: Position, previous: string | null, bypass: boolean) => PlantSnapResult;
   onDragReapply?: (apply: ((bypass: boolean) => void) | null) => void;
+  shouldCancelDrag?: () => boolean;
 }) {
   const theme = useTheme();
   const press = useRef<{ target: Press['target']; position: Position } | null>(null);
@@ -91,9 +94,16 @@ export function GraphicalIndividualPlantsLayer({
       {stems.map(stem => {
         const point = stemToCanvas(stem, field, surface, rotation);
         if (!point) return null;
+        const canopyRadius = stem.canopy > 0 ? stem.canopy * FIELD_WORLD_PX_PER_METER / 2 : 0;
+        // Keep the canopy visible at an edge even when its stem has left the viewport.
+        if (visibleRect && !stem.selected && activeDragKey !== stem.key
+          && (point.x + canopyRadius < visibleRect.x || point.x - canopyRadius > visibleRect.x + visibleRect.width
+            || point.y + canopyRadius < visibleRect.y || point.y - canopyRadius > visibleRect.y + visibleRect.height)) return null;
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
         const freeDrag = canDrag ? onMoveWorld : undefined;
+        const selectStem = !stem.objectKey && onSelect ? () => onSelect(stem) : undefined;
+        const capturePress = captureStems && !canDrag;
         const taskColors = stem.urgency ? bedTaskColors(theme, stem.urgency) : null;
         const colors = graphicalPlantColors(theme, stem.phaseColor, taskColors, stem.neutralCrop);
         const radius = stem.urgency || stem.selected ? 6 : 4.5;
@@ -101,9 +111,10 @@ export function GraphicalIndividualPlantsLayer({
         return <Group key={stem.key} {...point} draggable={canDrag} dragDistance={8}
           // Only the listening stem hits this group. The canopy follows without intercepting gestures.
           name={canDrag ? 'graphical-editable' : undefined}
-          onDragStart={event => { event.cancelBubble = true; press.current = null; }}
-          onDragMove={event => {
+          onDragStart={canDrag ? event => { event.cancelBubble = true; press.current = null; } : undefined}
+          onDragMove={canDrag ? event => {
             event.cancelBubble = true;
+            if (shouldCancelDrag?.()) return;
             if (!freeDrag) {
               const { x, y } = event.currentTarget.position();
               event.currentTarget.position({
@@ -131,11 +142,11 @@ export function GraphicalIndividualPlantsLayer({
             drag.current = session;
             onDragReapply?.(session.apply);
             session.apply(hasShift(event.evt));
-          }}
-          onDragEnd={event => {
+          } : undefined}
+          onDragEnd={canDrag ? event => {
             event.cancelBubble = true;
             const node = event.currentTarget;
-            const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
+            const canceled = shouldCancelDrag?.() || !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
             if (!canceled && drag.current?.key === stem.key) drag.current.apply(hasShift(event.evt));
             drag.current = null;
             onDragReapply?.(null);
@@ -148,9 +159,9 @@ export function GraphicalIndividualPlantsLayer({
             if (canceled) return;
             if (world && freeDrag) freeDrag(stem.key, world);
             else if (position) onMove(stem.key, position);
-          }}>
-          {stem.canopy > 0 && <Circle listening={false}
-            radius={stem.canopy * FIELD_WORLD_PX_PER_METER / 2}
+          } : undefined}>
+          {canopyRadius > 0 && <Circle listening={false}
+            radius={canopyRadius}
             data-testid={`individual-canopy-${stem.key}`}
             fill={colors.canopyFill} stroke={colors.canopyOutline}
             strokeWidth={1} strokeScaleEnabled={false} />}
@@ -160,13 +171,19 @@ export function GraphicalIndividualPlantsLayer({
             listening={Boolean(stem.objectKey || onSelect || canDrag || captureStems)} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}
             data-graphical-object-key={stem.objectKey} data-task-urgency={stem.urgency} data-crop-phase={stem.phase ?? undefined}
             data-testid={`individual-stem-${stem.key}`} data-x-m={stem.x_m} data-y-m={stem.y_m}
-            onMouseDown={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
-            onTouchStart={event => { if (captureStems && !canDrag) event.cancelBubble = true; beginPress(event); }}
-            onTouchMove={move}
-            onMouseEnter={event => { if (canDrag) setCursor(event, 'move'); }}
-            onMouseLeave={event => { if (canDrag) setCursor(event, ''); }}
-            onClick={onSelect && !stem.objectKey ? event => click(event, () => onSelect(stem)) : undefined}
-            onTap={onSelect && !stem.objectKey ? event => click(event, () => onSelect(stem)) : undefined} />
+            onMouseDown={selectStem || capturePress ? event => {
+              if (capturePress) event.cancelBubble = true;
+              beginPress(event);
+            } : undefined}
+            onTouchStart={selectStem || capturePress ? event => {
+              if (capturePress && event.evt.touches.length === 1) event.cancelBubble = true;
+              beginPress(event);
+            } : undefined}
+            onTouchMove={selectStem ? move : undefined}
+            onMouseEnter={canDrag ? event => setCursor(event, 'move') : undefined}
+            onMouseLeave={canDrag ? event => setCursor(event, '') : undefined}
+            onClick={selectStem ? event => click(event, selectStem) : undefined}
+            onTap={selectStem ? event => click(event, selectStem) : undefined} />
           {stem.urgency && <Text x={-radius / zoom} y={-4 / zoom} width={radius * 2} height={8}
             text={BED_TASK_SYMBOLS[stem.urgency]} fontSize={8} fontStyle="bold" align="center"
             fill={theme.palette.common.white} listening={false} scaleX={1 / zoom} scaleY={1 / zoom} />}
