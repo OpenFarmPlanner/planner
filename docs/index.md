@@ -16,6 +16,8 @@ for step-by-step procedures of recurring tasks, see the skills in
   main architecture/UX decisions worth knowing before changing things.
 - **[Data Model](./data-model.md)** — the core domain objects and how they
   relate, with Mermaid diagrams. Not a full field reference.
+- **[Backend guide](../backend/README.md)** and **[frontend guide](../frontend/README.md)**
+  cover local development, authentication and API details, and deployment checks.
 
 ## Complex features
 
@@ -207,7 +209,9 @@ table of what is and isn't implemented.
 - [`releases.md`](./releases.md) — protected version PRs, automatic merge,
   exact-commit tags, release credentials and recovery without bypassing main.
 - [`agent-skills.md`](./agent-skills.md) — canonical shared skills, Codex/Claude
-  discovery, execution prerequisites and checkout validation.
+  discovery, GitHub CLI setup, execution prerequisites and checkout validation.
+- [`usage-analytics.md`](./usage-analytics.md) — admin dashboard populations,
+  demo and activity metrics, stored identifiers, and retention windows.
 - [`work-execution-queue.md`](./work-execution-queue.md) — agent-independent
   issue/PR ordering, advisory markers, native epic links and AI cost controls.
 - [`testing-and-ci.md`](./testing-and-ci.md) — how the frontend, backend and

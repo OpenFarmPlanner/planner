@@ -1,251 +1,92 @@
 # OpenFarmPlanner
 
-🌐 **Website:** https://openfarmplanner.org
+OpenFarmPlanner is a free, open-source crop planner for market gardens and
+community-supported agriculture (CSA) farms. Plan what to grow, where it goes,
+and when to sow, plant, and harvest.
 
-OpenFarmPlanner is an open-source crop planning tool for vegetable production. It helps market gardens and community-supported agriculture (CSA) plan crops, growing areas, and planting schedules in one place.
+[Website](https://openfarmplanner.org/) · [Live Demo](https://openfarmplanner.org/demo) · [Documentation](docs/index.md)
 
-Built with a Django REST Framework backend and a React frontend in a single repository.
+[![CI](https://github.com/OpenFarmPlanner/planner/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/OpenFarmPlanner/planner/actions/workflows/ci.yml)
 
-> Deployment and infrastructure are maintained in a separate repository: **[ops](https://github.com/OpenFarmPlanner/ops)**.
+## Why OpenFarmPlanner?
+
+The project grew out of practical CSA experience. You can edit crops, areas, and
+planting plans directly in spreadsheet-like tables. A change to a planting
+plan updates the calendar, seed demand, and yield forecast automatically. The
+community-maintained crop library gives you a starting point for spacing, growing
+time, and yield estimates, and you can share what you learn on your farm.
+
+OpenFarmPlanner is free to use and developed under the AGPL. Development and
+hosting are intended to be funded by voluntary donations. You own the farm data
+you enter. The service is ad-free and does not sell farm data.
 
 ## Main Features
 
-- Farm structure management (locations, fields, beds)
-- Crop management with agronomic details and history/restore support
-- Planting plans, task planning, and Gantt/yield-oriented views
-- Seed demand and supplier workflows
-- Multi-project support with project switching and invitations
-- Session-based authentication (registration, activation, login/logout, password reset, account deletion/restore), optionally with Google/Microsoft sign-in
-- Notes and media attachments
+- **Plan crops.** See bed occupancy and overlaps in the cultivation calendar,
+  lay out growing areas graphically, plan rotations, copy plans between seasons,
+  and track perennials across years.
+- **Manage crops and seed.** Choose varieties from the crop library or keep your
+  own, calculate seed needs and compare suppliers, see companion planting
+  information, and record pest or disease losses.
+- **Track and evaluate.** Turn sowing, planting, and harvest dates into tasks,
+  record actual dates, compare yield forecasts with harvest records, and add
+  notes and photos to planting plans.
+- **Work together.** Invite teammates into shared projects, restore supported
+  records from history or trash, and import and export crop data with
+  spreadsheets. Use the app on desktop or mobile in seven languages.
 
-## High-Level Architecture
+## Getting Started
 
-- **Backend (`backend/`)**: Django + Django REST Framework API, authentication, business logic, data persistence, media handling.
-- **Frontend (`frontend/`)**: React + TypeScript SPA (Vite), UI workflows, routing, i18n resources, and API integration.
-- **Operations (`ops`)**: deployment, runtime environment, and operational automation (separate repository).
+The hosted app is ready to use. Explore a temporary example project without an
+account, or register to keep your own projects. [Try the demo](https://openfarmplanner.org/demo) · [Register](https://openfarmplanner.org/register) · [Sign in](https://openfarmplanner.org/login)
 
-## Aggregated Usage Insight and Privacy
+## Architecture and Tech Stack
 
-The superuser-only Django admin includes a **Nutzungsübersicht** (engagement
-dashboard) for internal product-development decisions, reachable from the Farm
-section of the admin navigation. It derives project activity from the existing
-`created_at` and `updated_at` timestamps on farm data (suppliers, crops and
-supplier data, seed packages, locations, fields, beds and layouts, planting
-plans, tasks, and note attachments). The project table shows members,
-planting plans, last activity and status. Its 7- and 30-day activity filters
-affect only the table. Total parcel area adds each parcel’s stored
-`Field.area_sqm` once. It displays a partial sum when only some parcels have
-recorded areas, and an unknown value when none do. A recorded zero displays
-as zero.
+- **Backend (`backend/`).** Django 5.2 and Django REST Framework on Python with
+  PDM. Local development defaults to SQLite. PostgreSQL is supported.
+- **Frontend (`frontend/`).** React 19, TypeScript, Vite, and Material UI. The
+  interface calls the backend via `/api/`.
 
-The project table and aggregate project metrics use the same population.
-By default, this excludes temporary guest workspaces, demo/template projects,
-and projects whose memberships are all superusers. Demo/template projects
-are identified by the seeding timestamp or a known template description.
-**Alle anzeigen** (`?show_all=1`) includes those projects and preserves the
-table’s sort and activity filter. Registration and login totals exclude
-temporary guest accounts in both views and include staff and superusers in
-the expanded view. The template-origin figure and **Demo-Nutzung** have
-their own populations.
-
-A **Demo-Nutzung** block, placed between the Gesamtübersicht and the
-"Projekte" table, reports how often the demo is used and whether it leads to
-real usage, for the last 7 days, the last 30 days, and all-time. It separates
-the two ways into the demo:
-
-- **Gast-Demo gestartet (öffentlicher Link):** public guest demos started
-  from the landing page or `/demo` without an account. Guest sessions are
-  deleted together with their temporary user and project after 8 hours, so
-  they are counted in `GuestDemoUsageDay`, an anonymous per-day counter
-  without any reference to a user, project, IP address, or session — the same
-  aggregate level as the rest of this dashboard. Guest demos deleted before
-  this counter existed are not recoverable and are missing from the totals.
-- **Gast-Demo genutzt:** of those, how many had at least one change by the
-  guest. This is booked to the counter of the session's start day when the
-  session is deleted; live sessions are read from their project's revisions.
-- **Demo-Projekt im eigenen Konto angelegt:** demo projects loaded into a
-  regular account (first-project onboarding or the project switcher), created
-  in the window. Guest demo projects are not included.
-- **Demo-Projekt im eigenen Konto genutzt:** of those, how many have at
-  least one `EntityRevision` written after the demo template finished seeding
-  (`Project.demo_seeded_at`). Seeding itself records a "created" revision per
-  crop through `Crop.save()`, so "has any revision" would count every demo
-  project as used.
-- **Eigenes Projekt danach angelegt:** how many of the users who loaded a
-  demo project into their account in the window later created or joined a
-  project of their own (a `ProjectMembership` on a non-demo project, dated
-  after the demo project was created), shown as a count and as a percentage
-  of that window's distinct demo users. Guest demos cannot be linked to a
-  later registration, so they are not part of this metric.
-
-The account demo metrics apply a viewer-specific exclusion. A demo project where the logged-in superuser is the sole member is left out
-of the account demo-project rows, and the superuser is never counted as a
-demo user for the conversion metric, even when sharing a demo project with
-someone else. Like the "Projekte" table and the Gesamtübersicht totals, the
-`?show_all=1` toggle lifts this exclusion here too, so it also surfaces the
-superuser's own demo activity.
-
-Beyond that activity view it reads the following existing data, always as
-per-project counts or aggregates over all projects, never as per-user
-behavior:
-
-- **Feature adoption:** the share of projects that have more than one location,
-  at least one uploaded planting-plan photo, seed packages, suppliers, tasks, or
-  submitted in-app feedback (feedback rows, counted per project; message texts
-  are not shown).
-- **Growth and activation:** new projects per calendar month derived from the
-  project `created_at` timestamp, and how many of them later created their first
-  location or planting plan, including the average number of days that took.
-- **Seasons:** the average number of seasons per project and the share of
-  projects with a configured Saison-Muster (`SeasonPattern`).
-- **Layouts:** the share of projects with at least one bed layout or field
-  layout.
-- **Crop diversity:** the average number of distinct crop names per project.
-- **Tasks:** created and completed task totals in aggregate.
-- **Template origin:** the share of projects created from the demo template,
-  identified by the seeding timestamp or template description.
-- **Crop library:** published `PublicCrop` entries per contributing project,
-  project crops imported from the library (`source_public_crop`) versus
-  self-entered ones, crops whose linked library entry has a newer version than
-  the imported copy, and the aggregate number of public-library discussion
-  comments and revisions.
-
-The crop-library operations table covers the current UTC day and the previous
-29. A public-library batch receipt with committed changes counts once, including
-a partially successful batch. An older receipt retained in project history can
-contribute to this total. Multi-item selections without a batch receipt and
-actual pulls of library values into linked crops increment daily project
-counters. An undo counts from its own committed receipt, even when the original
-import falls outside the window. Coverage for these additional outcomes starts
-with the crop-library usage migration. The existing history cleanup command
-expires daily counters outside the 30-day window.
-
-The activity trends use the latest 7, 30 or 90 UTC calendar days, including
-today. The chart groups those days into days, Monday-based weeks or calendar
-months, respectively. A user or project counts at most once per bucket and
-once for the period summary. A session-authenticated write contributes when
-it commits a recorded creation, edit, deletion or restore in a listed
-workflow. Direct deletions also count dependent rows that Django removes in
-the same operation. Failed, unchanged or replayed writes and automated, staff, guest
-and external-token actions contribute no platform activity. The project
-population filter also applies to these trends. Registrations and project
-creations come from the existing `date_joined` and `created_at` fields.
-
-Platform activity collection starts with migration
-`0165_platform_usage_activity`. Earlier activity is unknown. On the first
-day of collection, activity totals cover the portion after rollout. The
-dashboard stores only daily project/category totals and one account/project
-key per active UTC day for distinct-user counts. Daily records expire through
-`cleanup_history` after the 90-day window. Finalizing account deletion
-removes its active-day keys. There are no page visit, click, navigation or
-record-content analytics, and the dashboard exposes aggregate totals.
-
-## Repository Structure
-
-```text
-.
-├── backend/                  # Django backend application
-├── frontend/                 # React frontend application
-│   └── e2e/                  # Playwright end-to-end tests
-├── docs/                     # Additional design/technical notes
-├── scripts/                  # Shared utility and quality scripts
-├── CONTRIBUTING.md           # Commit and contribution conventions
-└── README.md                 # Canonical repository entry point
-```
-
-## Tech Stack
-
-**Backend**
-- Python 3.12+
-- Django 5.2
-- Django REST Framework
-- PDM for dependency and script management
-- SQLite by default (PostgreSQL supported via env configuration)
-
-**Frontend**
-- React 19 + TypeScript
-- Vite
-- Material UI
-- React Router
-- Axios
-- Vitest + Testing Library
-- Playwright (E2E)
+See the [architecture overview](docs/architecture-overview.md) for project
+scoping, the data model, and frontend and backend responsibilities.
 
 ## Quick Start (Local Development)
 
-### Prerequisites
+Install Git, Python 3.12+, [PDM](https://pdm-project.org/), Node.js 22+, and npm 10+.
+Clone `https://github.com/OpenFarmPlanner/planner.git` and run the following commands
+from the repository root. To match production, install Python 3.13.18 and run
+`pdm use 3.13.18` from `backend/` before `pdm install`.
 
-- Python 3.12+
-- [PDM](https://pdm-project.org/)
-- Node.js 22+
-- npm 10+
-
-## AI Agent Setup
-
-Copilot and Codex agents work best when the local development environment includes the same tooling they use for repo inspection, pull request management, and CI log review.
-
-### Required tooling
-
-- `git`
-- GitHub CLI (`gh`)
-- Python 3.12+ with PDM
-- Node.js 22+ with npm 10+
-
-### GitHub CLI setup
-
-This repository is not currently set up with a committed Dockerfile or DevContainer configuration, so `gh` must be installed on the host machine.
-
-On Ubuntu or Debian:
-
-```bash
-sudo apt update
-sudo apt install gh
-```
-
-If your distribution packages an older version, install `gh` using the method recommended by GitHub for your platform.
-
-Verify the installation:
-
-```bash
-which gh
-gh --version
-```
-
-### Authentication
-
-Authenticate GitHub CLI before using agent workflows that inspect pull requests, workflow runs, or logs:
-
-```bash
-gh auth login
-gh auth status
-```
-
-### What agents use `gh` for
-
-- Inspecting pull requests and reviews
-- Checking GitHub Actions workflow runs and logs
-- Creating or updating PRs from automation
-- Reproducing CI failures locally with the same GitHub identity
-
-### 1) Backend setup
-
-The commands below use your supported Python 3.12+ interpreter. For production
-parity, install Python 3.13.18 and run `pdm use 3.13.18` from `backend/` before
-installing dependencies.
+### Backend
 
 ```bash
 cd backend
 cp .env.example .env
+```
+
+For local HTTP development, replace these values in `backend/.env`.
+
+```dotenv
+DEBUG=True
+SESSION_COOKIE_SECURE=False
+CSRF_COOKIE_SECURE=False
+URL_PREFIX=
+```
+
+Then run from `backend/`:
+
+```bash
 pdm install
 pdm run migrate
 pdm run runserver
 ```
 
-Backend API base path: `http://localhost:8000/api/`
+The API runs at `http://localhost:8000/api/`. Local account activation emails
+appear in the backend terminal.
 
-### 2) Frontend setup
+### Frontend
 
-In a new terminal:
+From the repository root in a second terminal:
 
 ```bash
 cd frontend
@@ -254,170 +95,58 @@ npm install
 npm run dev
 ```
 
-Frontend dev server: `http://localhost:5173/`
+Open `http://localhost:5173/`. Vite proxies `/api/` to Django. For testing on a
+phone on the same network, stop both servers and run `scripts/dev-lan.sh` from
+the repository root. It starts both servers and prints the LAN URLs. Keep
+`VITE_API_BASE_URL` unset to use the proxy. [Frontend setup](frontend/README.md#setup)
 
-### Local LAN testing
+## Development & Testing
 
-To test the development app from a phone or tablet in the same network, start both servers with:
+Run commands from the named directory.
 
-```bash
-scripts/dev-lan.sh
-```
+| Directory | What to run | Coverage |
+| --- | --- | --- |
+| `backend/` | `pdm run test` | Backend tests |
+| `frontend/` | `npm run test` | Frontend unit and integration tests |
+| `frontend/` | `npm run test:e2e` | Playwright against the production build served by `vite preview` |
+| Repository root | `./scripts/quality.sh` | Shared lint, complexity, and test checks with reports in `reports/latest/` |
 
-The script detects the local LAN IP, starts Django on `0.0.0.0:8000`, starts Vite on `0.0.0.0:5173`, and prints URLs such as:
+The [production-build E2E workflow](.github/workflows/e2e.yml) checks pull requests
+against `main`. [Playwright setup](frontend/e2e/README.md) · [Testing and CI](docs/testing-and-ci.md) · [Quality baseline](docs/quality-baseline.md)
 
-- Frontend: `http://<LAN-IP>:5173`
-- Backend: `http://<LAN-IP>:8000`
+## Documentation
 
-Keep `VITE_API_BASE_URL` unset for normal development so browser requests use `/api` and Vite proxies them to the backend. If you do set `VITE_API_BASE_URL` to `http://localhost:8000/api`, the frontend rewrites that development-only localhost URL to the current LAN host when opened from another device.
-
-## Backend / Frontend Overview
-
-- The frontend sends credentialed requests to `/api/` and includes CSRF headers for write operations.
-- The backend enforces authenticated access for API endpoints by default and supports project scoping via `X-Project-Id`.
-- Public flows (registration, activation, login, password reset, invitation acceptance) are exposed through dedicated auth/invitation endpoints.
-
-## Authentication Overview
-
-OpenFarmPlanner uses Django session authentication with CSRF protection:
-
-- Register account
-- Activate account by email link
-- Login / logout
-- Login with Google or Microsoft (optional, see [`docs/social-login.md`](docs/social-login.md))
-- Password reset request and confirmation
-- Account deletion request with grace period and restoration flow
-
-Authentication endpoints are available under:
-
-- `/api/auth/*`
-
-### New user registration notifications
-
-The backend sends an informational email whenever a real Django user is
-created; short-lived guest demo users are excluded.
-Set `ADMIN_NOTIFICATION_EMAIL` to choose the recipient; it defaults to
-`info@openfarmplanner.org`. Set it to an empty value to disable these
-notifications. Delivery uses the existing Django email backend and a delivery
-failure is logged without preventing registration.
-
-## Testing Overview
-
-### Backend
-
-```bash
-cd backend
-pdm run test
-```
-
-### Frontend unit/integration tests
-
-```bash
-cd frontend
-npm run test
-```
-
-### Frontend end-to-end tests
-
-```bash
-cd frontend
-npm run test:e2e
-```
-
-`npm run test:e2e` builds the production frontend bundle (`npm run build`) and runs
-Playwright against that build via `vite preview`, not the Vite dev server — this catches
-production-only bugs (e.g. behavior that only appears once code is bundled) that dev mode
-can hide. The `E2E (production build)` GitHub Actions workflow (`.github/workflows/e2e.yml`)
-runs the same build-then-test flow on every pull request targeting `main` and must pass
-before merging; it can be added as a required status check in branch protection.
-
-## Version Bumping
-
-Project version is defined in `backend/config/version.py` as a semantic version (`MAJOR.MINOR.PATCH`).
-
-Use the provided script via Make:
-
-```bash
-make bump-version TYPE=fix
-```
-
-Supported change types:
-
-- `TYPE=feat` → bumps **minor** (`x.Y.z`) and resets patch to `0`
-- `TYPE=fix` → bumps **patch** (`x.y.Z`)
-- `TYPE=breaking` → bumps **major** (`X.y.z`) and resets minor/patch to `0`
-
-The update is validated and applied safely:
-
-- exactly one `VERSION = "..."` definition must exist,
-- version format must be valid semver,
-- file writes are done via atomic replace.
-
-## Automatic Release Labels (Pull Requests)
-
-This repository uses a GitHub Action (`.github/workflows/auto-release-label.yml`) to auto-assign one release label on pull requests:
-
-- `release:major`
-- `release:minor`
-- `release:patch`
-
-Trigger events:
-
-- `pull_request` with types: `opened`, `edited`, `synchronize`
-
-Decision rules:
-
-- `release:major` if PR content includes `BREAKING CHANGE` or `breaking`
-- `release:minor` for feature keywords: `add`, `feature`, `implement`, `new`
-- `release:patch` for maintenance keywords: `fix`, `bug`, `refactor`, `docs`, `localize`, `translation`, `ui`
-- fallback defaults to `release:patch` if no keyword matches
-
-Safety behavior:
-
-- if any release label is already present, the workflow logs and skips reassignment,
-- if none exists, it ensures labels exist at repository level, removes any release labels from the PR (defensive cleanup), and assigns exactly one.
-
-## Documentation Map
-
-- `backend/README.md` – backend-specific development details
-- `frontend/README.md` – frontend-specific development details
-- `frontend/e2e/README.md` – E2E testing notes
-- `CONTRIBUTING.md` – commit conventions and contribution expectations
-- `CHANGELOG.md` – released versions and their user-visible changes
-- `CLAUDE.md` – rules AI coding agents must follow in this repository (`AGENTS.md` is a stub pointing here)
-- **[`docs/index.md`](docs/index.md)** – technical documentation index: architecture overview, data model, and deep dives into complex features (DataGrid, keyboard navigation, Gantt/occupancy hierarchy, Crop Library, seed demand calculation, versioning/history)
-- [`docs/archive/`](docs/archive/) – historical implementation notes and point-in-time reports, kept for their original reasoning; **not maintained**, see `docs/index.md` for the current documentation
-- [`docs/qa-archive/`](docs/qa-archive/) – dated QA reports, fix logs, and superseded coverage snapshots; the current QA documents stay in `docs/`
+- [Technical documentation index](docs/index.md)
+- [Backend guide](backend/README.md) and [frontend guide](frontend/README.md)
+- [Contribution guide](CONTRIBUTING.md), [changelog](CHANGELOG.md), and [GitHub releases](https://github.com/OpenFarmPlanner/planner/releases)
+- [Repository agent rules](AGENTS.md) and [agent tooling setup](docs/agent-skills.md#github-cli-setup)
 
 ## Deployment / Operations
 
-Deployment and runtime operations are intentionally separated from this repository.
-Use the ops repository for deployment guides, infrastructure configuration, and environment-specific operational steps:
+Infrastructure and deployment guides live in the separate [ops repository](https://github.com/OpenFarmPlanner/ops),
+which requires operator access. Application-side requirements are documented in
+[backend deployment checks](backend/README.md#deployment-checks) and the
+[release guide](docs/releases.md).
 
-- **https://github.com/OpenFarmPlanner/ops**
+## Privacy and Usage Analytics
 
-Two settings from this repository need care on every deployment:
-
-- **Cloudflare Turnstile.** The widget's Hostname Management list in the
-  Cloudflare dashboard must contain every domain the registration form is
-  served from, including `staging.openfarmplanner.org`. Each environment
-  needs its own matching key pair: `TURNSTILE_SITE_KEY`/`TURNSTILE_SECRET_KEY`
-  in the backend `.env` and the same site key as `VITE_TURNSTILE_SITE_KEY` in
-  the frontend build.
-- **Failure alerts.** Set `REGISTRATION_ALERT_EMAILS` (registration failures)
-  and `ADMINS` (any other 500 error), then run
-  `pdm run python manage.py send_test_registration_alert` once to confirm the
-  mail actually arrives. See
-  [`docs/account-trust-levels.md`](docs/account-trust-levels.md#registration-failure-alerts).
+OpenFarmPlanner uses internal usage statistics to improve the product. The
+superuser-only dashboard shows aggregate statistics and a project-level table.
+The system uses daily project counts and stores internal account IDs, project
+IDs, and UTC dates to count distinct active users. The statistics exclude page
+visits, clicks, navigation history, and record contents. Daily platform activity
+expires after 90 days. Crop-library operation counters have a 30-day window.
+[Technical analytics details](docs/usage-analytics.md) · [Public privacy policy](https://openfarmplanner.org/en/privacy)
 
 ## Contributing
 
-Pull requests are welcome.
+We welcome code, translations, growing knowledge, and feedback from people
+using the planner.
 
-For larger changes, please open an issue first to align on scope and approach.
-Keep contributions focused, incremental, and consistent with the existing project structure and style.
-
-See `CONTRIBUTING.md` for commit format requirements.
+- Read the [contribution guide](CONTRIBUTING.md) before opening a PR. For a larger change, open an issue to agree on scope first.
+- Use [GitHub Issues](https://github.com/OpenFarmPlanner/planner/issues) for bugs and [GitHub Discussions](https://github.com/OpenFarmPlanner/planner/discussions) for ideas, questions, and feedback you can share publicly.
+- Help translate the interface through the [frontend internationalization guide](frontend/README.md#internationalization), or contribute growing data through the [public crop library](https://openfarmplanner.org/en#kulturbibliothek).
+- For private support, contact [info@openfarmplanner.org](mailto:info@openfarmplanner.org).
 
 ## License
 
@@ -430,17 +159,3 @@ This project is licensed under the GNU Affero General Public License v3.0 (AGPL-
 ### Logo
 
 The OpenFarmPlanner logo (`frontend/public/favicon.png` and the PWA icons derived from it) is not covered by the AGPL-3.0: © 2026 Martin Stipsitz, all rights reserved, and the license grants no trademark rights to it. Forks and modified versions must replace it. See [TRADEMARKS.md](TRADEMARKS.md) for what is allowed and for earlier versions.
-
-## Developer Quality Checks
-
-Run the shared quality script before opening a PR:
-
-```bash
-./scripts/quality.sh
-```
-
-This script executes the backend and frontend lint/test gates used in CI.
-Ruff and Madge reject new findings and scanner failures while reporting the
-explicit legacy baseline. Reports are saved under `reports/latest/`; see
-[`docs/quality-baseline.md`](docs/quality-baseline.md) for the baseline and
-the reviewed update procedure.

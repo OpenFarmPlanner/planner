@@ -153,6 +153,11 @@ then the skill that applies it.
   design decision, report the finding with its screenshot evidence.
 
 ## Documentation Rules
+- Keep the root README focused on product discovery, contribution, and quick
+  start. Put detailed implementation and operations guidance in its canonical
+  documentation and link it through the [technical index](docs/index.md).
+  For material user-facing changes, check whether the README feature overview
+  and public homepage need an update. See the [UX issue preflight](docs/ux-principles.md#ux-issue-preflight).
 - Update relevant documentation when behavior changes: if the change touches
   architecture, the data model, or a documented complex feature, update the
   corresponding file under `docs/` (or the relevant top-level
