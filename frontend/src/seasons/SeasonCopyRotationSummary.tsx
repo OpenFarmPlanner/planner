@@ -6,46 +6,40 @@ import {
   FormLabel,
   Radio,
   RadioGroup,
-  Stack,
   Typography,
 } from '@mui/material';
 
-import type { SeasonCopyPreview, SeasonCopyPreviewItem, SeasonCopyRotationMode } from '../api/types';
-import { Disclosure } from '../components/Disclosure';
+import type { RotationFinding, SeasonCopyPreview, SeasonCopyRotationMode } from '../api/types';
 import { useFamilyNameResolver } from '../components/planting-plans/rotation/useFamilyNameResolver';
 import { useTranslation } from '../i18n';
+import { SeasonCopyDetails } from './SeasonCopyPreviewSection';
 
 const MODE_ORDER: readonly SeasonCopyRotationMode[] = ['without_bed', 'keep', 'skip'];
-/** This many findings are always listed; the rest stay behind a disclosure. */
-const INLINE_ITEM_COUNT = 3;
 
 interface SeasonCopyRotationSummaryProps {
   preview: Pick<SeasonCopyPreview, 'conflict_count' | 'hint_count' | 'conflict_free_count' | 'items'>;
   mode?: SeasonCopyRotationMode;
   parcelRotation?: boolean;
   disabled?: boolean;
+  remainingConflicts?: number;
   onModeChange?: (mode: SeasonCopyRotationMode) => void;
 }
 
-function useItemReason() {
+function useFindingReason() {
   const { t } = useTranslation('navigation');
   const familyName = useFamilyNameResolver();
-  return (item: SeasonCopyPreviewItem): string => {
-    const finding = item.findings[0];
-    if (!finding) {
-      return '';
-    }
-    if (item.status === 'conflict') {
+  return (finding: RotationFinding): string => {
+    if (finding.kind === 'family_conflict') {
       return t('seasonSwitcher.copyDialog.rotation.reasonConflict', {
         family: familyName(finding.family_key, finding.family_name),
         year: finding.year,
         earliestYear: finding.earliest_year,
       });
     }
-    return t('seasonSwitcher.copyDialog.rotation.reasonHint', {
+    return finding.kind === 'nutrient_hint' ? t('seasonSwitcher.copyDialog.rotation.reasonHint', {
       previousCulture: finding.previous_crop_label ?? '',
       year: finding.year,
-    });
+    }) : '';
   };
 }
 
@@ -55,10 +49,10 @@ function useItemReason() {
  * offers it, the treatment of the conflicts. Rendered only with a finding.
  */
 export function SeasonCopyRotationSummary({
-  preview, mode, parcelRotation, disabled, onModeChange,
+  preview, mode, parcelRotation, disabled, remainingConflicts, onModeChange,
 }: SeasonCopyRotationSummaryProps) {
   const { t } = useTranslation(['navigation', 'hierarchy']);
-  const getReason = useItemReason();
+  const getReason = useFindingReason();
   const conflicts = preview.conflict_count;
   const hints = preview.hint_count;
   const values = { conflicts, ok: preview.conflict_free_count };
@@ -66,30 +60,26 @@ export function SeasonCopyRotationSummary({
     conflicts > 0 ? t('seasonSwitcher.copyDialog.rotation.conflictCount', { count: conflicts }) : null,
     hints > 0 ? t('seasonSwitcher.copyDialog.rotation.hintCount', { count: hints }) : null,
   ].filter(Boolean).join(' · ');
-  const renderList = (items: readonly SeasonCopyPreviewItem[]) => (
-    <Stack component="ul" spacing={0.75} sx={{ m: 0, mt: 0.5, pl: 2.5 }}>
-      {items.map((item) => (
-        <Box component="li" key={item.source_plan_id}>
-          <Typography variant="body2" sx={{ fontWeight: 600 }}>
-            {t('seasonSwitcher.copyDialog.rotation.item', { culture: item.crop_label, bed: item.bed_name })}
-          </Typography>
-          <Typography variant="body2">{getReason(item)}</Typography>
-        </Box>
-      ))}
-    </Stack>
-  );
-  const more = preview.items.slice(INLINE_ITEM_COUNT);
+  if (!counts) return null;
 
   return (
     <Box data-testid="season-copy-rotation-summary">
-      <Alert severity={conflicts > 0 ? 'warning' : 'info'} sx={{ boxShadow: 'none', overflowWrap: 'anywhere' }}>
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>{counts}</Typography>
-        {renderList(preview.items.slice(0, INLINE_ITEM_COUNT))}
-        {more.length > 0 && (
-          <Disclosure label={t('seasonSwitcher.copyDialog.rotation.showMore', { count: more.length })}>
-            {renderList(more)}
-          </Disclosure>
-        )}
+      <Alert severity={conflicts > 0 ? 'warning' : 'info'}
+        sx={{ boxShadow: 'none', overflowWrap: 'anywhere', '& .MuiAlert-message': { minWidth: 0, flex: 1 } }}>
+        {preview.items.length > 0 ? (
+          <SeasonCopyDetails label={counts} inAlert>
+            {preview.items.map(item => (
+              <Box component="li" key={item.source_plan_id}>
+                <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                  {t('seasonSwitcher.copyDialog.rotation.item', { culture: item.crop_label, bed: item.bed_name })}
+                </Typography>
+                {[...new Set(item.findings.map(getReason).filter(Boolean))].map(reason => (
+                  <Typography variant="body2" key={reason}>{reason}</Typography>
+                ))}
+              </Box>
+            ))}
+          </SeasonCopyDetails>
+        ) : <Typography variant="body2" sx={{ fontWeight: 600 }}>{counts}</Typography>}
       </Alert>
 
       {conflicts > 0 && mode && onModeChange ? (
@@ -123,6 +113,11 @@ export function SeasonCopyRotationSummary({
           </RadioGroup>
         </FormControl>
       ) : null}
+      {remainingConflicts !== undefined && conflicts > 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+          {t('seasonSwitcher.copyDialog.rotation.remainingConflictCount', { count: remainingConflicts })}
+        </Typography>
+      )}
     </Box>
   );
 }

@@ -1,9 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { expectNoHorizontalPageOverflow, loginWithDeterministicProject } from './utils';
+import { apiRequest, expectNoHorizontalPageOverflow, loginWithDeterministicProject, VIEWPORTS } from './utils';
+import { SUPPORTED_LANGUAGES } from '../src/i18n/languages';
 
 const header = (page: Page, field: string) => page.locator(`[role="columnheader"][data-field="${field}"]`).first();
 const width = (column: Locator) => column.evaluate(element => Math.round(element.getBoundingClientRect().width));
 const divider = (column: Locator) => column.locator('.MuiDataGrid-columnSeparator--sideRight');
+const gridRoot = (page: Page) => page.locator('.MuiDataGrid-root');
 
 async function dragDivider(page: Page, column: Locator, delta: number) {
   await column.scrollIntoViewIfNeeded();
@@ -24,6 +26,7 @@ test('planting plan resize, auto-fit and reset preserve sorting and visibility',
   const crop = header(page, 'crop');
   const sowing = header(page, 'sowing_date');
   await expect(crop).toBeVisible();
+  await expect(gridRoot(page)).toHaveAttribute('aria-busy', 'false');
   const original = await width(crop);
   const originalSowing = await width(sowing);
   await dragDivider(page, crop, 120);
@@ -77,6 +80,7 @@ test('growing areas use their own persisted width and support menu auto-fit', as
   await page.goto('/app/fields-beds?view=list');
   const name = header(page, 'name');
   await expect(name).toBeVisible();
+  await expect(gridRoot(page)).toHaveAttribute('aria-busy', 'false');
   const original = await width(name);
   await dragDivider(page, name, 120);
   await expect.poll(() => width(name)).toBeGreaterThan(original + 90);
@@ -84,8 +88,162 @@ test('growing areas use their own persisted width and support menu auto-fit', as
 
   await page.reload();
   await expect.poll(() => width(name)).toBe(wide);
+  await expect(gridRoot(page)).toHaveAttribute('aria-busy', 'false');
   await name.hover();
   await name.locator('.MuiDataGrid-menuIconButton').click();
   await page.getByRole('menuitem', { name: 'Spaltenbreite automatisch anpassen' }).click();
   await expect.poll(() => width(name)).not.toBe(wide);
+});
+
+test('growing areas fit collapsed bed names and reserve their row actions', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'collapsed-hierarchy-sizing', { loginAsAdmin: true });
+  const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Acker am Bach' });
+  const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', { name: 'Kohlquartier', location: location.id });
+  await apiRequest(page, 'POST', '/beds/bulk-create/', {
+    field: field.id,
+    beds: Array.from({ length: 35 }, (_, index) => ({ name: `Beet ${index + 1}`, length_m: 8, width_m: 1 })),
+  });
+  const bedName = 'Gründüngung – Klimaresiliente Zwischenfrucht '.repeat(2) + 'Nördlicher Versuchsabschnitt';
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', { name: bedName, field: field.id });
+  await page.goto('/app/fields-beds?view=list');
+  const name = header(page, 'name');
+  const length = header(page, 'length_m');
+  const row = page.locator(`[role="row"][data-id="${bed.id}"]`);
+  const label = row.getByTestId('hierarchy-name-text');
+  const locationRow = page.locator(`[role="row"][data-id="location-${location.id}"]`);
+  const scroller = page.getByRole('grid').locator('.MuiDataGrid-virtualScroller');
+  const expandLevel = name.getByRole('button', { name: 'Eine Hierarchieebene mehr anzeigen' });
+  await expect.poll(() => width(name)).toBe(420);
+  await expect.poll(() => scroller.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  const originalLength = await width(length);
+
+  // A collapsed branch keeps the bed out of the DOM during the measurement.
+  const collapseLocation = locationRow.getByTestId('expand-icon-slot').getByRole('button', { name: 'Eintrag zuklappen' });
+  if (await collapseLocation.isVisible()) await collapseLocation.click();
+  await expect(row).toHaveCount(0);
+  await divider(name).dblclick();
+  await expect.poll(() => width(name)).toBeGreaterThan(720);
+  const fitted = await width(name);
+  expect(await width(length)).toBe(originalLength);
+
+  // This project has two descendant levels. The long row comes after the first viewport.
+  for (let level = 0; level < 2 && await expandLevel.isEnabled(); level += 1) {
+    await expandLevel.click();
+  }
+  await expect.poll(() => scroller.evaluate(node => node.scrollHeight - node.clientHeight)).toBeGreaterThan(200);
+  await expect(row).toHaveCount(0);
+  await scroller.evaluate(node => { node.scrollTop = node.scrollHeight; });
+  await expect(label).toHaveText(bedName);
+  const overflow = () => label.evaluate(node => node.scrollWidth - node.clientWidth);
+  await expect.poll(overflow).toBeLessThanOrEqual(1);
+  await row.hover({ position: { x: 180, y: 25 } });
+  await expect(row.getByTestId('hierarchy-name-actions-overlay')).toHaveCSS('opacity', '1');
+  await expect.poll(overflow).toBeLessThanOrEqual(1);
+  expect(await width(name)).toBe(fitted);
+  const search = page.getByRole('searchbox', { name: 'Anbauflächen durchsuchen' });
+  await search.fill('E2E Project');
+  await expect(row).toHaveCount(0);
+  await expect(name).toBeVisible();
+  expect(await width(name)).toBe(fitted);
+  await search.clear();
+
+  await page.reload();
+  await expect.poll(() => width(name)).toBe(fitted);
+  await page.setViewportSize({ width: 768, height: 900 });
+  await expect.poll(() => scroller.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(200);
+  await expectNoHorizontalPageOverflow(page);
+  await page.screenshot({ path: testInfo.outputPath('growing-areas-wide-tablet.png') });
+
+  await page.getByRole('button', { name: 'Spalten', exact: true }).click();
+  await page.getByRole('button', { name: 'Spaltenbreiten zurücksetzen' }).click();
+  await expect.poll(() => width(name)).toBe(420);
+});
+
+test('variety comparison sizes only the selected column and keeps overflow inside the table', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'variety-table-sizing', { loginAsAdmin: true, libraryModerator: true });
+  const variety = 'Späte Ernte violette Züchtung '.repeat(3).trim();
+  const speciesName = `E2E Sortenvergleich ${Date.now()}`;
+  const species = await apiRequest<{ id: number }>(page, 'POST', '/crop-species/', { name: speciesName });
+  await apiRequest(page, 'POST', `/crop-species/${species.id}/approve/`, {
+    translations: SUPPORTED_LANGUAGES.map(({ code }) => ({ language_code: code, common_name: speciesName })),
+  });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: speciesName, crop_species: species.id, growth_duration_days: 40, harvest_duration_days: 10,
+  });
+  const child = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: speciesName, crop_species: species.id, variety, growth_duration_days: 60, harvest_duration_days: 10,
+  });
+  const url = `/app/crops?cropId=${crop.id}`;
+  await page.goto(url);
+  const table = page.getByTestId('varieties-comparison-table');
+  const column = table.locator('th[data-field="variety"]');
+  const other = table.locator('th[data-field="growthDurationDays"]');
+  const label = table.getByText(variety, { exact: true });
+  const fit = column.getByRole('button');
+  await expect.poll(() => width(column)).toBe(240);
+  const otherWidth = await width(other);
+  await expect.poll(() => label.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(100);
+  await fit.dblclick();
+  await expect.poll(() => label.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  const fitted = await width(column);
+  expect(await width(other)).toBe(otherWidth);
+  await page.reload();
+  await expect.poll(() => width(column)).toBe(fitted);
+
+  for (const viewport of [...VIEWPORTS, { key: 'phone-landscape', width: 800, height: 375 }]) {
+    await page.setViewportSize(viewport);
+    await table.scrollIntoViewIfNeeded();
+    if (viewport.width === 375) {
+      await expect.poll(() => table.evaluate(node => node.scrollWidth - node.clientWidth)).toBeGreaterThan(100);
+      await table.evaluate(node => { node.scrollLeft = node.scrollWidth; });
+      await expect.poll(() => other.evaluate(node => {
+        const rect = node.getBoundingClientRect();
+        return document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2)?.closest('th')?.getAttribute('data-field');
+      })).toBe('growthDurationDays');
+      await table.evaluate(node => { node.scrollLeft = 0; });
+    }
+    await expectNoHorizontalPageOverflow(page);
+    await page.screenshot({ path: testInfo.outputPath(`varieties-width-${viewport.key}.png`) });
+  }
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await fit.press('ArrowRight');
+  await expect.poll(() => width(column)).toBe(fitted + 12);
+  await page.getByRole('button', { name: 'Spaltenbreiten zurücksetzen', exact: true }).click();
+  await expect.poll(() => width(column)).toBe(240);
+
+  const publish = (id: number, general: boolean) => apiRequest<{ public_crop: { id: number } }>(
+    page, 'POST', `/crops/${id}/publish-public/`, {
+      accepted_public_library_terms: true, crop_species_id: species.id, original_language_code: 'de', publish_as_general: general,
+    },
+  );
+  const libraryCrop = await publish(crop.id, true);
+  await publish(child.id, false);
+  await page.goto(`/app/crop-library?cropId=${libraryCrop.public_crop.id}`);
+  await expect.poll(() => width(column)).toBe(240);
+  await fit.dblclick();
+  await expect.poll(() => label.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+  await page.screenshot({ path: testInfo.outputPath('library-varieties-width-desktop.png') });
+  await page.goto(url);
+  await expect.poll(() => width(column)).toBe(240);
+});
+
+test('localized planting plan headers fit with their controls in all seven languages', async ({ page, request }) => {
+  test.setTimeout(90_000);
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'localized-plan-sizing', { demoProject: true, loginAsAdmin: true });
+  for (const { code } of SUPPORTED_LANGUAGES) {
+    await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: code });
+    await page.evaluate(language => localStorage.setItem('ui.language', language), code);
+    await page.goto('/app/planting-plans');
+    await expect(page.locator('html')).toHaveAttribute('lang', code);
+    await expect(gridRoot(page)).toHaveAttribute('aria-busy', 'false');
+    const sowing = header(page, 'sowing_date');
+    await sowing.hover();
+    const text = sowing.locator('.MuiDataGrid-columnHeaderTitleContainerContent > span').first();
+    await expect.poll(() => text.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(1);
+    await expectNoHorizontalPageOverflow(page);
+  }
 });

@@ -26,6 +26,8 @@
     "copyHelp": "Gekopieerde teeltplannen worden toegewezen aan de overeenkomstige bedden van het volgende perceel in hun groep.",
     "keepProposedBeds": "Voorgestelde bedden behouden",
     "mappings": "Perceeltoewijzingen",
+    "mappingCount_one": "{{formatted}} perceeltoewijzing voor gekopieerde teelten",
+    "mappingCount_other": "{{formatted}} perceeltoewijzingen voor gekopieerde teelten",
     "unchangedBeds_one": "{{count}} teelt blijft op zijn bed.",
     "unchangedBeds_other": "{{count}} teelten blijven op hun bed.",
     "moveDetails_one": "Details van {{count}} verplaatste teelt",

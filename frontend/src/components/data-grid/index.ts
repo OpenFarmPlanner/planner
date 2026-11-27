@@ -22,7 +22,7 @@ export { NotesDrawer } from './NotesDrawer';
 export { LazyRichTextEditor as RichTextEditor } from './LazyRichTextEditor';
 export { normalizeRichTextMarkdown } from './richText';
 export { RichTextViewer } from './RichTextViewer';
-export { getPlainExcerpt, stripMarkdown } from './markdown';
+export { formatNotesCellExcerpt, getPlainExcerpt, stripMarkdown } from './markdown';
 export { markdownComponents } from './markdownComponents';
 export { useNotesEditor } from './useNotesEditor';
 export type { UseNotesEditorConfig, UseNotesEditorReturn, NotesEditorSaveOptions } from './useNotesEditor';

@@ -182,6 +182,8 @@
         "checkError": "Die Fruchtfolge konnte nicht geprüft werden. Übernommen werden kann trotzdem.",
         "conflictCount_one": "{{count}} Fruchtfolgeverstoß",
         "conflictCount_other": "{{count}} Fruchtfolgeverstöße",
+        "remainingConflictCount_one": "{{count}} Fruchtfolgeverstoß bleibt auf den zugewiesenen Beeten.",
+        "remainingConflictCount_other": "{{count}} Fruchtfolgeverstöße bleiben auf den zugewiesenen Beeten.",
         "hintCount_one": "{{count}} Hinweis zur Nährstofffolge",
         "hintCount_other": "{{count}} Hinweise zur Nährstofffolge",
         "showMore_one": "{{count}} weiteren anzeigen",

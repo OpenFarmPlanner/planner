@@ -26,6 +26,8 @@
     "copyHelp": "Copied planting plans go to the corresponding beds of the next parcel in their group.",
     "keepProposedBeds": "Keep the proposed beds",
     "mappings": "Parcel assignments",
+    "mappingCount_one": "{{formatted}} parcel assignment for copied planting plans",
+    "mappingCount_other": "{{formatted}} parcel assignments for copied planting plans",
     "unchangedBeds_one": "{{count}} planting plan stays on its bed.",
     "unchangedBeds_other": "{{count}} planting plans stay on their beds.",
     "moveDetails_one": "Details of {{count}} moved planting plan",

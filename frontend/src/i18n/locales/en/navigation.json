@@ -182,6 +182,8 @@
         "checkError": "The crop rotation could not be checked. You can still copy.",
         "conflictCount_one": "{{count}} crop rotation conflict",
         "conflictCount_other": "{{count}} crop rotation conflicts",
+        "remainingConflictCount_one": "{{count}} crop rotation conflict remains on the assigned beds.",
+        "remainingConflictCount_other": "{{count}} crop rotation conflicts remain on the assigned beds.",
         "hintCount_one": "{{count}} nutrient sequence hint",
         "hintCount_other": "{{count}} nutrient sequence hints",
         "showMore_one": "Show {{count}} more",

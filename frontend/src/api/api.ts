@@ -648,8 +648,8 @@ export const seasonAPI = {
     source_season_id?: number;
     copy_target?: SeasonCreationCopyTarget;
     rotate_parcels?: boolean;
-  }) =>
-    http.get<SeasonCreationOptions>('/seasons/creation-options/', { params }),
+  }, signal?: AbortSignal) =>
+    http.get<SeasonCreationOptions>('/seasons/creation-options/', { params, signal }),
   createTransition: (data: { copy: boolean; source_season_id?: number; use_actual_dates?: boolean }
     & Partial<SeasonTransitionPeriods & ParcelRotationConfirmation>) =>
     http.post<SeasonCreateTransitionResponse>('/seasons/create-transition/', data),

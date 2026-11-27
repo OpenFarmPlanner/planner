@@ -679,6 +679,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               userId={userId}
               onAddIndividualPlants={onAddIndividualPlants}
               individualHierarchy={individualHierarchy}
+              individualHierarchyLoading={individualList.loading}
+              activeSeasonId={activeSeason?.id}
             />
           )}</PageContainer>
         ) : null}

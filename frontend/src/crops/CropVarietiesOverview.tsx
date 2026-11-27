@@ -16,6 +16,7 @@ interface CropVarietiesOverviewProps {
   cropCrop: Crop;
   onSelect: (crop: Crop) => void;
   action?: ReactNode;
+  publicLibrary?: boolean;
 }
 
 export function CropVarietiesOverview({
@@ -23,6 +24,7 @@ export function CropVarietiesOverview({
   cropCrop,
   onSelect,
   action,
+  publicLibrary,
 }: CropVarietiesOverviewProps) {
   const { t } = useTranslation('crops');
 
@@ -57,6 +59,7 @@ export function CropVarietiesOverview({
           varieties={varieties}
           cropCrop={cropCrop}
           onSelect={onSelect}
+          publicLibrary={publicLibrary}
         />
       )}
     </Box>
