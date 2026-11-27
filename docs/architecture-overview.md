@@ -196,9 +196,10 @@ The selected location is remembered in `sessionStorage` under
 `graphicalLocation.<projectId>`; missing/removed locations fall back to the first
 available persisted location and leave edit mode. The page owns per-location
 viewport and rotation maps, retaining them when the graphical component
-unmounts for List mode. Camera changes never write geometry to the backend. The backend normally ensures
-a default location; frontend empty-location rendering is tested with an
-empty-response fixture without changing that backend contract.
+unmounts for List mode. The Length and Width column arrows in List follow the
+selected location's schematic rotation. Camera changes never write geometry to
+the backend. The backend normally creates a default location. A frontend
+fixture covers an unexpected empty location response.
 `GraphicalFields` renders only the selected location and loads its layout;
 existing drag/layout APIs and geometry/orientation rules remain in place. The
 canvas waits for its saved layout before displaying a remembered camera; failed

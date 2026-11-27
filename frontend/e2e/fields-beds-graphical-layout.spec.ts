@@ -1616,6 +1616,62 @@ for (const input of ['mouse', 'touch'] as const) {
   });
 }
 
+test('shows dimensions along the selected Graphic location axes throughout a full turn', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'graphical-dimension-arrows', { loginAsAdmin: true });
+  const { results: [location] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  const dimensions = { length_m: 24, width_m: 12.5 };
+  await apiRequest(page, 'PATCH', `/locations/${location.id}/`, dimensions);
+  await apiRequest(page, 'POST', '/fields/', { name: 'Lange Parzelle', location: location.id, length_m: 18, width_m: 8 });
+  const otherLocation = await apiRequest<{ name: string }>(page, 'POST', '/locations/', {
+    name: 'Zweiter Standort', length_m: 20, width_m: 10,
+  });
+  await page.goto('/app/fields-beds');
+
+  const show = (view: string) => page.getByRole('button', { name: view, exact: true }).click();
+  const row = page.locator(`[role="row"][data-id="location-${location.id}"]`);
+  const arrowIsHorizontal = (label: string) => page.getByText(label, { exact: true }).locator('..')
+    .locator('svg[aria-hidden="true"] path').evaluate(node => {
+      const { width, height } = (node as SVGPathElement).getBBox();
+      return width > height;
+    });
+  const expectDimensions = async (lengthHorizontal: boolean) => {
+    await expect.poll(() => arrowIsHorizontal('Länge (m)')).toBe(lengthHorizontal);
+    await expect.poll(() => arrowIsHorizontal('Breite (m)')).toBe(!lengthHorizontal);
+    await expect(row.locator('[data-field="length_m"]')).toHaveText('24');
+    await expect(row.locator('[data-field="width_m"]')).toHaveText('12.5');
+  };
+  await expectDimensions(true);
+  const headers = page.locator('.MuiDataGrid-columnHeaders');
+  await headers.screenshot({ path: testInfo.outputPath('dimension-headers-default.png') });
+  await show('Grafik');
+  await selectLocation(page, location.name);
+  for (const lengthHorizontal of [false, true, false, true]) {
+    await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
+    await expect.poll(async () => {
+      const [boundary] = await canvasRects(page, `location-boundary-${location.id}`);
+      return boundary ? boundary.width > boundary.height : null;
+    }).toBe(lengthHorizontal);
+    if (!lengthHorizontal) {
+      await activateCanvasTool(page, 'Hineinzoomen');
+      await activateCanvasTool(page, 'Ansicht nach links verschieben');
+      await activateCanvasTool(page, 'Alles einpassen');
+    }
+    await show('Liste');
+    await expectDimensions(lengthHorizontal);
+    if (!lengthHorizontal) await headers.screenshot({ path: testInfo.outputPath('dimension-headers-rotated.png') });
+    await show('Grafik');
+    if (!lengthHorizontal) {
+      await selectLocation(page, otherLocation.name);
+      await show('Liste');
+      await expectDimensions(true);
+      await show('Grafik');
+      await selectLocation(page, location.name);
+    }
+  }
+  expect(await apiRequest(page, 'GET', `/locations/${location.id}/`)).toMatchObject(dimensions);
+});
+
 test('shows the only location with its name and gross area in the list and the graphic', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, `single-location-${testInfo.workerIndex}`, { loginAsAdmin: true });

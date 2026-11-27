@@ -9,7 +9,8 @@ import {
 } from './graphicalFieldsGeometry';
 import {
   arrangeFieldRects, clampInsideParent, DEFAULT_PLACEMENT_SPACING, getBedRectSizeWithinField,
-  getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, placeFieldRects, rotateRect, turnRotation,
+  getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, isGraphicalLengthHorizontal,
+  placeFieldRects, rotateRect, turnRotation,
   type GraphicalRotation, type Rect, type RectSize,
 } from './graphicalLayoutUtils';
 import { getContentBoundsFromRects } from './graphicalViewport';
@@ -34,7 +35,7 @@ function measuredSize(area: Pick<Field, 'width_m' | 'length_m'>, rotation: Graph
   const { width_m: width, length_m: height } = area;
   if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0
       || typeof height !== 'number' || !Number.isFinite(height) || height <= 0) return null;
-  return rotation % 180 ? { width: height, height: width } : { width, height };
+  return isGraphicalLengthHorizontal(rotation) ? { width: height, height: width } : { width, height };
 }
 
 export function getMeasuredArea(area: Pick<Field, 'width_m' | 'length_m'>): number | null {
