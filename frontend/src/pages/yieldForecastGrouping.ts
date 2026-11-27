@@ -9,15 +9,11 @@ interface ForecastVariety extends YieldCropMeta {
   keepColor: boolean;
 }
 
-const VARIETY_CHART_COLORS = [
-  '#2563a5', '#b45309', '#0a796c', '#973e78', '#6950a1', '#b54039',
-  '#467321', '#967025', '#186986', '#84492a', '#5759a8', '#6f495c',
-];
-
 export function buildForecastCropIndex(
   { weeks, crop_groups }: YieldCalendarForecast,
   locale: string,
   formatGeneralVariety: (name: string) => string,
+  seriesColors: readonly string[],
 ) {
   const byId = new Map<number, ForecastVariety>();
   for (const group of crop_groups ?? []) {
@@ -40,14 +36,15 @@ export function buildForecastCropIndex(
     }
   }
   const varieties = [...byId.values()];
-  assignVarietyChartColors(varieties);
+  assignVarietyChartColors(varieties, seriesColors);
   const groupOptions = new Map(varieties.map(({ generalCrop }) => [generalCrop.id, generalCrop]));
   const compare = (left: YieldCropMeta, right: YieldCropMeta) =>
     left.name.localeCompare(right.name, locale) || left.id - right.id;
   return { byId, crops: [...groupOptions.values()].sort(compare), varieties: varieties.sort(compare) };
 }
 
-function assignVarietyChartColors(varieties: ForecastVariety[]): void {
+function assignVarietyChartColors(varieties: ForecastVariety[], seriesColors: readonly string[]): void {
+  if (!seriesColors.length) return;
   const counts = new Map<string, number>();
   for (const variety of varieties) {
     const color = variety.color.toLowerCase();
@@ -56,8 +53,8 @@ function assignVarietyChartColors(varieties: ForecastVariety[]): void {
   const reserved = new Set(varieties
     .filter(({ color, keepColor }) => keepColor || counts.get(color.toLowerCase()) === 1)
     .map(({ color }) => color.toLowerCase()));
-  const available = VARIETY_CHART_COLORS.filter(color => !reserved.has(color));
-  const palette = available.length ? available : VARIETY_CHART_COLORS;
+  const available = seriesColors.filter(color => !reserved.has(color.toLowerCase()));
+  const palette = available.length ? available : seriesColors;
   let index = 0;
   for (const variety of [...varieties].sort((left, right) => left.id - right.id)) {
     if (!variety.keepColor && (counts.get(variety.color.toLowerCase()) ?? 0) > 1) {

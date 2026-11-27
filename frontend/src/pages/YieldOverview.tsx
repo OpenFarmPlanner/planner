@@ -3,6 +3,7 @@ import LoadRetryButton from "../components/LoadRetryButton";
 import { useEffect, useMemo, useState } from "react";
 import AddIcon from "@mui/icons-material/Add";
 import { useOutletContext } from "react-router";
+import { useTheme } from '@mui/material/styles';
 import {
   Alert,
   Stack,
@@ -40,12 +41,16 @@ import {
 import { segmentedToggleButtonGroupSx, segmentedToggleButtonSx } from "../components/buttons/segmentedControlStyles";
 import { YieldSeasonComparison } from "./YieldSeasonComparison";
 import { DEFAULT_YIELD_COMPARISON_FILTERS } from "./yieldComparisonFilters";
+import appTheme from '../theme';
 
 const EMPTY_FORECAST: YieldCalendarForecast = { weeks: [], incomplete_plans: [] };
 type YieldView = 'calendar' | 'comparison';
 
 export default function YieldOverviewPage() {
   const { t, i18n } = useTranslation("yieldOverview");
+  const theme = useTheme();
+  const varietySeries = theme.palette.chart?.varietySeries ?? appTheme.palette.chart.varietySeries;
+  const seriesColors = varietySeries[theme.palette.mode];
   const { activeProjectId, shouldShowProjectRequiredState, missingProjectReason } =
     useProjectRequirement();
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
@@ -120,8 +125,8 @@ export default function YieldOverviewPage() {
 
   const locale = i18n.resolvedLanguage ?? i18n.language;
   const { crops, varieties, byId } = useMemo(() => buildForecastCropIndex(
-    forecast, locale, (crop) => t('filters.generalVariety', { crop }),
-  ), [forecast, locale, t]);
+    forecast, locale, (crop) => t('filters.generalVariety', { crop }), seriesColors,
+  ), [forecast, locale, seriesColors, t]);
   const calendarCropId = crops.some(crop => String(crop.id) === selectedCropId)
     ? selectedCropId : ALL_CROPS;
   const cropVarieties = varieties.filter(variety =>

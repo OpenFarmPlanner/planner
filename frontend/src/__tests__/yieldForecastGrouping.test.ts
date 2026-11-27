@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { YieldCalendarForecast, YieldForecastCropGroup } from '../api/types';
 import { buildForecastCropIndex, projectForecastWeeks } from '../pages/yieldForecastGrouping';
 import { ALL_CROPS } from '../pages/yieldOverviewUtils';
+import theme from '../theme';
 
 describe('forecast grouping', () => {
   it('sums one crop with ten varieties and keeps explicit colors in the breakdown', () => {
@@ -20,7 +21,9 @@ describe('forecast grouping', () => {
       weeks: [{ iso_week: '2026-W13', week_start: '2026-03-23', week_end: '2026-03-30',
         crops: [general, ...variants].map(crop => ({ ...crop, yield: 1.25 })) }],
     };
-    const { byId, crops, varieties } = buildForecastCropIndex(forecast, 'en', name => `${name} (general)`);
+    const { light, dark } = theme.palette.chart.varietySeries;
+    const generalLabel = (name: string) => `${name} (general)`;
+    const { byId, crops, varieties } = buildForecastCropIndex(forecast, 'en', generalLabel, light);
     expect(crops).toEqual([{ id: 100, name: 'Lettuce', color: base }]);
     expect(varieties).toHaveLength(11);
     const [aggregate] = projectForecastWeeks(forecast.weeks, byId, 'crop', ALL_CROPS, ALL_CROPS);
@@ -33,6 +36,10 @@ describe('forecast grouping', () => {
     expect(breakdown.crops[1]).toMatchObject({ color: base, crop_display_name: 'Lettuce (Variety 1)' });
     expect(breakdown.crops[2].color).toBe(custom);
     expect(new Set(breakdown.crops.map(crop => crop.color)).size).toBe(10);
+    const darkMode = buildForecastCropIndex(forecast, 'en', generalLabel, dark).byId;
+    expect(byId.get(103)?.color).toBe(light[0]);
+    expect(darkMode.get(103)?.color).toBe(dark[0]);
+    expect(darkMode.get(102)?.color).toBe(custom);
     const [filtered] = projectForecastWeeks(forecast.weeks, byId, 'variety', '100', '110');
     expect(filtered.crops).toEqual([breakdown.crops[10]]);
     expect(forecast.weeks[0].crops[3].color).toBe(base);
