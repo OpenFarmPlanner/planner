@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { LocationLayoutsResponse, PaginatedResponse, YoungPlantDemand } from '../src/api/types';
-import { activateCanvasTool, apiRequest, canvasInteractionPoint, graphicWorkspaceMenu, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, graphicWorkspaceMenu, loginWithDeterministicProject, toggleGraphicEdit, individualPlantsPanel, openAddIndividualPlants } from './utils';
 
 type Stem = { id: string; x_m: number; y_m: number };
 type Plan = {
@@ -80,8 +80,8 @@ test('snaps and moves an individual stem with centimetre precision at the metric
     await expect(page.getByRole('button', { name: 'Hineinzoomen', exact: true })).toBeDisabled();
   };
   await focusBed();
-  await activateCanvasTool(page, 'Einzelpflanzen hinzufügen');
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  await openAddIndividualPlants(page);
+  const panel = individualPlantsPanel(page);
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
   await page.getByRole('option', { name: 'Zentimetergenaue Kultur', exact: true }).click();
   await page.getByRole('button', { name: 'Alles einpassen', exact: true }).focus();
@@ -151,12 +151,8 @@ test('places stems at three actual parents in one operation and reassigns a drag
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ }).click();
   await page.getByRole('option', { name: 'Hofgarten', exact: true }).click();
-  const toolbar = page.getByTestId('graphical-canvas-tools');
-  const tools = toolbar.getByRole('button', { name: /^(Weitere Grafikwerkzeuge|Einzelpflanzen hinzufügen)$/ });
-  const hasMenu = await tools.getAttribute('aria-haspopup') === 'menu';
-  await tools.press('Enter');
-  if (hasMenu) await page.getByRole('menuitem', { name: 'Einzelpflanzen hinzufügen', exact: true }).press('Enter');
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  await openAddIndividualPlants(page);
+  const panel = individualPlantsPanel(page);
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
   await page.getByRole('option', { name: 'Einzelpflanzen für freie Platzierung', exact: true }).click();
   const scenePoint = async (id: string, relativeX: number, relativeY: number) => {
@@ -228,9 +224,10 @@ test('snaps to an occupied neighbouring bed, previews its parent and supports Sh
     estimated_canopy_diameter_m: 4.8,
   });
   await page.goto(`/app/fields-beds?individualPlan=${anchor.id}&locationId=${site.id}`);
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
-  await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
-  await activateCanvasTool(page, 'Einzelpflanzen hinzufügen');
+  await expect(page.getByTestId('graphical-object-preview')).toBeVisible();
+  await page.keyboard.press('Escape');
+  const panel = individualPlantsPanel(page);
+  await openAddIndividualPlants(page);
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
   await page.getByRole('option', { name: 'Kultur mit Pflanzabstand', exact: true }).click();
   await activateCanvasTool(page, 'Alles einpassen');
@@ -328,7 +325,7 @@ test('creates a count-only plan from a location row and shows its pending count 
   const location = page.locator(`[role="row"][data-id="location-${site.id}"]`);
   await location.click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Einzelpflanzen hinzufügen', exact: true }).click();
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  const panel = individualPlantsPanel(page);
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
   await page.getByRole('option', { name: 'Standortpflanze aus der Liste', exact: true }).click();
   await panel.getByRole('textbox', { name: 'Genaue Pflanzenanzahl' }).fill('4');
@@ -364,26 +361,32 @@ test('places a pending stem in a measured parcel of an unmeasured location', asy
     individual_count: 2, individual_positions: [],
   });
   await page.goto(`/app/fields-beds?individualPlan=${plan.id}&locationId=${site.id}`);
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
-  await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
+  // A plan without positioned plants opens straight in its position editor, ready to place.
+  const panel = individualPlantsPanel(page);
+  await expect(panel).toHaveAccessibleName('Positionen bearbeiten');
   await expect(panel.getByRole('button', { name: 'Pflanzen automatisch platzieren' })).toBeEnabled();
-  await panel.getByRole('button', { name: 'Pflanzen in der Grafik platzieren' }).click();
   await expect.poll(() => shape(page, 'individual-free-placement-surface')).not.toBeNull();
   const { screen } = (await shape(page, `field-rect-${parcel.id}`))!;
   await page.mouse.click(screen.x + screen.width / 2, screen.y + screen.height / 2);
   await expect(panel.getByText('1 noch nicht positioniert', { exact: true })).toBeVisible();
-  await panel.getByRole('button', { name: 'Platzierung beenden' }).click();
   await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
-  await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
-  expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
+  await expect(panel).toHaveCount(0);
+  const placed = await apiRequest<Plan>(page, 'GET', `/planting-plans/${plan.id}/`);
+  expect(placed).toMatchObject({
     parcel: parcel.id, site: null, plants_count: 2, positioned_plants_count: 1, pending_plants_count: 1,
   });
-  await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
-  await panel.getByRole('button', { name: 'Position entfernen · Stamm 1' }).click();
-  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
-  await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
+  // Clearing only the position from the inspector keeps the plant planned and pending.
+  const marker = await canvasInteractionPoint(page, `individual-stem-${placed.individual_positions[0].id}`);
+  await page.mouse.click(marker.x, marker.y);
+  const inspector = page.getByTestId('graphical-object-preview');
+  await expect(inspector.getByTestId('individual-plant-counts')).toHaveText('1 von 2 positioniert · 1 noch nicht positioniert');
+  await inspector.getByRole('button', { name: 'Pflanze entfernen', exact: true }).click();
+  const removal = page.getByRole('dialog', { name: 'Pflanze entfernen' });
+  await removal.getByRole('radio', { name: /^Nur Position entfernen/ }).check();
+  await removal.getByRole('button', { name: 'Nur Position entfernen', exact: true }).click();
+  await expect.poll(async () => (await apiRequest<Plan>(page, 'GET', `/planting-plans/${plan.id}/`)).individual_positions).toEqual([]);
   expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
-    plants_count: 2, individual_positions: [], pending_plants_count: 2,
+    plants_count: 2, pending_plants_count: 2,
   });
 });
 
@@ -427,12 +430,14 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
 
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  const panel = individualPlantsPanel(page);
   const plotTarget = page.locator(`[data-graphical-object-target="field:${plot.id}"]`);
   await plotTarget.press('Shift+F10');
   await page.getByRole('menuitem', { name: 'Einzelpflanzen hinzufügen', exact: true }).press('Enter');
-  await expect(panel.getByTestId('individual-plants-parcel')).toHaveText(/Obstparzelle/);
-  await expect(panel.getByRole('heading', { name: 'Anbauplan', level: 3 })).toBeVisible();
+  // Adding plants is not plan administration: no location row and no plan section.
+  await expect(panel).toHaveAccessibleName('Pflanzen hinzufügen');
+  await expect(panel.getByTestId('individual-plants-parcel')).toHaveCount(0);
+  await expect(panel.getByRole('heading', { name: 'Anbauplan', level: 3 })).toHaveCount(0);
   await expect(panel.getByText(/Der Punkt zeigt die Stammposition/)).toHaveCount(0);
   await expect(panel.getByRole('heading', { name: 'Platzierung', level: 3 })).toBeVisible();
   // A crop without a canopy estimate keeps the diameter behind an optional disclosure.
@@ -466,21 +471,23 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await expect(panel.getByText('2 Einzelpflanzen', { exact: true })).toBeVisible();
   const draftStem = await shape(page, 'individual-stem-new-0');
   expect(draftStem).not.toBeNull();
-  const firstRow = panel.getByRole('button', { name: 'Stamm 1', exact: true });
+  // The plant list stays out of the way until it is opened on demand.
+  await panel.getByRole('button', { name: 'Pflanzen (2)' }).click();
+  const firstRow = panel.getByRole('button', { name: 'Pflanze 1', exact: true });
   await firstRow.click();
   await expect(firstRow).toHaveAttribute('aria-pressed', 'true');
   await firstRow.press('Escape');
   await expect(panel.getByRole('button', { name: 'Pflanzen in der Grafik platzieren' })).toBeVisible();
   const saveButton = panel.getByRole('button', { name: 'Speichern', exact: true });
-  const editPositions = panel.getByRole('button', { name: 'Positionen bearbeiten' });
+  const inspector = page.getByTestId('graphical-object-preview');
+  const editPositions = inspector.getByRole('button', { name: 'Positionen bearbeiten' });
   const [creation] = await Promise.all([
     page.waitForResponse(response => response.request().method() === 'POST'
       && new URL(response.url()).pathname === '/api/planting-plans/graphic-placement/'),
     saveButton.click(),
   ]);
   expect(creation.status()).toBe(200);
-  await expect(editPositions).toBeVisible();
-  await expect(panel.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
+  await expect(panel).toHaveCount(0);
   const { plans: [{ id: planId }] } = await creation.json() as { plans: Plan[] };
   const planPath = `/planting-plans/${planId}/`;
   const created = await readBackend<Plan>(planPath);
@@ -501,23 +508,36 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   const layoutsBefore = await readBackend<LocationLayoutsResponse>(layoutsPath);
   const otherPlanBefore = await readBackend(otherPlanPath);
 
+  // The fixed test clock makes Konva treat a repeated click on the same marker as a double-click,
+  // so inspections open the marker's keyboard target instead.
+  const inspectStem = async (stemId: string) => {
+    await page.locator(`[data-graphical-object-target="plant:${stemId}"]`).press('Enter');
+    await expect(inspector).toBeVisible();
+  };
+  await inspectStem(first.id);
+  await expect(inspector.getByTestId('individual-plant-counts')).toHaveText('2 von 2 positioniert');
+  await expect(inspector.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
+  await page.keyboard.press('Escape');
+
   // After saving, the next draft starts with the optional canopy disclosure collapsed again.
-  await panel.getByRole('button', { name: 'Neuer Einzelpflanzenplan' }).click();
+  await openAddIndividualPlants(page);
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
   await page.getByRole('option', { name: 'Rhabarber', exact: true }).click();
   await expect(panel.getByRole('textbox', { name: /Kronendurchmesser/ })).toHaveCount(0);
   await expect(panel.getByRole('button', { name: 'Kronendurchmesser angeben (optional)' })).toBeVisible();
   await panel.getByRole('button', { name: 'Abbrechen', exact: true }).click();
-  await panel.getByRole('combobox', { name: 'Anbauplan', exact: true }).click();
-  await page.getByRole('option', { name: /^Apfel/ }).click();
+  await expect(panel).toHaveCount(0);
 
+  await inspectStem(first.id);
   await editPositions.click();
-  const beforeDrag = await shape(page, `individual-stem-${first.id}`);
-  expect(beforeDrag).not.toBeNull();
-  const { x, y, width, height } = beforeDrag!.screen;
-  await page.mouse.move(x + width / 2, y + height / 2);
+  await expect(panel).toHaveAccessibleName('Positionen bearbeiten');
+  await expect(panel.getByTestId('individual-plants-plan')).toContainText('Apfel');
+  // Editing zooms to the parcel; with the editor beside the canvas this tree sits under the tool strip.
+  await activateCanvasTool(page, 'Alles einpassen');
+  const dragFrom = await canvasInteractionPoint(page, `individual-stem-${first.id}`);
+  await page.mouse.move(dragFrom.x, dragFrom.y);
   await page.mouse.down();
-  await page.mouse.move(x + width / 2 + 42, y + height / 2 + 25, { steps: 6 });
+  await page.mouse.move(dragFrom.x + 42, dragFrom.y + 25, { steps: 6 });
   await expectCanopyCentered(page, first.id);
   await page.mouse.up();
   await expect.poll(async () => (await shape(page, `individual-stem-${first.id}`))?.x_m ?? first.x_m).not.toBe(first.x_m);
@@ -527,7 +547,8 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   expect(x_m).not.toBe(first.x_m);
   expect(y_m).not.toBe(first.y_m);
   const expectedPositions = [{ id: first.id, x_m, y_m }];
-  await panel.getByRole('button', { name: 'Position entfernen · Stamm 2', exact: true }).click();
+  await panel.getByRole('button', { name: 'Pflanzen (2)' }).click();
+  await panel.getByRole('button', { name: 'Position entfernen · Pflanze 2', exact: true }).click();
   // The count reflects the draft already. A failed save keeps the draft available for retry.
   const placementPath = `/api${planPath}individual-placement/`;
   await page.route(url => url.pathname === placementPath, route => route.fulfill({ status: 500, json: {} }), { times: 1 });
@@ -548,8 +569,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   expect(placement.request().postDataJSON()).toMatchObject({
     placement_updated_at: created.updated_at, individual_positions: expectedPositions,
   });
-  await expect(editPositions).toBeVisible();
-  await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
+  await expect(panel).toHaveCount(0);
   const saved = await readBackend<Plan>(planPath);
   const savedPlacement = {
     id: planId, parcel: plot.id, season: season.id, plants_count: 1, individual_positions: expectedPositions,
@@ -565,18 +585,18 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await expect.poll(() => shape(page, `individual-stem-${second.id}`)).toBeNull();
   await testInfo.attach('individual-plants-desktop', { body: await page.screenshot(), contentType: 'image/png' });
 
-  const details = panel.getByRole('link', { name: 'Zum Anbauplan' });
-  await details.click();
+  await inspectStem(first.id);
+  await inspector.getByRole('button', { name: 'Anbauplan-Details' }).click();
   await expect(page).toHaveURL(new RegExp(`/planting-plans/${saved.id}$`));
   await expect(page.getByTestId('site-suitability-hints')).toContainText('Für die Parzelle');
   await page.getByRole('link', { name: 'In der Grafik öffnen' }).click();
   await expect(page).toHaveURL(new RegExp(`individualPlan=${saved.id}`));
   await page.reload();
-  await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
+  await expect(inspector.getByTestId('individual-plant-counts')).toHaveText('1 von 1 positioniert');
   await expect.poll(() => shape(page, `individual-stem-${first.id}`)).toMatchObject({ x_m, y_m });
   await expect.poll(() => shape(page, `individual-stem-${second.id}`)).toBeNull();
-  await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
-  await expect(page.getByTestId('graphical-canvas-tools').getByRole('button', { name: 'Weitere Grafikwerkzeuge' })).toBeFocused();
+  await inspector.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await expect(inspector).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
   const bareStem = otherPlan.individual_positions[0];
@@ -697,11 +717,11 @@ test('places annual beans in a mixed bed and moves the bed separately from parce
   const target = page.locator(`[data-graphical-object-target="bed:${bed.id}"]`);
   await target.press('Enter');
   const surfaceId = 'individual-free-placement-surface';
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  const panel = individualPlantsPanel(page);
   await expect(panel).toHaveCount(0);
   expect(await shape(page, surfaceId)).toBeNull();
-  await page.getByRole('button', { name: 'Neuer Einzelpflanzenplan', exact: true }).click();
-  await expect(panel.getByTestId('individual-plants-parcel')).toContainText('Gemüseparzelle · Mischbeet');
+  await page.getByTestId('graphical-object-preview').getByRole('button', { name: 'Einzelpflanzen hinzufügen', exact: true }).click();
+  await expect(panel).toHaveAccessibleName('Pflanzen hinzufügen');
   await expect(panel.getByText(/Wähle eine Kultur, eine Anbauart/)).toBeVisible();
   expect(await shape(page, surfaceId)).toBeNull();
   await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
@@ -730,15 +750,20 @@ test('places annual beans in a mixed bed and moves the bed separately from parce
     crop: beans.id, bed: bed.id, parcel: null, plants_count: 2, placement_mode: 'individual_bed',
   });
   const [first] = plan.individual_positions;
+  await expect(panel).toHaveCount(0);
 
-  await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
+  const savedMarker = await canvasInteractionPoint(page, `individual-stem-${first.id}`);
+  await page.mouse.click(savedMarker.x, savedMarker.y);
+  await page.getByTestId('graphical-object-preview').getByRole('button', { name: 'Positionen bearbeiten' }).click();
   const draftMarker = await expectCanopyCentered(page, first.id);
   await dragScreen(page, draftMarker, { x: -16, y: 23 });
   await expect.poll(async () => (await shape(page, `individual-stem-${first.id}`))?.x_m).not.toBe(first.x_m);
   await panel.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect.poll(async () => (await shape(page, `individual-stem-${first.id}`))?.x_m).toBe(first.x_m);
   await testInfo.attach('mixed-bed-individual-plants-desktop', { body: await page.screenshot(), contentType: 'image/png' });
-  await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
+  await expect(panel).toHaveCount(0);
+  // Editing positions zooms to the plan's bed; fit the whole location again for the layout drag.
+  await activateCanvasTool(page, 'Alles einpassen');
 
   await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
   const testId = `bed-rect-${bed.id}`;
@@ -778,7 +803,7 @@ test('places annual beans in a mixed bed and moves the bed separately from parce
   const persisted = (await shape(page, testId))!.world;
   expect(persisted).not.toEqual(before.world);
   await page.goto(`/app/fields-beds?individualPlan=${plan.id}&locationId=${site.id}`);
-  await expect(panel.getByText('2 Einzelpflanzen', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('graphical-object-preview').getByTestId('individual-plant-counts')).toHaveText('2 von 2 positioniert');
   await expect.poll(async () => (await shape(page, testId))?.world).toEqual(persisted);
   await expectCanopyCentered(page, first.id);
   const savedPlans = await individualPlans(page, site.id);
@@ -954,7 +979,7 @@ test.describe('individual plants on a phone', () => {
     const orchard = (await individualPlans(page, site.id)).find(plan => plan.placement_mode === 'individual_parcel')!;
     const [stem] = orchard.individual_positions;
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
-    await page.getByRole('region', { name: 'Einzelpflanzen', exact: true }).getByRole('button', { name: 'Schließen' }).tap();
+    await page.getByTestId('graphical-object-preview').getByRole('button', { name: 'Schließen' }).tap();
     await toggleGraphicEdit(page, 'touch');
     await activateCanvasTool(page, 'Alles einpassen', 'touch');
     const touch = await page.context().newCDPSession(page);
@@ -1024,9 +1049,13 @@ test.describe('individual plants on a phone', () => {
     const orchard = (await individualPlans(page, site.id)).find(plan => plan.placement_mode === 'individual_parcel')!;
     expect(orchard).toMatchObject({ bed: null, plants_count: 3, estimated_canopy_diameter_m: '3.80' });
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
-    const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+    const panel = individualPlantsPanel(page);
+    const inspector = page.getByTestId('graphical-object-preview');
+    await expect(inspector.getByTestId('individual-plant-counts')).toHaveText('3 von 3 positioniert');
+    await inspector.getByRole('button', { name: 'Positionen bearbeiten' }).tap();
     await expect(panel.getByText('3 Einzelpflanzen', { exact: true })).toBeVisible();
-    await panel.getByRole('button', { name: 'Positionen bearbeiten' }).tap();
+    // At the fitted phone scale the draft's touch targets of neighbouring trees overlap; zoom in once.
+    await activateCanvasTool(page, 'Hineinzoomen', 'touch');
     expect(await shape(page, 'individual-free-placement-surface')).toBeNull();
     expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
     await expect(panel.getByRole('button', { name: 'In der Grafik verschieben' })).toHaveCount(0);
@@ -1051,19 +1080,23 @@ test.describe('individual plants on a phone', () => {
     await page.touchscreen.tap(add.x + add.width * 0.25, add.y + add.height * 0.7);
     await expect(panel.getByText('4 Einzelpflanzen', { exact: true })).toBeVisible();
     await panel.getByRole('button', { name: 'Platzierung beenden', exact: true }).tap();
+    await testInfo.attach('individual-plants-phone', { body: await panel.screenshot(), contentType: 'image/png' });
     await panel.getByRole('button', { name: 'Speichern', exact: true }).tap();
-    await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
+    await expect(panel).toHaveCount(0);
     const changed = (await individualPlans(page, site.id)).find(plan => plan.id === orchard.id)!;
     expect(changed.individual_positions.slice(0, 3).map(stem => stem.id)).toEqual(orchard.individual_positions.map(stem => stem.id));
     expect(changed.individual_positions).toHaveLength(4);
     expect(changed.individual_positions[0]).not.toEqual(orchard.individual_positions[0]);
-    await testInfo.attach('individual-plants-phone', { body: await panel.screenshot(), contentType: 'image/png' });
 
     await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
-    await page.reload();
-    const french = page.getByRole('region', { name: 'Plantes individuelles', exact: true });
+    await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
+    const frenchInspector = page.getByTestId('graphical-object-preview');
+    await expect(frenchInspector.getByTestId('individual-plant-counts')).toHaveText('4 sur 4 positionnés');
+    expect(await frenchInspector.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+    await testInfo.attach('individual-plant-inspector-phone-french', { body: await frenchInspector.screenshot(), contentType: 'image/png' });
+    await frenchInspector.getByRole('button', { name: 'Modifier les positions' }).tap();
+    const french = page.getByRole('region', { name: 'Modifier les positions', exact: true });
     await expect(french.getByText('4 plantes individuelles', { exact: true })).toBeVisible();
-    await french.getByRole('button', { name: 'Modifier les positions' }).tap();
     await expect(french.getByRole('textbox', { name: 'Diamètre estimé du houppier (m)' })).toHaveValue('3,8');
     expect(await french.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
     await testInfo.attach('individual-plants-phone-french', { body: await french.screenshot(), contentType: 'image/png' });

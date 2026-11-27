@@ -145,3 +145,58 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
     expect([...getDirectlyDraggableStemPlans({ ...base, canEdit: false } as never)]).toEqual([]);
   });
 });
+
+describe('useIndividualPlants plant removal (#1727)', () => {
+  beforeEach(() => {
+    listMock.mockReset();
+    saveMock.mockReset();
+  });
+
+  it('removes a plant with its exact total, or only its position while the plant stays planned', async () => {
+    listMock.mockResolvedValue({ results: [plan({ individual_count: 5 })] });
+    saveMock.mockImplementation((_id, _version, data) => Promise.resolve({
+      data: plan({ individual_count: data.individual_count, individual_positions: data.individual_positions }),
+    }));
+    const { result } = renderHook(() => useIndividualPlants(5, season, true));
+    await waitFor(() => expect(result.current.plans).toHaveLength(1));
+
+    let removed = false;
+    await act(async () => { removed = await result.current.removeSavedStems(7, ['b'], 'plant'); });
+    expect(removed).toBe(true);
+    expect(saveMock).toHaveBeenLastCalledWith(7, '2026-05-01T10:00:00Z', {
+      individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }], individual_count: 4,
+    });
+    expect(result.current.plans[0]).toMatchObject({ individual_count: 4 });
+
+    await act(async () => { await result.current.removeSavedStems(7, ['a'], 'position'); });
+    expect(saveMock).toHaveBeenLastCalledWith(7, '2026-05-01T10:00:00Z', {
+      individual_positions: [], individual_count: 4,
+    });
+  });
+
+  it('refuses to remove the last plant or rewrite a total with recorded losses, without saving', async () => {
+    listMock.mockResolvedValue({ results: [
+      plan({ individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }] }),
+      plan({ id: 8, individual_count: 3, crop_loss_count: 1 }),
+    ] });
+    const { result } = renderHook(() => useIndividualPlants(5, season, true));
+    await waitFor(() => expect(result.current.plans).toHaveLength(2));
+
+    await act(async () => {
+      expect(await result.current.removeSavedStems(7, ['a'], 'plant')).toBe(false);
+      expect(await result.current.removeSavedStems(8, ['a'], 'plant')).toBe(false);
+    });
+    expect(saveMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a conflict and reloads instead of keeping a stale plan', async () => {
+    listMock.mockResolvedValue({ results: [plan()] });
+    saveMock.mockRejectedValue(conflict());
+    const { result } = renderHook(() => useIndividualPlants(5, season, true));
+    await waitFor(() => expect(result.current.plans).toHaveLength(1));
+
+    await act(async () => { await result.current.removeSavedStems(7, ['b'], 'position'); });
+    expect(result.current.moveError).toBe('changedElsewhere');
+    await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
+  });
+});

@@ -84,6 +84,20 @@ export async function openGraphicLegend(page: Page, input: 'keyboard' | 'touch' 
   return legend;
 }
 
+/** The contextual individual-plant panel while adding plants or editing a plan's positions (#1727). */
+export const individualPlantsPanel = (page: Page) => page.getByRole('region', {
+  name: /^(Pflanzen hinzufügen|Positionen bearbeiten)$/,
+});
+
+/** Starts adding plants from the workspace toolbar on wide layouts, otherwise from the canvas tools. */
+export async function openAddIndividualPlants(page: Page, input: 'mouse' | 'touch' = 'mouse') {
+  const workspaceAction = page.getByRole('button', { name: 'Einzelpflanzen hinzufügen', exact: true })
+    .and(page.locator(':not([data-testid="graphical-canvas-tools"] *)'));
+  if (await workspaceAction.first().isVisible()) await workspaceAction.first()[input === 'touch' ? 'tap' : 'click']();
+  else await activateCanvasTool(page, 'Einzelpflanzen hinzufügen', input);
+  await expect(individualPlantsPanel(page)).toBeVisible();
+}
+
 export async function activateCanvasTool(page: Page, name: string, input: 'mouse' | 'touch' = 'mouse') {
   const toolbar = page.getByTestId('graphical-canvas-tools');
   await expect(toolbar).toBeVisible();

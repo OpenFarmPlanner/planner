@@ -4,6 +4,7 @@ import {
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import UndoIcon from '@mui/icons-material/Undo';
 import { Link } from 'react-router';
 import type { Bed, Field, Location, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
 import { Disclosure } from '../components/Disclosure';
@@ -104,7 +105,7 @@ export function GraphicalIndividualPlantsPanel({
     panel.current?.focus({ preventScroll: true });
     panel.current?.scrollIntoView({ block: 'nearest' });
   }, []);
-  const { editor, plans, canEdit, update, updateDraft, startDraft, select, changeStem, addStem } = controller;
+  const { editor, plans, update, updateDraft, startDraft, changeStem, addStem } = controller;
   const { draft, placing, saving, selectedKey } = editor;
   const parent = editor.parent;
   const containerFor = (reference: PlacementParent | null) => {
@@ -122,6 +123,8 @@ export function GraphicalIndividualPlantsPanel({
   const coordinatesParent = selectedGraphic?.parent ?? parent;
   const coordinatesContainer = containerFor(coordinatesParent);
   const creating = Boolean(draft && !draft.planId);
+  const lastAdded = [...(draft?.stems ?? [])].reverse().find(stem => stem.key.startsWith('new-'));
+  const pendingPlans = creating ? plans.filter(item => (item.pending_plants_count ?? 0) > 0) : [];
   const [generationOpen, setGenerationOpen] = useState(false);
   const { crops, failed: cropsFailed, loading: cropsLoading, retry: retryCrops } = cropOptions;
   const crop = crops?.find(item => item.id === draft?.crop);
@@ -195,47 +198,26 @@ export function GraphicalIndividualPlantsPanel({
       tabIndex={-1} data-individual-plants-panel sx={{ minWidth: 0, p: 1.5 }}>
       <Stack spacing={1.5}>
         <Stack direction="row" sx={{ justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-          <Typography id={titleId} variant="h6" component="h2">{tr('title')}</Typography>
+          <Typography id={titleId} variant="h6" component="h2">{tr(creating ? 'addTitle' : 'edit')}</Typography>
           <IconButton aria-label={t('common:actions.close')} onClick={closeEditor} disabled={saving}
             sx={{ width: 44, height: 44 }}><CloseIcon /></IconButton>
         </Stack>
-        {controller.failed && <Alert severity="error" action={<LoadRetryButton onClick={controller.refresh} />}>{tr('loadFailed')}</Alert>}
-        {controller.loading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
-        {container && (
-          <Box data-testid="individual-plants-parcel">
-            <Typography variant="caption" color="text.secondary" component="p">
-              {parent?.kind === 'location' ? t('fields:graphical.locationSelector')
-                : parent?.kind === 'bed' ? t('plantingPlans:columns.bed') : tr('parcel')}
+        {!creating && plan && (
+          <Box data-testid="individual-plants-plan">
+            <Typography variant="subtitle1" component="p" sx={{ fontWeight: 600, overflowWrap: 'anywhere' }}>
+              {placementPlanLabel(plan, locale)}
             </Typography>
-            <Typography variant="body1" sx={{ overflowWrap: 'anywhere' }}>{path}</Typography>
+            {path && <Typography variant="body2" color="text.secondary" sx={{ overflowWrap: 'anywhere' }}>{path}</Typography>}
           </Box>
         )}
+        {controller.failed && <Alert severity="error" action={<LoadRetryButton onClick={controller.refresh} />}>{tr('loadFailed')}</Alert>}
+        {controller.loading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
         {draft && !placementContext && <Alert severity="info">{tr('geometryUnknown')}</Alert>}
         {pending > 0 && <Typography role="status" variant="body2">{t('fields:individualPlants.pendingCount', { count: pending, formatted: number(pending, 0) })}</Typography>}
 
-        <Stack component="section" aria-labelledby={`${titleId}-plan`} spacing={1.5}>
-          <Typography id={`${titleId}-plan`} variant="subtitle2" component="h3" sx={sectionTitleSx}>{tr('planSection')}</Typography>
-          {!draft && plans.length > 0 && (
-            <TextField select size="small" label={tr('plan')} value={plan?.id ?? ''} slotProps={{ inputLabel: { shrink: true } }}
-              onChange={event => {
-                const next = plans.find(item => item.id === Number(event.target.value));
-                if (next?.id) select(next.id, planPlacementParent(next), next.individual_positions?.[0]?.id ?? null);
-              }}>
-              {plans.map(item => <MenuItem key={item.id} value={item.id}>
-                {[placementPlanLabel(item, locale), containerFor(planPlacementParent(item))?.name].filter(Boolean).join(' · ')}
-              </MenuItem>)}
-            </TextField>
-          )}
-          {!draft && plan && (
-            <Stack direction="row" sx={{ gap: 1, flexWrap: 'wrap' }}>
-              {canEdit && parent && <Button variant="outlined" disabled={Boolean(plan.id && controller.movingPlans.has(plan.id))}
-                onClick={() => startDraft(parent, plan)}>{tr('edit')}</Button>}
-              {plan.id && <Button component={Link} to={plantingPlanDetailPath(plan.id)}>{tr('details')}</Button>}
-            </Stack>
-          )}
-          {!draft && canEdit && location.id !== undefined && (
-            <Button variant="outlined" disabled={controller.loading || controller.failed}
-              onClick={() => startDraft({ kind: 'location', id: location.id! })}>{tr('newPlan')}</Button>
+        <Stack spacing={1.5}>
+          {!creating && plan?.id && (
+            <Button component={Link} to={plantingPlanDetailPath(plan.id)} sx={{ alignSelf: 'flex-start' }}>{tr('details')}</Button>
           )}
           {cropsFailed && <Alert severity="error" action={<LoadRetryButton onClick={retryCrops} />}>{tr('cropsFailed')}</Alert>}
           {creating && <>
@@ -273,7 +255,33 @@ export function GraphicalIndividualPlantsPanel({
           {(plan || draft) && <SiteSuitabilityHints findings={plan?.site_suitability_findings} scope={parent?.kind} />}
         </Stack>
 
-        {(plan || draft) && <>
+        {creating && stems.length === 0 && pendingPlans.length > 0 && (
+          <Disclosure label={t('fields:individualPlants.pendingPlans', { formatted: number(pendingPlans.length, 0) })}>
+            <Stack component="ul" spacing={0.5} sx={{ listStyle: 'none', p: 0, m: 0, maxHeight: 220, overflowY: 'auto' }}>
+              {pendingPlans.map(item => {
+                const itemParent = planPlacementParent(item);
+                return <Stack key={item.id} component="li" direction="row" sx={{ alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>{placementPlanLabel(item, locale)}</Typography>
+                    <Typography variant="caption" color="text.secondary" component="p" sx={{ overflowWrap: 'anywhere' }}>
+                      {[containerFor(itemParent)?.name, t('fields:individualPlants.pendingCount', {
+                        count: item.pending_plants_count ?? 0, formatted: number(item.pending_plants_count ?? 0, 0) })].filter(Boolean).join(' · ')}
+                    </Typography>
+                  </Box>
+                  <Button size="small" variant="outlined" disabled={saving || !itemParent || Boolean(item.id && controller.movingPlans.has(item.id))}
+                    onClick={() => {
+                      if (!itemParent) return;
+                      startDraft(itemParent, item);
+                      update({ placing: 'add' });
+                      onFocusParent(itemParent);
+                    }}>{tr('placePending')}</Button>
+                </Stack>;
+              })}
+            </Stack>
+          </Disclosure>
+        )}
+
+        {draft && <>
           <Divider />
           <Stack component="section" aria-labelledby={`${titleId}-placement`} spacing={1.5}>
             <Stack direction="row" useFlexGap spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -289,6 +297,10 @@ export function GraphicalIndividualPlantsPanel({
             ) : (
               <Button variant="outlined" disabled={saving || !canAdd} onClick={armPlacement}>{tr('placeOnMap')}</Button>
             ))}
+            {lastAdded && (
+              <Button variant="text" startIcon={<UndoIcon />} disabled={saving} sx={{ alignSelf: 'flex-start' }}
+                onClick={() => changeStem(lastAdded.key, null)}>{tr('undoLastPlacement')}</Button>
+            )}
             {draft && measured && generationGeometry && (
               <Button variant="outlined" disabled={saving || !canAdd || cropsLoading || cropsFailed}
                 onClick={() => setGenerationOpen(true)}>{tr('generation.title')}</Button>
@@ -317,6 +329,7 @@ export function GraphicalIndividualPlantsPanel({
               <Alert severity="warning">{t('fields:individualPlants.shortSpacing', { distance: number(closest) })}</Alert>
             )}
             {stems.length > 0 && (
+              <Disclosure label={t('fields:individualPlants.plantList', { formatted: number(stems.length, 0) })}>
               <Box component="ul" aria-label={tr('position')}
                 sx={{ listStyle: 'none', p: 0, m: 0, maxHeight: 180, overflowY: 'auto' }}>
                 {stems.map((stem, index) => {
@@ -336,6 +349,7 @@ export function GraphicalIndividualPlantsPanel({
                   </Stack>;
                 })}
               </Box>
+              </Disclosure>
             )}
             {draft && coordinatesContainer && parcelMeters(coordinatesContainer) && (
               <Box component="fieldset" disabled={saving} sx={{ m: 0, p: 0, border: 0, minWidth: 0 }}>
@@ -375,7 +389,7 @@ export function GraphicalIndividualPlantsPanel({
           <Alert severity="error" action={editor.error === 'geometryChanged'
             ? <LoadRetryButton onClick={() => { onRefreshGeometry(); update({ error: null }); }} /> : editor.error === 'changedElsewhere'
             ? <LoadRetryButton onClick={() => {
-                update({ draft: null, placing: null, error: null });
+                update({ open: false, draft: null, placing: null, error: null });
                 setInvalidCanopy(false);
                 controller.refresh();
               }} /> : undefined}>{tr(editor.error)}</Alert>
@@ -385,9 +399,9 @@ export function GraphicalIndividualPlantsPanel({
             <Button disabled={saving} onClick={() => {
               setInvalidCanopy(false);
               setCanopyShown(false);
-              update({ draft: null, error: null, placing: null });
+              update({ open: false, draft: null, error: null, placing: null });
             }}>{t('common:actions.cancel')}</Button>
-            <Button variant="contained" disabled={!canSave || placing !== null}
+            <Button variant="contained" disabled={!canSave}
               onClick={() => { void controller.save(placementContext?.scene); }}>
               {t('common:actions.save')}
             </Button>

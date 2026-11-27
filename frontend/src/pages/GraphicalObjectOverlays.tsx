@@ -2,6 +2,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSPrope
 import { Box, Button, IconButton, ListItemIcon, MenuItem, Paper, Stack, Typography } from '@mui/material';
 import { individualPlantCreationAction } from '../planting-plans/individualPlantActions';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import { AppTooltip } from '../components/AppTooltip';
 import ZoomInMapOutlinedIcon from '@mui/icons-material/ZoomInMapOutlined';
 import { ContextMenuHint } from '../components/data-grid/ContextMenuHint';
 import { CustomContextMenu } from '../components/contextMenu/CustomContextMenu';
@@ -9,6 +11,7 @@ import { renderGroupedContextMenuActions } from '../components/contextMenu/conte
 import { useContextMenuOpenRegistration } from '../components/contextMenu/contextMenuOpenState';
 import { useCloseCustomContextMenuOnNativeContextMenu } from '../utils/contextMenu';
 import { GraphicalCropPreview, type CropPreviewData } from './GraphicalCropPreview';
+import { SiteSuitabilityHints } from '../components/planting-plans/rotation/SiteSuitabilityHints';
 import { GraphicalBedHoverDetails } from './GraphicalBedHoverDetails';
 import { BedTaskList } from '../components/tasks/BedTaskList';
 import { bedTaskUrgencyLabel, orderBedTasks, type BedTaskSummary, type bedTaskDateBounds } from '../components/tasks/bedTaskUrgency';
@@ -30,7 +33,6 @@ import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 import type { GraphicalIndividualPlant } from './graphicalIndividualPlants';
 import type { IndividualPlacementAction } from './useIndividualPlants';
 import { individualPositionLimit } from './individualPlantGeneration';
-import { canRemoveIndividualStem } from './individualPlantGeometry';
 
 export interface GraphicalAreaObject {
   key: string;
@@ -96,6 +98,8 @@ interface OverlayProps {
   onStartIndividualPlan?: (object: GraphicalAreaObject) => void;
   canEditPlant: (plant: GraphicalIndividualPlant) => boolean;
   onEditPlant: (plant: GraphicalIndividualPlant, action: IndividualPlacementAction) => void;
+  /** Starts the validated removal of the selected plant; absent for read-only access. */
+  onRemovePlant?: (plant: GraphicalIndividualPlant) => void;
   onFocusObject: (rect: Rect) => void;
   onZoomObject: (rect: Rect) => void;
   zoomOnly?: boolean;
@@ -144,7 +148,7 @@ const objectTargetsSx = {
 
 export function GraphicalObjectOverlays({
   interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onOpenCrop, onStartIndividualPlan,
-  canEditPlant, onEditPlant, onFocusObject, onZoomObject, zoomOnly, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
+  canEditPlant, onEditPlant, onRemovePlant, onFocusObject, onZoomObject, zoomOnly, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
   canComplete, showLocationLabel,
 }: OverlayProps) {
   const { t, i18n } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard', 'plantingPlans']);
@@ -249,6 +253,8 @@ export function GraphicalObjectOverlays({
       {occupation && <Typography variant="caption" color="text.secondary">{occupation}</Typography>}
       {outside && <Typography variant="caption" color="text.secondary">{t('graphical.display.outsideCropPeriod')}</Typography>}
       {!compact && parent && <Typography variant="caption" color="text.secondary">{parent.name}</Typography>}
+      {!compact && <PlantCounts plant={plant} />}
+      {!compact && <SiteSuitabilityHints findings={plant.plan.site_suitability_findings} scope={plant.parent.kind} />}
     </>;
   };
   const plantMenuActions = (plant: GraphicalIndividualPlant) => {
@@ -262,10 +268,19 @@ export function GraphicalObjectOverlays({
         { id: 'edit-stems', group: 'placement', label: t('individualPlants.editPlants'), activate: () => onEditPlant(plant, 'edit') },
         { id: 'add-stem', group: 'placement', label: t('individualPlants.newPosition'), disabled: plant.count >= individualPositionLimit(plant.plan.individual_count),
           activate: () => onEditPlant(plant, 'add') },
-        { id: 'remove-stem', group: 'remove', label: t('individualPlants.removePosition'), disabled: !canRemoveIndividualStem(plant.count, plant.plan.individual_count),
-          activate: () => onEditPlant(plant, 'remove') },
       ]),
+      ...(editAllowed && onRemovePlant ? [{ id: 'remove-plant', group: 'remove', label: t('individualPlants.removal.title'),
+        activate: () => { close(); onRemovePlant(plant); } }] : []),
     ];
+  };
+
+  // Delete (Entf) removes only the exact focused or selected plant, never from a text field or a held key.
+  const removeWithDeleteKey = (event: KeyboardEvent<HTMLElement>, plant: GraphicalIndividualPlant) => {
+    if (event.key !== 'Delete' || event.repeat || !onRemovePlant || !canEditPlant(plant)) return;
+    if ((event.target as HTMLElement).closest('input, textarea, select, [contenteditable="true"]')) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onRemovePlant(plant);
   };
 
   const detailsLabel = t('graphical.objects.viewDetails');
@@ -362,7 +377,10 @@ export function GraphicalObjectOverlays({
             }}
             onKeyDown={event => {
               keyboardMenu(event, object.key);
-              if (object.type === 'plant') keyboardPlant(event, object);
+              if (object.type === 'plant') {
+                keyboardPlant(event, object);
+                removeWithDeleteKey(event, object);
+              }
             }}
             onPointerDown={event => {
               if (!visibleLabel || event.button !== 0 || !event.isPrimary) return;
@@ -427,6 +445,7 @@ export function GraphicalObjectOverlays({
       )}
       {selection && (
         <Paper ref={preview} tabIndex={-1} role="region" aria-labelledby={titleId} data-testid="graphical-object-preview"
+          onKeyDown={selection.type === 'plant' ? event => removeWithDeleteKey(event, selection) : undefined}
           elevation={6} sx={{
             position: 'absolute', zIndex: 3, width: previewWidth, left: beside ? rightOfObject : previewLeft, p: 1.5,
             maxHeight: previewHeight, overflowY: 'auto', touchAction: 'pan-y', overscrollBehavior: 'contain',
@@ -434,7 +453,15 @@ export function GraphicalObjectOverlays({
           }}>
           <Stack spacing={0.5}>
             <Stack direction="row" sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
-              <Typography id={titleId} component="h2" variant="subtitle2" sx={{ overflowWrap: 'anywhere' }}>{selection.name}</Typography>
+              <Typography id={titleId} component="h2" variant="subtitle2" sx={{ overflowWrap: 'anywhere', flex: 1 }}>{selection.name}</Typography>
+              {selection.type === 'plant' && onRemovePlant && canEditPlant(selection) && (
+                <AppTooltip title={t('individualPlants.removal.title')}>
+                  <IconButton size="small" color="error" aria-label={t('individualPlants.removal.title')} aria-keyshortcuts="Delete"
+                    onClick={() => onRemovePlant(selection)} sx={{ width: 36, height: 36 }}>
+                    <DeleteOutlineIcon fontSize="small" />
+                  </IconButton>
+                </AppTooltip>
+              )}
               <IconButton size="small" aria-label={t('common:actions.close')} onClick={() => {
                 close();
                 (keyboardPreview.current ?? targets.current.get(selection.key))?.focus({ preventScroll: true });
@@ -459,11 +486,19 @@ export function GraphicalObjectOverlays({
               noOpenTasksLabel={noPlantTasks} onOpenDetails={() => openDetails(selection)} />}
             <Button size="small" onClick={() => openDetails(selection)} sx={{ alignSelf: 'flex-start', minHeight: 44 }}>
               {selection.type === 'plant' ? t('plantingPlans:details.title') : detailsLabel}</Button>
-            {selection.type === 'plant' && canEditPlant(selection) && <Button size="small" onClick={() => onEditPlant(selection, 'edit')}
-              sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.editPlants')}</Button>}
+            {selection.type === 'plant' && canEditPlant(selection) && (
+              <Stack direction="row" sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+                <Button size="small" variant="outlined" onClick={() => onEditPlant(selection, 'edit')}
+                  sx={{ minHeight: 44 }}>{t('individualPlants.edit')}</Button>
+                {(selection.plan.pending_plants_count ?? 0) > 0 && (
+                  <Button size="small" onClick={() => onEditPlant(selection, 'add')} sx={{ minHeight: 44 }}>
+                    {t('individualPlants.placePending')}</Button>
+                )}
+              </Stack>
+            )}
             {onStartIndividualPlan && selection.type !== 'plant' && (
               <Button size="small" onClick={() => onStartIndividualPlan(selection)}
-                sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.newPlan')}</Button>
+                sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.addPlants')}</Button>
             )}
           </Stack>
         </Paper>
@@ -507,4 +542,23 @@ export function GraphicalObjectHint({ device, onClose }: {
       position: 'absolute', bottom: 52, left: 0, pointerEvents: 'auto',
       maxWidth: 'min(680px, calc(100% - 112px))',
     }} />;
+}
+
+function PlantCounts({ plant }: { plant: GraphicalIndividualPlant }) {
+  const { t } = useTranslation('fields');
+  const positioned = plant.plan.individual_positions?.length ?? plant.count;
+  const total = plant.plan.individual_count ?? plant.plan.plants_count ?? positioned;
+  const pending = plant.plan.pending_plants_count ?? Math.max(0, total - positioned);
+  const canopy = Number(plant.plan.estimated_canopy_diameter_m ?? 0);
+  const spacing = Number(plant.plan.recommended_plant_spacing_m ?? 0);
+  return <>
+    <Typography variant="caption" data-testid="individual-plant-counts">
+      {t('individualPlants.positionedOfTotal', { positioned: numberText(positioned), total: numberText(total) })}
+      {pending > 0 && ` · ${t('individualPlants.pendingCount', { count: pending, formatted: numberText(pending) })}`}
+    </Typography>
+    {canopy > 0 && <Typography variant="caption" color="text.secondary">
+      {t('individualPlants.canopyValue', { distance: numberText(canopy) })}</Typography>}
+    {spacing > 0 && <Typography variant="caption" color="text.secondary">
+      {t('individualPlants.spacing', { distance: numberText(spacing) })}</Typography>}
+  </>;
 }

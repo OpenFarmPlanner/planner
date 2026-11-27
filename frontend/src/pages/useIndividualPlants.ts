@@ -5,7 +5,10 @@ import type {
   GraphicPlacementScene, GraphicStemPoint, IndividualPlacementInput, PlantingPlan, PlanCultivationType, Season, StemCoordinates,
 } from '../api/types';
 import { formatDateToAPI } from '../utils/isoDate';
-import { canRemoveIndividualStem, placementParentFields, planPlacementParent, type PlacementParent } from './individualPlantGeometry';
+import {
+  canRemoveIndividualStem, individualCountAfterRemoval, individualRemovalBlock, placementParentFields, planPlacementParent,
+  type IndividualRemovalMode, type PlacementParent,
+} from './individualPlantGeometry';
 import { individualPositionLimit } from './individualPlantGeneration';
 
 type PointToAdd = StemCoordinates & { graphic?: GraphicStemPoint };
@@ -225,7 +228,7 @@ export function useIndividualPlants(
       } : value);
       const plan = saved.find(item => item.id === draft.planId) ?? saved[0];
       update({
-        draft: null, saving: false, planId: plan?.id ?? null,
+        draft: null, open: false, saving: false, planId: plan?.id ?? null,
         parent: plan ? planPlacementParent(plan) : null,
         selectedKey: plan?.individual_positions?.[0]?.id ?? null,
       });
@@ -284,8 +287,43 @@ export function useIndividualPlants(
     }
   };
 
+  // Removes saved positions of one plan in a single validated save (#1727): either the plants
+  // themselves (lower planned total) or only their positions (plants stay pending).
+  const removeSavedStems = async (planId: number, stemIds: readonly string[], mode: IndividualRemovalMode) => {
+    const plan = plans.find(item => item.id === planId);
+    if (!canEdit || !plan?.updated_at || movingPlans.has(planId) || saving.current || editor.draft) return false;
+    const before = plan.individual_positions ?? [];
+    const positions = before.filter(stem => !stemIds.includes(stem.id));
+    const removed = before.length - positions.length;
+    if (!removed || individualRemovalBlock(plan, removed, mode)) return false;
+    const generation = loadGeneration.current;
+    setMoveFailure(null);
+    setMovingPlans(value => new Set(value).add(planId));
+    try {
+      const { data } = await plantingPlanAPI.saveIndividualPlacement(planId, plan.updated_at, {
+        individual_positions: positions.map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
+        individual_count: individualCountAfterRemoval(plan, removed, mode),
+      });
+      setResult(value => value?.key === key && loadGeneration.current === generation ? {
+        ...value, plans: value.plans.map(item => item.id === planId ? data : item),
+      } : value);
+      return true;
+    } catch (error) {
+      if (loadGeneration.current !== generation) return false;
+      setMoveFailure({ scope, error: saveError(error) });
+      if (isAxiosError(error) && error.response?.status === 409) setAttempt(value => value + 1);
+      return false;
+    } finally {
+      setMovingPlans(value => {
+        const next = new Set(value);
+        next.delete(planId);
+        return next;
+      });
+    }
+  };
+
   return {
-    plans, editor, canEdit, update, updateDraft, select, startDraft, addStem, addStems, changeStem, save,
+    plans, editor, canEdit, update, removeSavedStems, updateDraft, select, startDraft, addStem, addStems, changeStem, save,
     moveSavedStem, movingPlans, moveError: moveFailure?.scope === scope ? moveFailure.error : null,
     reportMoveError: (error: PlacementError) => setMoveFailure({ scope, error }),
     loading: Boolean(scope) && !current, failed: current?.failed ?? false,

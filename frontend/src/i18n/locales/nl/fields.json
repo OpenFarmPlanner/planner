@@ -268,7 +268,7 @@
     "noCrops": "Voeg eerst een gewas toe.",
     "finishPlaceOnMap": "Plaatsing beëindigen",
     "placementNeedsInputs": "Kies een gewas, een teeltmethode en een plantdatum binnen het seizoen.",
-    "positionIndex": "Stengel {{index}}",
+    "positionIndex": "Plant {{index}}",
     "positionInPlan": "Plant {{index}} van {{total}}",
     "noOpenTasks": "Geen openstaande taken voor dit teeltplan.",
     "bedDimensionsConflict": "Alle opgeslagen stengelposities moeten binnen het bed liggen.",
@@ -294,6 +294,22 @@
     "saveFailed": "Individuele planten konden niet worden opgeslagen.",
     "changedElsewhere": "Het teeltplan is tijdens het bewerken gewijzigd. Opnieuw laden verwijdert je concept.",
     "count_one": "{{formatted}} individuele plant",
-    "count_other": "{{formatted}} individuele planten"
+    "count_other": "{{formatted}} individuele planten",
+    "addTitle": "Planten toevoegen",
+    "placePending": "Planten plaatsen",
+    "pendingPlans": "Nog niet geplaatste planten ({{formatted}})",
+    "plantList": "Planten ({{formatted}})",
+    "undoLastPlacement": "Laatste plaatsing ongedaan maken",
+    "positionedOfTotal": "{{positioned}} van {{total}} geplaatst",
+    "canopyValue": "Geschatte kroondiameter: {{distance}} m",
+    "removal": {
+      "title": "Plant verwijderen",
+      "plant": "Plant verwijderen",
+      "plantHint": "Het geplande aantal daalt van {{from}} naar {{to}}.",
+      "position": "Alleen positie verwijderen",
+      "positionHint": "De plant blijft gepland en telt als nog niet geplaatst.",
+      "finalPlant": "Een teelt houdt minstens één plant. Verwijder zo nodig de hele teelt.",
+      "actualRecords": "Voor deze teelt zijn oogsten of uitval vastgelegd. Leg uitval vast in de teeltgegevens in plaats van het geplande aantal te wijzigen."
+    }
   }
 }

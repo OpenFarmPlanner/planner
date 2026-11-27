@@ -268,7 +268,7 @@
     "noCrops": "Add a crop first.",
     "finishPlaceOnMap": "Finish placing",
     "placementNeedsInputs": "Choose a crop, a cultivation method and a planting date within the season.",
-    "positionIndex": "Stem {{index}}",
+    "positionIndex": "Plant {{index}}",
     "positionInPlan": "Plant {{index}} of {{total}}",
     "noOpenTasks": "No open tasks for this planting plan.",
     "bedDimensionsConflict": "The bed dimensions must contain every saved stem position.",
@@ -294,6 +294,22 @@
     "saveFailed": "Could not save the individual plants.",
     "changedElsewhere": "The plan changed while you were editing. Reloading discards this draft.",
     "count_one": "{{formatted}} individual plant",
-    "count_other": "{{formatted}} individual plants"
+    "count_other": "{{formatted}} individual plants",
+    "addTitle": "Add plants",
+    "placePending": "Position plants",
+    "pendingPlans": "Plants not yet positioned ({{formatted}})",
+    "plantList": "Plants ({{formatted}})",
+    "undoLastPlacement": "Undo last placement",
+    "positionedOfTotal": "{{positioned}} of {{total}} positioned",
+    "canopyValue": "Estimated canopy diameter: {{distance}} m",
+    "removal": {
+      "title": "Remove plant",
+      "plant": "Remove plant",
+      "plantHint": "The planned number drops from {{from}} to {{to}}.",
+      "position": "Remove position only",
+      "positionHint": "The plant stays planned and counts as not yet positioned.",
+      "finalPlant": "A planting plan keeps at least one plant. Delete the whole planting plan if needed.",
+      "actualRecords": "Harvests or losses are recorded for this planting plan. Record a loss in the plan details instead of changing the planned number."
+    }
   }
 }

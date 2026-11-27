@@ -274,7 +274,7 @@
     "noCrops": "Adicione primeiro uma cultura.",
     "finishPlaceOnMap": "Concluir a colocação",
     "placementNeedsInputs": "Selecione uma cultura, um método de cultivo e uma data de plantação dentro da época.",
-    "positionIndex": "Caule {{index}}",
+    "positionIndex": "Planta {{index}}",
     "positionInPlan": "Planta {{index}} de {{total}}",
     "noOpenTasks": "Não há tarefas em aberto para este plano de cultivo.",
     "bedDimensionsConflict": "Todas as posições de caules guardadas devem ficar dentro do canteiro.",
@@ -301,6 +301,22 @@
     "changedElsewhere": "O plano foi alterado durante a edição. Ao recarregar, o rascunho será descartado.",
     "count_one": "{{formatted}} planta individual",
     "count_other": "{{formatted}} plantas individuais",
-    "count_many": "{{formatted}} plantas individuais"
+    "count_many": "{{formatted}} plantas individuais",
+    "addTitle": "Adicionar plantas",
+    "placePending": "Posicionar plantas",
+    "pendingPlans": "Plantas ainda sem posição ({{formatted}})",
+    "plantList": "Plantas ({{formatted}})",
+    "undoLastPlacement": "Desfazer a última colocação",
+    "positionedOfTotal": "{{positioned}} de {{total}} posicionadas",
+    "canopyValue": "Diâmetro estimado da copa: {{distance}} m",
+    "removal": {
+      "title": "Remover planta",
+      "plant": "Remover planta",
+      "plantHint": "O número previsto desce de {{from}} para {{to}}.",
+      "position": "Remover só a posição",
+      "positionHint": "A planta continua prevista e conta como ainda sem posição.",
+      "finalPlant": "Uma série mantém pelo menos uma planta. Se necessário, elimine a série inteira.",
+      "actualRecords": "Esta série tem colheitas ou perdas registadas. Registe uma perda nos detalhes da série em vez de alterar o número previsto."
+    }
   }
 }

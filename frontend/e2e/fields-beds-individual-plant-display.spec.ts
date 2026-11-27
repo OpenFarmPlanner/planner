@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { Crop, Field, IndividualPlantPosition, PaginatedResponse, PlantingPlan, Task } from '../src/api/types';
-import { apiRequest, canvasInteractionPoint, loginWithDeterministicProject, selectGraphicDisplay } from './utils';
+import { apiRequest, canvasInteractionPoint, loginWithDeterministicProject, selectGraphicDisplay, individualPlantsPanel } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -199,9 +199,9 @@ test('shows phases and shared plan tasks on orchard and mixed-bed markers in all
   expect(await apiRequest(page, 'GET', `/planting-plans/${area.id}/`)).toMatchObject({ placement_mode: 'area' });
 });
 
-test('opens exact plan actions by keyboard and saves a position removal through the draft', async ({ page, request }) => {
+test('opens exact plan actions by keyboard and removes the selected plant directly from Graphic', async ({ page, request }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
-  const { plan, bed } = await fixture(page, request, 'individual-display-context');
+  const { plan } = await fixture(page, request, 'individual-display-context');
   const [first, second] = plan.individual_positions;
   await openGraphic(page);
   await expect(stemTarget(page, first.id)).toHaveAccessibleName(/Pflanze 1 von 2/);
@@ -210,28 +210,53 @@ test('opens exact plan actions by keyboard and saves a position removal through 
   await expect(stemTarget(page, second.id)).toBeFocused();
   await page.keyboard.press('Shift+F10');
   const menu = page.getByRole('menu');
-  for (const label of ['Anbauplan-Details', 'Zur Kultur', 'Einzelpflanzen bearbeiten', 'Neue Stammposition', 'Position entfernen']) {
-    await expect(menu.getByRole('menuitem', { name: label, exact: true })).toBeVisible();
-  }
-  await menu.getByRole('menuitem', { name: 'Position entfernen' }).click();
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
-  await expect(panel.getByTestId('individual-plants-parcel')).toContainText(bed.name);
-  await expect(panel.getByText('1 Einzelpflanze', { exact: true })).toBeVisible();
+  const labels = ['Anbauplan-Details', 'Zur Kultur', 'Einzelpflanzen bearbeiten', 'Neue Stammposition', 'Pflanze entfernen'];
+  await expect(menu.getByRole('menuitem')).toHaveText(labels);
+  await page.keyboard.press('Escape');
   const read = () => apiRequest<SavedPlantPlan>(page, 'GET', `/planting-plans/${plan.id}/`);
+
+  // Delete (Entf) on the focused marker opens the same validated removal; a held key does nothing more.
+  await stemTarget(page, second.id).focus();
+  await page.keyboard.press('Delete');
+  const removal = page.getByRole('dialog', { name: 'Pflanze entfernen' });
+  // The demo plan has recorded outcomes: its planned total stays, only the position can be cleared.
+  await expect(removal.getByRole('radio', { name: /^Pflanze entfernen/ })).toBeDisabled();
+  await expect(removal.getByRole('radio', { name: /^Nur Position entfernen/ })).toBeChecked();
+  await expect(removal).toContainText('Ernten oder Ausfälle erfasst');
+  await removal.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(removal).toBeHidden();
   expect((await read()).individual_positions).toEqual(plan.individual_positions);
-  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+
+  await clickStem(page, second.id);
+  const inspector = page.getByTestId('graphical-object-preview');
+  await expect(inspector.getByTestId('individual-plant-counts')).toHaveText('2 von 2 positioniert');
+  await inspector.getByRole('button', { name: 'Pflanze entfernen', exact: true }).click();
+  const before = await read();
+  await removal.getByRole('button', { name: 'Nur Position entfernen', exact: true }).click();
   await expect.poll(async () => (await read()).individual_positions).toEqual([first]);
-  await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
-  await panel.getByRole('button', { name: 'Schließen' }).click();
+  expect(await read()).toMatchObject({ plants_count: before.plants_count, pending_plants_count: 1 });
+  await expect(stemTarget(page, second.id)).toHaveCount(0);
+
+  // The last plant of a plan cannot be removed; clearing its position keeps it planned.
   await clickStem(page, first.id, 'right');
-  await expect(menu.getByRole('menuitem', { name: 'Position entfernen' })).toBeDisabled();
+  await menu.getByRole('menuitem', { name: 'Pflanze entfernen' }).click();
+  await expect(removal.getByRole('radio', { name: /^Pflanze entfernen/ })).toBeDisabled();
+  await expect(removal.getByRole('radio', { name: /^Nur Position entfernen/ })).toBeChecked();
+  await removal.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+  await expect(removal).toBeHidden();
+  await clickStem(page, first.id, 'right');
   await menu.getByRole('menuitem', { name: 'Neue Stammposition' }).click();
+  const panel = individualPlantsPanel(page);
   await expect(panel.getByRole('button', { name: 'Platzierung beenden' })).toBeVisible();
   await panel.getByRole('button', { name: 'Abbrechen', exact: true }).click();
-  await panel.getByRole('button', { name: 'Schließen' }).click();
+  await expect(panel).toHaveCount(0);
   await page.reload();
   await expect(stemTarget(page, first.id)).toHaveAccessibleName(/Pflanze 1 von 1/);
   await expect(stemTarget(page, second.id)).toHaveCount(0);
+  await clickStem(page, first.id);
+  await expect(page.getByTestId('graphical-object-preview').getByTestId('individual-plant-counts'))
+    .toHaveText(`1 von ${before.plants_count} positioniert · 1 noch nicht positioniert`);
+  await page.keyboard.press('Escape');
   await stemTarget(page, first.id).press('Shift+F10');
   await menu.getByRole('menuitem', { name: 'Anbauplan-Details' }).click();
   await expect(page).toHaveURL(new RegExp(`/app/planting-plans/${plan.id}$`));

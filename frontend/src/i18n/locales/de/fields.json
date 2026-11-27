@@ -268,7 +268,7 @@
     "noCrops": "Lege zuerst eine Kultur an.",
     "finishPlaceOnMap": "Platzierung beenden",
     "placementNeedsInputs": "Wähle eine Kultur, eine Anbauart und einen Pflanztermin innerhalb der Saison.",
-    "positionIndex": "Stamm {{index}}",
+    "positionIndex": "Pflanze {{index}}",
     "positionInPlan": "Pflanze {{index}} von {{total}}",
     "noOpenTasks": "Keine offenen Aufgaben für diesen Anbauplan.",
     "bedDimensionsConflict": "Alle gespeicherten Stammpositionen müssen innerhalb des Beets liegen.",
@@ -294,6 +294,22 @@
     "saveFailed": "Die Einzelpflanzen konnten nicht gespeichert werden.",
     "changedElsewhere": "Der Anbauplan wurde zwischenzeitlich geändert. Beim Neuladen wird der Entwurf verworfen.",
     "count_one": "{{formatted}} Einzelpflanze",
-    "count_other": "{{formatted}} Einzelpflanzen"
+    "count_other": "{{formatted}} Einzelpflanzen",
+    "addTitle": "Pflanzen hinzufügen",
+    "placePending": "Pflanzen positionieren",
+    "pendingPlans": "Noch nicht positionierte Pflanzen ({{formatted}})",
+    "plantList": "Pflanzen ({{formatted}})",
+    "undoLastPlacement": "Letzte Platzierung rückgängig",
+    "positionedOfTotal": "{{positioned}} von {{total}} positioniert",
+    "canopyValue": "Kronendurchmesser (geschätzt): {{distance}} m",
+    "removal": {
+      "title": "Pflanze entfernen",
+      "plant": "Pflanze entfernen",
+      "plantHint": "Die geplante Anzahl sinkt von {{from}} auf {{to}}.",
+      "position": "Nur Position entfernen",
+      "positionHint": "Die Pflanze bleibt geplant und zählt als noch nicht positioniert.",
+      "finalPlant": "Ein Anbauplan behält mindestens eine Pflanze. Lösche bei Bedarf den ganzen Anbauplan.",
+      "actualRecords": "Für diesen Anbauplan sind Ernten oder Ausfälle erfasst. Erfasse einen Ausfall in den Plandetails, statt die geplante Anzahl zu ändern."
+    }
   }
 }

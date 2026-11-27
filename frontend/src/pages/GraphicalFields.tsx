@@ -47,6 +47,7 @@ import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndi
 import { getIndividualPlantLabels, individualPlantObjectKey, placeIndividualPlantObjects, projectIndividualPlants,
   type GraphicalIndividualPlant } from "./graphicalIndividualPlants";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
+import { IndividualPlantRemovalDialog } from "./IndividualPlantRemovalDialog";
 import { GraphicalFreePlantPlacement } from "./GraphicalFreePlantPlacement";
 import { GraphicalAreaAnnotations } from './GraphicalAreaAnnotations';
 import { useGraphicalAnnotationOverlays } from './useGraphicalAnnotationOverlays';
@@ -141,6 +142,7 @@ export default function GraphicalFields({
   editRequestedIndividualPlan,
   individualCreationTarget,
   onIndividualCreationHandled,
+  individualPlantsInWorkspaceToolbar = false,
   onOpenDetails,
   onOpenIndividualPlan,
   onOpenIndividualCrop,
@@ -166,6 +168,7 @@ export default function GraphicalFields({
   );
   const activeDraft = individualPlants.editor.draft;
   const cropOptions = usePlacementCrops(activeDraft && !activeDraft.planId ? 'all' : activeDraft?.crop ?? null);
+  const [removingPlant, setRemovingPlant] = useState<GraphicalIndividualPlant | null>(null);
   const [placementCursor, setPlacementCursor] = useState<{ location: number; point: Point } | null>(null);
   const [draggedStem, setDraggedStem] = useState<{ location: number; key: string; point: Point } | null>(null);
   const [plantDistanceGuide, setPlantDistanceGuide] = useState<{ location: number; guide: PlantDistanceGuide } | null>(null);
@@ -175,7 +178,7 @@ export default function GraphicalFields({
   } | null>(null);
   const showCrops = includesCrops(displayMode);
   const plantCropReference = showCrops ? cropReference : undefined;
-  const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
+  const focusedPlanId = individualPlants.editor.draft ? individualPlants.editor.draft.planId ?? null : null;
   const measureText = useMemo(() => ({
     plant: createCanvasTextMeasurer('11px Arial, sans-serif'),
     location: createCanvasTextMeasurer('12px Arial, sans-serif'),
@@ -614,27 +617,59 @@ export default function GraphicalFields({
     locationCanvasRefs.current[activeLocationId]?.scrollIntoView({ block: 'nearest' });
   };
 
+  // A plan opened from List, the plan details or a deep link starts in the plant inspector, or
+  // in the position editor when the plan still has no positioned plant to inspect.
+  const revealRequestedPlan = useEventCallback(() => {
+    const { open, draft, planId, parent, selectedKey } = individualPlants.editor;
+    if (!open || draft || planId === null) return;
+    const key = selectedKey ? individualPlantObjectKey(selectedKey) : null;
+    if (key && objectModel.has(key)) {
+      if (!areaInteractionEnabled) return;
+      if (parent) focusIndividualParent(parent);
+      objects.select(key);
+      individualPlants.update({ open: false });
+      return;
+    }
+    const plan = individualPlants.plans.find(item => item.id === planId);
+    if (!selectedKey && plan && parent && individualPlants.canEdit) {
+      individualPlants.startDraft(parent, plan);
+      individualPlants.update({ placing: 'add' });
+    }
+  });
+  useEffect(() => {
+    // After the interaction's own reset on enabling, which clears any earlier selection.
+    if (layoutReady && areaInteractionEnabled) queueMicrotask(revealRequestedPlan);
+  }, [individualPlants.editor, objectModel, layoutReady, areaInteractionEnabled, revealRequestedPlan]);
+
+  // An open draft keeps its unsaved positions: a repeated add request only reveals it.
+  const keepOpenDraft = () => {
+    if (!individualPlants.editor.draft) return false;
+    individualPlants.update({ open: true });
+    return true;
+  };
   const startTargetedIndividualPlan = useEventCallback((parent: PlacementParent) => {
+    if (keepOpenDraft()) return;
     objects.close();
     setPlacementCursor(null);
     individualPlants.startDraft(parent, undefined, undefined, true);
     focusIndividualParent(parent);
   });
-  const startAutomaticIndividualPlan = (reference?: PlacementParent) => {
-    if (activeLocationId === null) return;
+  const startAutomaticIndividualPlan = useEventCallback((reference?: PlacementParent) => {
+    if (activeLocationId === null || keepOpenDraft()) return;
     objects.close();
     setPlacementCursor(null);
     individualPlants.startDraft(reference ?? { kind: 'location', id: activeLocationId });
-  };
+  });
   const focusRequestedIndividualPlan = useEventCallback(focusIndividualParent);
   const focusedRequest = useRef<string | null>(null);
   useEffect(() => {
     if (!individualCreationTarget || !individualSeason || !canEditIndividualPlants || loading || !layoutReady
       || layoutFailed || activeLocationId !== individualCreationTarget.locationId) return;
-    startTargetedIndividualPlan(individualCreationTarget.parent);
+    if (individualCreationTarget.free) startAutomaticIndividualPlan(individualCreationTarget.parent);
+    else startTargetedIndividualPlan(individualCreationTarget.parent);
     onIndividualCreationHandled?.();
   }, [individualCreationTarget, activeLocationId, individualSeason, canEditIndividualPlants, loading, layoutReady,
-    layoutFailed, onIndividualCreationHandled, startTargetedIndividualPlan]);
+    layoutFailed, onIndividualCreationHandled, startTargetedIndividualPlan, startAutomaticIndividualPlan]);
   useEffect(() => {
     const { parent, planId, open } = individualPlants.editor;
     if (!requestedIndividualPlan || planId !== requestedIndividualPlan || !parent || !open || !layoutReady || layoutFailed) return;
@@ -1157,8 +1192,8 @@ export default function GraphicalFields({
           }
           const contentBounds = getContentBoundsForLocation(locationId);
           const locationIsEditable = isLocationEditMode(locationId);
-          const showIndividualPanel = individualSeason && individualPlants.editor.open && !locationIsEditable
-            && fullscreenLocationId !== locationId;
+          const showIndividualPanel = individualSeason && individualPlants.editor.open && individualPlants.editor.draft
+            && !locationIsEditable && fullscreenLocationId !== locationId;
           const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
           const localPlacement = !placementContext && stemDraft
             ? createParentLocalPlacement(stemDraft.parent, parcels, rotation) : null;
@@ -1465,7 +1500,7 @@ export default function GraphicalFields({
 
           return (
             <Box key={locationId} role="region" aria-label={t("fields:graphical.locationTitle", { name: location.name })}>
-                {locationIsEditable && individualPlants.moveError ? (
+                {individualPlants.moveError ? (
                   <Alert severity="error" sx={{ mb: 1.5 }}>{t(`fields:individualPlants.${individualPlants.moveError}`)}</Alert>
                 ) : null}
                 {layoutSaveErrorLocation === locationId ? (
@@ -1510,10 +1545,11 @@ export default function GraphicalFields({
                     }}
                     warnings={<GraphicalGeometryWarnings t={t} parcels={parcels} analysis={geometry}
                       outsideParcels={fieldsOutsideBoundary} focusArea={focusArea} />}
-                    individualPlants={individualSeason && !locationIsEditable && fullscreenLocationId !== locationId ? {
+                    individualPlants={individualSeason && individualPlants.canEdit && !individualPlantsInWorkspaceToolbar
+                      && !locationIsEditable && fullscreenLocationId !== locationId ? {
                       active: Boolean(showIndividualPanel),
-                      toggle: () => individualPlants.update({ open: !showIndividualPanel, placing: null }),
-                      add: individualPlants.canEdit && !individualPlants.editor.draft ? () => startAutomaticIndividualPlan() : undefined,
+                      toggle: () => individualPlants.update({ open: true }),
+                      add: !individualPlants.editor.draft ? () => startAutomaticIndividualPlan() : undefined,
                     } : undefined}
                   />
                   {fullscreenLocationId === locationId && fullscreenWorkspaceControls && (
@@ -1763,7 +1799,8 @@ export default function GraphicalFields({
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
                     openDetails={details} onOpenCrop={onOpenIndividualCrop} onFocusObject={focusArea} onZoomObject={zoomToArea}
                     zoomOnly={areaZoomOnly}
-                    canEditPlant={canEditPlant} onEditPlant={editPlant} bedTasks={previewTasks} plantTasks={bedTasks} cropPreview={cropPreview}
+                    canEditPlant={canEditPlant} onEditPlant={editPlant}
+                    onRemovePlant={individualPlants.canEdit ? plant => setRemovingPlant(plant) : undefined} bedTasks={previewTasks} plantTasks={bedTasks} cropPreview={cropPreview}
                     onStartIndividualPlan={individualSeason && individualPlants.canEdit && !individualPlants.editor.draft ? object => {
                       const parent = { kind: object.type, id: object.id };
                       if (fullscreenLocationId === locationId) {
@@ -1781,6 +1818,16 @@ export default function GraphicalFields({
                     } : undefined}
                     seasonId={activeSeasonId} canComplete={canCompleteTasks} showLocationLabel={showFallbackLocationLabel} />}
                 </Box>
+                {removingPlant && (
+                  <IndividualPlantRemovalDialog plant={removingPlant} onCancel={() => setRemovingPlant(null)}
+                    onConfirm={mode => {
+                      const plant = removingPlant;
+                      setRemovingPlant(null);
+                      void individualPlants.removeSavedStems(plant.id, [plant.stemId], mode).then(removed => {
+                        if (removed) objects.close();
+                      });
+                    }} />
+                )}
                 {showIndividualPanel && (
                   <GraphicalIndividualPlantsPanel location={location} fields={parcels.map(({ field }) => field)} beds={beds}
                     season={individualSeason} controller={individualPlants} cropOptions={cropOptions}

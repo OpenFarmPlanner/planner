@@ -8,6 +8,36 @@ export function canRemoveIndividualStem(positioned: number, exactCount?: number 
   return positioned > 1 || (exactCount ?? 0) > 0;
 }
 
+export type IndividualRemovalMode = 'plant' | 'position';
+export type IndividualRemovalBlock = 'finalPlant' | 'actualRecords';
+
+/** Whether a plan has recorded actual outcomes that a planned-quantity correction must not rewrite. */
+export function hasActualIndividualRecords(plan: Pick<PlantingPlan, 'actual_harvest' | 'crop_loss_count' | 'harvest_actual_occurrences'>) {
+  return Boolean(plan.actual_harvest) || (plan.crop_loss_count ?? 0) > 0 || (plan.harvest_actual_occurrences?.length ?? 0) > 0;
+}
+
+/**
+ * Removing a plant lowers the plan's planned total; removing a position keeps the plant as
+ * pending. A plan keeps at least one plant, and a total with recorded outcomes stays unchanged.
+ */
+export function individualRemovalBlock(
+  plan: Pick<PlantingPlan, 'individual_count' | 'individual_positions' | 'actual_harvest' | 'crop_loss_count' | 'harvest_actual_occurrences'>,
+  removed: number, mode: IndividualRemovalMode,
+): IndividualRemovalBlock | null {
+  if (mode === 'position') return null;
+  const positioned = plan.individual_positions?.length ?? 0;
+  if ((plan.individual_count ?? positioned) - removed < 1) return 'finalPlant';
+  return hasActualIndividualRecords(plan) ? 'actualRecords' : null;
+}
+
+/** The exact total after the removal; null keeps a plan without an exact total counted by its positions. */
+export function individualCountAfterRemoval(
+  plan: Pick<PlantingPlan, 'individual_count' | 'individual_positions'>, removed: number, mode: IndividualRemovalMode,
+): number | null {
+  if (mode === 'position') return plan.individual_count ?? plan.individual_positions?.length ?? 0;
+  return plan.individual_count == null ? null : plan.individual_count - removed;
+}
+
 export const placementLabelKey = (kind: PlacementParent['kind']) => ({
   bed: 'fields:individualPlants.inBed', field: 'fields:individualPlants.onParcel', location: 'fields:individualPlants.atLocation',
 } as const)[kind];

@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type { Bed, Crop, Field, PlantingPlan, Season } from '../src/api/types';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { apiRequest, individualPlantsPanel, loginWithDeterministicProject } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -157,8 +157,9 @@ test('previews a bed plan, cancels without writing, and saves exact stems beside
   await expect(row.getByRole('img', { name: 'Einzelpflanzen im Beet' })).toBeVisible();
   await row.locator('[data-field="crop"]').click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Einzelpflanzen bearbeiten' }).click();
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen' });
-  await expect(panel.getByTestId('individual-plants-parcel')).toContainText(bed.name);
+  const panel = individualPlantsPanel(page);
+  await expect(panel).toHaveAccessibleName('Positionen bearbeiten');
+  await expect(panel.getByTestId('individual-plants-plan')).toContainText(bed.name);
   await expect(panel.getByText('3 Einzelpflanzen', { exact: true })).toBeVisible();
 });
 
@@ -200,15 +201,15 @@ test('projects a direct orchard and an annual bed plan with exact ancestor count
   await search.clear();
   await grid.locator(`[data-id="${bed.id}"] [data-field="name"]`).click({ button: 'right' });
   await page.getByRole('menuitem', { name: 'Einzelpflanzen hinzufügen' }).click();
-  const panel = page.getByRole('region', { name: 'Einzelpflanzen' });
-  await expect(panel.getByTestId('individual-plants-parcel')).toContainText(bed.name);
+  const panel = individualPlantsPanel(page);
+  await expect(panel).toHaveAccessibleName('Pflanzen hinzufügen');
   await expect(panel.getByRole('combobox', { name: 'Kultur (Sorte)' })).toBeVisible();
   await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
   await page.locator(`[data-graphical-object-target="field:${field.id}"]`).press('Shift+F10');
   const add = page.getByRole('menuitem', { name: 'Einzelpflanzen hinzufügen' });
   await expect(add).toHaveCount(1);
   await add.click();
-  await expect(panel.getByTestId('individual-plants-parcel')).toHaveText(`Parzelle${field.name}`);
+  await expect(panel).toHaveAccessibleName('Pflanzen hinzufügen');
   await expect(panel.getByRole('combobox', { name: 'Kultur (Sorte)' })).toBeVisible();
 });
 
@@ -247,5 +248,5 @@ test('mobile creation previews a parcel maximum and opens the saved planting pla
   await expect(card).toBeInViewport();
   await card.getByRole('button', { name: /^Aktionen/ }).click();
   await page.getByRole('menuitem', { name: 'Einzelpflanzen bearbeiten' }).click();
-  await expect(page.getByRole('region', { name: 'Einzelpflanzen' }).getByTestId('individual-plants-parcel')).toContainText(field.name);
+  await expect(individualPlantsPanel(page).getByTestId('individual-plants-plan')).toContainText(field.name);
 });
