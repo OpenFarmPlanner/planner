@@ -445,6 +445,7 @@
       "field": "Nessuna aiuola in questa parcella."
     },
     "childBedCount_one": "{{formatted}} aiuola",
+    "childBedCount_many": "{{formatted}} aiuole",
     "childBedCount_other": "{{formatted}} aiuole",
     "selectTaskSeason": "Seleziona una stagione per vederne le attività.",
     "noAreaTasks": "Non ci sono attività per questa area nella stagione selezionata.",

@@ -445,6 +445,7 @@
       "field": "No hay bancales en esta parcela."
     },
     "childBedCount_one": "{{formatted}} bancal",
+    "childBedCount_many": "{{formatted}} bancales",
     "childBedCount_other": "{{formatted}} bancales",
     "selectTaskSeason": "Selecciona una temporada para ver sus tareas.",
     "noAreaTasks": "No hay tareas para esta superficie en esta temporada.",

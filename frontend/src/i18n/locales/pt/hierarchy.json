@@ -445,6 +445,7 @@
       "field": "Não há canteiros nesta parcela."
     },
     "childBedCount_one": "{{formatted}} canteiro",
+    "childBedCount_many": "{{formatted}} canteiros",
     "childBedCount_other": "{{formatted}} canteiros",
     "selectTaskSeason": "Selecione uma época para ver as suas tarefas.",
     "noAreaTasks": "Não há tarefas para esta área nesta época.",

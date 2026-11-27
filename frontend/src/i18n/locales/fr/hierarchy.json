@@ -445,6 +445,7 @@
       "field": "Aucune planche dans cette parcelle."
     },
     "childBedCount_one": "{{formatted}} planche",
+    "childBedCount_many": "{{formatted}} planches",
     "childBedCount_other": "{{formatted}} planches",
     "selectTaskSeason": "Sélectionnez une saison pour voir ses tâches.",
     "noAreaTasks": "Cette surface n’a aucune tâche pour cette saison.",
