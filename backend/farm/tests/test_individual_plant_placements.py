@@ -94,6 +94,14 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
                          {plan['id'] for plan in members.values()})
         self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 3)
 
+    def test_location_plan_revision_display_name_uses_the_location(self):
+        from farm.history.records import _entity_display_name
+
+        plan = PlantingPlan.objects.get(pk=self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
+        ).json()['id'])
+        self.assertIn(self.location.name, _entity_display_name(plan))
+
     def test_count_only_location_keeps_pending_and_moves_the_split_count_with_a_stem(self):
         scene = self.graphic_scene()
         original = self.create_plan(
