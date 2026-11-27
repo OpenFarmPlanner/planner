@@ -96,8 +96,18 @@ test('combines searchable crop groups and preserves season and site filters when
   await expect(page.getByRole('table', { name: 'Alle Kulturen' }).locator('th[scope="row"]')).toHaveCount(3);
   await expect(page.getByText('Summe aus 3 Saisonen')).toBeVisible();
   const chart = page.getByRole('figure', { name: 'Erntemengen nach Saison' });
-  await expect(chart.getByRole('button', { name: /^Ertrag für / })).toHaveCount(3);
+  const seasonBars = chart.getByRole('button', { name: /^Ertrag für / });
+  await expect(seasonBars).toHaveCount(3);
   const matrix = page.getByRole('table', { name: 'Ertrag pro m² nach Kultur' });
+  for (const [index, year] of ['2025', '2026', '2027'].entries()) {
+    await expect(seasonBars.nth(index)).toHaveAccessibleName(new RegExp(`^Ertrag für ${year}`));
+    await expect(matrix.getByRole('columnheader').nth(index + 1)).toContainText(year);
+  }
+  await seasonBars.first().focus();
+  await page.keyboard.press('Tab');
+  await expect(seasonBars.nth(1)).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(seasonBars.last()).toBeFocused();
   const potatoRow = matrix.getByRole('row', { name: /^Kartoffel/ });
   await expect(potatoRow.getByText('Nicht erfasst', { exact: true })).toHaveCount(2);
   await page.getByRole('combobox', { name: 'Saisonen' }).click();

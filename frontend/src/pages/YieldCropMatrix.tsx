@@ -64,7 +64,6 @@ export function YieldCropMatrix({ crops, seasons, groups, locale, onOpen }: {
     const names = new Map(groups.map(group => [group.key, group.name]));
     return sortedCrops(crops.map(row => ({ ...row, label: names.get(row.key) ?? row.name })), sort.key, sort.order, locale);
   }, [crops, groups, locale, sort]);
-  const chronological = [...seasons].reverse();
   const labels = new Map(seasons.map(season => [season.id, season.label]));
   const sortHeader = (key: SortKey, label: string, ariaLabel = label) => <TableCell key={key} scope="col"
     sortDirection={sort.key === key ? sort.order : false} sx={key === 'crop' ? { ...cropColumn, zIndex: 2 } : undefined}>
@@ -83,16 +82,16 @@ export function YieldCropMatrix({ crops, seasons, groups, locale, onOpen }: {
     </Box>
     <TableContainer tabIndex={0} role="region" aria-labelledby={titleId}>
       <Table size="small" aria-labelledby={titleId} sx={{
-        minWidth: `${19 + chronological.length * 6.5}rem`, tableLayout: 'fixed',
+        minWidth: `${19 + seasons.length * 6.5}rem`, tableLayout: 'fixed',
         '& .MuiTableCell-root': { px: 1.5, minWidth: 0, verticalAlign: 'top' },
       }}>
         <colgroup><col style={{ width: '9rem' }} />
-          {chronological.map(season => <col key={season.id} />)}
+          {seasons.map(season => <col key={season.id} />)}
           <col style={{ width: '10rem' }} />
         </colgroup>
         <TableHead><TableRow>
           {sortHeader('crop', t('filters.crop'))}
-          {chronological.map(season => sortHeader(season.id, season.label,
+          {seasons.map(season => sortHeader(season.id, season.label,
             `${season.label} (${formatSeasonPeriod(season.start_date, season.end_date, locale)})`))}
           {sortHeader('trend', t('cropYields.trend'))}
         </TableRow></TableHead>

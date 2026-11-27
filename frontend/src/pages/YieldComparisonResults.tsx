@@ -24,11 +24,13 @@ export function YieldComparisonResults({ comparison, cropName, groups, loadCropC
   const { seasons } = comparison;
   const [crop, setCrop] = useState<{ label: string; crop_ids: number[] } | null>(null);
   if (seasons.length === 0) return <Typography>{t('comparison.noSeasons')}</Typography>;
+  // The comparison API returns newest first for the season detail list.
+  const chronologicalSeasons = [...seasons].reverse();
 
   return <Stack spacing={2} sx={{ minWidth: 0, overflowWrap: 'anywhere' }}>
     <YieldComparisonSummaryPanel summary={comparison.summary} seasonCount={seasons.length} locale={locale} />
-    <YieldSeasonChart seasons={seasons} locale={locale} preferredUnit={preferredUnit} onUnitChange={onChartUnitChange} />
-    <YieldCropMatrix crops={comparison.crop_yields} seasons={seasons} groups={groups} locale={locale} onOpen={setCrop} />
+    <YieldSeasonChart seasons={chronologicalSeasons} locale={locale} preferredUnit={preferredUnit} onUnitChange={onChartUnitChange} />
+    <YieldCropMatrix crops={comparison.crop_yields} seasons={chronologicalSeasons} groups={groups} locale={locale} onOpen={setCrop} />
     <YieldSeasonDetails comparison={comparison} cropName={cropName} />
     {crop && <YieldCropDrilldown crop={crop} load={loadCropComparison} onClose={() => setCrop(null)} />}
   </Stack>;
