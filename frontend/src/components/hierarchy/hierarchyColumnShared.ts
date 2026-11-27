@@ -2,6 +2,7 @@
 // action buttons.
 
 import type { KeyboardEvent, MouseEvent, PointerEvent, TouchEvent } from 'react';
+import type { GraphicalRotation } from '../../pages/graphicalLayoutUtils';
 import type { HierarchyRow } from './utils/types';
 import type { HierarchyLevelButtonsProps } from './HierarchyLevelToggle';
 
@@ -32,6 +33,7 @@ export interface NameCellCallbacks {
 }
 
 export interface HierarchyColumnOptions {
+  graphicalRotation?: GraphicalRotation;
   disableInlineHoverActions?: boolean;
   onOpenContextMenuFromButton?: (row: HierarchyRow, origin: HTMLElement) => void;
   showPersistentContextMenuButton?: boolean;

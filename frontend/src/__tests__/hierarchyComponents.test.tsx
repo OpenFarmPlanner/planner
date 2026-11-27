@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { createHierarchyColumns } from '../components/hierarchy/HierarchyColumns';
 import { HierarchyFooter } from '../components/hierarchy/HierarchyFooter';
@@ -561,7 +561,13 @@ describe('hierarchy components and behaviors', () => {
 
 
 
-  it('renders directional icons in dimension headers', () => {
+  it.each([
+    { rotation: undefined, lengthHorizontal: true },
+    { rotation: 0, lengthHorizontal: false },
+    { rotation: 90, lengthHorizontal: true },
+    { rotation: 180, lengthHorizontal: false },
+    { rotation: 270, lengthHorizontal: true },
+  ] as const)('renders decorative dimension icons at schematic rotation $rotation', ({ rotation, lengthHorizontal }) => {
     const columns = createHierarchyColumns(
       vi.fn(),
       vi.fn(),
@@ -571,6 +577,10 @@ describe('hierarchy components and behaviors', () => {
       vi.fn(),
       vi.fn(),
       mockT as never,
+      undefined,
+      undefined,
+      undefined,
+      { graphicalRotation: rotation },
     );
 
     const lengthColumn = columns.find((column) => column.field === 'length_m');
@@ -583,10 +593,10 @@ describe('hierarchy components and behaviors', () => {
       </>
     );
 
-    expect(screen.getByText('Länge (m)')).toBeInTheDocument();
-    expect(screen.getByText('Breite (m)')).toBeInTheDocument();
-    expect(document.querySelectorAll('[data-testid="SwapVertIcon"]').length).toBeGreaterThan(0);
-    expect(document.querySelectorAll('[data-testid="SwapHorizIcon"]').length).toBeGreaterThan(0);
+    const lengthHeader = within(screen.getByText('Länge (m)').parentElement!);
+    const widthHeader = within(screen.getByText('Breite (m)').parentElement!);
+    expect(lengthHeader.getByTestId(lengthHorizontal ? 'SwapHorizIcon' : 'SwapVertIcon')).toHaveAttribute('aria-hidden', 'true');
+    expect(widthHeader.getByTestId(lengthHorizontal ? 'SwapVertIcon' : 'SwapHorizIcon')).toHaveAttribute('aria-hidden', 'true');
   });
 
   it('embeds the expand/collapse-one-level buttons in the "Name" header when levelToggle is provided', async () => {

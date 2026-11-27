@@ -36,6 +36,7 @@ import { widthForHeaderTitles } from '../data-grid/columnHeaderWidth';
 import { INDIVIDUAL_PLANT_COUNT_FIELD } from './utils/individualHierarchyRows';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale } from '../../utils/numberLocalization';
 import { bedDimensionInputFormat } from './utils/bedDimensions';
+import { DEFAULT_GRAPHICAL_ROTATION, isGraphicalLengthHorizontal } from '../../pages/graphicalLayoutUtils';
 
 export interface HierarchyColumnWidths {
   name: number;
@@ -261,6 +262,9 @@ export function createHierarchyColumns(
   // the "name" column's renderHeader closure below — re-reading
   // options.levelToggle there would widen back to the optional field type.
   const { levelToggle } = options;
+  const lengthHorizontal = isGraphicalLengthHorizontal(options.graphicalRotation ?? DEFAULT_GRAPHICAL_ROTATION);
+  const LengthIcon = lengthHorizontal ? SwapHorizIcon : SwapVertIcon;
+  const WidthIcon = lengthHorizontal ? SwapVertIcon : SwapHorizIcon;
 
   return [
     {
@@ -299,7 +303,7 @@ export function createHierarchyColumns(
       headerName: t('columns.length'),
       renderHeader: () => (
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-          <SwapVertIcon fontSize="small" aria-hidden="true" />
+          <LengthIcon fontSize="small" aria-hidden="true" />
           <Box component="span" sx={dataGridHeaderLabelSx}>{t('columns.length')}</Box>
         </Box>
       ),
@@ -320,7 +324,7 @@ export function createHierarchyColumns(
       headerName: t('columns.width'),
       renderHeader: () => (
         <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}>
-          <SwapHorizIcon fontSize="small" aria-hidden="true" />
+          <WidthIcon fontSize="small" aria-hidden="true" />
           <Box component="span" sx={dataGridHeaderLabelSx}>{t('columns.width')}</Box>
         </Box>
       ),

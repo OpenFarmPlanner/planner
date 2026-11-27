@@ -731,6 +731,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               suppressContextMenuHint={shouldShowMissingBedsHint}
               projectId={projectId}
               bedDefaults={bedDefaults}
+              graphicalRotation={selectedLocation?.id ? cameraState.rotations[selectedLocation.id] : undefined}
               graphicalRotations={cameraState.rotations}
               onOpenDetails={openListDetails}
               restoredPosition={restoredListPosition}

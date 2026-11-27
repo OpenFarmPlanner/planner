@@ -169,6 +169,7 @@ interface FieldsBedsHierarchyProps {
   projectId?: number | null;
   userId?: number | null;
   bedDefaults?: BedDimensions;
+  graphicalRotation?: GraphicalRotation;
   graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
   onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
   individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
@@ -208,6 +209,7 @@ function FieldsBedsHierarchy({
   projectId = null,
   userId,
   bedDefaults,
+  graphicalRotation,
   graphicalRotations,
   onAddIndividualPlants,
   individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
@@ -1797,6 +1799,7 @@ function FieldsBedsHierarchy({
       t,
       undefined,
       {
+        graphicalRotation,
         disableInlineHoverActions: showPersistentContextMenuButton,
         onOpenContextMenuFromButton: handleContextMenuButtonOpen,
         showPersistentContextMenuButton,
@@ -1833,6 +1836,7 @@ function FieldsBedsHierarchy({
     handleContextMenuButtonOpen,
     openNotesFromColumn,
     t,
+    graphicalRotation,
     showPersistentContextMenuButton,
     showInlineIndividualCount,
     isMobileViewport,
