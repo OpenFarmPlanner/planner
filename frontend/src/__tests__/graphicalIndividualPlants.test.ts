@@ -66,6 +66,14 @@ describe('individual plants in Graphic', () => {
     }
   });
 
+  it('sizes a label from the compact crop name only, without a phase row', () => {
+    const [stem] = placeIndividualPlantObjects(growth(), dimensions, surface, 0, 'Apfel (Topaz)', 'Geplante Belegung eines sehr langen Zeitraums');
+    stem.rect = { x: 100, y: 100, width: 0, height: 0 };
+    const label = getIndividualPlantLabels([stem], [], { x: 0, y: 0, scale: 1 }, { width: 500, height: 400 },
+      value => value.length * 6).get(stem.stemId);
+    expect(label).toMatchObject({ width: 'Apfel (Topaz)'.length * 6 + 10, height: 17 });
+  });
+
   it('can place a label beside a marker even when the label and marker share a search cell', () => {
     const [stem] = placeIndividualPlantObjects(growth(), dimensions, surface, 0, 'Beetroot', null);
     stem.rect = { x: 69, y: 60, width: 0, height: 0 };

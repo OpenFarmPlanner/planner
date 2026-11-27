@@ -8,7 +8,7 @@ import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import type { BedViewModel } from './graphicalFieldsGeometry';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
-import { bedCropDisplayName, bedCropPhaseLabel, includesCrops, includesTasks, type BedCultivationEntry, type GraphicalDisplayMode } from './graphicalCultivation';
+import { bedCropDisplayName, includesCrops, includesTasks, type BedCultivationEntry, type GraphicalDisplayMode } from './graphicalCultivation';
 import { getBedLabelLayout } from './graphicalViewport';
 
 interface Props {
@@ -37,17 +37,11 @@ export function GraphicalBedLabels({ bed, scale, mode, detailedArea, crops, task
   const cropList = includesCrops(mode) ? crops.filter(({ plan }) => plan.name || plan.crop !== null) : [];
   const names = cropList.slice(0, 2).map(({ plan }) => bedCropDisplayName(plan, t, width >= 160));
   const locale = resolveSeasonDateLocale(i18n);
-  const phase = cropList.length === 1 && crops.length === 1 ? bedCropPhaseLabel(cropList[0], t) : null;
   const rows: { kind: string; text: string; due?: string }[] = [];
   if (detailRows >= 1 && names.length) rows.push({
     kind: 'crop',
     text: `${names.join(', ')}${cropList.length > 2 ? ` +${cropList.length - 2}` : ''}`,
   });
-  if (detailRows >= 2 && width >= 114 && phase) {
-    const period = cropList[0].harvest;
-    rows.push({ kind: 'phase', text: period
-      ? `${phase} · ${formatSeasonDate(period.start_date, locale)}` : phase });
-  }
   const available = detailRows - rows.length;
   if (available > 0 && width >= 150 && showTasks) {
     const needsMoreRow = tasks.length > Math.min(2, available);

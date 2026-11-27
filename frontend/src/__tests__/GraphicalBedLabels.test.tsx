@@ -25,18 +25,33 @@ const tasks = [firstTask, ...['Mulch nachfüllen', 'Erde lockern', 'Gießkanne h
 const bed = { id: 1, name: 'Nordbeet', x: 0, y: 0, width: 190, height: 115, area: 3 };
 
 describe('graphical bed labels', () => {
-  it('fits crops and phase alongside a few task titles, individual dates and an overflow count', () => {
+  it('fits the crop name alongside a few task titles, individual dates and an overflow count without phase text', () => {
     render(<GraphicalBedLabels bed={bed} scale={1} mode="cropsAndTasks" detailedArea
       crops={[crop]} tasks={tasks} urgency="upcoming" />);
     expect(screen.getByTestId('bed-crop-label-1-0')).toHaveTextContent('Mangold (Bright Lights)');
-    expect(screen.getByTestId('bed-phase-label-1-1')).toHaveTextContent('Geplantes Wachstum');
-    expect(screen.getByTestId('bed-task-label-1-2')).toHaveTextContent('Kontrollieren');
-    expect(screen.getByTestId('bed-task-due-1-2')).toHaveTextContent(/15\.0?5\.2026/);
-    expect(screen.getByTestId('bed-task-due-1-3')).toHaveTextContent('Ohne Termin');
-    expect(screen.getByTestId('bed-more-tasks-label-1-4')).toHaveTextContent('+2 weitere Aufgaben');
+    expect(screen.getByTestId('bed-task-label-1-1')).toHaveTextContent('Kontrollieren');
+    expect(screen.getByTestId('bed-task-due-1-1')).toHaveTextContent(/15\.0?5\.2026/);
+    expect(screen.getByTestId('bed-task-label-1-2')).toHaveTextContent('Mulch nachfüllen');
+    expect(screen.getByTestId('bed-task-due-1-2')).toHaveTextContent('Ohne Termin');
+    expect(screen.getByTestId('bed-more-tasks-label-1-3')).toHaveTextContent('+2 weitere Aufgaben');
+    expect(screen.queryByText(/Geplantes Wachstum|Geplante Ernte|Geplante Belegung/)).not.toBeInTheDocument();
   });
 
-  it('uses the symbol and count on a small bed and omits a shared phase for mixed or whole-season crops', () => {
+  it('shows only the crop identity for each phase and date reference in Crops mode', () => {
+    const { rerender } = render(<GraphicalBedLabels bed={bed} scale={1} mode="crops" detailedArea
+      crops={[crop]} tasks={[]} urgency={null} />);
+    for (const phase of ['growth', 'harvest', 'occupancy', null] as const) {
+      for (const recordedHarvest of [false, true]) {
+        rerender(<GraphicalBedLabels bed={bed} scale={4} mode="crops" detailedArea
+          crops={[{ ...crop, phase, recordedHarvest }]} tasks={[]} urgency={null} />);
+        expect(screen.getByTestId('bed-crop-label-1-0')).toHaveTextContent('Mangold (Bright Lights)');
+        expect(screen.queryByTestId('bed-crop-label-1-1')).not.toBeInTheDocument();
+        expect(screen.queryByTestId(/bed-phase-label/)).not.toBeInTheDocument();
+      }
+    }
+  });
+
+  it('uses the symbol and count on a small bed and lists mixed or whole-season crops by name', () => {
     const labels = (geometry: typeof bed, crops: BedCultivationEntry[]) => <GraphicalBedLabels bed={geometry} scale={1}
       mode="cropsAndTasks" detailedArea crops={crops} tasks={tasks} urgency="upcoming" />;
     const { rerender } = render(labels({ ...bed, width: 90, height: 24 }, [crop]));
