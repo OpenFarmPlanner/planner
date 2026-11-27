@@ -7,7 +7,7 @@ import { AppTooltip } from '../components/AppTooltip';
 import type { GeometryIssue } from '../components/hierarchy/utils/growingAreaGeometry';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
-import type { analyzeGraphicalGeometry, GraphicalParcel } from './graphicalAreaGeometry';
+import { getBedWorldRect, type analyzeGraphicalGeometry, type GraphicalParcel } from './graphicalAreaGeometry';
 import type { Rect } from './graphicalLayoutUtils';
 
 interface Subject {
@@ -86,12 +86,11 @@ function describeGraphicalWarnings(
       names: names(analysis.locationReport.uncertainIds, parcelSubjects),
     }));
   }
-  for (const { field, rect, layout } of parcels) {
+  for (const parcel of parcels) {
+    const { field, rect, layout } = parcel;
     const report = analysis.parcelReports.get(rect.id);
     if (!report) continue;
-    const beds = new Map(layout.bedRects.map(bed => [bed.id, { name: bed.name, rect: {
-      ...bed, x: rect.x + layout.usableArea.x + bed.x, y: rect.y + layout.usableArea.y + bed.y,
-    } }]));
+    const beds = new Map(layout.bedRects.map(bed => [bed.id, { name: bed.name, rect: getBedWorldRect(parcel, bed) }]));
     const parent = { name: field.name, rect };
     warnings.push(...describeIssues(report.issues, beds, parent, t).map(warning => ({
       ...warning, key: `${rect.id}-${warning.key}`,

@@ -176,24 +176,26 @@ erDiagram
   row menus and names carry no rotation entry or badge
   ([#1576](https://github.com/OpenFarmPlanner/planner/issues/1576)).
 - `BedLayout`/`FieldLayout` hold persisted x/y coordinates for the
-  graphical/map layout view (`GraphicalFields.tsx`) — they're optional,
+  schematic layout view (`GraphicalFields.tsx`) — they're optional,
   separate rows from `Bed`/`Field` themselves, not embedded fields.
   `BedLayout.runs_across_parcel` defaults to `false`, which places the bed's
   length along the parcel's length. When `true`, the rendered footprint runs
-  across the parcel's width. The bed's physical `length_m` and `width_m` stay
-  as entered. The position is the top-left corner in the parcel's unrotated
-  usable canvas area. A field
+  across the parcel's width with a clockwise quarter-turn of its own coordinate
+  system. The bed's physical `length_m` and `width_m` stay as entered. Bed
+  positions are stored relative to the legacy unrotated inner
+  canvas. Graphic converts them to the physical parcel footprint on read and
+  converts them back on drag save. A field
   without a `FieldLayout` (e.g. just added in the list view) is drawn next to
   the location's positioned fields (`placeFieldRects`); only when none has a
   position do fields use compact schematic rows fitted to the viewport.
-  Stored positions and world sizes are preserved; dimensions determine aspect
-  ratio, while area-only records use approximate rectangles, not georeferencing.
+  Graphic draws measured sites, parcels and beds at the same metric scale on
+  both axes. Area-only records use approximate rectangles. The schematic is
+  independent of georeferencing.
   The default display turns the stored layout 90° so length runs horizontally
   and width vertically. Each location has left/right 90° view controls; rotating
   refits the view and does not write layouts or change physical dimensions.
-  The angle is local to the mounted view. Field title strips stay at the top;
-  beds are projected between the stored and displayed usable areas, and dragging
-  is inversely projected before saving so existing positions remain compatible.
+  The angle is local to the mounted view. Area names use screen-space labels
+  without taking up space inside the physical footprint.
   Dragging a plot moves its canvas group, including the usable area, title and
   all beds. Snapping and the site boundary constrain the plot as a whole.
   A drop writes the plot position only, plus the site origin on the first drop

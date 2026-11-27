@@ -33,7 +33,7 @@ export function rotateRect<T extends Rect>(rect: T, parent: RectSize, rotation: 
   }
 }
 
-/** Keep the title strip at the top as the usable bed area changes orientation. */
+/** Rotate a rectangle relative to its parent, then project it into another coordinate space. */
 export function rotateRectBetweenSizes<T extends Rect>(
   rect: T,
   source: RectSize,
@@ -120,19 +120,6 @@ export function getFieldRectSize(
   return areaToRectSize(Number(field.area_sqm ?? 1), options);
 }
 
-/** Metric parcel gaps require the shared location scale on both rectangles. */
-export function fieldUsesWorldScale(
-  field: Pick<Field, 'length_m' | 'width_m'>,
-  size: RectSize,
-  pxPerMeter: number,
-): boolean {
-  const { length_m: length, width_m: width } = field;
-  return typeof length === 'number' && Number.isFinite(length) && length > 0
-    && typeof width === 'number' && Number.isFinite(width) && width > 0
-    && size.width === width * pxPerMeter
-    && size.height === length * pxPerMeter;
-}
-
 /** The location's outer boundary at the layout origin, or null unless both
  * optional dimensions are set (#1190). Width runs horizontally and length
  * vertically, like a field's rect. */
@@ -142,7 +129,8 @@ export function getLocationBoundaryRect(
   origin: Position,
 ): Rect | null {
   const { length_m: length, width_m: width } = location;
-  if (typeof length !== 'number' || typeof width !== 'number' || length <= 0 || width <= 0) {
+  if (typeof length !== 'number' || typeof width !== 'number'
+      || !Number.isFinite(length) || !Number.isFinite(width) || length <= 0 || width <= 0) {
     return null;
   }
   return {

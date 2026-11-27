@@ -2,8 +2,9 @@ import type { Bed, Field, Location, LocationLayoutsResponse } from '../api/types
 import { alpha, createTheme } from '@mui/material/styles';
 import { freeAreaColor } from '../components/hierarchy/utils/freeAreaColors';
 import { defaultLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
-import { analyzeGraphicalGeometry, getGraphicalBedLayout, getSavedLocationCoverage, getSavedParcelCoverage, getSchematicLocationLayout } from '../pages/graphicalAreaGeometry';
-import { fieldUsesWorldScale, getFieldRectSize, rotateRect, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
+import { analyzeGraphicalGeometry, getGraphicalBedLayout, getSavedLocationCoverage, getSavedParcelCoverage, getSchematicFieldSize, getSchematicLocationLayout } from '../pages/graphicalAreaGeometry';
+import { rotateRect, rotateRectBetweenSizes, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
+import { canvasToStem, stemToCanvas } from '../pages/individualPlantGeometry';
 
 const location: Location = { id: 1, name: 'Farm', width_m: 30, length_m: 30 };
 const field: Field = { id: 1, name: 'Plot', location: 1, width_m: 10, length_m: 10 };
@@ -16,14 +17,13 @@ describe('graphical layout analysis', () => {
   it.each<GraphicalRotation>([0, 90, 180, 270])('keeps fractional parcel gaps consistent with snapping at %s degrees', rotation => {
     const first = { ...field, width_m: 10.02, length_m: 9.05 };
     const second = { ...first, id: 2 };
-    const size = getFieldRectSize(first, 18);
+    const size = getSchematicFieldSize(first);
     expect(size.width).toBeCloseTo(180.36);
-    const supportsMetricSpacing = fieldUsesWorldScale(first, size, 18);
     const parcels = [first, second].map((plot, index) => ({
       field: plot,
       rect: rotateRect({ id: index + 1, x: 20 + index * (size.width + 0.75 * 18), y: 20,
-        ...size, supportsMetricSpacing }, canvas, rotation),
-      layout: getGraphicalBedLayout(plot, size, [], {}, rotation),
+        ...size, supportsMetricSpacing: true }, canvas, rotation),
+      layout: getGraphicalBedLayout(plot, [], {}, rotation),
     }));
     const result = analyzeGraphicalGeometry(location, rotateRect(boundary, canvas, rotation), parcels,
       defaultLocationPathSpacing, rotation, null);
@@ -32,7 +32,7 @@ describe('graphical layout analysis', () => {
   });
 
   it.each<GraphicalRotation>([0, 90, 180, 270])('keeps an overflowing saved bed visible and measures it at %s degrees', rotation => {
-    const layout = getGraphicalBedLayout(field, parcel, beds, {
+    const layout = getGraphicalBedLayout(field, beds, {
       2: { bed: 2, location: 1, x: 144, y: 0, version: 1 },
     }, rotation);
     const graph = analyzeGraphicalGeometry(location, rotateRect(boundary, canvas, rotation), [
@@ -47,7 +47,7 @@ describe('graphical layout analysis', () => {
 
   it('replaces a bed position in the preview without changing the saved layout or moving its parcel', () => {
     const layouts = { 2: { bed: 2, location: 1, x: 144, y: 0, version: 1 } };
-    const layout = getGraphicalBedLayout(field, parcel, beds, layouts, 0);
+    const layout = getGraphicalBedLayout(field, beds, layouts, 0);
     const graph = analyzeGraphicalGeometry(location, boundary, [{ field, rect: parcel, layout }],
       defaultLocationPathSpacing, 0, { type: 'bed', id: 2, locationId: 1, position: { x: 20, y: 0 } });
     expect(graph.parcelReports.get(1)?.issues).toEqual([]);
@@ -55,6 +55,47 @@ describe('graphical layout analysis', () => {
     expect(layout.bedRects[0].x / layout.pixelsPerMeter!.x)
       .toBeCloseTo(layouts[2].x / layout.storedPixelsPerMeter!.x);
     expect(layouts[2].x).toBe(144);
+  });
+
+  it.each<GraphicalRotation>([0, 90, 180, 270])('shares the site scale and round-trips old bed coordinates at %s degrees', rotation => {
+    const narrow = { ...field, width_m: 3, length_m: 12 };
+    const broad = { ...field, id: 3, width_m: 18, length_m: 7 };
+    const approximate = { ...field, id: 4, length_m: null };
+    const stored = { bed: 2, location: 1, x: 13, y: 63, version: 1 };
+    const scene = getSchematicLocationLayout(location, [narrow, broad, approximate], {}, { x: 0, y: 0 }, rotation, 1440, 900);
+    const quarterTurn = rotation % 180 !== 0;
+    expect(scene.boundary).toMatchObject({ width: 540, height: 540 });
+    expect(scene.fieldViewModels[0]).toMatchObject({
+      width: quarterTurn ? 216 : 54, height: quarterTurn ? 54 : 216, supportsMetricSpacing: true,
+    });
+    expect(scene.fieldViewModels[1]).toMatchObject({
+      width: quarterTurn ? 126 : 324, height: quarterTurn ? 324 : 126, supportsMetricSpacing: true,
+    });
+    expect(scene.fieldViewModels[2].supportsMetricSpacing).toBe(false);
+    for (const plot of [narrow, broad, approximate]) {
+      const layout = getGraphicalBedLayout(plot, beds, { 2: stored }, rotation);
+      const bed = layout.bedRects[0];
+      const fieldRect = scene.fieldViewModels.find(rect => rect.id === plot.id)!;
+      expect(layout.usableArea).toEqual({ x: 0, y: 0, width: fieldRect.width, height: fieldRect.height });
+      expect(bed).toMatchObject({ width: quarterTurn ? 54 : 36, height: quarterTurn ? 36 : 54 });
+      const roundTrip = rotateRectBetweenSizes(bed, layout.usableArea, layout.storedUsableArea,
+        ((360 - rotation) % 360) as GraphicalRotation);
+      expect(roundTrip.x).toBeCloseTo(stored.x);
+      expect(roundTrip.y).toBeCloseTo(stored.y);
+    }
+  });
+
+  it('keeps metre offsets in the bed’s own axes when it runs across a parcel', () => {
+    const layout = getGraphicalBedLayout(field, beds, {
+      2: { bed: 2, location: 1, x: 23, y: 47, runs_across_parcel: true },
+    }, 90);
+    const surface = layout.bedRects[0];
+    const stem = { x_m: 0.5, y_m: 2 };
+    expect(surface).toMatchObject({ width: 36, height: 54, placementRotation: 180 });
+    const point = stemToCanvas(stem, beds[0], surface, surface.placementRotation)!;
+    expect(point.x - surface.x).toBeCloseTo(27);
+    expect(point.y - surface.y).toBeCloseTo(18);
+    expect(canvasToStem(point, beds[0], surface, surface.placementRotation)).toEqual(stem);
   });
 });
 
@@ -75,7 +116,7 @@ describe('saved coverage for detail pages', () => {
     expect(getSavedLocationCoverage(location, [], layouts)).toEqual({ grossArea: 900, footprintArea: 0, remainingArea: 900 });
   });
 
-  it('uses the same parcel padding, orientation and clipping as the canvas', () => {
+  it('decodes the saved coordinates and applies the same physical clipping as the canvas', () => {
     const bedLayout = { bed: 2, location: 1, x: 144, y: 0 };
     const coverage = getSavedParcelCoverage(field, beds, { field_layouts: [], bed_layouts: [bedLayout] });
     expect(coverage.footprintArea).toBeCloseTo(3);

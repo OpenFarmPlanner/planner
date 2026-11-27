@@ -1,5 +1,5 @@
 import type { Bed, BedLayoutEntry, BulkBedPlacement, Field } from '../../../api/types';
-import { getGraphicalBedLayout, getSchematicFieldSize } from '../../../pages/graphicalAreaGeometry';
+import { getGraphicalBedLayout } from '../../../pages/graphicalAreaGeometry';
 import { DEFAULT_PLACEMENT_SPACING } from '../../../pages/graphicalLayoutUtils';
 import { MAX_BULK_BED_COUNT } from './bedNaming';
 import type { BulkBedFormValues } from './bulkBedCreatePlan';
@@ -9,7 +9,7 @@ import { placeRegularBeds } from './regularBedPlacement';
 export function getBulkBedPreviewContext(
   field: Field, beds: readonly Bed[], layouts: Readonly<Record<number, BedLayoutEntry>>,
 ) {
-  const graphical = getGraphicalBedLayout(field, getSchematicFieldSize(field), beds, layouts, 0);
+  const graphical = getGraphicalBedLayout(field, beds, layouts, 0);
   const { fieldMeters, pixelsPerMeter: displayScale, storedPixelsPerMeter: scale } = graphical;
   if (!fieldMeters || !displayScale || displayScale.x <= 0 || displayScale.y <= 0 || !scale) return null;
   const bounds = { x: 0, y: 0, ...fieldMeters };

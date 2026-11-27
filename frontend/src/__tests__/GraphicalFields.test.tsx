@@ -1,4 +1,3 @@
-import { FIELD_INNER_OFFSET_X, FIELD_INNER_OFFSET_Y, getFieldUsableArea } from '../pages/graphicalFieldsGeometry';
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { act, useState, type ReactElement } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -455,11 +454,12 @@ describe("GraphicalFields", async () => {
     expect(saved.y).toBeCloseTo(100 + dy * 676 / displayStoredHeight);
   });
 
-  it("shades the margin beds cannot use and leaves the usable area white, also in view mode", async () => {
-    await renderGraphic(<GraphicalFields />);
+  it.each(['light', 'dark'] as const)("uses the same physical outline and %s theme surface in view mode", async mode => {
+    const paper = mode === 'light' ? '#fafafa' : '#121212';
+    const theme = createTheme({ palette: { mode, background: { paper } } });
+    await renderGraphic(<ThemeProvider theme={theme}><GraphicalFields /></ThemeProvider>);
 
     const field = await screen.findByTestId("field-rect-10");
-    const margin = screen.getByTestId("field-margin-10");
     const usable = screen.getByTestId("field-usable-area-10");
     const geometry = (element: HTMLElement) => ({
       x: Number(element.getAttribute("data-x")),
@@ -468,19 +468,10 @@ describe("GraphicalFields", async () => {
       height: Number(element.getAttribute("height")),
     });
     const fieldBox = geometry(field);
-    const area = getFieldUsableArea(fieldBox);
-    const surface = geometry(usable);
-
-    expect(geometry(margin)).toEqual(fieldBox);
-    expect(surface).toMatchObject({
-      x: fieldBox.x + area.x,
-      y: fieldBox.y + area.y,
-      height: area.height,
-    });
-    expect(surface.width).toBeLessThan(area.width);
-    expect(surface.width / surface.height).toBeCloseTo(2);
-    expect(margin).toHaveAttribute("fill", "#eeeeee");
-    expect(usable).toHaveAttribute("fill", "#fff");
+    expect(screen.queryByTestId("field-margin-10")).not.toBeInTheDocument();
+    expect(geometry(usable)).toEqual(fieldBox);
+    expect(fieldBox).toEqual({ x: 0, y: 0, width: 720, height: 360 });
+    expect(usable).toHaveAttribute("fill", paper);
   });
 
   it("moves the usable area along with a dragged field", async () => {
@@ -503,8 +494,8 @@ describe("GraphicalFields", async () => {
       const usable = screen.getByTestId("field-usable-area-10");
       expect(mockKonvaNodes["field-group-10"].getPosition().x).not.toBe(start.x);
       expect(screen.getByTestId("field-group-10")).toContainElement(usable);
-      expect(Number(usable.getAttribute("data-x"))).toBe(Number(field.getAttribute("data-x")) + FIELD_INNER_OFFSET_X);
-      expect(Number(usable.getAttribute("data-y"))).toBe(Number(field.getAttribute("data-y")) + FIELD_INNER_OFFSET_Y);
+      expect(Number(usable.getAttribute("data-x"))).toBe(Number(field.getAttribute("data-x")));
+      expect(Number(usable.getAttribute("data-y"))).toBe(Number(field.getAttribute("data-y")));
     });
   }, 15000);
 
