@@ -126,7 +126,9 @@ TURNSTILE_UNAVAILABLE_MESSAGE = (
 )
 
 
-def _field_error_entries(codes: object, field: serializers.Field | None) -> list[dict[str, str | int]]:
+def _field_error_entries(
+    codes: object, field: serializers.Field | None,
+) -> list[dict[str, str | int]]:
     entries = []
     for code in codes if isinstance(codes, list) else [codes]:
         if not isinstance(code, str):
@@ -150,12 +152,16 @@ class AccountAPIView(APIView):
     def handle_exception(self, exc: Exception) -> Response:
         response = super().handle_exception(exc)
         if isinstance(exc, serializers.ValidationError) and isinstance(response.data, dict):
-            fields = self._validation_serializer.fields if self._validation_serializer is not None else {}
+            serializer = self._validation_serializer
+            fields = serializer.fields if serializer is not None else {}
             codes = exc.get_codes()
             if isinstance(codes, dict):
                 response.data = {
                     **response.data,
-                    'field_errors': {field: _field_error_entries(errors, fields.get(field)) for field, errors in codes.items()},
+                    'field_errors': {
+                        field: _field_error_entries(errors, fields.get(field))
+                        for field, errors in codes.items()
+                    },
                 }
         return response
 
@@ -444,8 +450,9 @@ class AccountPublicProfileView(AccountAPIView):
             PublicProfile.objects.update_or_create(user=request.user, defaults={'public_display_name': public_display_name})
         except IntegrityError:
             raise serializers.ValidationError(
-                {'public_display_name': ['Dieser Name wird bereits verwendet.']}, code='public_display_name_taken',
-            )
+                {'public_display_name': ['Dieser Name wird bereits verwendet.']},
+                code='public_display_name_taken',
+            ) from None
         return Response({'detail': PROFILE_UPDATED_MESSAGE, 'user': UserSerializer(request.user).data})
 
 
