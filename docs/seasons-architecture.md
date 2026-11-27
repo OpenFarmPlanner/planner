@@ -570,12 +570,17 @@ actual-date rules and plan history from
   the conflicting plans without a bed, onto the same beds anyway, or not at
   all (`rotation_conflicts` on `copy-from`, API default `keep`). The copies
   are built once by `build_planting_plan_copies`, shared by the preview and
-  the copy. Details: [crop-rotation.md](./crop-rotation.md#season-copy).
+  the copy. The count opens the full list without hiding the treatment choices
+  or totals. Details are collapsed on entry, and long lists scroll inside a
+  viewport-sized dialog with its action footer always in view.
+  The open dialog survives switching between desktop and phone layouts.
+  Details: [crop-rotation.md](./crop-rotation.md#season-copy).
 - For immediate predecessor copies, **Rotate plans to the next parcel** applies
   the project's parcel sequence and bed order to the copied plans. A valid group
   selects the option by default. The date-basis choice remains independent.
   Historical sources remain available for plain copying and crop-family checks.
-  The preview reports the wraparound mappings, the number of plans that stay
+  The preview reports the number of parcel assignments, with the individual
+  assignments available on demand, and the number of plans that stay
   on their beds, adjusted occupied area, plant counts, seed requirements and
   conflicts. An unequal bed count, unmeasured bed or insufficient capacity
   prevents rotation. In the existing-season dialog the preview also takes the
@@ -587,6 +592,8 @@ actual-date rules and plan history from
   take up area in the target beds. Both copy flows confirm the proposed rotation
   with its preview fingerprint and revalidate before saving. Continuing annual
   and perennial plans remain on their original beds.
+  Guided creation fetches option-dependent previews outside the list cache and
+  aborts superseded requests, so reopening or retrying can fetch a new fingerprint.
   Parcel-direct plant placements introduced by #1015 must stay outside this
   workflow. The current model represents bed assignments and occupied areas.
 

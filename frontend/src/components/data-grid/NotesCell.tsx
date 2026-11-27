@@ -12,6 +12,7 @@ import remarkGfm from 'remark-gfm';
 import { useTranslation } from '../../i18n';
 import type { NotesPreviewOpenMode } from './useNotesPreview';
 import { AppTooltip } from '../AppTooltip';
+import { formatNotesCellExcerpt } from './markdown';
 
 export interface NotesCellProps {
   hasValue: boolean;
@@ -57,10 +58,6 @@ export function NotesCell({
   const compactTriggerRef = useRef<HTMLDivElement | null>(null);
   const notesButtonRef = useRef<HTMLButtonElement | null>(null);
   const suppressNextClickRef = useRef(false);
-
-  const firstLine = excerpt.split('\n')[0];
-  const displayText = firstLine.length > 40 ? `${firstLine.substring(0, 37)}...` : firstLine;
-  const hasMore = excerpt.length > firstLine.length || firstLine.length > 40;
 
   const tooltipMarkdown = rawValue.length > 2000 ? rawValue.substring(0, 2000) + '\n\n...' : rawValue;
 
@@ -260,8 +257,7 @@ export function NotesCell({
             pr: attachmentCount > 0 ? 3.5 : 0,
           }}
         >
-          {hasValue ? displayText : t('notes.empty')}
-          {hasValue && hasMore ? ' ...' : ''}
+          {hasValue ? formatNotesCellExcerpt(excerpt) : t('notes.empty')}
         </Typography>
 
         {hasAttachments && onOpenAttachments && (

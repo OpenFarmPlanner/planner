@@ -1,5 +1,10 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { apiRequest, loginWithDeterministicProject } from './utils';
+import type { ParcelRotationSummary, SeasonCopyPreview, SeasonCreationOptions } from '../src/api/types';
+import deNavigation from '../src/i18n/locales/de/navigation.json' with { type: 'json' };
+import frNavigation from '../src/i18n/locales/fr/navigation.json' with { type: 'json' };
+import deHierarchy from '../src/i18n/locales/de/hierarchy.json' with { type: 'json' };
+import frHierarchy from '../src/i18n/locales/fr/hierarchy.json' with { type: 'json' };
 
 test.use({ serviceWorkers: 'block' });
 
@@ -269,6 +274,11 @@ test('a phone configures parcel and bed order and copies a reviewed rotation', a
   const actual = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
   await expect(rotate).toBeChecked();
   const preview = dialog.getByRole('region', { name: 'Vorschau' });
+  await expect(preview.getByTestId('season-copy-rotation-summary')).toHaveCount(0);
+  const mappings = preview.getByRole('button', { name: '2 Parzellenzuordnungen für kopierte Anbaupläne' });
+  await expect(mappings).toHaveAttribute('aria-expanded', 'false');
+  await expect(preview.getByText('Nord → Süd', { exact: true })).toBeHidden();
+  await mappings.click();
   await expect(preview.getByText('Nord → Süd', { exact: true })).toBeVisible();
   const moveDetails = preview.getByRole('button', { name: 'Details zu 1 verschobenen Anbauplan' });
   await expect(moveDetails).toHaveAttribute('aria-expanded', 'false');
@@ -339,6 +349,8 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   const actual = dialog.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
   await expect(select).toHaveText('Letzte Saison');
   await expect(rotate).toBeChecked();
+  const mappings = dialog.getByRole('button', { name: '2 Parzellenzuordnungen für kopierte Anbaupläne' });
+  await expect(mappings).toHaveAttribute('aria-expanded', 'false');
   const creationDetails = dialog.getByRole('button', { name: 'Details zu 1 verschobenen Anbauplan' });
   await creationDetails.click();
   await expect(dialog.getByText('Belegte Fläche 5 → 4 m²')).toBeVisible();
@@ -347,6 +359,7 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   await page.getByRole('option', { name: 'Frühere Saison' }).click();
   await expect(rotate).toBeDisabled();
   await expect(rotate).not.toBeChecked();
+  await expect(mappings).toHaveCount(0);
   await expect(actual).toBeChecked();
   await select.click();
   await page.getByRole('option', { name: 'Letzte Saison' }).click();
@@ -372,4 +385,175 @@ test('guided creation refreshes the rotated preview before accepting changed dat
   expect(results.filter(plan => plan.season === target.id)).toMatchObject([{
     bed: south.beds[0].id, area_usage_sqm: '4.00', quantity: 25, planting_date: '2027-04-06',
   }]);
+});
+
+const longParcel = (row: number) => `Parcelle-${row}-${'approvisionnementpédagogique'.repeat(4)}`;
+const longCrop = (row: number) => `Chou-fleur ${row} · Sélection tardive du jardin maraîcher expérimental`;
+const longBed = (row: number) => `Planche de démonstration pour les variétés anciennes ${row}`;
+
+function largeRotationPreview(count: number) {
+  const items: SeasonCopyPreview['items'] = Array.from({ length: count }, (_, index) => {
+    const row = index + 1;
+    return {
+      source_plan_id: row, crop_label: longCrop(row), bed_id: row, bed_name: longBed(row), status: 'conflict',
+      findings: [{
+        kind: 'family_conflict', crop_label: longCrop(row), family_key: 'Brassicaceae', family_name: 'Brassicaceae',
+        previous_plan_id: 100 + row, previous_crop_label: 'Chou', previous_family_key: 'Brassicaceae',
+        previous_family_name: 'Brassicaceae', year: 2026, break_years: 4, earliest_year: 2031,
+        break_source: 'family_default', settings_crop_id: row, settings_crop_label: longCrop(row),
+      }],
+    };
+  });
+  const mappings = items.map((_, index) => ({
+    group: 'Jardin de la vallée', source_parcel_id: index + 1, source_parcel: longParcel(index + 1),
+    target_parcel_id: index + 101, target_parcel: longParcel(index + 101),
+  }));
+  const cropRotation = { total: count + 4, conflict_count: count, conflict_free_count: 4, hint_count: 0, items };
+  return { cropRotation, mappings };
+}
+
+function previewWithLongLists(rotation: ParcelRotationSummary, count: number): ParcelRotationSummary {
+  const { mappings, cropRotation } = largeRotationPreview(count);
+  return { ...rotation, mappings, crop_rotation: cropRotation, unchanged_count: 4 };
+}
+
+async function expectDialogFits(dialog: Locator, cancel: Locator, confirm: Locator) {
+  await expect(cancel).toBeInViewport({ ratio: 1 });
+  await expect(confirm).toBeInViewport({ ratio: 1 });
+  const dimensions = await dialog.evaluate(node => {
+    const box = node.getBoundingClientRect();
+    const content = node.querySelector('.MuiDialogContent-root');
+    return {
+      top: box.top,
+      belowViewport: box.bottom - window.innerHeight,
+      horizontalOverflow: Math.max(node.scrollWidth - node.clientWidth, content ? content.scrollWidth - content.clientWidth : 0),
+    };
+  });
+  expect(dimensions.top).toBeGreaterThanOrEqual(0);
+  expect(dimensions.belowViewport).toBeLessThanOrEqual(1);
+  expect(dimensions.horizontalOverflow).toBeLessThanOrEqual(1);
+}
+
+test.describe('compact season copy previews', () => {
+  test.use({ hasTouch: true });
+
+  for (const flow of ['copy', 'create'] as const) {
+    test(`${flow} keeps the actions reachable with independent long preview lists`, async ({ page, request }, testInfo) => {
+      test.setTimeout(100_000);
+      await page.setViewportSize({ width: 1440, height: 900 });
+      await loginWithDeterministicProject(page, request, `bounded-season-copy-${flow}`, { loginAsAdmin: true });
+      const { north, south } = await seedRotationParcels(page);
+      const source = await createSeason(page, '2025-09-01', '2026-08-31', 'Jardin avant le réaménagement de l’irrigation');
+      const targetLabel = 'Jardin pédagogique après le réaménagement de l’irrigation';
+      const target = flow === 'copy' ? await createSeason(page, '2026-09-01', '2027-08-31', targetLabel) : undefined;
+      await apiRequest(page, 'PATCH', '/season-pattern/', { start_day: 1, start_month: 9 });
+      await seedRotationSourcePlan(page, source.id, north.beds[0].id, 2026);
+      await apiRequest(page, 'POST', '/parcel-rotation-groups/', {
+        name: 'Nord–Sud', parcels: [north, south].map(parcel => ({ id: parcel.id, bed_ids: parcel.beds.map(bed => bed.id) })),
+      });
+
+      const french = flow === 'create';
+      const copyText = (french ? frNavigation : deNavigation).seasonSwitcher;
+      const parcelText = (french ? frHierarchy : deHierarchy).parcelRotation;
+      const cancelText = french ? 'Annuler' : 'Abbrechen';
+      if (french) {
+        await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: 'fr' });
+        await page.evaluate(() => localStorage.setItem('ui.language', 'fr'));
+      }
+
+      // Exercise both entry points with the genuine eligible preview and a
+      // synthetic list size. The real copy operation is covered above.
+      let count = 1;
+      if (target) {
+        await page.route(url => url.pathname.endsWith(`/seasons/${target.id}/copy-preview/`), async route => {
+          const response = await route.fetch();
+          const preview = await response.json() as SeasonCopyPreview;
+          if (!preview.parcel_rotation?.enabled) {
+            await route.fulfill({ response });
+            return;
+          }
+          const rotation = previewWithLongLists(preview.parcel_rotation, count);
+          await route.fulfill({ response, json: { ...preview, ...rotation.crop_rotation, parcel_rotation: rotation } });
+        });
+      } else {
+        await page.route(url => url.pathname.endsWith('/seasons/creation-options/'), async route => {
+          const response = await route.fetch();
+          const options = await response.json() as SeasonCreationOptions;
+          const reports = options.parcel_rotation;
+          if (reports?.adopt?.enabled) reports.adopt = previewWithLongLists(reports.adopt, count);
+          await route.fulfill({ response, json: options });
+        });
+      }
+      await page.goto(plansPage);
+      const open = async () => {
+        await page.getByRole('button', { name: copyText.ariaLabel }).tap();
+        if (target) {
+          await page.getByRole('menuitem').filter({ hasText: targetLabel }).getByRole('button', { name: copyText.menu.openAria }).tap();
+          await page.getByRole('menuitem', { name: copyText.menu.copyData, exact: true }).tap();
+        } else {
+          await page.getByRole('menuitem').filter({ hasText: copyText.suggestion.title.replace('{{label}}', '26/27') }).tap();
+        }
+        const title = target ? copyText.copyDialog.title : copyText.suggestion.confirmTitle.replace('{{label}}', '26/27');
+        return page.getByRole('dialog', { name: title });
+      };
+      const warningLabel = (size: number) => (size === 1 ? copyText.copyDialog.rotation.conflictCount_one
+        : copyText.copyDialog.rotation.conflictCount_other).replace('{{count}}', String(size));
+      const mappingLabel = (size: number) => (size === 1 ? parcelText.mappingCount_one : parcelText.mappingCount_other)
+        .replace('{{formatted}}', String(size));
+      let dialog = await open();
+      const mapping = (size: number) => dialog.getByRole('button', { name: mappingLabel(size), exact: true });
+      const warnings = (size: number) => dialog.getByRole('button', { name: warningLabel(size), exact: true });
+      const cancel = () => dialog.getByRole('button', { name: cancelText, exact: true });
+      const confirm = (size: number) => dialog.getByRole('button', { name: target
+        ? copyText.copyDialog.confirmCount_other.replace('{{count}}', String(size + 4)) : copyText.suggestion.create, exact: true });
+
+      await expect(mapping(1)).toHaveAttribute('aria-expanded', 'false');
+      await expect(warnings(1)).toHaveAttribute('aria-expanded', 'false');
+      await expect(dialog.getByTestId('season-copy-rotation-summary').getByRole('alert')).toHaveClass(/Warning/);
+      await warnings(1).focus();
+      await page.keyboard.press('Enter');
+      await expect(warnings(1)).toBeFocused();
+      await expect(dialog.getByText(`${longCrop(1)} · ${longBed(1)}`, { exact: true })).toBeVisible();
+      await expect(mapping(1)).toHaveAttribute('aria-expanded', 'false');
+      const shortList = dialog.getByRole('list', { name: warningLabel(1) });
+      await expect.poll(() => shortList.evaluate(list => list.scrollHeight - list.clientHeight)).toBeLessThanOrEqual(1);
+      await expectDialogFits(dialog, cancel(), confirm(1));
+      await cancel().tap();
+      await expect(dialog).toBeHidden();
+
+      count = 18;
+      dialog = await open();
+      await expect(mapping(count)).toHaveAttribute('aria-expanded', 'false');
+      await expect(warnings(count)).toHaveAttribute('aria-expanded', 'false');
+      await mapping(count).tap();
+      await expect(warnings(count)).toHaveAttribute('aria-expanded', 'false');
+      await warnings(count).tap();
+      await expect(mapping(count)).toHaveAttribute('aria-expanded', 'true');
+      await expect(warnings(count)).toHaveAttribute('aria-expanded', 'true');
+      await expect(dialog.getByText(parcelText.unchangedBeds_other.replace('{{count}}', '4'))).toBeVisible();
+
+      for (const viewport of [
+        { width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 768, height: 580 },
+        { width: 375, height: 600 }, { width: 800, height: 375 },
+      ]) {
+        await page.setViewportSize(viewport);
+        for (const label of [mappingLabel(count), warningLabel(count)]) {
+          const list = dialog.getByRole('list', { name: label, exact: true });
+          await expect(list.getByRole('listitem')).toHaveCount(count);
+          await expect.poll(() => list.evaluate(node => node.scrollHeight - node.clientHeight)).toBeGreaterThan(0);
+          await list.evaluate(node => { node.scrollTop = 0; });
+          await list.focus();
+          await page.keyboard.press('End');
+          await expect.poll(() => list.evaluate(node => node.scrollHeight - node.clientHeight - node.scrollTop)).toBeLessThanOrEqual(2);
+        }
+        await expectDialogFits(dialog, cancel(), confirm(count));
+        await dialog.screenshot({ animations: 'disabled', path: testInfo.outputPath(`${flow}-preview-${viewport.width}.png`) });
+      }
+      await mapping(count).tap();
+      await expect(mapping(count)).toHaveAttribute('aria-expanded', 'false');
+      await expect(warnings(count)).toHaveAttribute('aria-expanded', 'true');
+      await cancel().tap();
+      await expect(dialog).toBeHidden();
+    });
+  }
 });

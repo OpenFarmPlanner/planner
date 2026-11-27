@@ -1,5 +1,6 @@
-import { useMemo } from 'react';
+import { useContext, useMemo } from 'react';
 import {
+  Button,
   Table,
   TableBody,
   TableCell,
@@ -7,12 +8,17 @@ import {
   TableHead,
   TableRow,
 } from '@mui/material';
+import type { GridColDef } from '@mui/x-data-grid';
 import type { Crop } from '../api/types';
+import { AuthContext } from '../auth/authContextShared';
 import { useTranslation } from '../i18n';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import TableSurface from '../components/layout/TableSurface';
 import { TruncatedTextWithTooltip } from '../components/TruncatedTextWithTooltip';
-import { getComparisonCellValue, getVaryingComparisonFields } from './varietyComparisonFields';
+import { TableColumnDivider } from '../components/data-grid/TableColumnDivider';
+import { useGridColumnSizing } from '../components/data-grid/useGridColumnSizing';
+import type { ColumnMeasurement } from '../components/data-grid/gridContentWidths';
+import { CROP_COMPARISON_FIELDS, getComparisonCellValue, getVaryingComparisonFields } from './varietyComparisonFields';
 import { usePlantFamilies } from './plantFamilies';
 
 interface VarietyRow {
@@ -24,6 +30,7 @@ interface VarietiesComparisonTableProps {
   varieties: VarietyRow[];
   cropCrop: Crop;
   onSelect: (crop: Crop) => void;
+  publicLibrary?: boolean;
 }
 
 // Reveals the name's link styling for *genuine* keyboard navigation onto the
@@ -33,15 +40,11 @@ interface VarietiesComparisonTableProps {
 // consistent with how focus rings behave everywhere else in the app).
 const VARIETY_ROW_KEYBOARD_FOCUS_SELECTOR = '.variety-row:focus-visible &';
 
-// Matches the name column of the Fields/Beds hierarchy table: a capped
-// width so the column doesn't grow to fit the longest name, with the name
-// itself truncating (ellipsis) if it doesn't fit.
 const stickyNameCellSx = {
   position: 'sticky',
   left: 0,
   zIndex: 2,
   backgroundColor: 'background.paper',
-  maxWidth: { xs: 180, sm: 240 },
   // The sticky cell's own opaque background sits on top of the row, so the
   // row's :hover background (set on the <tr>) wouldn't otherwise show
   // through it — mirror it here so the whole row highlights consistently.
@@ -49,13 +52,16 @@ const stickyNameCellSx = {
     backgroundColor: 'action.selected',
   },
 } as const;
+const NOTICE_WIDTH = 320;
 
 export function VarietiesComparisonTable({
   varieties,
   cropCrop,
   onSelect,
+  publicLibrary = false,
 }: VarietiesComparisonTableProps) {
   const { t, i18n } = useTranslation('crops');
+  const auth = useContext(AuthContext);
   const plantFamilies = usePlantFamilies();
   const comparisonFormatContext = useMemo(
     () => ({ getPlantFamilyName: plantFamilies.getName }),
@@ -76,21 +82,73 @@ export function VarietiesComparisonTable({
     : varieties.map((variety) => variety.crop);
   const varyingFields = getVaryingComparisonFields(comparisonCrops, cropCrop);
   const showNoDifferencesNotice = isSoleVarietyMode && varyingFields.length === 0;
+  const { definitions, measurements } = useMemo(() => {
+    const makeColumn = (field: string, label: string): GridColDef<VarietyRow> =>
+      ({ field, headerName: label, sortable: false, disableColumnMenu: true });
+    const header = (text: string) => ({ text, fontWeight: 600, extra: 24 });
+    const nameLabel = t('hierarchy.varietyLabel');
+    const definitions = [makeColumn('variety', nameLabel)];
+    const measurements: Record<string, ColumnMeasurement<VarietyRow>> = {
+      variety: { header: header(nameLabel), cell: row => ({ text: row.label }), defaultMax: 240 },
+    };
+    for (const field of CROP_COMPARISON_FIELDS) {
+      const label = t(field.labelKey);
+      definitions.push(makeColumn(field.id, label));
+      measurements[field.id] = {
+        header: header(label),
+        cell: row => ({ text: getComparisonCellValue(row.crop, cropCrop, field, t, locale, comparisonFormatContext) }),
+      };
+    }
+    return { definitions, measurements };
+  }, [comparisonFormatContext, cropCrop, locale, t]);
+  const sizing = useGridColumnSizing(
+    definitions, publicLibrary ? 'publicCropVarieties' : 'cropVarieties',
+    auth?.user?.id, publicLibrary ? null : auth?.activeProjectId,
+    { rows: varieties, ready: true, scope: `${locale}:${cropCrop.id ?? ''}:${plantFamilies.loaded}`, measurements },
+  );
+  const visibleFields = new Set(['variety', ...varyingFields.map(field => field.id)]);
+  const visibleColumns = sizing.columns.filter(column => visibleFields.has(column.field));
+  const tableWidth = visibleColumns.reduce((sum, column) => sum + column.width, showNoDifferencesNotice ? NOTICE_WIDTH : 0);
+  const nameCellSx = {
+    ...stickyNameCellSx,
+    // A very wide saved or fitted name must leave room to reach later columns.
+    [`@container (width < ${visibleColumns[0].width + 72}px)`]: { position: 'relative' },
+  } as const;
 
   return (
     <TableSurface sizingMode="fullWorkspace">
-      <TableContainer>
-        <Table size="small">
+      <TableContainer
+        data-testid="varieties-comparison-table"
+        style={{ width: `min(100%, ${tableWidth}px)` }}
+        sx={{ containerType: 'inline-size', '& .MuiTableCell-body': { px: 1.25 } }}
+      >
+        <Table size="small" style={{ width: tableWidth, tableLayout: 'fixed' }}>
+          <colgroup>
+            {visibleColumns.map(column => <col key={column.field} style={{ width: column.width }} />)}
+            {showNoDifferencesNotice && <col style={{ width: NOTICE_WIDTH }} />}
+          </colgroup>
           <TableHead>
             <TableRow>
-              <TableCell sx={stickyNameCellSx}>{t('hierarchy.varietyLabel')}</TableCell>
-              {showNoDifferencesNotice ? (
-                <TableCell />
-              ) : (
-                varyingFields.map((field) => (
-                  <TableCell key={field.id}>{t(field.labelKey)}</TableCell>
-                ))
-              )}
+              {visibleColumns.map(column => (
+                <TableCell
+                  key={column.field}
+                  scope="col"
+                  data-field={column.field}
+                  sx={[{ position: 'relative', pl: 1.25, pr: 3 }, column.field === 'variety' && nameCellSx]}
+                >
+                  <TruncatedTextWithTooltip text={column.headerName ?? column.field} />
+                  <TableColumnDivider
+                    label={`${t('common:actions.autoFitColumnWidth')} (${column.headerName})`}
+                    width={column.width}
+                    onResize={width => sizing.setUserWidth(column.field, width)}
+                    onAutoFit={() => {
+                      const fitted = sizing.autoFit?.(column.field);
+                      if (fitted !== undefined) sizing.setUserWidth(column.field, fitted);
+                    }}
+                  />
+                </TableCell>
+              ))}
+              {showNoDifferencesNotice && <TableCell />}
             </TableRow>
           </TableHead>
           <TableBody>
@@ -115,7 +173,7 @@ export function VarietiesComparisonTable({
                   },
                 })}
               >
-                <TableCell sx={stickyNameCellSx}>
+                <TableCell sx={nameCellSx}>
                   <TruncatedTextWithTooltip
                     text={label}
                     sx={{
@@ -133,7 +191,7 @@ export function VarietiesComparisonTable({
                 ) : (
                   varyingFields.map((field) => (
                     <TableCell key={field.id}>
-                      {getComparisonCellValue(crop, cropCrop, field, t, locale, comparisonFormatContext)}
+                      <TruncatedTextWithTooltip text={getComparisonCellValue(crop, cropCrop, field, t, locale, comparisonFormatContext)} />
                     </TableCell>
                   ))
                 )}
@@ -142,6 +200,9 @@ export function VarietiesComparisonTable({
           </TableBody>
         </Table>
       </TableContainer>
+      {sizing.widthReset.enabled && (
+        <Button size="small" onClick={sizing.widthReset.reset}>{t('common:actions.resetColumnWidths')}</Button>
+      )}
     </TableSurface>
   );
 }

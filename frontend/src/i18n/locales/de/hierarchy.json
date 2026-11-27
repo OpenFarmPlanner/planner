@@ -26,6 +26,8 @@
     "copyHelp": "Kopierte Anbaupläne werden den entsprechenden Beeten der nächsten Parzelle ihrer Gruppe zugeordnet.",
     "keepProposedBeds": "Vorgeschlagene Beete beibehalten",
     "mappings": "Parzellenzuordnung",
+    "mappingCount_one": "{{formatted}} Parzellenzuordnung für kopierte Anbaupläne",
+    "mappingCount_other": "{{formatted}} Parzellenzuordnungen für kopierte Anbaupläne",
     "unchangedBeds_one": "{{count}} Anbauplan bleibt auf seinem Beet.",
     "unchangedBeds_other": "{{count}} Anbaupläne bleiben auf ihren Beeten.",
     "moveDetails_one": "Details zu {{count}} verschobenen Anbauplan",

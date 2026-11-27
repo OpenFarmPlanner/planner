@@ -97,6 +97,11 @@ export function createSiteConditionColumns(t: TFunction): GridColDef<HierarchyRo
       editable: true,
       sortable: false,
       valueGetter: (_value, row: HierarchyRow) => row[field] ?? INHERIT_VALUE,
+      valueFormatter: (_value, row: HierarchyRow) => {
+        if (row.type === 'individualPlan') return '';
+        const value = row.effectiveSiteConditions?.[field]?.value;
+        return value ? getSiteConditionValueLabel(t, field, value) : '—';
+      },
       // The inherited-source tooltip covers the whole cell (FullCellTooltip).
       cellClassName: () => FULL_CELL_TOOLTIP_CELL_CLASS,
       renderCell: (params) => renderSiteConditionCell(params, field, t),

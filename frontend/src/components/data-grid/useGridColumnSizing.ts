@@ -1,5 +1,6 @@
-import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { GridColDef, GridEventListener } from '@mui/x-data-grid';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import type { GridColDef, GridEventListener, GridValidRowModel } from '@mui/x-data-grid';
+import { createColumnTextMeasurer, measureGridColumn, type GridSizingContents } from './gridContentWidths';
 
 type Widths = Record<string, number>;
 type WidthReset = { enabled: boolean; reset: () => void };
@@ -26,16 +27,39 @@ function readWidths(key: string): Widths {
   }
 }
 
-export function useGridColumnSizing(
-  columns: GridColDef[],
+export function useGridColumnSizing<R extends GridValidRowModel = GridValidRowModel>(
+  columns: GridColDef<R>[],
   table: string,
   userId: number | null | undefined,
   projectId: number | null | undefined,
+  contents?: GridSizingContents<R>,
 ) {
   const key = `tableColumnWidths.${userId ?? 'guest'}.${projectId ?? 'none'}.${table}`;
   const [state, setState] = useState(() => ({ key, widths: readWidths(key) }));
   const current = useMemo(() => state.key === key ? state : { key, widths: readWidths(key) }, [state, key]);
   if (state !== current) setState(current);
+
+  const [defaultRevision, setDefaultRevision] = useState(0);
+  const defaultKey = contents ? `${key}.${contents.scope}.${defaultRevision}` : null;
+  const [measured, setMeasured] = useState<{ key: string; widths: Widths } | null>(null);
+  const hasMeasuredDefaults = measured !== null && measured.key === defaultKey;
+  const contentDefaults = hasMeasuredDefaults ? measured.widths : undefined;
+
+  useEffect(() => {
+    if (!contents?.ready || defaultKey === null || hasMeasuredDefaults) return;
+    let active = true;
+    const fonts = typeof document === 'undefined' ? undefined : document.fonts;
+    void Promise.resolve(fonts?.ready).then(() => {
+      if (!active) return;
+      const measure = createColumnTextMeasurer();
+      const widths = Object.fromEntries(columns.filter(column => column.resizable !== false).map(column => [
+        column.field,
+        measureGridColumn(column, contents.rows, contents.measurements?.[column.field], measure, true),
+      ]));
+      setMeasured({ key: defaultKey, widths });
+    });
+    return () => { active = false; };
+  }, [columns, contents, defaultKey, hasMeasuredDefaults]);
 
   // Native autosizing may publish several width changes in one event batch.
   const pending = useRef(current);
@@ -58,10 +82,10 @@ export function useGridColumnSizing(
   const definitions = useMemo(() => columns.map(column => ({
     ...column,
     minWidth: column.minWidth ?? MIN_WIDTH,
-    maxWidth: column.maxWidth ?? MAX_WIDTH,
-    width: column.width ?? DEFAULT_WIDTH,
-    flex: column.flex ?? 0,
-  })), [columns]);
+    maxWidth: column.maxWidth ?? (defaultKey === null ? MAX_WIDTH : Infinity),
+    width: contentDefaults?.[column.field] ?? column.width ?? DEFAULT_WIDTH,
+    flex: defaultKey !== null && column.resizable !== false ? 0 : column.flex ?? 0,
+  })), [columns, contentDefaults, defaultKey]);
 
   const sizedColumns = useMemo(() => definitions.map(column => {
     const width = Object.hasOwn(current.widths, column.field) ? current.widths[column.field] : undefined;
@@ -72,25 +96,46 @@ export function useGridColumnSizing(
     };
   }), [current.widths, definitions]);
 
-  const onColumnWidthChange = useCallback<GridEventListener<'columnWidthChange'>>(({ colDef, width }) => {
-    const column = definitions.find(({ field }) => field === colDef.field);
+  const setUserWidth = useCallback((field: string, width: number) => {
+    const column = definitions.find(definition => definition.field === field);
     if (!column || column.resizable === false || !Number.isFinite(width)) return;
     update(previous => {
-      const override = !column.flex && Math.round(width) === Math.round(column.width) ? undefined : Math.round(width);
+      const rounded = Math.round(Math.max(column.minWidth, Math.min(column.maxWidth, width)));
+      const override = defaultKey === null && !column.flex && rounded === Math.round(column.width) ? undefined : rounded;
       if (previous[column.field] === override) return previous;
       const next = { ...previous };
       if (override === undefined) delete next[column.field];
       else next[column.field] = override;
       return next;
     });
-  }, [definitions, update]);
+  }, [defaultKey, definitions, update]);
+  const onColumnWidthChange = useCallback<GridEventListener<'columnWidthChange'>>(
+    ({ colDef, width }) => setUserWidth(colDef.field, width),
+    [setUserWidth],
+  );
 
-  const reset = useCallback(() => update(() => ({})), [update]);
+  const autoFit = useCallback((field: string) => {
+    if (!contents?.ready) return undefined;
+    const column = columns.find(item => item.field === field);
+    if (!column || column.resizable === false) return undefined;
+    return measureGridColumn(column, contents.rows, contents.measurements?.[field], createColumnTextMeasurer(), false);
+  }, [columns, contents]);
+  const reset = useCallback(() => {
+    update(() => ({}));
+    if (defaultKey !== null) setDefaultRevision(previous => previous + 1);
+  }, [defaultKey, update]);
   const enabled = definitions.some(column =>
     column.resizable !== false && Object.hasOwn(current.widths, column.field)
-      && (column.flex !== 0 || current.widths[column.field] !== column.width),
+      && (defaultKey !== null || column.flex !== 0 || current.widths[column.field] !== column.width),
   );
-  return { columns: sizedColumns, onColumnWidthChange, widthReset: { enabled, reset } };
+  return {
+    columns: sizedColumns,
+    onColumnWidthChange,
+    setUserWidth,
+    widthReset: { enabled, reset },
+    autoFit: contents ? autoFit : undefined,
+    defaultsPending: defaultKey !== null && !hasMeasuredDefaults,
+  };
 }
 
 export const columnAutosizeOptions = { includeHeaders: true, includeOutliers: false };

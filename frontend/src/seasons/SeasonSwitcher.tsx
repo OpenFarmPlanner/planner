@@ -34,9 +34,9 @@ import type { UseActiveSeasonReturn } from './useActiveSeason';
 import { SeasonRowActionsMenu } from './SeasonRowActionsMenu';
 import { SeasonRenameDialog } from './SeasonRenameDialog';
 import { SeasonPeriodEditDialog } from './SeasonPeriodEditDialog';
-import { SeasonCopyDataDialog } from './SeasonCopyDataDialog';
 import { ParcelRotationCopyPreview, ParcelRotationCopyToggle } from './ParcelRotationCopyPreview';
 import { SeasonCopyCheckbox, SeasonCopyPreviewSection } from './SeasonCopyPreviewSection';
+import { seasonCopyDialogActionsSx, seasonCopyDialogContentSx, seasonCopyDialogSlotProps, seasonCopyDialogTitleSx } from './seasonCopyDialogLayout';
 import { SeasonPatternHintButton } from './SeasonPatternHintButton';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
@@ -52,6 +52,7 @@ interface SeasonSwitcherProps {
   controller: UseActiveSeasonReturn;
   onOpenProjectSettings: () => void;
   onOpenCreateSuggestion: () => void;
+  onOpenCopyData: (targetSeasonId: number) => void;
   isPhone?: boolean;
   buttonPx?: number;
 }
@@ -201,9 +202,11 @@ export function SeasonCreateSuggestionDialog({
 
   useEffect(() => {
     if (!requestKey || !previewChoice) return;
-    let cancelled = false;
+    // Option-dependent previews are abortable and bypass the list cache. A
+    // retry or a reopened dialog must fetch a current confirmation fingerprint.
+    const request = new AbortController();
     const accept = (options: SeasonCreationOptions | null) => {
-      if (cancelled) return;
+      if (request.signal.aborted) return;
       setRemoteCopyOptions(previous => ({
         key: requestKey, start: previewStart, options,
         lastSuccessfulOptions: options ?? (previous?.start === previewStart ? previous.lastSuccessfulOptions : null),
@@ -214,11 +217,11 @@ export function SeasonCreateSuggestionDialog({
       ...(actualDateBasis ? { use_actual_dates: true } : {}),
       ...(rotateParcels ? { rotate_parcels: true } : {}),
       ...(explicitSourceId === undefined ? {} : { source_season_id: explicitSourceId, copy_target: previewChoice }),
-    })
+    }, request.signal)
       .then(({ data }) => accept(explicitSourceId === undefined || data.copy_source_season_id === explicitSourceId
         ? data : null))
       .catch(() => accept(null));
-    return () => { cancelled = true; };
+    return () => request.abort();
   }, [requestKey, previewChoice, previewStart, actualDateBasis, explicitSourceId, rotateParcels]);
 
   const remoteResult = remoteCopyOptions?.key === requestKey ? remoteCopyOptions : null;
@@ -369,9 +372,9 @@ export function SeasonCreateSuggestionDialog({
   };
 
   return (
-    <Dialog open={open && showSuggestion} onClose={handleClose} fullWidth maxWidth="sm">
-      <DialogTitle>{t('navigation:seasonSwitcher.suggestion.confirmTitle', { label: suggestedLabel })}</DialogTitle>
-      <DialogContent>
+    <Dialog open={open && showSuggestion} onClose={handleClose} fullWidth maxWidth="sm" scroll="paper" slotProps={seasonCopyDialogSlotProps}>
+      <DialogTitle sx={seasonCopyDialogTitleSx}>{t('navigation:seasonSwitcher.suggestion.confirmTitle', { label: suggestedLabel })}</DialogTitle>
+      <DialogContent sx={seasonCopyDialogContentSx}>
         <Stack spacing={2}>
           <Stack direction="row" spacing={0.5} sx={{ alignItems: 'center' }}>
             <Typography variant="body2" color="text.secondary">
@@ -633,8 +636,7 @@ export function SeasonCreateSuggestionDialog({
                   })}
                 </Typography>
               ) : null}
-              <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels}
-                sourceSeasonLabel={copyFromLabel} />
+              <ParcelRotationCopyPreview report={parcelRotation} checked={rotateParcels} showCropRotation />
             </SeasonCopyPreviewSection>
           ) : (
             <>
@@ -654,7 +656,7 @@ export function SeasonCreateSuggestionDialog({
           )}
         </Stack>
       </DialogContent>
-      <DialogActions>
+      <DialogActions sx={seasonCopyDialogActionsSx}>
         <DisabledActionTooltip title={creatingSuggested ? t('common:disabledReasons.busy') : ''}>
           <Button onClick={handleClose} disabled={creatingSuggested}>
             {t('common:actions.cancel')}
@@ -681,6 +683,7 @@ export function SeasonSwitcher({
   controller,
   onOpenProjectSettings,
   onOpenCreateSuggestion,
+  onOpenCopyData,
   isPhone = false,
   buttonPx,
 }: SeasonSwitcherProps) {
@@ -688,7 +691,7 @@ export function SeasonSwitcher({
   const locale = resolveSeasonDateLocale(i18n);
   const {
     seasons, activeSeason, dueSuggestion, pendingDeletions,
-    switchSeason, renameSeason, updateSeasonPeriod, copyDataInto, deleteSeason,
+    switchSeason, renameSeason, updateSeasonPeriod, deleteSeason,
     undoPendingDeletion, closePendingDeletionSnackbar,
   } = controller;
 
@@ -697,10 +700,7 @@ export function SeasonSwitcher({
   const [rowMenuSeasonId, setRowMenuSeasonId] = useState<number | null>(null);
   const [renameSeasonTarget, setRenameSeasonTarget] = useState<Season | null>(null);
   const [periodEditTarget, setPeriodEditTarget] = useState<Season | null>(null);
-  const [copyDialogTargetId, setCopyDialogTargetId] = useState<number | null>(null);
-
   const rowMenuSeason = seasons.find((season) => season.id === rowMenuSeasonId) ?? null;
-  const copyDialogTarget = seasons.find((season) => season.id === copyDialogTargetId);
   const showSuggestion = Boolean(dueSuggestion?.due && dueSuggestion?.start_date && dueSuggestion?.end_date);
   const suggestedLabel = showSuggestion ? computeSeasonLabel(dueSuggestion!.start_date!, dueSuggestion!.end_date!) : '';
   const suggestedPeriod = showSuggestion
@@ -842,7 +842,7 @@ export function SeasonSwitcher({
         onCopyDataFrom={() => {
           if (rowMenuSeason) {
             closeMenu();
-            setCopyDialogTargetId(rowMenuSeason.id);
+            onOpenCopyData(rowMenuSeason.id);
           }
         }}
         onRename={() => { if (rowMenuSeason) { setRenameSeasonTarget(rowMenuSeason); } }}
@@ -863,16 +863,6 @@ export function SeasonSwitcher({
         onClose={() => setPeriodEditTarget(null)}
         onConfirm={updateSeasonPeriod}
       />
-
-      {copyDialogTarget && (
-        <SeasonCopyDataDialog
-          key={copyDialogTarget.id}
-          targetSeason={copyDialogTarget}
-          seasons={seasons}
-          onClose={() => setCopyDialogTargetId(null)}
-          onConfirm={copyDataInto}
-        />
-      )}
 
       {pendingDeletions.map((deletion, index) => (
         <DeleteUndoSnackbar

@@ -89,6 +89,7 @@ describe('SeasonSwitcher', () => {
         controller={controller}
         onOpenProjectSettings={vi.fn()}
         onOpenCreateSuggestion={onOpenCreateSuggestion}
+        onOpenCopyData={vi.fn()}
       />,
     );
 
@@ -188,7 +189,8 @@ describe('SeasonSwitcher', () => {
     expect(submit).toBeDisabled();
     expect(creationOptionsMock).toHaveBeenLastCalledWith({
       source_season_id: 9, copy_target: 'adopt', use_actual_dates: true,
-    });
+    }, expect.any(AbortSignal));
+    expect(creationOptionsMock.mock.calls.map(([, signal]) => signal.aborted)).toEqual([true, true, false]);
 
     const respond = (sourceId: number, copied: number) => ({
       data: {
@@ -238,7 +240,9 @@ describe('SeasonSwitcher', () => {
     await user.click(basis);
     expect(submit).toBeDisabled();
     expect(creationOptionsMock).toHaveBeenCalledTimes(2);
-    expect(creationOptionsMock).toHaveBeenLastCalledWith({ use_actual_dates: true, source_season_id: 2, copy_target: 'adopt' });
+    expect(creationOptionsMock).toHaveBeenLastCalledWith(
+      { use_actual_dates: true, source_season_id: 2, copy_target: 'adopt' }, expect.any(AbortSignal),
+    );
     const response = (copied: number) => ({
       data: {
         ...consecutiveCreationOptions,
@@ -460,13 +464,13 @@ describe('SeasonSwitcher', () => {
     await user.type(dateInput, '2026-10-01');
 
     expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
-    expect(creationOptionsMock).toHaveBeenCalledWith({ manual_start_date: '2026-10-01' });
+    expect(creationOptionsMock).toHaveBeenCalledWith({ manual_start_date: '2026-10-01' }, expect.any(AbortSignal));
     const basis = screen.getByRole('checkbox', { name: 'Ist-Termine als Plantermine verwenden' });
     await user.click(basis);
     expect(await screen.findByText(/1 von 4 Anbauplänen aus 25\/26 werden übernommen/)).toBeInTheDocument();
     expect(creationOptionsMock).toHaveBeenLastCalledWith({
       manual_start_date: '2026-10-01', use_actual_dates: true, source_season_id: 2, copy_target: 'manual',
-    });
+    }, expect.any(AbortSignal));
 
     creationOptionsMock.mockRejectedValueOnce(new Error('Preview request failed'));
     await user.click(basis);

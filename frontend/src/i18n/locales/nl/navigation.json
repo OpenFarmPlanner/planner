@@ -182,6 +182,8 @@
         "checkError": "De vruchtwisseling kon niet worden gecontroleerd. Je kunt toch kopiëren.",
         "conflictCount_one": "{{count}} vruchtwisselingsconflict",
         "conflictCount_other": "{{count}} vruchtwisselingsconflicten",
+        "remainingConflictCount_one": "Er blijft {{count}} vruchtwisselingsconflict op de toegewezen bedden bestaan.",
+        "remainingConflictCount_other": "Er blijven {{count}} vruchtwisselingsconflicten op de toegewezen bedden bestaan.",
         "hintCount_one": "{{count}} hint over de voedingsvolgorde",
         "hintCount_other": "{{count}} hints over de voedingsvolgorde",
         "showMore_one": "Nog {{count}} tonen",
