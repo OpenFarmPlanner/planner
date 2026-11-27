@@ -221,11 +221,17 @@ labels when the topbar has enough width. Spacing is directly available on
 wider layouts and appears in the dropdown on phones. Its keyboard interaction
 shows the Shift hint. The dropdown also selects the four graphic display modes.
 
-Crops renders phase colors from the selected crop reference date. Tasks and
-Crops & tasks share the urgency fills and task symbols for outstanding tasks.
-The combined mode keeps crop names and phases as text. Bed tooltips read from
-the existing location-scoped plans and tasks. Selecting the bed opens the same
-actionable preview in every mode.
+Crops renders phase colors from the selected crop date. The calendar popover
+provides Today, a specific date with an inclusive season slider, a custom date
+range, and Entire season. A multi-day projection shows intersecting crops in
+planting order with neutral styling and occupation dates in the details. A
+one-day range uses the same projection as a specific date. The canvas projects
+the already loaded location plans, including individual placements.
+
+Tasks and Crops & tasks share urgency fills and symbols for outstanding tasks
+using the actual date. Task-bearing individual markers stay reachable
+throughout the crop period changes. The combined mode keeps crop names and
+phases as text. Selecting a bed opens its existing actionable preview.
 
 The floating canvas tools use the measured canvas width, including in
 fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,

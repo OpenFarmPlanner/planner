@@ -18,11 +18,13 @@ import type { MetricCoverage } from '../components/hierarchy/utils/growingAreaGe
 import { useTranslation } from '../i18n';
 import { formatDateToAPI } from '../utils/isoDate';
 import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
+import { resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import type { useBedTasks } from '../components/tasks/useBedTasks';
 import type { Rect } from './graphicalLayoutUtils';
 import type { ViewportState } from './graphicalViewport';
 import { graphicalObjectKey, type GraphicalObjectInteraction } from './useGraphicalObjectInteraction';
-import type { BedCultivationEntry } from './graphicalCultivation';
+import type { BedCultivationEntry, CropReference } from './graphicalCultivation';
+import { formatCropOccupation } from './graphicalCropTimeLabels';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 import type { GraphicalIndividualPlant } from './graphicalIndividualPlants';
 import type { IndividualPlacementAction } from './useIndividualPlants';
@@ -101,11 +103,12 @@ interface OverlayProps {
   bedTasks: ReturnType<typeof useBedTasks>;
   plantTasks: ReturnType<typeof useBedTasks>;
   cropPreview?: CropPreviewData;
-  hoverTaskData?: {
+  cropReference?: CropReference;
+  hoverLayerData?: {
     byBed: ReadonlyMap<number, readonly Task[]>;
     summaries: ReadonlyMap<number, BedTaskSummary>;
     plantSummaries: ReadonlyMap<number, BedTaskSummary>;
-    bounds: ReturnType<typeof bedTaskDateBounds>;
+    bounds?: ReturnType<typeof bedTaskDateBounds>;
     crops?: ReadonlyMap<number, readonly BedCultivationEntry[]>;
     cropLoading: boolean;
     cropFailed: boolean;
@@ -120,10 +123,10 @@ const isGraphicalMenu = (target: EventTarget | null) => target instanceof Elemen
 
 export function GraphicalObjectOverlays({
   interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onOpenCrop, onStartIndividualPlan,
-  canEditPlant, onEditPlant, onFocusObject, bedTasks, plantTasks, cropPreview, hoverTaskData, seasonId,
+  canEditPlant, onEditPlant, onFocusObject, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
   canComplete, showLocationLabel,
 }: OverlayProps) {
-  const { t } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard', 'plantingPlans']);
+  const { t, i18n } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard', 'plantingPlans']);
   const titleId = useId();
   const preview = useRef<HTMLDivElement>(null);
   const keyboardPreview = useRef<HTMLButtonElement | null>(null);
@@ -164,6 +167,7 @@ export function GraphicalObjectOverlays({
     if (!selection) return;
     const onPointerDown = (event: PointerEvent) => {
       if (!(event.target instanceof Element) || preview.current?.contains(event.target)) return;
+      if (event.target.closest('[data-graphical-crop-time]')) return;
       keyboardPreview.current = null;
       if (!event.target.closest('.konvajs-content, [data-graphical-object-target]')) close();
     };
@@ -208,9 +212,14 @@ export function GraphicalObjectOverlays({
   });
   const plantFacts = (plant: GraphicalIndividualPlant, compact = false) => {
     const parent = objects.get(graphicalObjectKey(plant.parent.kind, plant.parent.id));
+    const occupation = cropReference?.kind === 'range' && plant.cropProjected
+      ? formatCropOccupation(plant.crop.plan, resolveSeasonDateLocale(i18n), t) : null;
+    const outside = Boolean(cropReference && !plant.cropProjected && hoverLayerData?.bounds);
     return <>
       <Typography variant="caption">{plantPositionLabel(plant)}</Typography>
       {plant.phase && <Typography variant="caption" color="text.secondary">{plant.phase}</Typography>}
+      {occupation && <Typography variant="caption" color="text.secondary">{occupation}</Typography>}
+      {outside && <Typography variant="caption" color="text.secondary">{t('graphical.display.outsideCropPeriod')}</Typography>}
       {!compact && parent && <Typography variant="caption" color="text.secondary">{parent.name}</Typography>}
     </>;
   };
@@ -235,7 +244,7 @@ export function GraphicalObjectOverlays({
   const noPlantTasks = t('individualPlants.noOpenTasks');
   const selectedRect = selection?.rect ? screenRect(selection.rect, viewport) : null;
   const narrow = stageWidth < 650 || interaction.device === 'touch';
-  const cropDateDiffers = cropPreview && (cropPreview.reference.kind === 'season'
+  const cropDateDiffers = cropPreview && (cropPreview.reference.kind !== 'date'
     || cropPreview.reference.date !== formatDateToAPI(new Date()));
   const previewWidth = Math.min(320, Math.max(124, stageWidth - (narrow && selection?.type === 'plant' ? 72 : 120)));
   const cx = selectedRect ? selectedRect.x + selectedRect.width / 2 : 12;
@@ -255,29 +264,29 @@ export function GraphicalObjectOverlays({
   const tooltipWidth = Math.min(264, stageWidth - 16);
   const tooltipY = pointer && canvas ? pointer.y - canvas.top : 0;
   const hoverBelow = tooltipY < stageHeight / 2;
-  const detailedTooltip = hoverTaskData && (hovered?.type === 'bed' || hovered?.type === 'plant');
-  const tooltipOffset = Math.max(8, Math.min(stageHeight - (detailedTooltip ? 260 : 100),
+  const detailedTooltip = hoverLayerData && (hovered?.type === 'bed' || hovered?.type === 'plant');
+  const tooltipOffset = Math.max(8, Math.min(stageHeight - (detailedTooltip ? cropReference?.kind === 'range' ? 330 : 260 : 100),
     hoverBelow ? tooltipY + 14 : stageHeight - tooltipY + 8));
   const tooltipHeight = Math.max(0, stageHeight - tooltipOffset - 8);
   const bedTaskDescription = (id: number) => {
-    if (!hoverTaskData) return undefined;
+    if (!hoverLayerData?.bounds) return undefined;
     if (bedTasks.failed) return t('graphical.taskLayer.loadError');
     if (bedTasks.loading) return t('common:messages.loading');
-    const summary = hoverTaskData.summaries.get(id);
+    const summary = hoverLayerData.summaries.get(id);
     if (!summary?.outstanding || !summary.urgency) return t('graphical.objects.noOpenTasks');
     return `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`;
   };
   const plantTaskDescription = (id: number) => {
-    if (!hoverTaskData) return undefined;
+    if (!hoverLayerData?.bounds) return undefined;
     if (plantTasks.planTasksFailed) return t('graphical.taskLayer.loadError');
     if (plantTasks.planTasksLoading) return t('common:messages.loading');
-    const summary = hoverTaskData.plantSummaries.get(id);
+    const summary = hoverLayerData.plantSummaries.get(id);
     return summary?.outstanding && summary.urgency
       ? `${bedTaskUrgencyLabel(summary.urgency, t)} · ${t('graphical.taskLayer.outstanding', { count: summary.outstanding })}`
       : noPlantTasks;
   };
   const hoveredPlant = hovered?.type === 'plant' ? hovered : null;
-  const hoveredPlantTasks = hoveredPlant && hoverTaskData
+  const hoveredPlantTasks = hoveredPlant && hoverLayerData?.bounds
     ? orderBedTasks((plantTasks.tasksByPlan.get(hoveredPlant.id) ?? []).filter(isOpenTask)) : [];
 
   return (
@@ -374,13 +383,15 @@ export function GraphicalObjectOverlays({
         }}>
           <Stack><Typography variant="body2" sx={{ fontWeight: 700 }}>{hovered.name}</Typography>
             {hovered.type === 'plant' ? plantFacts(hovered, true) : <ObjectFacts object={hovered} compact />}
-            {hovered.type === 'bed' && hoverTaskData && <GraphicalBedHoverDetails
-              tasks={hoverTaskData.byBed.get(hovered.id) ?? []} taskLoading={bedTasks.loading} taskFailed={bedTasks.failed}
-              taskBounds={hoverTaskData.bounds} crops={hoverTaskData.crops?.get(hovered.id)}
+            {hovered.type === 'bed' && hoverLayerData && <GraphicalBedHoverDetails
+              tasks={hoverLayerData.byBed.get(hovered.id) ?? []}
+              taskLoading={Boolean(hoverLayerData.bounds) && bedTasks.loading} taskFailed={bedTasks.failed}
+              taskBounds={hoverLayerData.bounds} crops={hoverLayerData.crops?.get(hovered.id)}
+              showOccupation={cropReference?.kind === 'range'}
               taskLimit={tooltipHeight >= 240 ? 3 : tooltipHeight >= 190 ? 2 : 1}
-              cropLoading={hoverTaskData.cropLoading} cropFailed={hoverTaskData.cropFailed} />}
-            {hoveredPlant && hoverTaskData && <GraphicalBedHoverDetails tasks={hoveredPlantTasks}
-              taskLoading={plantTasks.planTasksLoading} taskFailed={plantTasks.planTasksFailed} taskBounds={hoverTaskData.bounds}
+              cropLoading={hoverLayerData.cropLoading} cropFailed={hoverLayerData.cropFailed} />}
+            {hoveredPlant && hoverLayerData?.bounds && <GraphicalBedHoverDetails tasks={hoveredPlantTasks}
+              taskLoading={plantTasks.planTasksLoading} taskFailed={plantTasks.planTasksFailed} taskBounds={hoverLayerData.bounds}
               taskLimit={tooltipHeight >= 240 ? 3 : tooltipHeight >= 190 ? 2 : 1} noOpenTasksLabel={noPlantTasks}
               cropLoading={false} cropFailed={false} />}
           </Stack>

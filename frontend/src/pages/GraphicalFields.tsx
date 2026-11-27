@@ -145,8 +145,6 @@ export default function GraphicalFields({
   const showCrops = includesCrops(displayMode);
   const plantCropReference = showCrops ? cropReference : undefined;
   const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
-  const plansByParent = useMemo(() => projectIndividualPlants(individualPlants.plans, plantCropReference, individualSeason, focusedPlanId),
-    [individualPlants.plans, plantCropReference, individualSeason, focusedPlanId]);
   const measurePlantText = useMemo(() => {
     const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
     if (context) context.font = '11px Arial, sans-serif';
@@ -215,6 +213,10 @@ export default function GraphicalFields({
   const selectedPlans = useAreaPlantingPlans('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId);
   const bedTasks = useBedTasks('location', showTasks || selectedPlantKey || (showCrops && selectedBedId !== null) ? activeLocationId : null,
     activeSeasonId, { sharedPlans: locationPlans });
+  const taskPlans = showTasks ? bedTasks.tasksByPlan : undefined;
+  const plansByParent = useMemo(() => projectIndividualPlants(
+    individualPlants.plans, plantCropReference, individualSeason, focusedPlanId, taskPlans,
+  ), [individualPlants.plans, plantCropReference, individualSeason, focusedPlanId, taskPlans]);
   const selectedBedTasks = useBedTasks('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId, { sharedPlans: selectedPlans });
   const previewTasks = loadLocationPlans ? bedTasks : selectedBedTasks;
   const planRequest = loadLocationPlans ? locationPlans : selectedPlans;
@@ -1150,17 +1152,19 @@ export default function GraphicalFields({
             if (!measured) return null;
             const draft = matchesPlacementParent(stemDraft?.parent, parent) ? stemDraft : null;
             const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
-            const stems: CanvasStem[] = parentPlans.flatMap(({ plan, crop }) => {
+            const stems: CanvasStem[] = parentPlans.flatMap(({ plan, crop, cropProjected }) => {
               if (plan.id === draft?.planId) return [];
               const summary = showTasks && !locationIsEditable ? plantTaskSummaries.get(plan.id) : undefined;
               const urgency = summary?.outstanding ? summary.urgency ?? undefined : undefined;
               const phase = showCrops && !locationIsEditable ? crop.phase : undefined;
               const phaseColor = phase && !showTasks ? graphicalCropPhaseColor(theme, phase, crop.plan.color) : undefined;
+              const neutralCrop = !locationIsEditable && plantCropReference !== undefined
+                && (!cropProjected || (plantCropReference.kind === 'range' && !phase));
               return (plan.individual_positions ?? []).map(stem => {
                 const key = individualPlantObjectKey(stem.id);
                 const object = plantObjects.get(key);
                 const label = plantLabels?.get(stem.id);
-                return { ...stem, key: stem.id, planId: plan.id, phase, phaseColor, urgency,
+                return { ...stem, key: stem.id, planId: plan.id, phase, phaseColor, urgency, neutralCrop,
                   objectKey: object?.key, canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
                   label: label && object ? { ...label, name: object.name, phase: object.phase } : undefined,
                   selected: key === overlayKey || Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey };
@@ -1248,7 +1252,7 @@ export default function GraphicalFields({
                   />
                   {fullscreenLocationId === locationId && fullscreenDisplayControls && (
                     <Box sx={{ position: 'absolute', zIndex: 2, top: 12, left: 105,
-                      right: 110, width: 'fit-content', bgcolor: 'background.paper' }}>
+                      right: { xs: 64, sm: 110 }, width: 'fit-content', bgcolor: 'background.paper' }}>
                       {fullscreenDisplayControls}
                     </Box>
                   )}
@@ -1543,8 +1547,10 @@ export default function GraphicalFields({
                         startTargetedIndividualPlan(parent);
                       }
                     } : undefined}
-                    hoverTaskData={showTasks && activeSeasonId !== undefined ? {
-                      byBed: openTasksByBed, summaries: taskSummaries, plantSummaries: plantTaskSummaries, bounds: { today, upcomingEnd },
+                    cropReference={showCrops ? cropReference : undefined}
+                    hoverLayerData={(showTasks || showCrops) && activeSeasonId !== undefined ? {
+                      byBed: openTasksByBed, summaries: taskSummaries, plantSummaries: plantTaskSummaries,
+                      bounds: showTasks ? { today, upcomingEnd } : undefined,
                       crops: showCrops ? cropsByBed : undefined, cropLoading: showCrops && locationPlans.loading,
                       cropFailed: showCrops && locationPlans.failed,
                     } : undefined}

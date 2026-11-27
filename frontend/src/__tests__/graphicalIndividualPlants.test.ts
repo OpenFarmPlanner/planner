@@ -24,6 +24,18 @@ describe('individual plants in Graphic', () => {
     expect(projectIndividualPlants([bed], onDate('2026-06-01'), season, 1).get('bed:20')?.[0].crop.phase).toBeNull();
   });
 
+  it('retains an individual task target outside the crop window with the same marker identity and no crop phase', () => {
+    const window = { kind: 'range', start: '2026-06-01', end: '2026-06-08' } as const;
+    expect(projectIndividualPlants([bed], window, season, null).size).toBe(0);
+    const targets = projectIndividualPlants([bed], window, season, null, new Map([[1, []]])).get('bed:20')!;
+    expect(targets).toHaveLength(1);
+    expect(targets[0]).toMatchObject({ cropProjected: false, crop: { phase: null } });
+    const markers = placeIndividualPlantObjects(targets[0], dimensions, surface, 0, 'Beetroot', null);
+    expect(markers.map(marker => marker.key)).toEqual(['plant:one', 'plant:two', 'plant:three']);
+    expect(projectIndividualPlants([bed], { ...window, start: '2026-04-01' }, season, null)
+      .get('bed:20')?.[0]).toMatchObject({ cropProjected: true, crop: { phase: null } });
+  });
+
   it('places each target at the rotated position and retains its index within the plan', () => {
     const plants = placeIndividualPlantObjects(growth(), dimensions, surface, 90, 'Beetroot (Detroit)', 'Growth');
     expect(plants.map(({ key, index, count, rect }) => [key, index, count, rect])).toEqual([

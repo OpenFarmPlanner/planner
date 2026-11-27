@@ -5,21 +5,23 @@ import { taskDisplayTitle } from '../components/tasks/taskTitles';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { bedCropDisplayName, bedCropPhaseLabel, type BedCultivationEntry } from './graphicalCultivation';
+import { formatCropInterval, formatCropOccupation } from './graphicalCropTimeLabels';
 
 interface Props {
   tasks: readonly Task[];
   taskLoading: boolean;
   taskFailed: boolean;
-  taskBounds: ReturnType<typeof bedTaskDateBounds>;
+  taskBounds?: ReturnType<typeof bedTaskDateBounds>;
   taskLimit?: number;
   noOpenTasksLabel?: string;
   crops?: readonly BedCultivationEntry[];
+  showOccupation?: boolean;
   cropLoading: boolean;
   cropFailed: boolean;
 }
 
 export function GraphicalBedHoverDetails({
-  tasks, taskLoading, taskFailed, taskBounds, taskLimit = 3, noOpenTasksLabel, crops, cropLoading, cropFailed,
+  tasks, taskLoading, taskFailed, taskBounds, taskLimit = 3, noOpenTasksLabel, crops, showOccupation, cropLoading, cropFailed,
 }: Props) {
   const { t, i18n } = useTranslation(['fields', 'dashboard', 'common', 'ganttChart']);
   const locale = resolveSeasonDateLocale(i18n);
@@ -32,15 +34,28 @@ export function GraphicalBedHoverDetails({
     <Stack spacing={0.25} sx={{ mt: 0.5, overflowWrap: 'anywhere' }}>
       {(cropLoading || taskLoading) && <Typography variant="caption">{t('common:messages.loading')}</Typography>}
       {cropFailed && <Typography variant="caption" color="error.main">{t('graphical.display.cropLoadError')}</Typography>}
-      {!!cropNames && <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>{cropNames}{moreCrops}</Typography>}
+      {showOccupation ? namedCrops.slice(0, 2).map(({ plan, recordedPeriods }) => (
+        <Box key={plan.id}>
+          <Typography component="div" variant="caption" sx={{ fontWeight: 600 }}>{bedCropDisplayName(plan, t)}</Typography>
+          <Typography component="div" variant="caption" color="text.secondary">
+            {formatCropOccupation(plan, locale, t) ?? t('graphical.display.incompletePlan')}
+          </Typography>
+          {recordedPeriods?.slice(0, 1).map(({ start_date, end_date }) => (
+            <Typography key={start_date} component="div" variant="caption" color="text.secondary">
+              {t('graphical.display.recordedHarvest')} · {formatCropInterval(start_date, end_date, locale, t)}
+            </Typography>
+          ))}
+        </Box>
+      )) : !!cropNames && <Typography variant="caption" sx={{ fontWeight: 600 }} noWrap>{cropNames}{moreCrops}</Typography>}
+      {showOccupation && moreCrops && <Typography variant="caption">{moreCrops.trim()}</Typography>}
       {growPhase && <Typography variant="caption" color="text.secondary">{growPhase}</Typography>}
-      {taskFailed && <Typography variant="caption" color="error.main">{t('graphical.taskLayer.loadError')}</Typography>}
-      {!taskLoading && !taskFailed && (
+      {taskBounds && taskFailed && <Typography variant="caption" color="error.main">{t('graphical.taskLayer.loadError')}</Typography>}
+      {taskBounds && !taskLoading && !taskFailed && (
         <Typography variant="caption" sx={{ fontWeight: 600 }}>
           {tasks.length ? t('graphical.taskLayer.outstanding', { count: tasks.length }) : noOpenTasksLabel ?? t('graphical.objects.noOpenTasks')}
         </Typography>
       )}
-      {tasks.length > 0 && <Stack component="ul" spacing={0.25} sx={{ m: 0, p: 0, listStyle: 'none' }}>
+      {taskBounds && tasks.length > 0 && <Stack component="ul" spacing={0.25} sx={{ m: 0, p: 0, listStyle: 'none' }}>
         {tasks.slice(0, taskLimit).map(task => (
           <Box component="li" key={task.id}>
             <Typography variant="caption" component="div" noWrap>{taskDisplayTitle(task, t)}</Typography>
@@ -51,7 +66,7 @@ export function GraphicalBedHoverDetails({
           </Box>
         ))}
       </Stack>}
-      {more > 0 && <Typography variant="caption" color="text.secondary">{t('graphical.objects.moreTasks', { count: more })}</Typography>}
+      {taskBounds && more > 0 && <Typography variant="caption" color="text.secondary">{t('graphical.objects.moreTasks', { count: more })}</Typography>}
     </Stack>
   );
 }
