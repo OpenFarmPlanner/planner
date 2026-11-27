@@ -281,6 +281,7 @@
     "title": "Site suitability",
     "lightMismatch": "The crop is suited to {{crop}}. The bed’s light is recorded as {{bed}}.",
     "parcelLightMismatch": "This crop is suited to {{crop}}. The parcel is recorded as {{bed}}.",
+    "locationLightMismatch": "This crop is suited to {{crop}}. The location’s light is recorded as {{bed}}.",
     "waterMismatch": "The crop has high water needs. Soil moisture is recorded as {{moisture}}, and irrigation as {{irrigation}}."
   },
   "rotation": {

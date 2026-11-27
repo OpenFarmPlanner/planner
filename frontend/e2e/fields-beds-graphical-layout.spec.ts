@@ -390,7 +390,7 @@ test.describe('responsive canvas tools', () => {
     const toolbar = page.getByTestId('graphical-canvas-tools');
     const trigger = toolbar.getByRole('button', { name: 'Weitere Grafikwerkzeuge' });
     const menu = page.getByRole('menu', { name: 'Weitere Grafikwerkzeuge' });
-    const individualPlants = toolbar.getByRole('button', { name: 'Einzelpflanzen', exact: true });
+    const individualPlants = toolbar.getByRole('button', { name: /^(Einzelpflanzen|Einzelpflanzen hinzufügen)$/ });
     const rotate = 'Ansicht um 90° nach rechts drehen';
     const directRotation = toolbar.getByRole('button', { name: rotate, exact: true });
 
@@ -505,7 +505,7 @@ test.describe('responsive canvas tools', () => {
     await trigger.tap();
     await expect(menu).toBeVisible();
     expect(await menu.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
-    await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveCount(0);
+    await expect(menu.getByRole('menuitem', { name: /^(Einzelpflanzen|Einzelpflanzen hinzufügen)$/ })).toHaveCount(0);
     await expect(menu.getByRole('menuitem', { name: 'Aufgaben im Beet' })).toHaveCount(0);
     await page.keyboard.press('Escape');
     const display = graphicDisplayButton(page);

@@ -205,6 +205,20 @@
     }
   },
   "individualPlants": {
+    "atLocation": "Plantes individuelles sur ce site",
+    "pendingCount": "{{formatted}} sans position",
+    "predictedParent": "Zone de culture · {{name}}",
+    "freePlacementHint": "Cliquez ou touchez à l’intérieur du site. Au clavier, déplacez l’aperçu avec les flèches et appuyez sur Entrée pour placer une plante.",
+    "placeAtCursor": "Placer au point indiqué",
+    "parentSummary": "Plantes par zone de culture",
+    "geometryUnknown": "Les dimensions mesurées de cette zone de culture sont manquantes.",
+    "outsideLocation": "Placez la plante à l’intérieur de la limite du site.",
+    "parentAmbiguous": "Ce point se trouve dans des zones de culture qui se chevauchent. Choisissez une position sans ambiguïté.",
+    "geometryChanged": "Les zones de culture ont changé. Actualisez le plan et vérifiez de nouveau les positions.",
+    "splitProtected": "Ce plan contient des enregistrements qui ne peuvent pas être répartis en toute sécurité. Les plantes restent en place.",
+    "countExhausted": "Le nombre enregistré ne comprend plus de plantes sans position.",
+    "exactCountRequired": "Saisissez un nombre entier positif au moins égal au nombre de plantes positionnées.",
+    "exactCount": "Nombre exact de plantes",
     "generation": {
       "title": "Placer les plants automatiquement",
       "quantity": "Choisir la quantité",

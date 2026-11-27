@@ -14,15 +14,16 @@ from .base import TimestampedModel
 from .crops import Crop
 from .projects import Project
 from .seasons import Season
-from .structure import Bed, Field
+from .structure import Bed, Field, Location
 
 
 class PlantingPlan(TimestampedModel):
-    """A planting schedule for a bed area or individual plants in a measured parent."""
+    """A planting schedule for a bed area or individual plants in one growing area."""
     PLACEMENT_AREA = 'area'
     PLACEMENT_BED = 'individual_bed'
     PLACEMENT_PARCEL = 'individual_parcel'
-    PLACEMENT_MODES = (PLACEMENT_AREA, PLACEMENT_BED, PLACEMENT_PARCEL)
+    PLACEMENT_SITE = 'individual_site'
+    PLACEMENT_MODES = (PLACEMENT_AREA, PLACEMENT_BED, PLACEMENT_PARCEL, PLACEMENT_SITE)
     ACTUAL_DATE_FIELDS = frozenset({
         'actual_propagation_start_date', 'actual_sowing_date', 'actual_transplanting_date',
         'actual_harvest_start_date', 'recorded_harvest_end_date',
@@ -59,11 +60,19 @@ class PlantingPlan(TimestampedModel):
         null=True, blank=True,
         help_text='Direct parcel assignment for individual plants.',
     )
+    site = models.ForeignKey(
+        Location, on_delete=models.CASCADE, related_name='individual_planting_plans',
+        null=True, blank=True,
+        help_text='Direct location assignment for individual plants.',
+    )
     individual_bed = models.BooleanField(default=False)
+    individual_count = models.PositiveIntegerField(
+        null=True, blank=True,
+        help_text='Exact total including unpositioned plants. Null counts the stems.',
+    )
     individual_positions = models.JSONField(
         default=list, blank=True,
-        help_text='Individual IDs and stem coordinates in metres relative to the assigned bed '
-                  'or parcel.',
+        help_text='Stem IDs and coordinates in metres relative to the assigned growing area.',
     )
     estimated_canopy_diameter_m = models.DecimalField(
         max_digits=7, decimal_places=2, null=True, blank=True,
@@ -256,35 +265,50 @@ class PlantingPlan(TimestampedModel):
 
     @staticmethod
     def assigned_growing_area() -> Q:
-        return Q(bed__isnull=False) | Q(parcel__isnull=False)
+        return Q(bed__isnull=False) | Q(parcel__isnull=False) | Q(site__isnull=False)
 
     @property
     def growing_area_assigned(self) -> bool:
-        return self.bed_id is not None or self.parcel_id is not None
+        return self.bed_id is not None or self.parcel_id is not None or self.site_id is not None
 
     @staticmethod
     def individual_placements() -> Q:
-        return Q(individual_bed=True) | Q(parcel__isnull=False)
+        return Q(individual_bed=True) | Q(parcel__isnull=False) | Q(site__isnull=False)
 
     @property
     def is_individual(self) -> bool:
-        return self.individual_bed or self.parcel_id is not None
+        return self.individual_bed or self.parcel_id is not None or self.site_id is not None
 
     @property
     def placement_mode(self) -> str:
         if self.individual_bed:
             return self.PLACEMENT_BED
+        if self.site_id is not None:
+            return self.PLACEMENT_SITE
         return self.PLACEMENT_PARCEL if self.parcel_id is not None else self.PLACEMENT_AREA
 
     @property
-    def placement_parent(self) -> Bed | Field | None:
-        return self.bed if self.individual_bed else self.parcel
+    def placement_parent(self) -> Bed | Field | Location | None:
+        return self.bed if self.individual_bed else self.parcel or self.site
+
+    @property
+    def individual_total(self) -> int:
+        if self.individual_count is not None:
+            return self.individual_count
+        return len(self.individual_positions)
 
     @property
     def growing_area_parcel(self) -> Field | None:
         if self.parcel_id is not None:
             return self.parcel
         return self.bed.field if self.bed_id is not None else None
+
+    @property
+    def growing_area_location(self) -> Location | None:
+        if self.site_id is not None:
+            return self.site
+        parcel = self.growing_area_parcel
+        return parcel.location if parcel else None
 
     @property
     def occupancy_end_date(self) -> date | None:
@@ -390,7 +414,7 @@ class PlantingPlan(TimestampedModel):
     def __str__(self) -> str:
         """Return a string combining crop, bed, and planting date."""
         crop_label = self.crop.name if self.crop else '–'
-        area = self.bed or self.parcel
+        area = self.bed or self.parcel or self.site
         area_label = area.name if area else '–'
         date_label = self.planting_date or '–'
         return f"{crop_label} in {area_label} - {date_label}"
@@ -411,6 +435,19 @@ class PlantingPlan(TimestampedModel):
                     area_usage_sqm__isnull=True, quantity__isnull=True,
                 ),
                 name='individual_bed_plan_has_parent_crop_without_area_or_quantity',
+            ),
+            models.CheckConstraint(
+                condition=Q(site__isnull=True) | Q(
+                    bed__isnull=True, parcel__isnull=True, individual_bed=False, crop__isnull=False,
+                    area_usage_sqm__isnull=True, quantity__isnull=True,
+                ),
+                name='individual_site_plan_has_one_parent_and_crop',
+            ),
+            models.CheckConstraint(
+                condition=Q(individual_count__isnull=True) | Q(individual_count__gte=0) & (
+                    Q(individual_bed=True) | Q(parcel__isnull=False) | Q(site__isnull=False)
+                ),
+                name='exact_plant_count_requires_individual_plan',
             ),
         ]
         indexes = [

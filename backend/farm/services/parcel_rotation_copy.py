@@ -393,7 +393,7 @@ def preview_parcel_rotation(
         'individual_copies': [
             (
                 a.pk, a.placement_mode, b.bed_id, a.parcel_id, a.individual_positions,
-                a.estimated_canopy_diameter_m,
+                a.estimated_canopy_diameter_m, b.individual_count,
             )
             for a, b in rotated if a.is_individual
         ],

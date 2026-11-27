@@ -148,7 +148,8 @@ import { MobilePlanActionsMenu, type PlanMenuNavigationAction } from "../compone
 import { getEntityDetailPath } from "../components/hierarchy/details/hierarchyDetailRoutes";
 import { isPlantingPlanDetailPath, plantingPlanDetailPath, PLANTING_PLANS_PATH } from "../planting-plans/plantingPlanDetailRoutes";
 import {
-  individualPlacementChoice, isIndividualPlacement, parcelMeters, planPlacementParent, readIndividualPlacementChoice,
+  individualPlacementChoice, isIndividualPlacement, parcelMeters, placementLabelKey, placementParentFields,
+  planPlacementParent, readIndividualPlacementChoice,
   type PlacementParent,
 } from "./individualPlantGeometry";
 import { individualPlantGraphicPath } from "../planting-plans/individualPlantRoutes";
@@ -330,11 +331,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     bedPickerOptions.filter((option) => option.kind === "bed").map((option) => [option.id, option]),
   ), [bedPickerOptions]);
   const mobilePlacementOptions = useMemo(() => [...bedOptions, ...bedPickerOptions.flatMap(area => {
-    if (area.kind === 'location' || !parcelMeters((area.kind === 'bed' ? bedById.get(area.id) : fieldById.get(area.id)) ?? {})) return [];
-    const label = t(area.kind === 'bed' ? 'fields:individualPlants.inBed' : 'fields:individualPlants.onParcel');
+    const label = t(placementLabelKey(area.kind));
     const path = [area.locationName, area.fieldName, area.kind === 'bed' ? area.name : ''].filter(Boolean).join(BED_PATH_SEPARATOR);
     return [{ value: individualPlacementChoice({ kind: area.kind, id: area.id }), label: `${label} · ${path}` }];
-  })], [bedOptions, bedPickerOptions, bedById, fieldById, t]);
+  })], [bedOptions, bedPickerOptions, t]);
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const filterButtonRef = useRef<HTMLButtonElement | null>(null);
   // State (not a ref) because it feeds EditableDataGrid's slotProps during
@@ -590,7 +590,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
   const getBedPath = useCallback((row: PlantingPlanRow) => (
     bedPickerOptionsById.get(resolveBedCellValue(row.bed, row)) ?? {
-      locationName: toOptionalString(row.location_name) ?? "",
+      locationName: toOptionalString(row.location_name) ?? toOptionalString(row.site_name) ?? "",
       fieldName: toOptionalString(row.field_name) ?? "",
       name: toOptionalString(row.bed_name) ?? "",
     }
@@ -598,9 +598,10 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
   const getGridBedLabel = useCallback((row: PlantingPlanRow | null | undefined): string => {
     if (!row) return "—";
+    if (row.site) return locationById.get(row.site)?.name ?? row.site_name ?? '—';
     const { locationName, fieldName, name } = getBedPath(row);
     return [locationName, fieldName, name].filter(Boolean).join(BED_PATH_SEPARATOR) || "—";
-  }, [getBedPath]);
+  }, [getBedPath, locationById]);
 
   const applyBedSelection = useCallback(
     async (
@@ -635,7 +636,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         location_id,
         field_id,
         bed,
-        ...(row.isNew ? { placement_mode: 'area', parcel: null } : {}),
+        ...(row.isNew ? { placement_mode: 'area', parcel: null, site: null } : {}),
         ...(changingFromIndividual ? { plants_count: undefined } : {}),
         // The stored assessment belongs to the saved bed. The save response
         // supplies a new assessment, and a draft has none until it is saved.
@@ -651,18 +652,22 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
 
   const applyIndividualSelection = useCallback(async (rowId: GridRowId, parent: PlacementParent): Promise<boolean> => {
     const bed = parent.kind === 'bed' ? bedById.get(parent.id) : undefined;
-    const field = fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
-    if (!field || !parcelMeters(parent.kind === 'bed' ? bed ?? {} : field)) return false;
+    const field = parent.kind === 'location' ? undefined : fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
+    const locationId = parent.kind === 'location' ? parent.id : field?.location;
+    if (locationId === undefined) return false;
     lastEditedFieldRef.current = null;
     return gridCommandApiRef.current?.applyDialogEditValues(rowId, {
-      placement_mode: parent.kind === 'bed' ? 'individual_bed' : 'individual_parcel',
-      parcel: parent.kind === 'field' ? parent.id : null,
-      bed: bed?.id ?? null, field_id: field.id, location_id: field.location,
-      field_name: field.name, location_name: locationById.get(field.location)?.name, bed_name: bed?.name ?? '',
+      ...placementParentFields(parent), field_id: field?.id, location_id: locationId,
+      field_name: field?.name, location_name: locationById.get(locationId)?.name, bed_name: bed?.name ?? '',
       area_m2: undefined, area_usage_sqm: undefined, plants_count: undefined,
       rotation_status: undefined, rotation_findings: undefined,
     }) ?? false;
   }, [bedById, fieldById, locationById]);
+
+  const exactIndividualCount = (value: unknown) => {
+    const count = toAreaNumericValue(value, numberLocale);
+    return typeof count === 'number' && Number.isSafeInteger(count) && count > 0 ? count : null;
+  };
 
   const getPlantingDateToSave = (row: PlantingPlanRow, crop: Crop | undefined) => {
     const sowing = toIsoDateString(row.sowing_date);
@@ -675,16 +680,18 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
     parent: PlacementParent, crop: Crop, date: string, countValue: unknown,
   ) => {
     const bed = parent.kind === 'bed' ? bedById.get(parent.id) : undefined;
-    const field = fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
-    const dimensions = parcelMeters((parent.kind === 'bed' ? bed : field) ?? {});
-    if (!field || !dimensions) {
+    const field = parent.kind === 'location' ? undefined : fieldById.get(parent.kind === 'bed' ? bed?.field ?? -1 : parent.id);
+    const location = locationById.get(parent.kind === 'location' ? parent.id : field?.location ?? -1);
+    const dimensions = parcelMeters((parent.kind === 'bed' ? bed : parent.kind === 'location' ? location : field) ?? {});
+    if (location?.id === undefined || !dimensions) {
       setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.dimensionsRequired') });
       return Promise.resolve(null);
     }
     const text = typeof countValue === 'string' ? countValue.trim() : '';
     const count = text && (text.toLowerCase() === 'max' || isAutoAreaRequest(text, t('plantingPlans:placeholders.maxKeyword')))
       ? 'max' : toAreaNumericValue(countValue, numberLocale);
-    return confirmGeneration({ parent, field, beds, crop, date, dimensions, count });
+    return confirmGeneration({ parent, location: { ...location, id: location.id }, fields: fields.filter(field => field.location === location.id),
+      beds, crop, date, dimensions, count });
   };
 
   const saveRotationAcceptance = useCallback(async (id: number, accepted: boolean): Promise<void> => {
@@ -1132,7 +1139,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               placement={placement}
               individualChoices={row.isNew && draft.crop ? {
                 selected: placement,
-                canChoose: area => Boolean(parcelMeters((area.kind === 'bed' ? bedById.get(area.id) : fieldById.get(area.id)) ?? {})),
+                canChoose: () => true,
                 onSelect: parent => applyIndividualSelection(params.id, parent),
               } : undefined}
               numberLocale={numberLocale}
@@ -1347,7 +1354,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         width: dynamicWidths.plants,
         editable: true,
         type: "number",
-        valueParser: (value, row) => row?.isNew && isIndividualPlacement(row)
+        valueParser: (value, row) => row && isIndividualPlacement(row)
           ? value : value === '' ? null : Number(value),
         renderHeader: () => (
           <GridHeaderHelp label={t("plantingPlans:columns.plantsCount")}
@@ -1361,12 +1368,12 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           return params.props;
         },
         renderEditCell: (params) => {
-          const individual = Boolean(params.row.isNew && isIndividualPlacement(params.row));
+          const individual = isIndividualPlacement(params.row);
           return <PlantsCountEditCell
             {...params}
             crops={crops}
             placeholder={t(individual ? 'fields:individualPlants.countOrMax' : 'plantingPlans:placeholders.plantsCount')}
-            allowText={individual}
+            allowText={individual && Boolean(params.row.isNew)}
             onLastEditedFieldChange={(field, value) => {
               lastEditedFieldRef.current = field;
               setAreaNotice(null);
@@ -1393,7 +1400,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
         valueGetter: (_value, row: PlantingPlanRow) => {
           const start = row.seasonal_harvest?.occupancy_start_date ?? toPlanIsoDate(row.planting_date);
           const end = row.occupancy_end_date ?? getPlanOccupancyEndIso(row) ?? start;
-          return seasonBounds && (row.bed || row.parcel) && start && end
+          return seasonBounds && (row.bed || row.parcel || row.site) && start && end
             ? getSeasonOccupancyStatus(start, end, seasonBounds) : null;
         },
         valueFormatter: (value: SeasonOccupancyStatus | null) => (
@@ -2290,14 +2297,19 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
       mobileIndividualSave.current = true;
       setSavingMobileIndividual(true);
       try {
-        const positions = await generateIndividualPositions(parent, crop, date, mobileCreateForm.plants_count);
-        if (!positions) return;
+        const wantsGeneration = isAutoAreaRequest(mobileCreateForm.plants_count, t('plantingPlans:placeholders.maxKeyword'));
+        const count = exactIndividualCount(mobileCreateForm.plants_count);
+        const positions = wantsGeneration ? await generateIndividualPositions(parent, crop, date, mobileCreateForm.plants_count) : [];
+        if (positions === null) return;
+        if (!wantsGeneration && count === null) {
+          setMobileCreateError(t('fields:individualPlants.exactCountRequired'));
+          return;
+        }
         const { data } = await plantingPlanAPI.createIndividual({
-          crop: cropId, placement_mode: parent.kind === 'bed' ? 'individual_bed' : 'individual_parcel',
-          bed: parent.kind === 'bed' ? parent.id : null, parcel: parent.kind === 'field' ? parent.id : null,
+          crop: cropId, ...placementParentFields(parent),
           planting_date: date, cultivation_type: mobileCreateForm.cultivation_type, notes: mobileCreateForm.notes,
           ...getSupplementalPlannedDates(mobileCreateForm), ...getMobilePropagationChange(mobileCreateForm),
-          individual_positions: positions,
+          individual_positions: positions, ...(count === null ? {} : { individual_count: count }),
         });
         closeMobileCreateDialog();
         await reloadPlans();
@@ -2860,7 +2872,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             dialogEditFields={PLANTING_PLAN_DIALOG_EDIT_FIELDS}
             isStandaloneEditCell={isActualDateEditor}
             getCellReadOnlyReason={(row, field) => isIndividualPlacement(row) && (field === 'area_m2'
-              || (!row.isNew && ['bed', 'plants_count'].includes(field)))
+              || (!row.isNew && field === 'bed'))
               ? t('fields:individualPlants.editInGraphic') : getDateReadOnlyReason(row, field)}
             focusableReadOnlyFields={FOCUSABLE_SUMMARY_FIELDS}
             commandApiRef={gridCommandApiRef}
@@ -2904,6 +2916,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             const linkedBed = plan.bed ? bedById.get(plan.bed) : undefined;
             const linkedFieldId = linkedBed?.field ?? plan.parcel ?? undefined;
             const linkedField = linkedFieldId === undefined ? undefined : fieldById.get(linkedFieldId);
+            const locationId = linkedField?.location ?? plan.site ?? plan.parcel_location_id ?? undefined;
+            const linkedLocation = locationId === undefined ? undefined : locationById.get(locationId);
             return {
               ...plan,
               id: plan.id!,
@@ -2914,8 +2928,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               bed_name: plan.bed_name || "",
               field_id: linkedFieldId,
               field_name: linkedField?.name ?? plan.parcel_name ?? undefined,
-              location_id: linkedField?.location,
-              location_name: linkedField ? locationById.get(linkedField.location)?.name : undefined,
+              location_id: locationId,
+              location_name: linkedLocation?.name ?? plan.site_name ?? undefined,
               planting_date: plan.planting_date,
               harvest_date: plan.harvest_date,
               harvest_end_date: plan.harvest_end_date,
@@ -2987,13 +3001,15 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               cultivation_type: row.cultivation_type ?? "",
             };
             if (isIndividualPlacement(row)) {
+              const countWasEdited = lastEditedFieldRef.current === 'plants_count';
               lastEditedFieldRef.current = null;
               if (row.isNew) {
-                if (!row.generatedPositions?.length) throw new Error(t('fields:individualPlants.generation.count'));
-                return { ...apiData, placement_mode: row.placement_mode, parcel: row.parcel ?? null,
-                  generatedPositions: row.generatedPositions };
+                return { ...apiData, placement_mode: row.placement_mode, parcel: row.parcel ?? null, site: row.site ?? null,
+                  ...(row.generatedPositions?.length ? { generatedPositions: row.generatedPositions }
+                    : { individual_count: exactIndividualCount(row.plants_count) }) };
               }
-              return apiData;
+              return countWasEdited ? { ...apiData, individual_count: exactIndividualCount(row.plants_count),
+                placement_updated_at: row.updated_at } : apiData;
             }
             // Determine which field to send based on last edit
             const source = lastEditedFieldRef.current || "area_m2";
@@ -3024,11 +3040,11 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
           validateRow={(row) => {
             // A row can be saved as a draft and completed later, so nothing
             // is strictly required except enough to identify what the row
-            // is about: either a crop or a bed. Missing fields stay
+            // is about: either a crop or a growing area. Missing fields stay
             // visible via getRowValidationErrors' per-cell markers below.
             const hasCrop = Boolean(row.crop) && row.crop !== 0;
-            const hasBed = Boolean(row.bed) && row.bed !== 0;
-            if (!hasCrop && !hasBed) {
+            const hasGrowingArea = Boolean(row.bed || row.parcel || row.site);
+            if (!hasCrop && !hasGrowingArea) {
               return t("plantingPlans:validation.cropOrBedRequired");
             }
 
@@ -3048,7 +3064,7 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             if (!row.crop || row.crop === 0) {
               errors.crop = t("plantingPlans:validation.cropRequired");
             }
-            if (!row.parcel && (!row.bed || row.bed === 0)) {
+            if (!row.bed && !row.parcel && !row.site) {
               errors.bed = t("plantingPlans:validation.bedRequired");
             }
             if (!row.cultivation_type) {
@@ -3068,8 +3084,19 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
                 setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.completePlanBeforeGeneration') });
                 return false;
               }
-              const generatedPositions = await generateIndividualPositions(parent, crop, date, row.plants_count);
-              return generatedPositions ? { generatedPositions, planting_date: date } : false;
+              if (isAutoAreaRequest(row.plants_count, t('plantingPlans:placeholders.maxKeyword'))) {
+                const generatedPositions = await generateIndividualPositions(parent, crop, date, row.plants_count);
+                return generatedPositions ? { generatedPositions, planting_date: date } : false;
+              }
+              if (exactIndividualCount(row.plants_count) !== null) return { planting_date: date };
+              setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.exactCountRequired') });
+              return false;
+            }
+            if (isIndividualPlacement(row) && lastEditedFieldRef.current === 'plants_count') {
+              const count = exactIndividualCount(row.plants_count);
+              if (count !== null && count >= (row.positioned_plants_count ?? 0)) return true;
+              setAreaNotice({ severity: 'warning', message: t('fields:individualPlants.exactCountRequired') });
+              return false;
             }
             if (original && !row.isNew &&
               DIRECT_PLAN_EDIT_FIELDS.every(field => row[field] === original[field]) &&

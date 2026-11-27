@@ -10,11 +10,12 @@ import {
 
 export function SiteSuitabilityHints({ findings, scope = 'bed' }: {
   findings?: SiteSuitabilityFinding[];
-  scope?: 'bed' | 'field';
+  scope?: 'bed' | 'field' | 'location';
 }) {
   const { t } = useTranslation(['plantingPlans', 'crops', 'hierarchy']);
   const { t: cropT } = useTranslation('crops');
   if (!findings?.length) return null;
+  const lightMessage = { bed: 'lightMismatch', field: 'parcelLightMismatch', location: 'locationLightMismatch' } as const;
 
   const conditionLabel = (field: SiteConditionChoiceField, condition: EffectiveSiteCondition) => {
     const value = getSiteConditionValueLabel(t, field, condition.value);
@@ -29,7 +30,7 @@ export function SiteSuitabilityHints({ findings, scope = 'bed' }: {
         {findings.map((finding) => (
           <Typography key={finding.code} variant="body2">
             {finding.code === 'light_mismatch'
-              ? t(scope === 'field' ? 'siteSuitability.parcelLightMismatch' : 'siteSuitability.lightMismatch', {
+              ? t(`siteSuitability.${lightMessage[scope]}`, {
                 crop: formatSiteHealthValue('light_requirement', finding.crop_light, cropT),
                 bed: conditionLabel('light_condition', finding.light),
               })

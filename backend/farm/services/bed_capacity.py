@@ -276,6 +276,7 @@ def calculate_bed_capacities(
         exclude_plan_id=exclude_plan_id,
     ).select_related('crop').only(
         'bed', 'project', 'crop', 'area_usage_sqm', 'individual_bed', 'individual_positions',
+        'individual_count',
         'planting_date', 'harvest_date',
         'harvest_end_date', 'clearing_date', 'cultivation_type', 'harvest_window_overrides',
         'actual_sowing_date', 'actual_transplanting_date', 'crop__project', 'crop__crop_species',
@@ -291,7 +292,7 @@ def calculate_bed_capacities(
         )
         if occupancy.firmly_overlaps(start, firm_end):
             if plan.individual_bed:
-                if plan.individual_positions:
+                if plan.individual_total:
                     unmeasured_beds.add(plan.bed_id)
             else:
                 occupying[plan.bed_id].append(occupancy)

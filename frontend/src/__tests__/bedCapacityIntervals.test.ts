@@ -66,6 +66,18 @@ const days = (interval: { startDay: number; endDayExclusive: number }) =>
   [interval.startDay, interval.endDayExclusive - 1].map(day => formatIsoDate(bedCapacityDayToDate(day)));
 
 describe('bed capacity intervals', () => {
+  it('retains unknown bed capacity while an exact-count plan has pending positions', () => {
+    const individual: PlantingPlan = {
+      ...plan(1, '2026-03-26', '2026-03-27'), placement_mode: 'individual_bed',
+      individual_count: 5, individual_positions: [],
+    };
+    expect(intervals([individual]).get(1)?.intervals.map(interval => [days(interval), interval.status, interval.freeArea])).toEqual([
+      [['2026-03-25', '2026-03-25'], 'free', 10],
+      [['2026-03-26', '2026-03-27'], 'unknown', null],
+      [['2026-03-28', '2026-04-30'], 'free', 10],
+    ]);
+  });
+
   it('counts distinct plans once and changes capacity at inclusive boundaries', () => {
     const carrots = plan(1, '2026-03-28', '2026-04-09', 5);
     const lettuce = plan(2, '2026-04-04', '2026-04-12', 3);

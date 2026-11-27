@@ -27,8 +27,8 @@ export function individualPlantCreationAction(t: TFunction, onClick: () => void)
 export function individualPlantCreationForRow(
   row: HierarchyRow, t: TFunction, onCreate?: (target: IndividualCreationTarget) => void,
 ) {
-  if (!onCreate || !row.locationId || row.isNew || (row.type !== 'field' && row.type !== 'bed')) return null;
-  const id = row.type === 'bed' ? row.bedId : row.fieldId;
+  if (!onCreate || !row.locationId || row.isNew || row.type === 'individualPlan') return null;
+  const id = row.type === 'bed' ? row.bedId : row.type === 'field' ? row.fieldId : row.locationId;
   if (!id || id <= 0) return null;
   const target: IndividualCreationTarget = { locationId: row.locationId, parent: { kind: row.type, id } };
   return individualPlantCreationAction(t, () => onCreate(target));

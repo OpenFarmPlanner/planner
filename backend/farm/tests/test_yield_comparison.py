@@ -499,6 +499,24 @@ class YieldComparisonTest(TestCase):
         self.assertIsNone(row['forecast_kg'])
         self.assertIsNone(row['recorded']['measured_kg'])
 
+    def test_comparison_names_direct_location_in_dates_harvested_areas_and_losses(self):
+        site = Location.objects.create(project=self.project, name='Garden entrance')
+        day = date(2027, 7, 5)
+        plan = PlantingPlan.objects.create(
+            project=self.project, season=self.current, crop=self.crop, site=site,
+            planting_date=date(2027, 4, 1), cultivation_type='direct_sowing', individual_count=3,
+        )
+        self.add_harvest(day, 3, 'kg', [(plan, 3, 2)])
+        CropLoss.objects.create(
+            project=self.project, planting_plan=plan, date=day, loss_type='partial',
+            cause='frost', extent_unit='plants', extent_value=1,
+        )
+        response = self.client.get(self.url, {'crop_id': self.crop.pk, 'location_id': site.pk})
+        self.assertEqual(response.status_code, 200, response.data)
+        row = next(row for row in response.json()['seasons'] if row['id'] == self.current.id)
+        for key in ('plan_dates', 'harvested_areas', 'losses'):
+            self.assertEqual([item['site_name'] for item in row[key]], [site.name])
+
     def test_repeated_individual_forecasts_distinguish_a_changed_stem_count(self):
         orchard = self.add_individual_orchard(clearing_date=self.previous.end_date)
         copies = [

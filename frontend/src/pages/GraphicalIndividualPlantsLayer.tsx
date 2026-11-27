@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { alpha, useTheme } from '@mui/material/styles';
+import { useTheme } from '@mui/material/styles';
 import { Circle, Group, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { StemCoordinates } from '../api/types';
@@ -32,15 +32,13 @@ const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
 };
 
 export function GraphicalIndividualPlantsLayer({
-  field, surfaceId, surface, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
+  field, surface, rotation, stems, zoom, editablePlanId, draggablePlanIds, captureStems, onSelect, onMove, onMoveWorld,
 }: {
   field: PlacementDimensions;
-  surfaceId: string;
   surface: CanvasRect;
   rotation: GraphicalRotation;
   stems: CanvasStem[];
   zoom: number;
-  placing: boolean;
   editablePlanId?: number | null;
   /** Saved plans whose stems can be dragged directly, in graphic edit mode (#1579). */
   draggablePlanIds?: ReadonlySet<number>;
@@ -49,9 +47,9 @@ export function GraphicalIndividualPlantsLayer({
    * saving or the plan has a panel draft), so they never reach the bed or parcel below.
    */
   captureStems?: boolean;
-  onAdd: (position: StemCoordinates) => void;
   onSelect?: (stem: CanvasStem) => void;
   onMove: (key: string, position: StemCoordinates) => void;
+  onMoveWorld?: (key: string, point: Position) => void;
 }) {
   const theme = useTheme();
   const press = useRef<{ target: Press['target']; position: Position } | null>(null);
@@ -72,11 +70,6 @@ export function GraphicalIndividualPlantsLayer({
       onClick();
     }
   };
-  const place = (event: Press) => click(event, () => {
-    const pointer = event.target.getParent()?.getRelativePointerPosition();
-    const position = pointer && canvasToStem(pointer, field, surface, rotation);
-    if (position) onAdd(position);
-  });
   const move = (event: Press) => {
     const current = event.target.getStage()?.getPointerPosition();
     const start = press.current?.position;
@@ -88,16 +81,12 @@ export function GraphicalIndividualPlantsLayer({
 
   return (
     <Group>
-      {placing && <Rect {...surface} name="individual-placement-surface" fill={alpha(theme.palette.primary.light, 0.08)}
-        stroke={theme.palette.primary.main} strokeWidth={2} strokeScaleEnabled={false} dash={[6, 4]}
-        data-testid={surfaceId}
-        onMouseDown={beginPress} onMouseMove={move} onTouchStart={beginPress} onTouchMove={move}
-        onClick={place} onTap={place} />}
       {stems.map(stem => {
         const point = stemToCanvas(stem, field, surface, rotation);
         if (!point) return null;
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
+        const freeDrag = stem.planId !== null && draggablePlanIds?.has(stem.planId) ? onMoveWorld : undefined;
         const taskColors = stem.urgency ? bedTaskColors(theme, stem.urgency) : null;
         const colors = graphicalPlantColors(theme, stem.phaseColor, taskColors, stem.neutralCrop);
         const radius = stem.urgency || stem.selected ? 6 : 4.5;
@@ -108,6 +97,7 @@ export function GraphicalIndividualPlantsLayer({
           onDragStart={event => { event.cancelBubble = true; press.current = null; }}
           onDragMove={event => {
             event.cancelBubble = true;
+            if (freeDrag) return;
             const { x, y } = event.currentTarget.position();
             event.currentTarget.position({
               x: Math.max(surface.x, Math.min(surface.x + surface.width, x)),
@@ -116,11 +106,15 @@ export function GraphicalIndividualPlantsLayer({
           }}
           onDragEnd={event => {
             event.cancelBubble = true;
+            const stage = event.currentTarget.getStage();
+            const world = stage && freeDrag ? event.currentTarget.getAbsolutePosition(stage) : null;
             const position = canvasToStem(event.currentTarget.position(), field, surface, rotation);
             // Reset the shared drag transform. React applies the confirmed rounded position to both shapes.
             event.currentTarget.position(point);
             const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
-            if (position && !canceled) onMove(stem.key, position);
+            if (canceled) return;
+            if (world && freeDrag) freeDrag(stem.key, world);
+            else if (position) onMove(stem.key, position);
           }}>
           {stem.canopy > 0 && <Circle listening={false}
             radius={stem.canopy * FIELD_WORLD_PX_PER_METER / 2}

@@ -54,7 +54,9 @@ def _name(label: str, row: dict, state: "ProjectState") -> str:
         crop = state["crop"].get(str(row.get("crop_id")), {})
         bed = state["bed"].get(str(row.get("bed_id")), {})
         parcel = state["field"].get(str(row.get("parcel_id")), {})
-        return " · ".join(filter(None, (_name("crop", crop, state), (bed or parcel).get("name"))))
+        site = state["location"].get(str(row.get("site_id")), {})
+        parent = bed or parcel or site
+        return " · ".join(filter(None, (_name("crop", crop, state), parent.get("name"))))
     if label == "crop":
         return format_crop_display_name(row.get("name"), row.get("variety")) or ""
     return row.get("name") or ""

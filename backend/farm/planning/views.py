@@ -43,6 +43,12 @@ from farm.models import (
     Season,
     Task,
 )
+from farm.planning.individual_graphic_writes import (
+    GraphicMoveRequestSerializer,
+    GraphicPlacementRequestSerializer,
+    move_graphic_stem,
+    save_graphic_placement,
+)
 from farm.planning.individual_planting import (
     check_placement_on_current_parent,
     lock_and_check_individual_crop,
@@ -460,7 +466,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         PlantingPlan.objects
         .select_related(
             'crop', 'crop__crop_species', 'crop__project',
-            'bed__field__location', 'parcel__location',
+            'bed__field__location', 'parcel__location', 'site',
             'created_by', 'updated_by',
             'rotation_conflict_accepted_by', 'season',
         )
@@ -469,6 +475,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         .order_by('-planting_date')
     )
     serializer_class = PlantingPlanSerializer
+    graphical_placement_actions = {'individual_placement', 'graphic_placement', 'graphic_move'}
 
     def _is_individual_hierarchy_read(self) -> bool:
         return self.action == 'list' and self.request.query_params.get('individual_only') == 'true'
@@ -508,7 +515,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         record_season = resolve_record_season(self.request) if across_seasons else None
         season_id = record_season.pk if record_season is not None else season_id
         if season_id is not None:
-            if self.action in {'list', 'retrieve', 'individual_placement'}:
+            if self.action in {'list', 'retrieve'} | self.graphical_placement_actions:
                 queryset = self._read_season_plans(
                     queryset, season_id, across_seasons, record_season=record_season,
                 )
@@ -517,13 +524,14 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         elif across_seasons:
             queryset = queryset.filter(season__deleted_at__isnull=True)
         individual_hierarchy = self._is_individual_hierarchy_read()
-        if self.action == 'individual_placement' or individual_hierarchy:
+        if self.action in self.graphical_placement_actions or individual_hierarchy:
             if season_id is None:
                 return queryset.none()
             queryset = queryset.filter(PlantingPlan.individual_placements())
         if self.action == 'list':
             queryset = self._filter_by_growing_area(queryset)
-        if self.action in {'list', 'retrieve', 'individual_placement'} and not individual_hierarchy:
+        if (self.action in {'list', 'retrieve'} | self.graphical_placement_actions
+                and not individual_hierarchy):
             allocations = HarvestAllocation.objects.filter(
                 project=self.request.active_project,
             ).select_related('harvest').only(
@@ -558,8 +566,11 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             area_filter = Q(**{lookup: area_id})
             if name == 'field':
                 area_filter |= Q(parcel_id=area_id)
+            if name == 'location':
+                area_filter |= Q(site_id=area_id)
             if name == 'individual_location':
                 area_filter |= Q(individual_bed=True, bed__field__location_id=area_id)
+                area_filter |= Q(site_id=area_id)
             queryset = queryset.filter(area_filter)
         return queryset
 
@@ -609,7 +620,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             candidates, project_id, active_season.start_date, active_season.end_date,
         )
         carries = starts_before | Q(pk__in=early_plans) | recorded_harvest_overlap
-        if self.action in {'list', 'retrieve', 'individual_placement'}:
+        if self.action in {'list', 'retrieve'} | self.graphical_placement_actions:
             after_occupancy = candidates.alias(
                 occupied_until=PlantingPlan.occupancy_end_expression(),
             ).exclude(carries)
@@ -624,10 +635,11 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
     @transaction.atomic
     def perform_create(self, serializer: PlantingPlanSerializer) -> None:
         data = serializer.validated_data
-        parent = data.get('bed') if data.get('individual_bed') else data.get('parcel')
+        direct_parent = data.get('parcel') or data.get('site')
+        parent = data.get('bed') if data.get('individual_bed') else direct_parent
         if parent is not None:
             lock_and_check_individual_crop(data['crop'])
-            check_placement_on_current_parent(parent, data['individual_positions'])
+            check_placement_on_current_parent(parent, data.get('individual_positions', []))
         current_user = self.request.user if self.request.user.is_authenticated else None
         extra_fields = {}
         if 'season' not in serializer.validated_data:
@@ -652,7 +664,7 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         """Edit geometry on an individual plan visible in the selected season."""
         self._lock_plan()
         plan = self.get_object()
-        fields = {'individual_positions', 'estimated_canopy_diameter_m'}
+        fields = {'individual_positions', 'estimated_canopy_diameter_m', 'individual_count'}
         if not isinstance(request.data, dict) or (
             not request.data.keys() & fields
             or request.data.keys() - fields - {'placement_updated_at'}
@@ -665,10 +677,37 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         self.perform_update(serializer)
         return Response(serializer.data)
 
-    def _lock_plan(self) -> PlantingPlan:
+    @extend_schema(request=GraphicPlacementRequestSerializer)
+    @action(detail=False, methods=['post'], url_path='graphic-placement')
+    @transaction.atomic
+    def graphic_placement(self, request) -> Response:
+        """Place a batch of stems together and group them by their real parents."""
+        payload = GraphicPlacementRequestSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        data = payload.validated_data
+        source_id = data.get('plan')
+        source = None
+        if source_id is not None:
+            self._lock_plan(source_id)
+            source = get_object_or_404(self.get_queryset(), pk=source_id)
+        plans = save_graphic_placement(self, data, source)
+        return Response({'plans': self.get_serializer(plans, many=True).data})
+
+    @extend_schema(request=GraphicMoveRequestSerializer)
+    @action(detail=True, methods=['post'], url_path='graphic-move')
+    @transaction.atomic
+    def graphic_move(self, request, pk: str | None = None) -> Response:
+        """Move a saved stem, preserving its ID if the move changes its parent."""
+        payload = GraphicMoveRequestSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        self._lock_plan()
+        plans = move_graphic_stem(self, self.get_object(), payload.validated_data)
+        return Response({'plans': self.get_serializer(plans, many=True).data})
+
+    def _lock_plan(self, plan_id=None) -> PlantingPlan:
         return generics.get_object_or_404(
             PlantingPlan.objects.select_for_update().filter(project=self.request.active_project),
-            pk=self.kwargs['pk'],
+            pk=self.kwargs['pk'] if plan_id is None else plan_id,
         )
 
     @transaction.atomic
@@ -1221,7 +1260,7 @@ class TaskViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSe
     # version (see farm/agent_api/permissions.py).
     api_token_actions = {'list', 'retrieve'}
     queryset = Task.objects.select_related(
-        'planting_plan__crop', 'planting_plan__bed', 'planting_plan__parcel',
+        'planting_plan__crop', 'planting_plan__bed', 'planting_plan__parcel', 'planting_plan__site',
     )
     serializer_class = TaskSerializer
 

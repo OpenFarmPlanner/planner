@@ -3,7 +3,8 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from crops.models import CropSpecies
-from farm.models import Bed, Crop, Field, Location, PlantingPlan, Project, Season
+from farm.models import Bed, Crop, EntityRevision, Field, Location, PlantingPlan, Project, Season
+from farm.services.bed_capacity import calculate_bed_capacity
 from farm.services.harvests import eligible_harvest_plans
 from farm.services.parcel_rotation_copy import preview_parcel_rotation
 from farm.services.seasons import build_planting_plan_copies, copy_planting_plans
@@ -46,6 +47,146 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         response = self.client.post(URL, self.payload(**changes), format='json')
         self.assertEqual(response.status_code, 201, response.data)
         return response
+
+    def graphic_scene(self):
+        self.location.width_m, self.location.length_m = 30, 30
+        self.location.save()
+        self.bed.width_m, self.bed.length_m = 2, 4
+        self.bed.save()
+        return {
+            'location': self.location.id, 'origin_x': 100, 'origin_y': 100,
+            'footprints': [
+                {'kind': 'field', 'id': self.field.id, 'x': 0, 'y': 0, 'width': 12, 'height': 20},
+                {'kind': 'bed', 'id': self.bed.id, 'x': 1, 'y': 1, 'width': 2, 'height': 4},
+            ],
+        }
+
+    def graphic_point(self, parent, x, y):
+        kind = {Location: 'location', Field: 'field', Bed: 'bed'}[type(parent)]
+        return {'x_m': x, 'y_m': y, 'parent': {'kind': kind, 'id': parent.pk}}
+
+    def test_graphic_atomically_groups_distinct_parents_and_replays_without_duplicates(self):
+        data = {
+            'request_id': str(uuid4()), 'scene': self.graphic_scene(), 'crop': self.apple.id,
+            'cultivation_type': BOUGHT_IN, 'planting_date': '2026-04-18',
+            'individual_count': 5, 'pending_parent': {'kind': 'location', 'id': self.location.pk},
+            'points': [
+                self.graphic_point(self.location, 21, 3), self.graphic_point(self.field, 6, 8),
+                self.graphic_point(self.bed, 2, 3), self.graphic_point(self.bed, 2.5, 3),
+            ],
+        }
+        url = f'{URL}graphic-placement/'
+        incorrect = {**data, 'points': [*data['points'], self.graphic_point(self.field, 2, 3)]}
+        self.assertEqual(self.client.post(url, incorrect, format='json').status_code, 409)
+        self.assertFalse(PlantingPlan.objects.filter(project=self.project).exists())
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        members = {plan['placement_mode']: plan for plan in response.json()['plans']}
+        self.assertEqual(members['individual_site']['site'], self.location.pk)
+        self.assertEqual(members['individual_site']['pending_plants_count'], 1)
+        self.assertEqual(members['individual_parcel']['parcel'], self.field.pk)
+        self.assertEqual(members['individual_bed']['bed'], self.bed.pk)
+        positions = members['individual_bed']['individual_positions']
+        self.assertEqual([(point['x_m'], point['y_m']) for point in positions], [(1, 2), (1.5, 2)])
+        again = self.client.post(url, data, format='json')
+        self.assertEqual(again.status_code, 200, again.data)
+        self.assertEqual({plan['id'] for plan in again.json()['plans']},
+                         {plan['id'] for plan in members.values()})
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 3)
+
+    def test_location_plan_revision_display_name_uses_the_location(self):
+        plan = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
+        ).json()
+        revision = EntityRevision.objects.get(
+            project=self.project, entity_type='planting_plan', object_id=plan['id'],
+            action=EntityRevision.ACTION_CREATED,
+        )
+        self.assertEqual(revision.display_name, f'{self.apple.name} / {self.location.name}')
+
+    def test_count_only_location_keeps_pending_and_moves_the_split_count_with_a_stem(self):
+        scene = self.graphic_scene()
+        original = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=3,
+        ).json()
+        counts = ('plants_count', 'positioned_plants_count', 'pending_plants_count')
+        self.assertEqual(tuple(original[key] for key in counts), (3, 0, 3))
+        for key in ('individual_location', 'location'):
+            by_location = self.client.get(URL, {key: self.location.pk}).json()
+            self.assertEqual([plan['id'] for plan in by_location['results']], [original['id']])
+        demand = self.client.get('/openfarmplanner/api/young-plant-demand/').json()['results'][0]
+        self.assertEqual(demand['plant_count'], 3)
+        response = self.client.post(f'{URL}graphic-placement/', {
+            'request_id': str(uuid4()), 'scene': scene, 'plan': original['id'],
+            'placement_updated_at': original['updated_at'], 'individual_count': 4,
+            'points': [
+                self.graphic_point(self.location, 21, 3), self.graphic_point(self.location, 22, 3),
+            ],
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        plan, = response.json()['plans']
+        self.assertEqual((plan['plants_count'], plan['pending_plants_count']), (4, 2))
+        stem = plan['individual_positions'][0]['id']
+        move = {'scene': scene, 'stem': stem, 'placement_updated_at': plan['updated_at'],
+                'point': self.graphic_point(self.bed, 2, 3)}
+        url = f'{URL}{plan["id"]}/graphic-move/'
+        moved = self.client.post(url, move, format='json')
+        self.assertEqual(moved.status_code, 200, moved.data)
+        source, target = moved.json()['plans']
+        self.assertEqual(source['id'], original['id'])
+        self.assertEqual(tuple(source[key] for key in counts), (3, 1, 2))
+        self.assertEqual(target['individual_positions'], [{'id': stem, 'x_m': 1, 'y_m': 2}])
+        self.assertEqual(target['bed'], self.bed.pk)
+        self.assertEqual(tuple(target[key] for key in counts), (1, 1, 0))
+        self.assertTrue(PlantingPlan.objects.get(pk=target['id']).tasks.filter(
+            origin='automatic', status='pending',
+        ).exists())
+        self.assertEqual(self.client.post(url, move, format='json').status_code, 409)
+
+    def test_count_only_bed_has_unmeasured_capacity_during_occupancy(self):
+        self.graphic_scene()
+        self.create_plan(
+            bed=self.bed.pk, parcel=None, placement_mode='individual_bed',
+            individual_positions=[], individual_count=5,
+        )
+        capacity = calculate_bed_capacity(self.bed, start=date(2026, 5, 1), end=date(2026, 6, 1))
+        self.assertTrue(capacity.has_unmeasured_placement)
+
+    def test_harvest_suggestion_names_the_direct_site(self):
+        self.graphic_scene()
+        plan = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
+        ).json()
+        response = self.client.get('/openfarmplanner/api/harvests/suggestions/', {
+            'crop': self.apple.pk, 'date': '2026-09-01',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        suggestion, = response.json()
+        self.assertEqual(suggestion['id'], plan['id'])
+        self.assertEqual(suggestion['site_name'], self.location.name)
+
+    def test_graphic_rejects_overlapping_geometry_and_protected_split(self):
+        scene = self.graphic_scene()
+        other = Field.objects.create(project=self.project, location=self.location,
+                                     name='Overlapping parcel', width_m=4, length_m=8)
+        scene['footprints'].append({
+            'kind': 'field', 'id': other.pk, 'x': 1, 'y': 1, 'width': 4, 'height': 8,
+        })
+        plan = self.create_plan(actual_transplanting_date='2026-04-18').json()
+        stem = plan['individual_positions'][0]
+        url = f'{URL}{plan["id"]}/graphic-move/'
+        base = {'scene': scene, 'stem': stem['id'], 'placement_updated_at': plan['updated_at']}
+        ambiguous = self.client.post(url, {**base, 'point': self.graphic_point(self.bed, 2, 3)},
+                                     format='json')
+        self.assertEqual(ambiguous.status_code, 409)
+        self.assertEqual(ambiguous.json()['code'], 'individual_parent_ambiguous')
+        protected = self.client.post(url, {**base,
+            'point': self.graphic_point(self.location, 22, 8)}, format='json')
+        self.assertEqual(protected.status_code, 409)
+        self.assertEqual(protected.json()['code'], 'individual_split_protected')
+        plan_after = self.client.get(f'{URL}{plan["id"]}/').json()
+        self.assertEqual(plan_after['individual_positions'], plan['individual_positions'])
+        self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 1)
 
     def test_create_and_edit_positions_preserves_ids_and_updates_demand(self):
         created = self.create_plan().json()
@@ -309,6 +450,22 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(water['soil_moisture']['source'], 'field')
         self.assertEqual(detail['site_suitability_findings'], listed['site_suitability_findings'])
 
+    def test_site_suitability_uses_location_conditions(self):
+        self.graphic_scene()
+        self.apple.light_requirement, self.apple.water_requirement = ['full_sun'], 'high'
+        self.apple.save()
+        self.location.light_condition, self.location.soil_moisture = 'shade', 'dry'
+        self.location.irrigation = 'unavailable'
+        self.location.save()
+        plan = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
+        ).json()
+        light, water = plan['site_suitability_findings']
+        self.assertEqual((light['code'], light['light']['source']), ('light_mismatch', 'location'))
+        self.assertEqual(
+            (water['code'], water['irrigation']['source']), ('water_mismatch', 'location'),
+        )
+
     def test_crop_cannot_become_annual_while_used_by_an_individual_plan(self):
         created = self.create_plan().json()
         response = self.client.patch(
@@ -324,6 +481,17 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertTrue(eligible_harvest_plans(
             self.project.id, self.apple.id, date(2027, 8, 29),
         ).exists())
+
+    def test_crop_cannot_become_annual_while_used_by_a_location_plan(self):
+        self.create_plan(
+            parcel=None, site=self.location.pk,
+            individual_positions=[], individual_count=2,
+        )
+        response = self.client.patch(
+            f'{CROP_URL}{self.apple.pk}/', {'life_cycle': 'annual'}, format='json',
+        )
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data['code'], 'individual_plant_lifecycle_conflict')
 
     def variety_inheriting_from_apple(self):
         species = CropSpecies.objects.create(name='Orchard apple')
@@ -519,9 +687,24 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         opposite_bed.width_m = 4
         opposite_bed.save()
 
+        # A direct parcel bypasses rotation but is still copied into the target season.
+        PlantingPlan.objects.filter(pk=orchard['id']).update(individual_count=4)
+        rejected = self.client.post(api, {
+            'source_season_id': self.origin.pk, 'rotate_parcels': True,
+            'parcel_rotation_fingerprint': preview['fingerprint'],
+        }, format='json')
+        self.assertEqual(rejected.status_code, 409, rejected.data)
+        pairs, _, continuing, _ = build_planting_plan_copies(
+            source_season=self.origin, target_season=self.later,
+        )
+        current = preview_parcel_rotation(
+            self.origin, self.later, pairs, preceding=True, requested=True,
+            continuing_count=continuing,
+        ).summary
+
         copies, _, _, _ = copy_planting_plans(
             source_season=self.origin, target_season=self.later,
-            parcel_rotation_fingerprint=preview['fingerprint'],
+            parcel_rotation_fingerprint=current['fingerprint'],
         )
         by_source = {plan.copied_from_plan_id: plan for plan in copies}
         self.assertEqual(by_source[annual.id].bed_id, opposite_bed.id)
@@ -541,6 +724,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         trees = by_source[orchard['id']]
         self.assertEqual(trees.parcel_id, self.field.id)
         self.assertIsNone(trees.bed_id)
+        self.assertEqual(trees.individual_total, 4)
         compared = zip(orchard['individual_positions'], trees.individual_positions, strict=True)
         for before, after in compared:
             self.assertNotEqual(before['id'], after['id'])

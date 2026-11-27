@@ -620,6 +620,7 @@
       "seasonPattern": "Impostazioni della stagione"
     },
     "batch": {
+      "individualPlacement": "Piante singole posizionate",
       "seasonCreate": "Stagione {{season}} creata",
       "seasonDelete": "Stagione {{season}} eliminata",
       "seasonUndelete": "Stagione {{season}} ripristinata",

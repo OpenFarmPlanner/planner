@@ -41,7 +41,7 @@ export function YieldForecastWarning({ plans }: { plans: IncompleteYieldPlan[] }
           : null;
         const planLabel = [
           formatCropDisplayName(plan) || t('diagnostics.unnamedPlan'),
-          plan.bed_name || plan.parcel_name,
+          plan.bed_name || plan.parcel_name || plan.site_name,
           date,
         ].filter(Boolean).join(' · ');
         return (

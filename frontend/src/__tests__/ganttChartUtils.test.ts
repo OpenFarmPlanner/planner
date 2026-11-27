@@ -906,6 +906,30 @@ describe('buildFieldOccupancyHierarchy', () => {
     });
   });
 
+  it('includes dated annual and perennial individual plans directly under their location', () => {
+    const annual = {
+      id: 8, crop: 2, crop_name: 'Bean', bed: null, site: 1, individual_count: 5,
+      planting_date: '2026-03-01', harvest_date: '2026-05-01', harvest_end_date: '2026-05-15',
+    };
+    const perennial = {
+      id: 9, crop: 5, crop_name: 'Apple', bed: null, site: 1,
+      planting_date: '2026-09-01', clearing_date: '2028-09-01',
+    };
+    const plantingPlans = [annual, perennial];
+    const nodes = buildFieldOccupancyHierarchy({
+      locations: multiLocationLocations, fields: [], beds: [], plantingPlans,
+      labels: { ...labels, individualPlants: 'Einzelpflanzen' }, crops: [],
+    });
+    expect(nodes.find(node => node.id === 'location-1')).toMatchObject({ planCount: 2, occupiedBedCount: 0 });
+    expect(nodes.find(node => node.id === 'individual-location-1')).toMatchObject({
+      parentId: 'location-1', name: 'Einzelpflanzen', planCount: 2,
+      tasks: [{ id: 'plan-8-growth' }, { id: 'plan-8-harvest' }, { id: 'plan-9-occupancy' }],
+    });
+    expect(getOccupancyCalendarRange(plantingPlans, '2026-01-01', '2026-12-31')).toEqual({
+      start: parseIsoDate('2026-03-01'), end: parseIsoDate('2026-12-31'),
+    });
+  });
+
   it('always builds a location node and a field node, even for a single location', () => {
     const nodes = buildFieldOccupancyHierarchy({
       labels,

@@ -288,6 +288,7 @@
     "title": "Condizioni di coltivazione",
     "lightMismatch": "La coltura è adatta a {{crop}}. L’esposizione dell’aiuola è registrata come {{bed}}.",
     "parcelLightMismatch": "La coltura è adatta a {{crop}}. Per la parcella è indicato {{bed}}.",
+    "locationLightMismatch": "La coltura è adatta a {{crop}}. Per il sito è indicato {{bed}}.",
     "waterMismatch": "La coltura ha un fabbisogno idrico elevato. L’umidità del suolo risulta {{moisture}} e l’irrigazione {{irrigation}}."
   },
   "rotation": {

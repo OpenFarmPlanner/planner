@@ -245,6 +245,21 @@ class YieldCalendarAPITest(TestCase):
             [plan_id for plan_id, _, _ in expected if plan_id != draft.id],
         )
 
+    def test_incomplete_forecast_names_a_direct_location(self):
+        site = self.bed.field.location
+        crop = Crop.objects.create(project=self.project, name='Basil', harvest_method='per_plant')
+        plan = PlantingPlan.objects.create(
+            project=self.project, crop=crop, site=site, individual_count=2,
+            planting_date=date(2026, 5, 1),
+        )
+        response = self.client.get('/openfarmplanner/api/yield-calendar/', {
+            'year': 2026, 'include_incomplete': 'true',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        warning, = response.json()['incomplete_plans']
+        self.assertEqual(warning['plan_id'], plan.pk)
+        self.assertEqual(warning['site_name'], site.name)
+
     def test_independent_year_slices_preserve_the_same_rounded_plan_total(self):
         season = Season.objects.create(
             project=self.project, start_date=date(2026, 9, 1), end_date=date(2027, 8, 31),

@@ -72,7 +72,7 @@ export function HarvestDialog({ record, plan, initialDate, onClose, onSaved }: H
   const [allocations, setAllocations] = useState<AllocationDraft[]>(() => record
     ? record.allocations.map((row, key) => ({
       key, planId: row.planting_plan,
-      label: [row.bed_name || row.parcel_name, row.season_label].filter(Boolean).join(' · '),
+      label: [row.bed_name || row.parcel_name || row.site_name, row.season_label].filter(Boolean).join(' · '),
       quantity: inputNumber(row.quantity), area: inputNumber(row.harvested_area_sqm),
     }))
     : plan ? [{ key: 0, planId: plan.id, label: plan.label, quantity: '', area: '', useTotal: true }] : []);
@@ -130,7 +130,7 @@ export function HarvestDialog({ record, plan, initialDate, onClose, onSaved }: H
   }
 
   const suggestionLabel = (suggestion: HarvestPlanSuggestion): string => [
-    [suggestion.field_name, suggestion.bed_name].filter(Boolean).join(' | ') || t('noBed'),
+    suggestion.site_name || [suggestion.field_name, suggestion.bed_name].filter(Boolean).join(' | ') || t('noBed'),
     suggestion.season_label,
     suggestion.planting_date ? formatSeasonDate(suggestion.planting_date, locale) : '',
   ].filter(Boolean).join(' · ');

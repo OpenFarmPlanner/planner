@@ -41,5 +41,6 @@ export interface HierarchyRow {
   bedId?: number;
   plantingPlanId?: number;
   individualPlantCount?: number;
+  individualPendingCount?: number;
   isNew?: boolean;
 }

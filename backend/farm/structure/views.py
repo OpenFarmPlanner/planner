@@ -19,8 +19,10 @@ from farm.history.records import internal_project_versions
 from farm.models import Bed, BedLayout, EntityRevision, Field, FieldLayout, Location, PlantingPlan
 from farm.planning.individual_planting import (
     lock_individual_parcel,
+    lock_placement_parent,
     validate_individual_bed_dimensions,
     validate_individual_parcel_dimensions,
+    validate_individual_site_dimensions,
 )
 from farm.project_context import get_active_project_or_400
 from farm.services.bed_layouts import (
@@ -150,6 +152,14 @@ class LocationViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
     def perform_create(self, serializer):
         instance = serializer.save(project=self.request.active_project)
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        serializer.instance = lock_placement_parent(serializer.instance)
+        validate_individual_site_dimensions(serializer.instance, serializer.validated_data)
+        previous_snapshot = _serialize_instance(serializer.instance)
+        instance = serializer.save()
+        self.record_revision(instance, EntityRevision.ACTION_UPDATED, previous_snapshot=previous_snapshot)
 
     @transaction.atomic
     def perform_destroy(self, instance):

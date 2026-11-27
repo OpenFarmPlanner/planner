@@ -52,6 +52,57 @@ async function openDesktopDraft(page: Page, bedName: string, choice: RegExp) {
   return { draft, cell };
 }
 
+test('records an exact location count from the table before any position is chosen', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'inline-count-only-at-location', {
+    demoProject: true, demoYear: 2026, loginAsAdmin: true,
+  });
+  const { beans } = await seedMixedBed(page);
+  const { results: sites } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  const site = sites.find(site => site.name === 'Hofgarten')!;
+  const { cell } = await openDesktopDraft(page, 'Hofgarten', /Einzelpflanzen am Standort.*Hofgarten/);
+  await expect(cell('area_m2')).toHaveAttribute('aria-readonly', 'true');
+  const count = cell('plants_count').getByRole('textbox');
+  await count.fill('3');
+  const save = planCreate(page);
+  await count.press('Enter');
+  const response = await save;
+  expect(response.status(), await response.text()).toBe(201);
+  const saved = await response.json() as PlantingPlan;
+  expect(saved).toMatchObject({ crop: beans.id, site: site.id, bed: null, parcel: null,
+    placement_mode: 'individual_site', plants_count: 3, positioned_plants_count: 0, pending_plants_count: 3,
+    individual_positions: [], area_usage_sqm: null });
+  await page.reload();
+  await expect(page.locator(`[role="row"][data-id="${saved.id}"] [data-field="plants_count"]`)).toHaveText('3');
+  const growingArea = page.locator(`[role="row"][data-id="${saved.id}"] [data-field="bed"]`);
+  await expect(growingArea).toContainText('Hofgarten');
+  await expect(growingArea).not.toHaveClass(/ofp-cell-error/);
+  await page.goto(`/app/planting-plans/${saved.id}`);
+  await expect(page.getByText('3 noch nicht positioniert', { exact: true })).toBeVisible();
+});
+
+test('previews regular bed placement when the location has no dimensions', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'inline-generation-unmeasured-location', {
+    demoProject: true, demoYear: 2026, loginAsAdmin: true,
+  });
+  await seedMixedBed(page);
+  const site = await apiRequest<{ id: number }>(page, 'POST', '/locations/', { name: 'Standort ohne Maßangaben' });
+  const parcel = await apiRequest<Field>(page, 'POST', '/fields/', {
+    name: 'Vermessene Parzelle', location: site.id, width_m: 10, length_m: 12,
+  });
+  const bed = await apiRequest<Bed>(page, 'POST', '/beds/', {
+    name: 'Vermessenes Einzelbeet', field: parcel.id, width_m: 2, length_m: 6,
+  });
+  const { cell } = await openDesktopDraft(page, bed.name, /Einzelpflanzen im Beet.*Vermessenes Einzelbeet/);
+  const count = cell('plants_count').getByRole('textbox');
+  await count.fill('max');
+  await count.press('Enter');
+  const preview = page.getByRole('dialog', { name: PREVIEW });
+  await expect(preview.getByTestId('individual-generation-preview')).toBeVisible();
+  await expect(preview.getByRole('button', { name: 'Speichern', exact: true })).toBeEnabled();
+});
+
 test('previews a bed plan, cancels without writing, and saves exact stems beside an area plan', async ({ page, request }, info) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'plans-inline-individual-bed', {
@@ -62,7 +113,7 @@ test('previews a bed plan, cancels without writing, and saves exact stems beside
   await expect(cell('area_m2')).toHaveAttribute('aria-readonly', 'true');
   await expect(cell('area_m2').getByRole('textbox')).toHaveCount(0);
   const count = cell('plants_count').getByRole('textbox');
-  await count.fill('3');
+  await count.fill('max');
   const preview = page.getByRole('dialog', { name: PREVIEW });
   const previewCanvas = preview.getByTestId('individual-generation-preview');
   const writes: number[] = [];
@@ -70,14 +121,20 @@ test('previews a bed plan, cancels without writing, and saves exact stems beside
     if (request.method() === 'POST' && new URL(request.url()).pathname === '/api/planting-plans/') writes.push(1);
   });
   await count.press('Enter');
+  await preview.getByRole('combobox', { name: 'Anzahl festlegen' }).click();
+  await page.getByRole('option', { name: 'Genaue Anzahl' }).click();
+  await preview.getByRole('textbox', { name: 'Zusätzliche Pflanzen' }).fill('3');
   await expect(previewCanvas).toHaveAttribute('data-position-count', '3');
   await preview.getByRole('button', { name: 'Abbrechen' }).click();
   await expect(preview).toBeHidden();
   await expect(draft).toBeVisible();
   expect(writes).toHaveLength(0);
 
-  await count.fill('999');
+  await count.fill('max');
   await count.press('Enter');
+  await preview.getByRole('combobox', { name: 'Anzahl festlegen' }).click();
+  await page.getByRole('option', { name: 'Genaue Anzahl' }).click();
+  await preview.getByRole('textbox', { name: 'Zusätzliche Pflanzen' }).fill('999');
   await expect(preview.getByRole('button', { name: 'Speichern', exact: true })).toBeDisabled();
   expect(writes).toHaveLength(0);
   await preview.getByRole('textbox', { name: 'Zusätzliche Pflanzen' }).fill('3');
@@ -128,7 +185,7 @@ test('projects a direct orchard and an annual bed plan with exact ancestor count
   const count = (rowId: string | number) => grid.locator(`[data-id="${rowId}"] [data-field="individualPlantCount"]`);
   await expect(count(bed.id!)).toHaveText('2');
   await expect(count(`field-${field.id}`)).toHaveText('5');
-  await expect(count(`location-${field.location}`)).toHaveText('5');
+  await expect(count(`location-${field.location}`)).toHaveText('6');
   await expect(count(`individual-plan-${annual.id}`)).toHaveText('2');
 
   await plan.locator('[data-field="name"]').click({ button: 'right' });
@@ -136,7 +193,7 @@ test('projects a direct orchard and an annual bed plan with exact ancestor count
   await expect(page.getByRole('menuitem', { name: 'Löschen', exact: true })).toHaveCount(0);
   await page.keyboard.press('Escape');
   await search.fill('Topaz');
-  await expect(grid.getByText('Apfel (Topaz)', { exact: true })).toBeVisible();
+  await expect(grid.getByText('Apfel (Topaz)', { exact: true })).toHaveCount(2);
   await expect(plan).toHaveCount(0);
   await expect(count(`field-${field.id}`)).toHaveText('5');
 

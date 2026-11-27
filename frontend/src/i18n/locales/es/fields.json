@@ -205,6 +205,20 @@
     }
   },
   "individualPlants": {
+    "atLocation": "Plantas individuales en esta ubicación",
+    "pendingCount": "{{formatted}} aún sin posición",
+    "predictedParent": "Área de cultivo · {{name}}",
+    "freePlacementHint": "Haz clic o toca dentro de la ubicación. Con el teclado, mueve la vista previa con las flechas y pulsa Intro para colocar una planta.",
+    "placeAtCursor": "Colocar en el punto de vista previa",
+    "parentSummary": "Plantas por área de cultivo",
+    "geometryUnknown": "Faltan las dimensiones medidas de esta área de cultivo.",
+    "outsideLocation": "Coloca la planta dentro del límite de la ubicación.",
+    "parentAmbiguous": "Este punto está en áreas de cultivo superpuestas. Elige una posición inequívoca.",
+    "geometryChanged": "Las áreas de cultivo han cambiado. Actualiza el plano y vuelve a comprobar las posiciones.",
+    "splitProtected": "Este plan tiene registros que no se pueden dividir con seguridad. Las plantas se han mantenido en su posición.",
+    "countExhausted": "No quedan plantas sin posición en la cantidad registrada.",
+    "exactCountRequired": "Introduce un número entero positivo igual o superior al de las plantas colocadas.",
+    "exactCount": "Cantidad exacta de plantas",
     "generation": {
       "title": "Colocar plantas automáticamente",
       "quantity": "Elegir la cantidad",

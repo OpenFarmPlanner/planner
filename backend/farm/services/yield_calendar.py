@@ -33,7 +33,7 @@ _COPIED_FORECAST_FIELDS = (
     'copied_from_plan_id', 'season_id', 'crop_id', 'bed_id', 'parcel_id', 'cultivation_type',
     'planting_date', 'planned_propagation_start_date', 'planned_sowing_date',
     'harvest_date', 'harvest_end_date', 'clearing_date', 'area_usage_sqm', 'quantity',
-    'individual_bed',
+    'individual_bed', 'site_id', 'individual_count',
 )
 
 
@@ -83,7 +83,7 @@ def distinct_forecast_plans(
     for plan in plans:
         schedule = recurring_harvest_schedule(plan, crop_index)
         if plan.copied_from_plan_id is not None:
-            count = len(plan.individual_positions) if plan.is_individual else None
+            count = plan.individual_total if plan.is_individual else None
             key = (tuple(getattr(plan, name) for name in _COPIED_FORECAST_FIELDS), schedule, count)
             if key in seen:
                 continue
@@ -152,7 +152,7 @@ def _forecast_plans(
     )
     plans = (
         PlantingPlan.objects.filter(project=project)
-        .select_related('crop', 'crop__crop_species', 'bed', 'parcel')
+        .select_related('crop', 'crop__crop_species', 'bed', 'parcel', 'site')
         .prefetch_related('crop__crop_species__translations')
         .alias(occupied_until=PlantingPlan.occupancy_end_expression())
         .order_by('pk')
@@ -295,6 +295,7 @@ def _incomplete_plan(
         'crop_variety': crop.variety if crop else '',
         'bed_name': plan.bed.name if plan.bed else '',
         'parcel_name': plan.parcel.name if plan.parcel_id else '',
+        'site_name': plan.site.name if plan.site_id else '',
         'planting_date': plan.planting_date,
         'calculation_blockers': list(blockers),
     }

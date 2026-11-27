@@ -200,6 +200,20 @@
     }
   },
   "individualPlants": {
+    "atLocation": "Individual plants at this location",
+    "pendingCount": "{{formatted}} not yet positioned",
+    "predictedParent": "Parent · {{name}}",
+    "freePlacementHint": "Click or tap within the location. With the keyboard, move the preview with the arrow keys and press Enter to place a stem.",
+    "placeAtCursor": "Place at the preview point",
+    "parentSummary": "Stems by growing area",
+    "geometryUnknown": "Measured dimensions are missing for this growing area.",
+    "outsideLocation": "Place the stem inside the location boundary.",
+    "parentAmbiguous": "This point lies in overlapping growing areas. Choose a clear position.",
+    "geometryChanged": "The growing areas changed. Refresh the layout and check the positions again.",
+    "splitProtected": "This plan has records that cannot safely be split. The plants were kept in place.",
+    "countExhausted": "The recorded count has no more unpositioned plants.",
+    "exactCountRequired": "Enter a positive whole number at least as large as the number of positioned plants.",
+    "exactCount": "Exact plant count",
     "generation": {
       "title": "Automatically place plants",
       "quantity": "Choose quantity",

@@ -6,7 +6,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import { Link } from 'react-router';
 import { cropAPI } from '../api/api';
-import type { Bed, Crop, Field, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
+import type { Bed, Crop, Field, Location, PlantingPlan, PlanCultivationType, Season, StemCoordinates } from '../api/types';
 import { Disclosure } from '../components/Disclosure';
 import { LocalizedDecimalField } from '../components/inputs/LocalizedDecimalField';
 import LoadRetryButton from '../components/LoadRetryButton';
@@ -16,13 +16,15 @@ import { getEffectiveCropValue } from '../crops/varietyValueSource';
 import { useTranslation } from '../i18n';
 import { IndividualPlantGenerationDialog } from '../planting-plans/IndividualPlantGenerationDialog';
 import { plantingPlanDetailPath } from '../planting-plans/plantingPlanDetailRoutes';
+import type { GraphicPlacementContext, GraphicPlacementResolution } from './graphicalPlantPlacement';
+import type { Position } from './graphicalLayoutUtils';
 import { formatLocalizedNumber, resolveLocaleFromLanguage } from '../utils/numberLocalization';
 import { formatSeasonDate } from '../seasons/formatSeasonDate';
-import { parcelMeters, planPlacementParent, roundMeters, shortStemSpacing, type PlacementDimensions, type PlacementParent } from './individualPlantGeometry';
+import { canRemoveIndividualStem, matchesPlacementParent, parcelMeters, planPlacementParent, roundMeters, shortStemSpacing, type PlacementDimensions, type PlacementParent } from './individualPlantGeometry';
 import { getAllowedCultivationTypesForCrop } from './plantingPlansUtils';
 import {
   collectOccupiedPlantPositions, individualCropSpacings, individualPlacementPeriod,
-  MAX_INDIVIDUAL_POSITIONS, type PlacementFrames,
+  individualPositionLimit,
 } from './individualPlantGeneration';
 import { readyForPlacement, type IndividualPlantsController } from './useIndividualPlants';
 
@@ -103,13 +105,18 @@ function CoordinateEditor({
 const sectionTitleSx = { fontWeight: 600 } as const;
 
 export function GraphicalIndividualPlantsPanel({
-  fields, beds, season, controller, getPlacementFrames, onFocusParent, onClose,
+  location, fields, beds, season, controller, placementContext, preview,
+  onKeyboardPlacement, onRefreshGeometry, onFocusParent, onClose,
 }: {
+  location: Location;
   fields: Field[];
   beds: Bed[];
   season: Season;
   controller: IndividualPlantsController;
-  getPlacementFrames: (parent: PlacementParent) => PlacementFrames | undefined;
+  placementContext: GraphicPlacementContext | null;
+  preview: GraphicPlacementResolution | null;
+  onKeyboardPlacement: (direction: Position | null) => void;
+  onRefreshGeometry: () => void;
   onFocusParent: (parent: PlacementParent) => void;
   onClose: () => void;
 }) {
@@ -126,8 +133,10 @@ export function GraphicalIndividualPlantsPanel({
   const { editor, plans, canEdit, update, updateDraft, startDraft, select, changeStem, addStem } = controller;
   const { draft, placing, saving, selectedKey } = editor;
   const parent = editor.parent;
-  const containerFor = (reference: PlacementParent | null) => reference?.kind === 'bed'
-    ? beds.find(bed => bed.id === reference.id) : fields.find(field => field.id === reference?.id);
+  const containerFor = (reference: PlacementParent | null) => {
+    if (reference?.kind === 'location') return reference.id === location.id ? location : undefined;
+    return reference?.kind === 'bed' ? beds.find(bed => bed.id === reference.id) : fields.find(field => field.id === reference?.id);
+  };
   const container = containerFor(parent);
   const path = parent?.kind === 'bed' && container && 'field' in container
     ? [fields.find(field => field.id === container.field)?.name, container.name].filter(Boolean).join(' · ')
@@ -135,6 +144,9 @@ export function GraphicalIndividualPlantsPanel({
   const plan = plans.find(item => item.id === editor.planId);
   const stems = draft?.stems ?? (plan?.individual_positions ?? []).map(stem => ({ ...stem, key: stem.id }));
   const selected = stems.find(stem => stem.key === selectedKey);
+  const selectedGraphic = selected && 'graphic' in selected ? selected.graphic : undefined;
+  const coordinatesParent = selectedGraphic?.parent ?? parent;
+  const coordinatesContainer = containerFor(coordinatesParent);
   const creating = Boolean(draft && !draft.planId);
   const [generationOpen, setGenerationOpen] = useState(false);
   const { crops, failed: cropsFailed, loading: cropsLoading, retry: retryCrops } = usePlacementCrops(
@@ -146,7 +158,10 @@ export function GraphicalIndividualPlantsPanel({
     ? positive(getEffectiveCropValue(crop, 'distance_within_row_cm')) ?? positive(getEffectiveCropValue(crop, 'row_spacing_cm'))
     : null;
   const recommended = spacing === null ? positive(plan?.recommended_plant_spacing_m) : spacing / 100;
-  const { pairs, closest } = shortStemSpacing(stems, recommended);
+  const siteParent: PlacementParent | null = location.id === undefined ? null : { kind: 'location', id: location.id };
+  const metricStems = stems.map(stem => ('graphic' in stem && stem.graphic) ? stem.graphic
+    : (placementContext && parent && siteParent ? placementContext.projectBetweenParents(parent, siteParent, stem) : null) ?? stem);
+  const { pairs, closest } = shortStemSpacing(metricStems, recommended);
   const canopy = draft ? draft.canopy : plan?.estimated_canopy_diameter_m;
   const [invalidCanopy, setInvalidCanopy] = useState(false);
   // Shown directly when a crop suggestion or a saved value exists; otherwise behind an optional disclosure.
@@ -157,11 +172,27 @@ export function GraphicalIndividualPlantsPanel({
     Number(canopy) >= 0.01 && Number(canopy) <= 99999.99
   ));
   const measured = container ? parcelMeters(container) : null;
-  const canAdd = Boolean(draft && measured && readyForPlacement(draft, season) && stems.length < MAX_INDIVIDUAL_POSITIONS);
-  const canSave = Boolean(draft && validCanopy && !saving && (
-    draft.planId ? draft.expectedUpdatedAt : draft.crop && draft.cultivation && stems.length > 0
+  const generationGeometry = parent ? placementContext?.generationGeometry(parent) : null;
+  const canAdd = Boolean(draft && placementContext && readyForPlacement(draft, season)
+    && stems.length < individualPositionLimit(draft.count));
+  const validCount = draft?.count == null || Number.isInteger(draft.count)
+    && draft.count >= stems.length && draft.count > 0 && draft.count <= 2147483647;
+  const canRecordPending = draft?.allowCountOnly && validCount && Boolean(draft.count);
+  const canSave = Boolean(draft && validCount && validCanopy && !saving && (
+    draft.planId ? draft.expectedUpdatedAt : draft.crop && draft.cultivation && (stems.length > 0 || canRecordPending)
       && draft.date >= season.start_date && draft.date <= season.end_date
   ));
+  const pending = draft?.count == null ? plan?.pending_plants_count ?? 0 : Math.max(0, draft.count - stems.length);
+  const total = draft ? draft.count ?? stems.length : plan?.plants_count ?? stems.length;
+  const groups = new Map<string, { parent: PlacementParent; count: number }>();
+  for (const stem of draft?.stems ?? []) {
+    if (!stem.graphic) continue;
+    const { parent } = stem.graphic;
+    const key = `${parent.kind}:${parent.id}`;
+    const group = groups.get(key);
+    if (group) group.count += 1;
+    else groups.set(key, { parent, count: 1 });
+  }
 
   const selectCrop = (cropId: number) => {
     const chosen = crops?.find(item => item.id === cropId);
@@ -179,7 +210,7 @@ export function GraphicalIndividualPlantsPanel({
   const closeEditor = () => {
     setInvalidCanopy(false);
     setCanopyShown(false);
-    update({ open: false, draft: null, error: null, placing: null, choosingParent: false });
+    update({ open: false, draft: null, error: null, placing: null });
     onClose();
   };
   const armPlacement = () => {
@@ -201,13 +232,14 @@ export function GraphicalIndividualPlantsPanel({
         {container && (
           <Box data-testid="individual-plants-parcel">
             <Typography variant="caption" color="text.secondary" component="p">
-              {parent?.kind === 'bed' ? t('plantingPlans:columns.bed') : tr('parcel')}
+              {parent?.kind === 'location' ? t('fields:graphical.locationSelector')
+                : parent?.kind === 'bed' ? t('plantingPlans:columns.bed') : tr('parcel')}
             </Typography>
             <Typography variant="body1" sx={{ overflowWrap: 'anywhere' }}>{path}</Typography>
           </Box>
         )}
-        {editor.choosingParent && <Alert role="status" severity="info">{tr('chooseParent')}</Alert>}
-        {container && !measured && <Alert severity="info">{tr('dimensionsRequired')}</Alert>}
+        {draft && !placementContext && <Alert severity="info">{tr('geometryUnknown')}</Alert>}
+        {pending > 0 && <Typography role="status" variant="body2">{t('fields:individualPlants.pendingCount', { count: pending, formatted: number(pending, 0) })}</Typography>}
 
         <Stack component="section" aria-labelledby={`${titleId}-plan`} spacing={1.5}>
           <Typography id={`${titleId}-plan`} variant="subtitle2" component="h3" sx={sectionTitleSx}>{tr('planSection')}</Typography>
@@ -229,9 +261,9 @@ export function GraphicalIndividualPlantsPanel({
               {plan.id && <Button component={Link} to={plantingPlanDetailPath(plan.id)}>{tr('details')}</Button>}
             </Stack>
           )}
-          {!draft && canEdit && !editor.choosingParent && (
+          {!draft && canEdit && location.id !== undefined && (
             <Button variant="outlined" disabled={controller.loading || controller.failed}
-              onClick={() => update({ choosingParent: true, parent: null, planId: null })}>{tr('newPlan')}</Button>
+              onClick={() => startDraft({ kind: 'location', id: location.id! })}>{tr('newPlan')}</Button>
           )}
           {cropsFailed && <Alert severity="error" action={<LoadRetryButton onClick={retryCrops} />}>{tr('cropsFailed')}</Alert>}
           {creating && <>
@@ -248,6 +280,11 @@ export function GraphicalIndividualPlantsPanel({
               {cultivationTypes.map(type => <MenuItem key={type} value={type}>{t(`plantingPlans:cultivationTypesLong.${cultivationLabels[type]}`)}</MenuItem>)}
             </TextField>
           </>}
+          {draft && (draft.allowCountOnly || draft.planId && plan?.individual_count != null) && (
+            <LocalizedDecimalField size="small" label={tr('exactCount')} value={draft.count}
+              error={!validCount} onValueChange={count => updateDraft({ count })}
+              onInvalidValue={() => updateDraft({ count: -1 })} disabled={saving} />
+          )}
           {draft && (canopyShown || canopy != null || !validCanopy ? (
             <LocalizedDecimalField size="small" label={tr('canopy')} disabled={saving}
               error={!validCanopy} helperText={!validCanopy ? tr('canopyInvalid') : undefined}
@@ -261,7 +298,7 @@ export function GraphicalIndividualPlantsPanel({
               onClick={() => setCanopyShown(true)}>{tr('addCanopy')}</Button>
           ))}
           {canopy != null && !draft && <Typography variant="body2">{tr('canopy')}{' '}{number(Number(canopy))}</Typography>}
-          {(plan || draft) && <SiteSuitabilityHints findings={plan?.site_suitability_findings} scope={parent?.kind ?? 'field'} />}
+          {(plan || draft) && <SiteSuitabilityHints findings={plan?.site_suitability_findings} scope={parent?.kind} />}
         </Stack>
 
         {(plan || draft) && <>
@@ -272,19 +309,35 @@ export function GraphicalIndividualPlantsPanel({
                 {tr('placementSection')}
               </Typography>
               <Typography role="status" variant="body2" color="text.secondary">
-                {t('fields:individualPlants.count', { count: stems.length, formatted: number(stems.length, 0) })}
+                {t('fields:individualPlants.count', { count: total, formatted: number(total, 0) })}
               </Typography>
             </Stack>
-            {draft && measured && (placing ? (
+            {draft && placementContext && (placing ? (
               <Button variant="outlined" onClick={() => update({ placing: null })}>{tr('finishPlaceOnMap')}</Button>
             ) : (
               <Button variant="outlined" disabled={saving || !canAdd} onClick={armPlacement}>{tr('placeOnMap')}</Button>
             ))}
-            {draft && measured && (
+            {draft && measured && generationGeometry && (
               <Button variant="outlined" disabled={saving || !canAdd || cropsLoading || cropsFailed}
                 onClick={() => setGenerationOpen(true)}>{tr('generation.title')}</Button>
             )}
-            {placing && <Alert role="status" severity="info">{tr(canAdd ? 'placeHint' : 'placementNeedsInputs')}</Alert>}
+            {placing && <Alert role="status" severity={preview && 'error' in preview ? 'warning' : 'info'}>
+              {preview ? ('error' in preview ? tr(preview.error)
+                : t('fields:individualPlants.predictedParent', { name: preview.frame.name }))
+                : tr(!placementContext ? 'geometryUnknown' : canAdd ? 'freePlacementHint' : 'placementNeedsInputs')}
+            </Alert>}
+            {placing && canAdd && <Button variant="outlined" onClick={() => onKeyboardPlacement(null)} onKeyDown={event => {
+              const directions: Record<string, Position> = { ArrowRight: { x: 1, y: 0 }, ArrowLeft: { x: -1, y: 0 },
+                ArrowUp: { x: 0, y: -1 }, ArrowDown: { x: 0, y: 1 } };
+              if (!directions[event.key]) return;
+              event.preventDefault();
+              onKeyboardPlacement(directions[event.key]);
+            }}>{tr('placeAtCursor')}</Button>}
+            {groups.size > 0 && <Box component="ul" aria-label={tr('parentSummary')} sx={{ my: 0, pl: 3 }}>
+              {[...groups].map(([key, { parent, count }]) => <Typography component="li" key={key} variant="body2">
+                {containerFor(parent)?.name} · {number(count, 0)}
+              </Typography>)}
+            </Box>}
             {recommended !== null && (
               <Typography variant="body2">{t('fields:individualPlants.spacing', { distance: number(recommended) })}</Typography>
             )}
@@ -303,7 +356,7 @@ export function GraphicalIndividualPlantsPanel({
                         bgcolor: stem.key === selectedKey ? 'action.selected' : undefined }}>
                       {label}
                     </Button>
-                    {draft && <IconButton disabled={saving || Boolean(draft.planId && stems.length <= 1)}
+                    {draft && <IconButton disabled={saving || Boolean(draft.planId && !canRemoveIndividualStem(stems.length, draft.count))}
                       color="error" aria-label={`${tr('removePosition')} · ${label}`}
                       sx={{ width: 44, height: 44 }} onClick={() => changeStem(stem.key, null)}>
                       <DeleteOutlineIcon fontSize="small" />
@@ -312,10 +365,10 @@ export function GraphicalIndividualPlantsPanel({
                 })}
               </Box>
             )}
-            {draft && container && (
+            {draft && coordinatesContainer && parcelMeters(coordinatesContainer) && (
               <Box component="fieldset" disabled={saving} sx={{ m: 0, p: 0, border: 0, minWidth: 0 }}>
                 <Stack spacing={1}>
-                  {measured && (
+                  {(
                     <Disclosure label={tr('manualCoordinates')}>
                       <Stack spacing={1}>
                         {selected && (
@@ -326,8 +379,17 @@ export function GraphicalIndividualPlantsPanel({
                         {(selected || canAdd) && (
                           <CoordinateEditor
                             key={selected ? `${selected.key}:${selected.x_m}:${selected.y_m}` : 'new'}
-                            initial={selected ?? null} field={container}
-                            onApply={point => selected ? changeStem(selected.key, point) : addStem(point)} />
+                            initial={selected ?? null} field={coordinatesContainer}
+                            onApply={point => {
+                              if (selected && !selectedGraphic) {
+                                changeStem(selected.key, point);
+                              } else if (coordinatesParent && placementContext) {
+                                const resolution = placementContext.resolveLocal(coordinatesParent, point);
+                                if ('error' in resolution) update({ error: resolution.error });
+                                else if (selected) changeStem(selected.key, { ...resolution.local, graphic: resolution.point });
+                                else addStem({ ...resolution.local, graphic: resolution.point });
+                              }
+                            }} />
                         )}
                       </Stack>
                     </Disclosure>
@@ -338,7 +400,8 @@ export function GraphicalIndividualPlantsPanel({
           </Stack>
         </>}
         {editor.error && (
-          <Alert severity="error" action={editor.error === 'changedElsewhere'
+          <Alert severity="error" action={editor.error === 'geometryChanged'
+            ? <LoadRetryButton onClick={() => { onRefreshGeometry(); update({ error: null }); }} /> : editor.error === 'changedElsewhere'
             ? <LoadRetryButton onClick={() => {
                 update({ draft: null, placing: null, error: null });
                 setInvalidCanopy(false);
@@ -352,21 +415,38 @@ export function GraphicalIndividualPlantsPanel({
               setCanopyShown(false);
               update({ draft: null, error: null, placing: null });
             }}>{t('common:actions.cancel')}</Button>
-            <Button variant="contained" disabled={!canSave || placing !== null} onClick={() => { void controller.save(); }}>
+            <Button variant="contained" disabled={!canSave || placing !== null}
+              onClick={() => { void controller.save(placementContext?.scene); }}>
               {t('common:actions.save')}
             </Button>
           </Stack>
         )}
       </Stack>
-      {generationOpen && draft && measured && (
+      {generationOpen && draft && measured && generationGeometry && (
         <IndividualPlantGenerationDialog dimensions={measured} suggestedSpacing={individualCropSpacings(crop)}
-          occupied={[...draft.stems, ...collectOccupiedPlantPositions({
-            frames: getPlacementFrames(draft.parent), parent: draft.parent, plans, planId: draft.planId,
+          geometry={generationGeometry} countLimit={draft.count ?? undefined}
+          occupied={[...draft.stems.flatMap(stem => {
+            const parent = stem.graphic?.parent ?? draft.parent;
+            const projected = matchesPlacementParent(parent, draft.parent) ? stem
+              : placementContext?.projectBetweenParents(parent, draft.parent, stem);
+            return projected ? [projected] : [];
+          }), ...collectOccupiedPlantPositions({
+            parent: draft.parent, plans, planId: draft.planId,
+            projectBetweenParents: placementContext?.projectBetweenParents,
             period: individualPlacementPeriod(draft.date, crop, plan),
           })]}
           existingCount={draft.stems.length} onClose={() => setGenerationOpen(false)}
           onConfirm={positions => {
-            controller.addStems(positions);
+            const resolved = positions.flatMap(point => {
+              const result = placementContext?.resolveLocal(draft.parent, point);
+              return result && 'local' in result && matchesPlacementParent(result.frame.parent, draft.parent)
+                ? [{ ...result.local, graphic: result.point }] : [];
+            });
+            if (resolved.length !== positions.length) {
+              update({ error: 'geometryChanged' });
+              return;
+            }
+            controller.addStems(resolved);
             update({ placing: null });
             setGenerationOpen(false);
           }} />

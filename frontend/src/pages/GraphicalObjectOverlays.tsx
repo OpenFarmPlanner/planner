@@ -28,7 +28,8 @@ import { formatCropOccupation } from './graphicalCropTimeLabels';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 import type { GraphicalIndividualPlant } from './graphicalIndividualPlants';
 import type { IndividualPlacementAction } from './useIndividualPlants';
-import { MAX_INDIVIDUAL_POSITIONS } from './individualPlantGeneration';
+import { individualPositionLimit } from './individualPlantGeneration';
+import { canRemoveIndividualStem } from './individualPlantGeometry';
 
 export interface GraphicalAreaObject {
   key: string;
@@ -135,7 +136,7 @@ export function GraphicalObjectOverlays({
   const hovered = interaction.hover ? objects.get(interaction.hover.key) : null;
   const menu = interaction.menu;
   const menuObject = menu ? objects.get(menu.key) : null;
-  const individualAction = menuObject && (menuObject.type === 'field' || menuObject.type === 'bed') && onStartIndividualPlan
+  const individualAction = menuObject && menuObject.type !== 'plant' && onStartIndividualPlan
     ? individualPlantCreationAction(t, () => onStartIndividualPlan(menuObject)) : null;
   const [keyboardPlants, setKeyboardPlants] = useState<Record<number, string>>({});
   const plantsByPlan = useMemo(() => {
@@ -232,9 +233,9 @@ export function GraphicalObjectOverlays({
         activate: () => { if (crop !== null) onOpenCrop?.(crop); } },
       ...(!editAllowed ? [] : [
         { id: 'edit-stems', group: 'placement', label: t('individualPlants.editPlants'), activate: () => onEditPlant(plant, 'edit') },
-        { id: 'add-stem', group: 'placement', label: t('individualPlants.newPosition'), disabled: plant.count >= MAX_INDIVIDUAL_POSITIONS,
+        { id: 'add-stem', group: 'placement', label: t('individualPlants.newPosition'), disabled: plant.count >= individualPositionLimit(plant.plan.individual_count),
           activate: () => onEditPlant(plant, 'add') },
-        { id: 'remove-stem', group: 'remove', label: t('individualPlants.removePosition'), disabled: plant.count <= 1,
+        { id: 'remove-stem', group: 'remove', label: t('individualPlants.removePosition'), disabled: !canRemoveIndividualStem(plant.count, plant.plan.individual_count),
           activate: () => onEditPlant(plant, 'remove') },
       ]),
     ];
@@ -433,7 +434,7 @@ export function GraphicalObjectOverlays({
               {selection.type === 'plant' ? t('plantingPlans:details.title') : detailsLabel}</Button>
             {selection.type === 'plant' && canEditPlant(selection) && <Button size="small" onClick={() => onEditPlant(selection, 'edit')}
               sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.editPlants')}</Button>}
-            {onStartIndividualPlan && (selection.type === 'field' || selection.type === 'bed') && (
+            {onStartIndividualPlan && selection.type !== 'plant' && (
               <Button size="small" onClick={() => onStartIndividualPlan(selection)}
                 sx={{ alignSelf: 'flex-start', minHeight: 44 }}>{t('individualPlants.newPlan')}</Button>
             )}

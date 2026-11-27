@@ -258,7 +258,7 @@ export function getOccupancyCalendarRange(
   const startOfSeason = seasonStart ? parseDateString(seasonStart) : undefined;
   const endOfSeason = parseIsoDate(seasonEnd);
   plantingPlans.forEach((plan) => {
-    if (!hasScheduledDates(plan) || (plan.bed == null && plan.parcel == null)) {
+    if (!hasScheduledDates(plan) || (plan.bed == null && plan.parcel == null && plan.site == null)) {
       return;
     }
     const plantingDate = parseDateString(plan.planting_date);
@@ -775,19 +775,18 @@ export function buildFieldOccupancyHierarchy({
   }
 
   const plansByBed = new Map<number, ScheduledPlantingPlan[]>();
-  const tasksByParcel = new Map<number, GanttTask[]>();
+  const individualPlansByParent = new Map<string, ScheduledPlantingPlan[]>();
   for (const plan of plantingPlans) {
     if (isScheduledPlantingPlan(plan)) {
       const bedPlans = plansByBed.get(plan.bed) ?? [];
       bedPlans.push(plan);
       plansByBed.set(plan.bed, bedPlans);
-    } else if (plan.parcel != null && hasScheduledDates(plan)) {
-      const task = buildPerennialOccupancyTask(plan, crops, labels);
-      if (task) {
-        const tasks = tasksByParcel.get(plan.parcel) ?? [];
-        tasks.push(task);
-        tasksByParcel.set(plan.parcel, tasks);
-      }
+    } else if (hasScheduledDates(plan)) {
+      const parent = plan.site != null ? `location-${plan.site}` : plan.parcel != null ? `field-${plan.parcel}` : null;
+      if (!parent) continue;
+      const plans = individualPlansByParent.get(parent) ?? [];
+      plans.push(plan);
+      individualPlansByParent.set(parent, plans);
     }
   }
 
@@ -805,9 +804,9 @@ export function buildFieldOccupancyHierarchy({
     return accumulator;
   }, {});
 
-  const buildBedTasks = (bedPlans: ScheduledPlantingPlan[]): GanttTask[] => {
+  const buildOccupancyTasks = (plans: ScheduledPlantingPlan[]): GanttTask[] => {
     const tasks: GanttTask[] = [];
-    bedPlans.forEach((plan) => {
+    plans.forEach((plan) => {
       const perennial = buildPerennialOccupancyTask(plan, crops, labels);
       if (perennial) {
         tasks.push(perennial);
@@ -875,6 +874,18 @@ export function buildFieldOccupancyHierarchy({
   };
 
   const nodes: OccupancyHierarchyNode[] = [];
+  const addIndividualRow = (parent: OccupancyHierarchyNode) => {
+    const plans = individualPlansByParent.get(parent.id) ?? [];
+    if (!plans.length) return 0;
+    nodes.push({
+      id: parent.fieldId === undefined ? `individual-location-${parent.locationId}` : `individual-${parent.fieldId}`,
+      parentId: parent.id, type: 'individual', name: labels.individualPlants ?? parent.name,
+      locationId: parent.locationId, fieldId: parent.fieldId, tasks: buildOccupancyTasks(plans),
+      bedCount: 0, occupiedBedCount: 0, planCount: plans.length,
+    });
+    parent.planCount += plans.length;
+    return plans.length;
+  };
 
   locations.forEach((location) => {
     const locationId = location.id;
@@ -895,6 +906,7 @@ export function buildFieldOccupancyHierarchy({
       planCount: 0,
     };
     nodes.push(locationNode);
+    addIndividualRow(locationNode);
 
     const locationFields = fieldsByLocation[locationId] ?? [];
     locationFields.forEach((field) => {
@@ -918,16 +930,7 @@ export function buildFieldOccupancyHierarchy({
       };
       nodes.push(fieldNode);
 
-      const individualTasks = tasksByParcel.get(fieldId);
-      if (individualTasks?.length) {
-        nodes.push({
-          id: `individual-${fieldId}`, parentId: fieldNodeId, type: 'individual',
-          name: labels.individualPlants ?? field.name, locationId, fieldId,
-          tasks: individualTasks, bedCount: 0, occupiedBedCount: 0, planCount: individualTasks.length,
-        });
-        fieldNode.planCount += individualTasks.length;
-        locationNode.planCount += individualTasks.length;
-      }
+      locationNode.planCount += addIndividualRow(fieldNode);
 
       const fieldBeds = bedsByField[fieldId] ?? [];
       fieldBeds.forEach((bed) => {
@@ -937,7 +940,7 @@ export function buildFieldOccupancyHierarchy({
         }
 
         const bedPlans = plansByBed.get(bedId) ?? [];
-        const tasks = buildBedTasks(bedPlans);
+        const tasks = buildOccupancyTasks(bedPlans);
         const isOccupied = bedPlans.length > 0;
 
         nodes.push({

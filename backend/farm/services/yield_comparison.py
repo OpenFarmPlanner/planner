@@ -129,6 +129,9 @@ class YieldComparisonScope:
     def includes_plan(self, plan: PlantingPlan) -> bool:
         if not self.has_area_filter:
             return True
+        if plan.site_id is not None:
+            return (self.location_id == plan.site_id and self.field_id is None
+                    and self.bed_id is None and plan.site.project_id == plan.project_id)
         parcel = _assigned_parcel(plan)
         return bool(parcel and (
             (self.location_id is None or parcel.location_id == self.location_id)
@@ -285,6 +288,7 @@ def _activity_dates(
     return {
         'id': plan.pk, 'bed_name': plan.bed.name if plan.bed_id else '',
         'parcel_name': plan.parcel.name if plan.parcel_id else '',
+        'site_name': plan.site.name if plan.site_id else '',
         'cultivation_type': plan.cultivation_type,
         'crop_label': format_crop_label(plan.crop, language_code, plan.crop.project.region),
         **_crop_timing(plan.crop, crop_index),
@@ -363,7 +367,9 @@ def _record_harvest(
             continue
         remainder -= allocation.quantity
         if plan.pk not in scoped_plans:
-            missing_area |= _assigned_parcel(plan) is None
+            missing_area |= _assigned_parcel(plan) is None and not (
+                plan.site_id is not None and plan.site.project_id == plan.project_id
+            )
             continue
         _record_harvest_allocation(row, harvest, allocation, plan)
         if has_area_filter:
@@ -393,6 +399,7 @@ def _record_harvest_allocation(
         'id': allocation.pk, 'date': harvest.date, 'plan_id': plan.pk,
         'bed_name': plan.bed.name if plan.bed_id else '',
         'parcel_name': plan.parcel.name if plan.parcel_id else '',
+        'site_name': plan.site.name if plan.site_id else '',
         'area_sqm': harvest_number(area),
         'kg_per_sqm': harvest_number(weight / area) if weight is not None else None,
         'estimated': estimated is not None,
@@ -548,6 +555,7 @@ def _record_window_losses(
                 'extent_value': harvest_number(loss['extent_value']),
                 'bed_name': plan.bed.name if plan.bed_id else '',
                 'parcel_name': plan.parcel.name if plan.parcel_id else '',
+                'site_name': plan.site.name if plan.site_id else '',
             })
 
 
@@ -582,7 +590,8 @@ def build_yield_comparison(
         ).filter(
             Q(season__project=project, season__deleted_at__isnull=True) | Q(season__isnull=True),
         ).select_related(
-            'bed__field__location', 'parcel__location', 'crop__project', 'crop__crop_species',
+            'bed__field__location', 'parcel__location', 'site',
+            'crop__project', 'crop__crop_species',
         )
         .prefetch_related('crop__crop_species__translations').order_by('pk')
     }

@@ -1,27 +1,42 @@
-import type { Field, PlantingPlan, StemCoordinates } from '../api/types';
+import type { Field, IndividualPlacementParent, PlantingPlan, StemCoordinates } from '../api/types';
 import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
 
 export type PlacementDimensions = Pick<Field, 'width_m' | 'length_m'>;
-export type PlacementParent = { kind: 'field' | 'bed'; id: number };
+export type PlacementParent = IndividualPlacementParent;
+
+export function canRemoveIndividualStem(positioned: number, exactCount?: number | null) {
+  return positioned > 1 || (exactCount ?? 0) > 0;
+}
+
+export const placementLabelKey = (kind: PlacementParent['kind']) => ({
+  bed: 'fields:individualPlants.inBed', field: 'fields:individualPlants.onParcel', location: 'fields:individualPlants.atLocation',
+} as const)[kind];
 
 export function individualPlacementChoice(parent: PlacementParent): string {
   return `individual:${parent.kind}:${parent.id}`;
 }
 
 export function readIndividualPlacementChoice(value: string): PlacementParent | null {
-  const match = /^individual:(bed|field):([1-9]\d*)$/.exec(value);
+  const match = /^individual:(bed|field|location):([1-9]\d*)$/.exec(value);
   if (!match) return null;
   const id = Number(match[2]);
-  return Number.isSafeInteger(id) ? { kind: match[1] === 'bed' ? 'bed' : 'field', id } : null;
+  return Number.isSafeInteger(id) ? { kind: match[1] as PlacementParent['kind'], id } : null;
 }
 
-export function isIndividualPlacement(plan: Pick<PlantingPlan, 'placement_mode' | 'parcel'>): boolean {
-  return plan.placement_mode === 'individual_bed' || plan.parcel != null;
+export function isIndividualPlacement(plan: Pick<PlantingPlan, 'placement_mode' | 'parcel' | 'site'>): boolean {
+  return plan.placement_mode === 'individual_bed' || plan.placement_mode === 'individual_site' || plan.parcel != null || plan.site != null;
 }
 
-export function planPlacementParent(plan: Pick<PlantingPlan, 'placement_mode' | 'bed' | 'parcel'>): PlacementParent | null {
+export function planPlacementParent(plan: Pick<PlantingPlan, 'placement_mode' | 'bed' | 'parcel' | 'site'>): PlacementParent | null {
   if (plan.placement_mode === 'individual_bed' && plan.bed != null) return { kind: 'bed', id: plan.bed };
+  if (plan.site != null) return { kind: 'location', id: plan.site };
   return plan.parcel == null ? null : { kind: 'field', id: plan.parcel };
+}
+
+export function placementParentFields(parent: PlacementParent): Pick<PlantingPlan, 'bed' | 'parcel' | 'site' | 'placement_mode'> {
+  const mode = { bed: 'individual_bed', field: 'individual_parcel', location: 'individual_site' } as const;
+  return { bed: parent.kind === 'bed' ? parent.id : null, parcel: parent.kind === 'field' ? parent.id : null,
+    site: parent.kind === 'location' ? parent.id : null, placement_mode: mode[parent.kind] };
 }
 
 export function matchesPlacementParent(a: PlacementParent | null | undefined, b: PlacementParent) {

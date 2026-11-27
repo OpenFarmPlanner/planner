@@ -1428,12 +1428,42 @@ export interface IndividualPlantPosition extends StemCoordinates {
 export interface IndividualPlacementInput {
   individual_positions: (StemCoordinates & { id?: string })[];
   estimated_canopy_diameter_m?: number | string | null;
+  individual_count?: number | null;
 }
 
-export type PlantingPlanPlacementMode = 'area' | 'individual_bed' | 'individual_parcel';
+export type PlantingPlanPlacementMode = 'area' | 'individual_bed' | 'individual_parcel' | 'individual_site';
+
+export type IndividualPlacementParent = { kind: 'location' | 'field' | 'bed'; id: number };
+
+export interface GraphicStemPoint extends StemCoordinates {
+  parent: IndividualPlacementParent;
+}
+
+export interface GraphicPlacementScene {
+  location: number;
+  origin_x: number;
+  origin_y: number;
+  footprints: (IndividualPlacementParent & { x: number; y: number; width: number; height: number })[];
+}
+
+export interface GraphicPlacementInput {
+  request_id: string;
+  scene: GraphicPlacementScene;
+  points: GraphicStemPoint[];
+  plan?: number;
+  placement_updated_at?: string;
+  crop?: number;
+  planting_date?: string;
+  cultivation_type?: PlanCultivationType | '';
+  estimated_canopy_diameter_m?: number | string | null;
+  existing_positions?: IndividualPlacementInput['individual_positions'];
+  individual_count?: number | null;
+  pending_parent?: IndividualPlacementParent;
+}
 
 export type IndividualPlantPlanSummary = Pick<PlantingPlan,
-  'id' | 'crop_name' | 'crop_display_name' | 'crop_variety' | 'bed' | 'parcel' | 'placement_mode' | 'carried_over'>
+  'id' | 'crop_name' | 'crop_display_name' | 'crop_variety' | 'bed' | 'parcel' | 'site' | 'placement_mode' | 'carried_over'
+  | 'pending_plants_count' | 'positioned_plants_count'>
   & { plants_count: number };
 
 export interface PlantingPlan extends PlantingPlanActualDates {
@@ -1461,9 +1491,15 @@ export interface PlantingPlan extends PlantingPlanActualDates {
   bed_name?: string | null;
   parcel?: number | null;
   parcel_name?: string | null;
+  site?: number | null;
+  site_name?: string | null;
   parcel_location_id?: number | null;
   placement_mode?: PlantingPlanPlacementMode;
   individual_positions?: IndividualPlantPosition[];
+  individual_count?: number | null;
+  positioned_plants_count?: number | null;
+  pending_plants_count?: number | null;
+  placement_updated_at?: string;
   estimated_canopy_diameter_m?: number | string | null;
   recommended_plant_spacing_m?: number | null;
   season?: number | null;
@@ -2025,6 +2061,7 @@ export interface HarvestAllocation extends HarvestAllocationWrite {
   id: number;
   bed_name: string | null;
   parcel_name?: string | null;
+  site_name?: string | null;
   season_label: string | null;
   planting_date: string | null;
   kilograms_per_harvested_sqm: string | null;
@@ -2055,6 +2092,7 @@ export interface HarvestPlanSuggestion {
   id: number;
   bed_name: string;
   field_name: string;
+  site_name?: string;
   season_label: string;
   planting_date: string | null;
   harvest_start: string | null;
@@ -2130,6 +2168,7 @@ export interface IncompleteYieldPlan {
   crop_variety: string | null;
   bed_name: string;
   parcel_name?: string;
+  site_name?: string;
   planting_date: string | null;
   calculation_blockers: (
     | 'missing_crop'
@@ -2157,6 +2196,7 @@ export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPl
     id: number;
     bed_name: string;
     parcel_name?: string;
+    site_name?: string;
     crop_label?: string;
   };
 
@@ -2207,6 +2247,7 @@ export interface YieldComparisonSeason {
     plan_id: number;
     bed_name: string;
     parcel_name?: string;
+    site_name?: string;
     area_sqm: string;
     kg_per_sqm: string | null;
     estimated: boolean;
@@ -2215,6 +2256,7 @@ export interface YieldComparisonSeason {
     planting_plan_id: number;
     bed_name: string;
     parcel_name?: string;
+    site_name?: string;
   })[];
   plan_dates: YieldComparisonPlanDates[];
 }

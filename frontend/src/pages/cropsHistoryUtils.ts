@@ -399,6 +399,7 @@ const BATCH_OPERATION_BASE_KEYS: Record<string, string> = {
   season_delete: 'history.batch.seasonDelete',
   season_undelete: 'history.batch.seasonUndelete',
   season_copy_data: 'history.batch.seasonCopyData',
+  individual_placement: 'history.batch.individualPlacement',
 };
 
 const BATCH_COUNT_KEYS: Record<string, string> = {

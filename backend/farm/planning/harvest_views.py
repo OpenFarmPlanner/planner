@@ -41,6 +41,7 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
         allocations = HarvestAllocation.objects.select_related(
             "planting_plan__bed",
             "planting_plan__parcel",
+            "planting_plan__site",
             "planting_plan__season",
         )
         return queryset.select_related("crop", "crop__crop_species").prefetch_related(
@@ -127,7 +128,7 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
             raise NotFound("Crop is not available in this project.")
         day = query.validated_data["date"]
         plans = eligible_harvest_plans(project.pk, crop_id, day).select_related(
-            "bed__field", "parcel", "season"
+            "bed__field", "parcel", "site", "season"
         )
         ranked = sorted(plans, key=lambda plan: harvest_plan_sort_key(plan, day))
         return Response(
@@ -136,6 +137,7 @@ class HarvestRecordViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mo
                     "id": plan.pk,
                     "bed_name": plan.bed.name if plan.bed_id is not None else "",
                     "field_name": area.name if (area := plan.growing_area_parcel) else "",
+                    "site_name": plan.site.name if plan.site_id is not None else "",
                     "season_label": plan.season.label if plan.season_id is not None else "",
                     "planting_date": plan.planting_date,
                     "harvest_start": plan.harvest_date,
