@@ -110,6 +110,37 @@ test('places stems at three actual parents in one operation and reassigns a drag
   await expect.poll(() => shape(page, `individual-stem-${stem.id}`)).not.toBeNull();
 });
 
+test('creates a count-only plan from a location row and shows its pending count in List', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'location-row-individual-count', {
+    demoProject: true, demoYear: 2026, loginAsAdmin: true,
+  });
+  const { results: locations } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+  const site = locations.find(location => location.name === 'Hofgarten')!;
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Standortpflanze aus der Liste', life_cycle: 'annual', cultivation_types: ['direct_sowing'],
+  });
+  await page.goto('/app/fields-beds');
+  const location = page.locator(`[role="row"][data-id="location-${site.id}"]`);
+  await location.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Einzelpflanzen hinzufügen', exact: true }).click();
+  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  await panel.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+  await page.getByRole('option', { name: 'Standortpflanze aus der Liste', exact: true }).click();
+  await panel.getByRole('textbox', { name: 'Genaue Pflanzenanzahl' }).fill('4');
+  const saved = page.waitForResponse(response => response.request().method() === 'POST'
+    && new URL(response.url()).pathname === '/api/planting-plans/');
+  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+  const response = await saved;
+  expect(response.status(), await response.text()).toBe(201);
+  const plan = await response.json() as Plan;
+  expect(plan).toMatchObject({ crop: crop.id, site: site.id, bed: null, parcel: null, plants_count: 4,
+    individual_positions: [], pending_plants_count: 4 });
+  await page.getByRole('button', { name: 'Liste', exact: true }).click();
+  await expect(page.locator(`[role="row"][data-id="individual-plan-${plan.id}"]`)).toContainText('4 noch nicht positioniert');
+});
+
 test('creates, drags and edits stems with the keyboard and keeps the parcel offsets', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
@@ -299,7 +330,7 @@ test('creates, drags and edits stems with the keyboard and keeps the parcel offs
   await expect.poll(() => shape(page, `individual-stem-${first.id}`)).toMatchObject({ x_m, y_m });
   await expect.poll(() => shape(page, `individual-stem-${second.id}`)).toBeNull();
   await panel.getByRole('button', { name: 'Schließen', exact: true }).click();
-  await expect(control).toBeFocused();
+  await expect(page.getByTestId('graphical-canvas-tools').getByRole('button', { name: 'Weitere Grafikwerkzeuge' })).toBeFocused();
 
   await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
   const bareStem = otherPlan.individual_positions[0];
@@ -367,6 +398,22 @@ async function expectCanopyCentered(page: Page, stemId: string) {
   expect(outline.x).toBeCloseTo(marker.x, 5);
   expect(outline.y).toBeCloseTo(marker.y, 5);
   return marker;
+}
+
+async function touchStemOrigin(page: Page, stemId: string) {
+  const target = `individual-stem-${stemId}`;
+  await page.locator('.konvajs-content').scrollIntoViewIfNeeded();
+  const marker = await expectCanopyCentered(page, stemId);
+  const point = { x: Math.round(marker.x), y: Math.round(marker.y) };
+  await expect.poll(() => page.evaluate(({ x, y }) => {
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+      .find(item => item.container()?.isConnected);
+    const canvas = document.elementFromPoint(x, y);
+    if (!stage || canvas?.tagName !== 'CANVAS') return canvas?.tagName ?? null;
+    const bounds = canvas.getBoundingClientRect();
+    return stage.getIntersection({ x: x - bounds.x, y: y - bounds.y })?.getAttr('data-testid') ?? null;
+  }, point)).toBe(target);
+  return point;
 }
 
 test('places annual beans in a mixed bed and moves the bed separately from parcel-direct stems', async ({ page, request }, testInfo) => {
@@ -681,12 +728,12 @@ test.describe('individual plants on a phone', () => {
     await toggleGraphicEdit(page, 'touch');
     const touch = await page.context().newCDPSession(page);
     const dragStart = async () => {
+      const origin = await touchStemOrigin(page, stem.id);
       const before = await expectCanopyCentered(page, stem.id);
-      const origin = { x: Math.round(before.x), y: Math.round(before.y) };
       await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
       for (const step of [10, 16]) {
         await touch.send('Input.dispatchTouchEvent', {
-          type: 'touchMove', touchPoints: [{ x: origin.x + step, y: origin.y + step }],
+          type: 'touchMove', touchPoints: [{ x: origin.x - step, y: origin.y }],
         });
         const next = await expectCanopyCentered(page, stem.id);
         expect(Math.hypot(next.x - before.x, next.y - before.y)).toBeGreaterThan(6);
@@ -707,7 +754,8 @@ test.describe('individual plants on a phone', () => {
     const saved = page.waitForResponse(response => response.request().method() === 'POST'
       && new URL(response.url()).pathname === `/api/planting-plans/${orchard.id}/graphic-move/`);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-    expect((await saved).ok()).toBe(true);
+    const response = await saved;
+    expect(response.status(), await response.text()).toBe(200);
     const persisted = (await individualPlans(page, site.id)).flatMap(plan => plan.individual_positions);
     const moved = persisted.find(position => position.id === stem.id)!;
     expect(moved).not.toEqual(stem);
@@ -715,7 +763,7 @@ test.describe('individual plants on a phone', () => {
     expect(persisted).toEqual(expect.arrayContaining(orchard.individual_positions.slice(1)));
     expect(writes).toBe(1);
     await page.reload();
-    await expect.poll(async () => (await shape(page, `individual-stem-${stem.id}`))?.x_m).toBe(moved.x_m);
+    await expect.poll(async () => (await shape(page, `individual-stem-${stem.id}`))?.y_m).toBe(moved.y_m);
     await expectCanopyCentered(page, stem.id);
   });
 
@@ -736,15 +784,13 @@ test.describe('individual plants on a phone', () => {
     expect(await panel.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
     await expect(panel.getByRole('button', { name: 'In der Grafik verschieben' })).toHaveCount(0);
     const surfaceId = 'individual-free-placement-surface';
-    await page.locator('.konvajs-content').scrollIntoViewIfNeeded();
     const [first] = orchard.individual_positions;
-    const marker = await expectCanopyCentered(page, first.id);
-    const origin = { x: Math.round(marker.x), y: Math.round(marker.y) };
+    const origin = await touchStemOrigin(page, first.id);
     const touch = await page.context().newCDPSession(page);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
     for (const step of [9, 18]) {
       await touch.send('Input.dispatchTouchEvent', {
-        type: 'touchMove', touchPoints: [{ x: origin.x + step, y: origin.y + step }],
+        type: 'touchMove', touchPoints: [{ x: origin.x - step, y: origin.y + step }],
       });
     }
     await expectCanopyCentered(page, first.id);

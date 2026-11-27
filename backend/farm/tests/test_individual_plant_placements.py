@@ -68,6 +68,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         data = {
             'request_id': str(uuid4()), 'scene': self.graphic_scene(), 'crop': self.apple.id,
             'cultivation_type': BOUGHT_IN, 'planting_date': '2026-04-18',
+            'individual_count': 5, 'pending_parent': {'kind': 'location', 'id': self.location.pk},
             'points': [
                 self.graphic_point(self.location, 21, 3), self.graphic_point(self.field, 6, 8),
                 self.graphic_point(self.bed, 2, 3), self.graphic_point(self.bed, 2.5, 3),
@@ -81,6 +82,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200, response.data)
         members = {plan['placement_mode']: plan for plan in response.json()['plans']}
         self.assertEqual(members['individual_site']['site'], self.location.pk)
+        self.assertEqual(members['individual_site']['pending_plants_count'], 1)
         self.assertEqual(members['individual_parcel']['parcel'], self.field.pk)
         self.assertEqual(members['individual_bed']['bed'], self.bed.pk)
         positions = members['individual_bed']['individual_positions']
@@ -104,14 +106,14 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(demand['plant_count'], 3)
         response = self.client.post(f'{URL}graphic-placement/', {
             'request_id': str(uuid4()), 'scene': scene, 'plan': original['id'],
-            'placement_updated_at': original['updated_at'],
+            'placement_updated_at': original['updated_at'], 'individual_count': 4,
             'points': [
                 self.graphic_point(self.location, 21, 3), self.graphic_point(self.location, 22, 3),
             ],
         }, format='json')
         self.assertEqual(response.status_code, 200, response.data)
         plan, = response.json()['plans']
-        self.assertEqual((plan['plants_count'], plan['pending_plants_count']), (3, 1))
+        self.assertEqual((plan['plants_count'], plan['pending_plants_count']), (4, 2))
         stem = plan['individual_positions'][0]['id']
         move = {'scene': scene, 'stem': stem, 'placement_updated_at': plan['updated_at'],
                 'point': self.graphic_point(self.bed, 2, 3)}
@@ -120,7 +122,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(moved.status_code, 200, moved.data)
         source, target = moved.json()['plans']
         self.assertEqual(source['id'], original['id'])
-        self.assertEqual(tuple(source[key] for key in counts), (2, 1, 1))
+        self.assertEqual(tuple(source[key] for key in counts), (3, 1, 2))
         self.assertEqual(target['individual_positions'], [{'id': stem, 'x_m': 1, 'y_m': 2}])
         self.assertEqual(target['bed'], self.bed.pk)
         self.assertEqual(tuple(target[key] for key in counts), (1, 1, 0))

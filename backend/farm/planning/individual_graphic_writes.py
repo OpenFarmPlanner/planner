@@ -17,6 +17,7 @@ from farm.services.crop_inheritance import lock_crop_project
 from farm.services.seasons import PLANTING_PLAN_COPY_FIELDS
 
 from .individual_graphic import (
+    GraphicParentSerializer,
     GraphicPointSerializer,
     GraphicSceneSerializer,
     IndividualGraphicConflict,
@@ -38,6 +39,10 @@ class GraphicPlacementRequestSerializer(serializers.Serializer):
     )
     plan = serializers.IntegerField(min_value=1, required=False)
     placement_updated_at = serializers.DateTimeField(required=False)
+    individual_count = serializers.IntegerField(
+        min_value=1, max_value=2_147_483_647, allow_null=True, required=False,
+    )
+    pending_parent = GraphicParentSerializer(required=False)
     existing_positions = IndividualPlantPositionSerializer(
         many=True, required=False, max_length=MAX_INDIVIDUAL_POSITIONS
     )
@@ -56,12 +61,20 @@ class GraphicPlacementRequestSerializer(serializers.Serializer):
     def validate(self, attrs):
         crop_inputs = {'crop', 'planting_date', 'cultivation_type'}
         if 'plan' in attrs:
-            if 'placement_updated_at' not in attrs or crop_inputs & attrs.keys():
+            unexpected = (crop_inputs | {'pending_parent'}) & attrs.keys()
+            if 'placement_updated_at' not in attrs or unexpected:
                 raise serializers.ValidationError(
                     'Supply the current plan version when filling its positions.'
                 )
-        elif not crop_inputs <= attrs.keys() or 'existing_positions' in attrs:
-            raise serializers.ValidationError('Choose a crop, planting date and cultivation type.')
+        else:
+            if not crop_inputs <= attrs.keys() or 'existing_positions' in attrs:
+                raise serializers.ValidationError(
+                    'Choose a crop, planting date and cultivation type.'
+                )
+            if ('pending_parent' in attrs) != (attrs.get('individual_count') is not None):
+                raise serializers.ValidationError(
+                    'Choose which parent keeps the unpositioned plants.'
+                )
         canopy = attrs.get('estimated_canopy_diameter_m')
         if canopy is not None and canopy <= 0:
             raise serializers.ValidationError(
@@ -145,11 +158,12 @@ def _update_plan(view, plan, **values):
     return plan
 
 
-def _split_plan(view, plan, key, stems):
+def _split_plan(view, plan, key, stems, *, exact_count, canopy):
     values = {field: getattr(plan, field) for field in PLANTING_PLAN_COPY_FIELDS}
     values.update(_parent_columns(key))
     values.update(
-        individual_count=len(stems) if plan.individual_count is not None else None,
+        individual_count=len(stems) if exact_count is not None else None,
+        estimated_canopy_diameter_m=canopy,
         individual_positions=stems,
         harvest_window_overrides=plan.harvest_window_overrides,
         parcel_rotation_basis={},
@@ -175,10 +189,24 @@ def _new_plans(view, data, groups):
         )
         if field in data
     }
+    pending = 0
+    parent = None
+    exact = data.get('individual_count')
+    if exact is not None:
+        pending = exact - sum(map(len, groups.values()))
+        if pending < 0:
+            raise IndividualGraphicConflict('individual_count_exhausted')
+        parent = data['pending_parent']['kind'], data['pending_parent']['id']
+        if pending:
+            groups.setdefault(parent, [])
     plans = []
     for key, stems in groups.items():
+        count = len(stems) + (pending if key == parent else 0)
         serializer = view.get_serializer(
-            data={**metadata, **_parent_options(key), 'individual_positions': stems}
+            data={
+                **metadata, **_parent_options(key), 'individual_positions': stems,
+                'individual_count': count if exact is not None else None,
+            }
         )
         serializer.is_valid(raise_exception=True)
         view.perform_create(serializer)
@@ -196,7 +224,9 @@ def _fill_plan(view, source, groups, data):
     within_parent = groups.pop(source_key, [])
     cross_parent_count = sum(len(stems) for stems in groups.values())
     added = len(within_parent) + cross_parent_count
-    if source.individual_count is not None and source.individual_total < len(old_positions) + added:
+    exact_count = data.get('individual_count', source.individual_count)
+    canopy = data.get('estimated_canopy_diameter_m', source.estimated_canopy_diameter_m)
+    if exact_count is not None and exact_count < len(old_positions) + added:
         raise IndividualGraphicConflict('individual_count_exhausted')
     if len(old_positions) + len(within_parent) > MAX_INDIVIDUAL_POSITIONS:
         raise IndividualGraphicConflict('individual_count_exhausted')
@@ -205,7 +235,7 @@ def _fill_plan(view, source, groups, data):
         groups
         and not old_positions
         and not within_parent
-        and source.individual_count in (None, cross_parent_count)
+        and exact_count in (None, cross_parent_count)
     ):
         # Keep the source ID when all of its previously unplaced plants change parent.
         retained_parent = next(iter(groups))
@@ -214,12 +244,16 @@ def _fill_plan(view, source, groups, data):
         parent_updates = _parent_columns(retained_parent)
     if groups:
         _require_safe_split(source)
-    plans = [_split_plan(view, source, key, _with_ids(stems)) for key, stems in groups.items()]
-    values = {'individual_positions': [*old_positions, *_with_ids(within_parent)], **parent_updates}
-    if 'estimated_canopy_diameter_m' in data:
-        values['estimated_canopy_diameter_m'] = data['estimated_canopy_diameter_m']
-    if source.individual_count is not None:
-        values['individual_count'] = source.individual_count - cross_parent_count
+    plans = [
+        _split_plan(view, source, key, _with_ids(stems), exact_count=exact_count, canopy=canopy)
+        for key, stems in groups.items()
+    ]
+    values = {
+        'individual_positions': [*old_positions, *_with_ids(within_parent)],
+        'estimated_canopy_diameter_m': canopy,
+        'individual_count': exact_count - cross_parent_count if exact_count is not None else None,
+        **parent_updates,
+    }
     plans.insert(0, _update_plan(view, source, **values))
     return plans
 
@@ -254,6 +288,14 @@ def save_graphic_placement(view, data, source):
     scene = lock_graphic_scene(project, data['scene'])
     if source is not None:
         _check_source(source, scene, data['placement_updated_at'])
+    pending = data.get('pending_parent')
+    if pending and not any(
+        area.parent == pending for area in (
+            scene.site, *scene.parcels.values(),
+            *(bed for beds in scene.beds_by_field.values() for bed in beds),
+        )
+    ):
+        raise IndividualGraphicConflict('individual_geometry_changed')
     groups = _group_points(scene, data['points'])
     ensure_project_checkpoint(project)
     try:
@@ -311,7 +353,10 @@ def move_graphic_stem(view, plan, data):
         initiated_by_id=view.request.user.pk,
     )
     with revision_batch(batch):
-        split = _split_plan(view, plan, key, [stem])
+        split = _split_plan(
+            view, plan, key, [stem], exact_count=plan.individual_count,
+            canopy=plan.estimated_canopy_diameter_m,
+        )
         values = {'individual_positions': others}
         if plan.individual_count is not None:
             values['individual_count'] = plan.individual_count - 1

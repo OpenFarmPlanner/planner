@@ -1211,7 +1211,8 @@ export default function GraphicalFields({
             if (!stems.length) return null;
             return <GraphicalIndividualPlantsLayer field={dimensions} surface={surface}
               rotation={placementRotation} zoom={viewport.scale} stems={stems}
-              editablePlanId={draft && !individualPlants.editor.saving && !placingStems ? draft.planId ?? null : undefined}
+              editablePlanId={(draft || added.length) && !individualPlants.editor.saving && !placingStems
+                ? stemDraft?.planId ?? null : undefined}
               draggablePlanIds={draggableStemPlans}
               captureStems={locationIsEditable && individualPlants.canEdit}
               onMoveWorld={placementContext ? (key, world) => {
@@ -1222,8 +1223,15 @@ export default function GraphicalFields({
                 else void individualPlants.moveSavedStem(plan.id, key, resolution.local, { scene: placementContext.scene, point: resolution.point });
               } : undefined}
               onMove={(key, position) => {
-                if (draft?.stems.some(stem => stem.key === key)) {
-                  individualPlants.changeStem(key, position);
+                const editingStem = added.find(stem => stem.key === key);
+                if (editingStem) {
+                  if (!editingStem.graphic) individualPlants.changeStem(key, position);
+                  else {
+                    const result = placementContext?.resolveLocal(parent, position);
+                    if (result && 'local' in result) {
+                      individualPlants.changeStem(key, { ...result.local, graphic: result.point });
+                    } else if (result) individualPlants.update({ error: result.error });
+                  }
                   return;
                 }
                 const plan = individualPlants.plans.find(item => item.individual_positions?.some(stem => stem.id === key));

@@ -175,10 +175,11 @@ export function GraphicalIndividualPlantsPanel({
   const generationGeometry = parent ? placementContext?.generationGeometry(parent) : null;
   const canAdd = Boolean(draft && placementContext && readyForPlacement(draft, season)
     && stems.length < Math.min(MAX_INDIVIDUAL_POSITIONS, draft.count ?? MAX_INDIVIDUAL_POSITIONS));
-  const validCount = draft?.count == null || Number.isInteger(draft.count) && draft.count >= stems.length && draft.count > 0;
+  const validCount = draft?.count == null || Number.isInteger(draft.count)
+    && draft.count >= stems.length && draft.count > 0 && draft.count <= 2147483647;
   const canRecordPending = draft?.allowCountOnly && validCount && Boolean(draft.count);
-  const canSave = Boolean(draft && validCanopy && !saving && (
-    draft.planId ? draft.expectedUpdatedAt && validCount : draft.crop && draft.cultivation && (stems.length > 0 || canRecordPending)
+  const canSave = Boolean(draft && validCount && validCanopy && !saving && (
+    draft.planId ? draft.expectedUpdatedAt : draft.crop && draft.cultivation && (stems.length > 0 || canRecordPending)
       && draft.date >= season.start_date && draft.date <= season.end_date
   ));
   const pending = draft?.count == null ? plan?.pending_plants_count ?? 0 : Math.max(0, draft.count - stems.length);
@@ -279,7 +280,7 @@ export function GraphicalIndividualPlantsPanel({
               {cultivationTypes.map(type => <MenuItem key={type} value={type}>{t(`plantingPlans:cultivationTypesLong.${cultivationLabels[type]}`)}</MenuItem>)}
             </TextField>
           </>}
-          {draft && (draft.allowCountOnly || draft.planId && draft.count != null) && groups.size === 0 && (
+          {draft && (draft.allowCountOnly || draft.planId && plan?.individual_count != null) && (
             <LocalizedDecimalField size="small" label={tr('exactCount')} value={draft.count}
               error={!validCount} onValueChange={count => updateDraft({ count })}
               onInvalidValue={() => updateDraft({ count: -1 })} disabled={saving} />
@@ -424,7 +425,12 @@ export function GraphicalIndividualPlantsPanel({
       {generationOpen && draft && measured && generationGeometry && (
         <IndividualPlantGenerationDialog dimensions={measured} suggestedSpacing={individualCropSpacings(crop)}
           geometry={generationGeometry} countLimit={draft.count ?? undefined}
-          occupied={[...draft.stems, ...collectOccupiedPlantPositions({
+          occupied={[...draft.stems.flatMap(stem => {
+            const parent = stem.graphic?.parent ?? draft.parent;
+            const projected = matchesPlacementParent(parent, draft.parent) ? stem
+              : placementContext?.projectBetweenParents(parent, draft.parent, stem);
+            return projected ? [projected] : [];
+          }), ...collectOccupiedPlantPositions({
             parent: draft.parent, plans, planId: draft.planId,
             projectBetweenParents: placementContext?.projectBetweenParents,
             period: individualPlacementPeriod(draft.date, crop, plan),

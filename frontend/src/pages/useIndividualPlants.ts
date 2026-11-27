@@ -216,8 +216,9 @@ export function useIndividualPlants(
         request_id: draft.requestId, scene, points: positions,
         estimated_canopy_diameter_m: draft.canopy,
         ...(draft.planId ? { plan: draft.planId, placement_updated_at: draft.expectedUpdatedAt,
-          existing_positions: data.individual_positions }
-          : { crop: draft.crop ?? undefined, planting_date: draft.date, cultivation_type: draft.cultivation }),
+          existing_positions: data.individual_positions, individual_count: draft.count }
+          : { crop: draft.crop ?? undefined, planting_date: draft.date, cultivation_type: draft.cultivation,
+            ...(draft.count == null ? {} : { individual_count: draft.count, pending_parent: draft.parent }) }),
       })).data.plans : [await saveLegacy()];
       setResult(value => value?.key === key ? {
         ...value, plans: [...value.plans.filter(item => !saved.some(plan => item.id === plan.id)), ...saved],

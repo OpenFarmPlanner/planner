@@ -1457,6 +1457,8 @@ export interface GraphicPlacementInput {
   cultivation_type?: PlanCultivationType | '';
   estimated_canopy_diameter_m?: number | string | null;
   existing_positions?: IndividualPlacementInput['individual_positions'];
+  individual_count?: number | null;
+  pending_parent?: IndividualPlacementParent;
 }
 
 export type IndividualPlantPlanSummary = Pick<PlantingPlan,

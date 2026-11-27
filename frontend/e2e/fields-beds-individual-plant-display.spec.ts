@@ -233,6 +233,7 @@ test('labels the orchard marker and accessible preview in all seven languages', 
   const { orchard } = await fixture(page, request, 'individual-display-locales');
   const [apple] = orchard.individual_positions;
   await openGraphic(page);
+  await selectGraphicDisplay(page, 'Anbauflächen');
   for (const [locale, expected] of Object.entries({
     de: 'Pflanze 1 von 3', en: 'Plant 1 of 3', es: 'Planta 1 de 3', fr: 'Plant 1 sur 3',
     it: 'Pianta 1 di 3', nl: 'Plant 1 van 3', pt: 'Planta 1 de 3',
