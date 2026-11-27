@@ -21,7 +21,7 @@ import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numbe
 import { resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import type { useBedTasks } from '../components/tasks/useBedTasks';
 import type { Rect } from './graphicalLayoutUtils';
-import type { ViewportState } from './graphicalViewport';
+import { projectViewportRect, type ViewportState } from './graphicalViewport';
 import { graphicalObjectKey, type GraphicalObjectInteraction } from './useGraphicalObjectInteraction';
 import type { BedCultivationEntry, CropReference } from './graphicalCultivation';
 import { formatCropOccupation } from './graphicalCropTimeLabels';
@@ -81,11 +81,6 @@ function ObjectFacts({ object, compact = false }: { object: GraphicalAreaObject;
       )}
     </>
   );
-}
-
-function screenRect(rect: Rect, viewport: ViewportState): Rect {
-  return { x: viewport.x + rect.x * viewport.scale, y: viewport.y + rect.y * viewport.scale,
-    width: rect.width * viewport.scale, height: rect.height * viewport.scale };
 }
 
 interface OverlayProps {
@@ -243,7 +238,7 @@ export function GraphicalObjectOverlays({
 
   const detailsLabel = t('graphical.objects.viewDetails');
   const noPlantTasks = t('individualPlants.noOpenTasks');
-  const selectedRect = selection?.rect ? screenRect(selection.rect, viewport) : null;
+  const selectedRect = selection?.rect ? projectViewportRect(selection.rect, viewport) : null;
   const narrow = stageWidth < 650 || interaction.device === 'touch';
   const cropDateDiffers = cropPreview && (cropPreview.reference.kind !== 'date'
     || cropPreview.reference.date !== formatDateToAPI(new Date()));
@@ -293,7 +288,7 @@ export function GraphicalObjectOverlays({
   return (
     <>
       {[...objects.values()].map(object => {
-        const rect = object.rect ? screenRect(object.rect, viewport) : null;
+        const rect = object.rect ? projectViewportRect(object.rect, viewport) : null;
         const visibleLabel = object.type === 'location' && showLocationLabel;
         const active = selection?.key === object.key || menuObject?.key === object.key;
         const x = Math.max(0, Math.min(stageWidth - 36, rect?.x ?? 12));
@@ -305,6 +300,7 @@ export function GraphicalObjectOverlays({
               else targets.current.delete(object.key);
             }}
             data-graphical-object-target={object.key}
+            data-graphical-annotation-obstacle={visibleLabel || undefined}
             tabIndex={object.type === 'plant' && tabKeys.get(object.id) !== object.key ? -1 : undefined}
             aria-label={object.type === 'plant' ? `${object.name} · ${plantPositionLabel(object)}`
               : `${t(`hierarchy:details.entityType.${object.type}`)} · ${object.name}`}
@@ -367,8 +363,13 @@ export function GraphicalObjectOverlays({
                 height: Math.min(stageHeight - y, Math.max(22, rect?.height ?? 22)),
                 overflow: 'hidden', whiteSpace: 'nowrap', color: 'transparent', bgcolor: 'transparent', border: 0,
               }),
-              '&:focus-visible': { outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2,
-                width: 'auto', height: 'auto', minHeight: 28, opacity: 1, bgcolor: 'background.paper', color: 'text.primary', px: 1 },
+              '&:focus-visible': {
+                outline: '2px solid', outlineColor: 'primary.main', outlineOffset: 2,
+                left: Math.min(x, Math.max(8, stageWidth - 268)), top: Math.min(y, Math.max(36, stageHeight - 168)),
+                width: 'auto', height: 'auto', minHeight: 28, maxWidth: 'min(260px, calc(100% - 16px))',
+                whiteSpace: 'normal', overflowWrap: 'anywhere',
+                opacity: 1, bgcolor: 'background.paper', color: 'text.primary', px: 1,
+              },
             }}>
             {object.name}
           </Box>

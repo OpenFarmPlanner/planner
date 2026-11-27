@@ -3,7 +3,7 @@ import { cultivationPlan, projectBedCultivation, type BedCultivationEntry, type 
 import { planPlacementParent, stemToCanvas, type PlacementDimensions, type PlacementParent } from './individualPlantGeometry';
 import type { GraphicalRotation, Rect } from './graphicalLayoutUtils';
 import { graphicalObjectKey } from './useGraphicalObjectInteraction';
-import type { ViewportState } from './graphicalViewport';
+import { projectViewportRect, type ViewportState } from './graphicalViewport';
 
 type SavedPlan = PlantingPlan & { id: number };
 
@@ -75,9 +75,6 @@ interface PlantLabel {
 
 const overlaps = (a: Rect, b: Rect) => a.x < b.x + b.width && b.x < a.x + a.width
   && a.y < b.y + b.height && b.y < a.y + a.height;
-const toScreen = (rect: Rect, { x, y, scale }: ViewportState): Rect => ({
-  x: x + rect.x * scale, y: y + rect.y * scale, width: rect.width * scale, height: rect.height * scale,
-});
 
 export function getIndividualPlantLabels(
   plants: readonly GraphicalIndividualPlant[], beds: readonly Rect[], viewport: ViewportState,
@@ -89,7 +86,7 @@ export function getIndividualPlantLabels(
   const cellSize = 24;
   const markerRadius = 8;
   const markers = new Map<string, Rect[]>();
-  const points = plants.map(plant => ({ plant, point: toScreen(plant.rect, viewport) }));
+  const points = plants.map(plant => ({ plant, point: projectViewportRect(plant.rect, viewport) }));
   for (const { point } of points) {
     const key = `${Math.floor(point.x / cellSize)}:${Math.floor(point.y / cellSize)}`;
     const bounds = { x: point.x - markerRadius, y: point.y - markerRadius,
@@ -99,7 +96,7 @@ export function getIndividualPlantLabels(
     else markers.set(key, [bounds]);
   }
   const occupied = beds.map(rect => {
-    const screen = toScreen(rect, viewport);
+    const screen = projectViewportRect(rect, viewport);
     return { ...screen, height: Math.min(screen.height, screen.width < 64 ? screen.height : 45) };
   });
   const coversMarker = (rect: Rect) => {

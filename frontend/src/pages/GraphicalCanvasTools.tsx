@@ -124,7 +124,7 @@ export function GraphicalCanvasTools({
 
   return (
     <>
-      <Paper elevation={3} data-testid="graphical-canvas-tools" role="group" aria-label={t('graphical.canvasTools')}
+      <Paper elevation={3} data-testid="graphical-canvas-tools" data-graphical-annotation-obstacle role="group" aria-label={t('graphical.canvasTools')}
         sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, borderRadius: 3, overflow: 'auto',
           maxHeight: 'calc(100% - 24px)', bgcolor: 'background.paper' }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: short ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>

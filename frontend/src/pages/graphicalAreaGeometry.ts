@@ -1,6 +1,6 @@
 import type { BedLayoutEntry, FieldLayoutEntry, LocationBoundaryOrigin, LocationLayoutsResponse } from '../api/api';
 import type { Bed, Field, Location, LocationPathSpacing } from '../api/types';
-import { calculateMetricCoverage, validateAreaGeometry, type AreaFootprint, type GeometryIssue, type MetricRect } from '../components/hierarchy/utils/growingAreaGeometry';
+import { calculateMetricCoverage, validateAreaGeometry, type AreaFootprint, type GeometryIssue, type MetricCoverage, type MetricRect } from '../components/hierarchy/utils/growingAreaGeometry';
 import {
   DEFAULT_STAGE_HEIGHT, LOCATION_FIELD_GAP, LOCATION_LAYOUT_PADDING, WORKSPACE_MIN_HEIGHT, WORKSPACE_MIN_WIDTH,
   FIELD_WORLD_BASE_WIDTH, FIELD_WORLD_MAX_WIDTH, FIELD_WORLD_MIN_HEIGHT, FIELD_WORLD_MIN_WIDTH,
@@ -19,6 +19,15 @@ export interface GeometryPreview {
   id: number;
   locationId: number;
   position: Point;
+}
+
+export function getGraphicalFreeRects(coverage: MetricCoverage | undefined, origin: Point, scale: Point): Rect[] {
+  return (coverage?.freeRects ?? []).map(rect => ({
+    x: origin.x + rect.x * scale.x,
+    y: origin.y + rect.y * scale.y,
+    width: rect.width * scale.x,
+    height: rect.height * scale.y,
+  }));
 }
 
 function measuredSize(area: Pick<Field, 'width_m' | 'length_m'>, rotation: GraphicalRotation): RectSize | null {
@@ -122,13 +131,15 @@ export interface GraphicalParcel {
   layout: GraphicalBedLayout;
 }
 
-export function getBedWorldRect(parcel: GraphicalParcel, bed: BedViewModel): Rect {
+export function getBedWorldRect(parcel: GraphicalParcel, bed: BedViewModel, preview: GeometryPreview | null = null): Rect {
+  const field = previewPosition(parcel.rect, preview, 'field');
+  const position = previewPosition(bed, preview, 'bed');
   return { width: bed.width, height: bed.height,
-    x: parcel.rect.x + parcel.layout.usableArea.x + bed.x,
-    y: parcel.rect.y + parcel.layout.usableArea.y + bed.y };
+    x: field.x + parcel.layout.usableArea.x + position.x,
+    y: field.y + parcel.layout.usableArea.y + position.y };
 }
 
-function previewPosition(rect: RectViewModel, preview: GeometryPreview | null, type: GeometryPreview['type']): Point {
+export function previewPosition(rect: RectViewModel, preview: GeometryPreview | null, type: GeometryPreview['type']): Point {
   return preview?.type === type && preview.id === rect.id ? preview.position : rect;
 }
 

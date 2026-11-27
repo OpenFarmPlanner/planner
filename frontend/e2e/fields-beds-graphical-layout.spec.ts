@@ -13,6 +13,8 @@ async function canvasRects(page: Page, prefix: string) {
         id: String(node.getAttr('data-testid') ?? ''),
         ...node.getAbsolutePosition(stage), width: node.width(), height: node.height(),
         rotation: node.rotation(), bounds: node.getClientRect(), issue: node.getAttr('data-geometry-issue') ?? null,
+        annotation: node.getAttr('data-area-annotation-placement') ?? null,
+        text: node.getClassName() === 'Text' ? node.getAttr('text') as string : null,
         screenSize: { width: node.width() * stage.scaleX(), height: node.height() * stage.scaleY() },
         stage: { width: stage.width(), height: stage.height() },
         container: { x: stage.container().getBoundingClientRect().x, y: stage.container().getBoundingClientRect().y },
@@ -218,6 +220,106 @@ async function selectionFixture(page: Page) {
   return { location, parcel, bed, card };
 }
 
+test('keeps growing-area annotations clear of dense beds and preserves access to suppressed names', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1060, height: 900 });
+  await loginWithDeterministicProject(page, request, `annotation-layout-${testInfo.workerIndex}`, {
+    demoProject: true, demoYear: 2026, loginAsAdmin: true,
+  });
+  const location = await apiRequest<{ id: number }>(page, 'POST', '/locations/', {
+    name: 'Beschriftungsfläche', width_m: 48, length_m: 24,
+  });
+  const open = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Offene Parzelle', location: location.id, width_m: 12, length_m: 10,
+  });
+  const packed = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Volle Parzelle', location: location.id, width_m: 8, length_m: 8,
+  });
+  const longName = 'W'.repeat(135);
+  const crowded = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: longName, location: location.id, width_m: 7, length_m: 8,
+  });
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    name: 'Flächenfüllendes Beet', field: packed.id, width_m: 8, length_m: 8,
+  });
+  const layoutsPath = `/locations/${location.id}/layouts/`;
+  await apiRequest(page, 'PUT', layoutsPath, {
+    location_boundary: { x: 0, y: 0 },
+    field_layouts: [
+      { field: open.id, x: 36, y: 36 }, { field: packed.id, x: 306, y: 108 },
+      { field: crowded.id, x: 468, y: 108 },
+    ],
+    bed_layouts: [{ bed: bed.id, x: 0, y: 0 }],
+  });
+  const saved = await apiRequest(page, 'GET', layoutsPath);
+  await page.goto('/app/fields-beds');
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await selectLocation(page, 'Beschriftungsfläche');
+  const card = page.getByRole('region', { name: 'Standort: Beschriftungsfläche' });
+  await card.scrollIntoViewIfNeeded();
+  const label = async (fieldId: number) => (await canvasRects(page, `field-label-${fieldId}`))[0];
+  await expect.poll(async () => (await label(open.id))?.annotation).toBe('inside');
+  await expect.poll(async () => (await label(packed.id))?.annotation).toBe('outside');
+  await expect.poll(async () => (await canvasRects(page, `location-boundary-label-${location.id}`))[0]?.text)
+    .toBe('Beschriftungsfläche · 48 × 24 m');
+  const outside = await label(packed.id);
+  const bedShape = (await canvasRects(page, `bed-rect-${bed.id}`))[0];
+  const { x, y, width, height } = outside.bounds;
+  expect(x + width <= bedShape.bounds.x || x >= bedShape.bounds.x + bedShape.bounds.width ||
+    y + height <= bedShape.bounds.y || y >= bedShape.bounds.y + bedShape.bounds.height).toBe(true);
+  const leaderListening = await page.evaluate(fieldId => {
+    const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
+    const stage = konva.stages.find(item => item.container()?.isConnected)!;
+    return stage.find('Line').find(node => node.getAttr('data-testid') === `field-label-${fieldId}-leader`)?.isListening();
+  }, packed.id);
+  expect(leaderListening).toBe(false);
+  expect(await label(crowded.id)).toBeUndefined();
+  await card.screenshot({ path: testInfo.outputPath('growing-area-annotations-desktop.png') });
+  const point = shapePoint((await canvasRects(page, `field-rect-${crowded.id}`))[0]);
+  await page.mouse.move(point.x, point.y);
+  const tooltip = page.getByRole('tooltip');
+  await expect(tooltip).toContainText(longName);
+  expect(await tooltip.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  await page.mouse.click(point.x, point.y);
+  const preview = page.getByTestId('graphical-object-preview');
+  await expect(preview).toHaveAccessibleName(longName);
+  await page.keyboard.press('Escape');
+  const target = card.locator(`[data-graphical-object-target="field:${crowded.id}"]`);
+  await target.press('Enter');
+  await expect(preview).toHaveAccessibleName(longName);
+  await page.keyboard.press('Escape');
+  await expect(target).toBeFocused();
+  expect(await target.evaluate(node => node.scrollWidth <= node.clientWidth)).toBe(true);
+  const openPlot = async () => (await canvasRects(page, `field-rect-${open.id}`))[0];
+  await toggleGraphicEdit(page);
+  await waitForParcelDragTarget(page, open.id);
+  const beforeDrag = await openPlot();
+  const labelBeforeDrag = await label(open.id);
+  const grab = shapePoint(labelBeforeDrag);
+  await page.mouse.move(grab.x, grab.y);
+  await page.mouse.down();
+  await page.mouse.move(grab.x + 36, grab.y + 18, { steps: 4 });
+  await expect.poll(async () => (await openPlot()).bounds.x).toBeGreaterThan(beforeDrag.bounds.x + 10);
+  await expect.poll(async () => (await label(open.id)).bounds.x).toBeGreaterThan(labelBeforeDrag.bounds.x + 10);
+  expect((await label(open.id)).bounds.height).toBeCloseTo(labelBeforeDrag.bounds.height);
+  await page.keyboard.press('Escape');
+  await page.mouse.up();
+  await expect.poll(async () => (await label(open.id)).bounds.x).toBeCloseTo(labelBeforeDrag.bounds.x);
+  await toggleGraphicEdit(page);
+  const initial = await label(open.id);
+  await activateCanvasTool(page, 'Hineinzoomen');
+  await expect.poll(async () => (await activeCamera(page)).scale).toBeGreaterThan(bedShape.screenSize.width / bedShape.width);
+  expect((await label(open.id))?.bounds.height).toBeCloseTo(initial.bounds.height);
+  await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
+  await expect.poll(async () => (await label(open.id))?.rotation).toBe(0);
+  expect(await apiRequest(page, 'GET', layoutsPath)).toEqual(saved);
+  await selectLocation(page, 'Hofgarten');
+  await expect.poll(async () => (await canvasRects(page, 'field-label-')).length).toBeGreaterThan(0);
+  await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
+  await expect.poll(async () => (await canvasRects(page, 'field-label-')).length).toBeGreaterThan(0);
+  await page.getByRole('region', { name: 'Standort: Hofgarten' })
+    .screenshot({ path: testInfo.outputPath('growing-area-annotations-hofgarten.png') });
+});
+
 test('selects the deepest object, keeps the native blank-canvas menu and supports keyboard details', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1050, height: 900 });
   await loginWithDeterministicProject(page, request, `graphic-selection-${testInfo.workerIndex}`, { loginAsAdmin: true });
@@ -251,10 +353,9 @@ test('selects the deepest object, keeps the native blank-canvas menu and support
   await page.keyboard.press('Escape');
   await expect(preview).toHaveCount(0);
 
-  const label = await at(`location-boundary-label-${location.id}`);
-  await page.mouse.move(label.x, label.y);
+  await page.mouse.move(free.x, free.y);
   await expect(page.getByRole('tooltip')).toContainText('24 × 28 m');
-  await page.mouse.click(label.x, label.y, { button: 'right' });
+  await page.mouse.click(free.x, free.y, { button: 'right' });
   await expect(page.getByRole('menu', { name: 'Lernhof' })).toBeVisible();
   await expect(page.getByText(/Rechtsklick auf einen Standort/)).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('graphical-object-menu.png') });
@@ -311,7 +412,7 @@ test.describe('graphical object touch gestures', () => {
 
   test('separates taps, long presses and cancelled presses, with a persistent touch hint', async ({ page, request }, testInfo) => {
     await loginWithDeterministicProject(page, request, `graphic-touch-${testInfo.workerIndex}`, { loginAsAdmin: true });
-    const { location, parcel, bed, card } = await selectionFixture(page);
+    const { parcel, bed, card } = await selectionFixture(page);
     const touch = await page.context().newCDPSession(page);
     const preview = page.getByTestId('graphical-object-preview');
     const hint = card.getByText(/Standort, Parzelle oder Beet gedrückt halten/);
@@ -320,7 +421,7 @@ test.describe('graphical object touch gestures', () => {
     const points = [
       { id: `bed-rect-${bed.id}`, name: 'Lernbeet' },
       { id: `field-rect-${parcel.id}`, name: 'Lernparzelle', x: 0.9, y: 0.17 },
-      { id: `location-boundary-label-${location.id}`, name: 'Lernhof' },
+      { id: 'graphical-free-area-site', name: 'Lernhof' },
     ];
     for (const { id, name, x, y } of points) {
       const point = shapePoint((await canvasRects(page, id))[0], x, y);
@@ -658,6 +759,7 @@ test.describe('location spacing in a touch-capable browser', () => {
       const locationTarget = page.locator('[data-graphical-object-target^="location:"]');
       await locationTarget.press('Enter');
       const objectPreview = page.getByTestId('graphical-object-preview');
+      await expect(objectPreview).toHaveAccessibleName('Acker am Bach');
       await expect(objectPreview.getByRole('button', { name: details })).toBeVisible();
       await page.keyboard.press('Escape');
       await locationTarget.press('Shift+F10');
@@ -1211,12 +1313,9 @@ test('draws a sized location boundary and flags plots that cross it', async ({ p
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, 'Grenzhof');
   await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
-  const label = await page.evaluate(id => {
-    const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
-    const stage = konva.stages.find(item => item.container()?.isConnected)!;
-    return stage.find('Text').find(node => node.getAttr('data-testid') === `location-boundary-label-${id}`)?.getAttr('text');
-  }, location.id);
-  expect(label).toBe('Grenzhof · 12,5 × 30 m');
+  await page.locator(`[data-graphical-object-target="location:${location.id}"]`).press('Enter');
+  await expect(page.getByTestId('graphical-object-preview')).toContainText('12,5 × 30 m');
+  await page.keyboard.press('Escape');
   const outsideFlags = await page.evaluate(ids => {
     const konva = (window as unknown as { Konva: { stages: Konva.Stage[] } }).Konva;
     const stage = konva.stages.find(item => item.container()?.isConnected)!;
