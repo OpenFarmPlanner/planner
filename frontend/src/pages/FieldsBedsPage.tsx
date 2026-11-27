@@ -38,6 +38,7 @@ import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation
 import { type SxProps, type Theme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import ParkOutlinedIcon from '@mui/icons-material/ParkOutlined';
 import CheckIcon from '@mui/icons-material/Check';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import { GrowingAreaWorkspaceMenu } from '../components/hierarchy/GrowingAreaWorkspaceMenu';
@@ -83,6 +84,9 @@ const CONTENT_ALIGNED_EMPTY_STATE_SX: SxProps<Theme> = {
 };
 
 type ViewMode = 'table' | 'graphical';
+
+// The add action keeps its label only where the workspace toolbar still fits on one row.
+const INDIVIDUAL_PLANTS_LABEL_QUERY = '@container workspace-topbar (min-width: 86rem)';
 
 export default function FieldsBedsPage() {
   const { activeProjectId } = useProjectRequirement();
@@ -536,6 +540,18 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         aria-pressed={graphicEditing}
         onClick={toggleGraphicEditing}
       />}
+      {!compactWorkspace && onAddIndividualPlants && selectedLocation.id !== undefined && <ResponsiveToolbarAction
+        label={t('fields:individualPlants.addPlants')}
+        labelQuery={INDIVIDUAL_PLANTS_LABEL_QUERY}
+        labelBreakpoint={ACTION_LABEL_BREAKPOINT}
+        icon={<ParkOutlinedIcon fontSize="small" />}
+        variant="outlined"
+        color="success"
+        onClick={() => {
+          setIsEditingGraphic(false);
+          onAddIndividualPlants({ locationId: selectedLocation.id!, parent: { kind: 'location', id: selectedLocation.id! }, free: true });
+        }}
+      />}
       {activeProjectMembership && (
         <GraphicalSettingsControl key={`${selectedLocation.id}:${compactWorkspace}`} location={selectedLocation}
           onSave={saveLocationPathSpacing} compact={compactWorkspace}>
@@ -562,7 +578,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       {cropDateControl && <GraphicalCropDateControl {...cropDateControl} compact={compactWorkspace} />}
     </>;
   }, [activeProjectMembership, canEditGraphic, compactWorkspace, effectiveViewMode, graphicEditing, hasSelectedGraphicalFields,
-    cropDateControl, graphicFullscreen, graphicalLocations, mobileListControls, saveLocationPathSpacing, selectLocation,
+    cropDateControl, graphicFullscreen, graphicalLocations, mobileListControls, onAddIndividualPlants, saveLocationPathSpacing, selectLocation,
     selectedLocation, shouldShowProjectRequiredState, t, toggleGraphicEditing]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
@@ -695,6 +711,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             requestedIndividualPlan={requestedIndividualPlan}
             editRequestedIndividualPlan={editRequestedIndividualPlan}
             individualCreationTarget={individualCreationTarget}
+            individualPlantsInWorkspaceToolbar={!compactWorkspace}
             onIndividualCreationHandled={finishIndividualCreationRequest}
             onOpenDetails={openGraphicalDetails}
             onOpenIndividualPlan={id => void navigate(plantingPlanDetailPath(id))}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import type { Field } from '../api/types';
-import { canvasToStem, shortStemSpacing, stemToCanvas } from '../pages/individualPlantGeometry';
+import {
+  canvasToStem, individualCountAfterRemoval, individualRemovalBlock, shortStemSpacing, stemToCanvas,
+} from '../pages/individualPlantGeometry';
 
 const field: Field = { name: 'Orchard', location: 1, width_m: 12, length_m: 20 };
 const surface = { x: 10, y: 34, width: 340, height: 192 };
@@ -30,5 +32,35 @@ describe('individual plant geometry', () => {
     expect(shortStemSpacing(positions, 5)).toEqual({ pairs: 1, closest: 1 });
     expect(shortStemSpacing(positions, 1)).toEqual({ pairs: 0, closest: null });
     expect(shortStemSpacing(positions, null)).toEqual({ pairs: 0, closest: null });
+  });
+});
+
+describe('individual plant removal', () => {
+  const stems = (count: number) => Array.from({ length: count }, (_, index) => ({ id: `s${index}`, x_m: index, y_m: 0 }));
+
+  it('lowers an exact total by the removed plants and keeps the total when only positions are removed', () => {
+    const plan = { individual_count: 5, individual_positions: stems(2) };
+    expect(individualRemovalBlock(plan, 1, 'plant')).toBeNull();
+    expect(individualCountAfterRemoval(plan, 1, 'plant')).toBe(4);
+    expect(individualCountAfterRemoval(plan, 2, 'position')).toBe(5);
+  });
+
+  it('keeps a plan without an exact total counted by its positions and records the total when clearing a position', () => {
+    const plan = { individual_count: null, individual_positions: stems(3) };
+    expect(individualCountAfterRemoval(plan, 1, 'plant')).toBeNull();
+    expect(individualCountAfterRemoval(plan, 1, 'position')).toBe(3);
+  });
+
+  it('never removes the last plant of a plan, but still allows clearing its position', () => {
+    expect(individualRemovalBlock({ individual_count: null, individual_positions: stems(1) }, 1, 'plant')).toBe('finalPlant');
+    expect(individualRemovalBlock({ individual_count: 1, individual_positions: stems(1) }, 1, 'plant')).toBe('finalPlant');
+    expect(individualRemovalBlock({ individual_count: null, individual_positions: stems(1) }, 1, 'position')).toBeNull();
+  });
+
+  it('blocks a planned-total correction once harvests or losses are recorded', () => {
+    const plan = { individual_count: 4, individual_positions: stems(4) };
+    expect(individualRemovalBlock({ ...plan, crop_loss_count: 1 }, 1, 'plant')).toBe('actualRecords');
+    expect(individualRemovalBlock({ ...plan, actual_harvest: { quantity_kg: 2 } as never }, 1, 'plant')).toBe('actualRecords');
+    expect(individualRemovalBlock({ ...plan, crop_loss_count: 1 }, 1, 'position')).toBeNull();
   });
 });

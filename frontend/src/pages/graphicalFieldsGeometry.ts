@@ -69,6 +69,8 @@ export interface GraphicalFieldsProps {
   requestedIndividualPlan?: number;
   editRequestedIndividualPlan?: boolean;
   individualCreationTarget?: IndividualCreationTarget | null;
+  /** The workspace toolbar offers "Add individual plants", so the canvas tools omit it. */
+  individualPlantsInWorkspaceToolbar?: boolean;
   onIndividualCreationHandled?: () => void;
   onOpenDetails?: (type: HierarchyEntityType, id: number) => void;
   onOpenIndividualPlan?: (id: number) => void;

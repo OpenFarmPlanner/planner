@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, canvasInteractionPoint, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, graphicWorkspaceMenu, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
+import { individualPlantsPanel, activateCanvasTool, apiRequest, canvasInteractionPoint, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, graphicWorkspaceMenu, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -581,42 +581,32 @@ test.describe('responsive canvas tools', () => {
     await expect(menu).toBeVisible();
     await page.setViewportSize({ width: 1600, height: 900 });
     await expect(menu).toHaveCount(0);
-    await expect(individualPlants).toBeFocused();
+    // Without a promoted tool, focus falls back to zoom when the overflow trigger leaves.
+    await expect(zoom).toBeFocused();
     await expect(directRotation).toBeVisible();
     await expect(trigger).toHaveCount(0);
-    await expect(individualPlants).toHaveAttribute('aria-pressed', 'false');
-    await expect.poll(async () => {
-      const box = await individualPlants.boundingBox();
-      return Boolean(box && box.width >= 44 && box.height >= 44);
-    }).toBe(true);
-    await page.setViewportSize({ width: 768, height: 1024 });
-    await expect(trigger).toBeFocused();
-    await expect(menu).toHaveCount(0);
+    // On wide layouts the workspace toolbar offers the add action instead of the canvas tools (#1727).
     await expect(individualPlants).toHaveCount(0);
-    await page.setViewportSize({ width: 1600, height: 900 });
-    await individualPlants.press('Enter');
-    const plants = page.getByRole('region', { name: 'Einzelpflanzen' });
-    await expect(plants).toBeVisible();
-    await expect(directRotation).toHaveCount(0);
+    const addPlants = page.getByRole('button', { name: 'Einzelpflanzen hinzufügen', exact: true });
+    await addPlants.press('Enter');
+    const plants = individualPlantsPanel(page);
+    await expect(plants).toHaveAccessibleName('Pflanzen hinzufügen');
     await expect(plants).toBeFocused();
-    await trigger.tap();
-    await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen' })).toHaveAttribute('aria-description', 'Aktiv');
-    await page.keyboard.press('Escape');
-    await expect(plants).toBeVisible();
+    // A repeated request keeps the open draft instead of replacing it.
+    await plants.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).click();
+    await page.getByRole('option').first().click();
+    const chosenCrop = await plants.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }).textContent();
+    await addPlants.press('Enter');
+    await expect(plants.getByRole('combobox', { name: 'Kultur (Sorte)', exact: true })).toHaveText(chosenCrop!);
     await plants.getByRole('button', { name: 'Schließen' }).tap();
-    await expect(individualPlants).toBeFocused();
+    await expect(plants).toHaveCount(0);
     await expect(directRotation).toBeVisible();
-    await expect(trigger).toHaveCount(0);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath('canvas-tools-wide.png'), animations: 'disabled' });
 
     await page.setViewportSize({ width: 1920, height: 900 });
-    await individualPlants.tap();
-    await expect(individualPlants).toHaveAttribute('aria-pressed', 'true');
-    await expect(plants).toBeVisible();
-    await individualPlants.tap();
-    await expect(plants).toHaveCount(0);
-    await expect(individualPlants).toHaveAttribute('aria-pressed', 'false');
+    await expect(individualPlants).toHaveCount(0);
+    await expect(addPlants).toBeVisible();
     await toolbar.getByRole('button', { name: 'Vollbild öffnen' }).tap();
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
     await expect(individualPlants).toHaveCount(0);

@@ -274,7 +274,7 @@
     "noCrops": "Aggiungi prima una coltura.",
     "finishPlaceOnMap": "Termina il posizionamento",
     "placementNeedsInputs": "Seleziona una coltura, un metodo di coltivazione e una data di impianto nella stagione.",
-    "positionIndex": "Fusto {{index}}",
+    "positionIndex": "Pianta {{index}}",
     "positionInPlan": "Pianta {{index}} di {{total}}",
     "noOpenTasks": "Nessuna attività aperta per questo piano colturale.",
     "bedDimensionsConflict": "Tutte le posizioni salvate dei fusti devono trovarsi all’interno dell’aiuola.",
@@ -301,6 +301,22 @@
     "changedElsewhere": "Il piano è cambiato durante la modifica. Ricaricando perderai la bozza.",
     "count_one": "{{formatted}} pianta singola",
     "count_other": "{{formatted}} piante singole",
-    "count_many": "{{formatted}} piante singole"
+    "count_many": "{{formatted}} piante singole",
+    "addTitle": "Aggiungi piante",
+    "placePending": "Posiziona piante",
+    "pendingPlans": "Piante non ancora posizionate ({{formatted}})",
+    "plantList": "Piante ({{formatted}})",
+    "undoLastPlacement": "Annulla l'ultimo posizionamento",
+    "positionedOfTotal": "{{positioned}} di {{total}} posizionate",
+    "canopyValue": "Diametro stimato della chioma: {{distance}} m",
+    "removal": {
+      "title": "Rimuovi pianta",
+      "plant": "Rimuovi pianta",
+      "plantHint": "Il numero previsto scende da {{from}} a {{to}}.",
+      "position": "Rimuovi solo la posizione",
+      "positionHint": "La pianta resta prevista e conta come non ancora posizionata.",
+      "finalPlant": "Una serie mantiene almeno una pianta. Se necessario, elimina l’intera serie.",
+      "actualRecords": "Per questa serie sono registrati raccolti o perdite. Registra una perdita nei dettagli della serie invece di modificare il numero previsto."
+    }
   }
 }

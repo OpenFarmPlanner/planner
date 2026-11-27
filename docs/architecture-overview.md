@@ -255,12 +255,36 @@ plans, including directly assigned individual plans and plans on descendants.
 Direct parcel tasks appear at the parcel and location levels.
 
 The floating canvas tools use the measured canvas width, including in
-fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,
+fullscreen and when the add-plants or position editor panel narrows the canvas. Zoom, fit,
 fullscreen, and layout warnings stay directly reachable. Pan and rotation move
 into More canvas tools below the `lg` breakpoint, alongside the secondary tools.
-The overflow slot shows a tool's own button when only one action remains,
-such as Individual plants on a wide canvas. It groups multiple actions in
-More canvas tools and disappears when there are none.
+The overflow slot shows a tool's own button when only one action remains.
+It groups multiple actions in More canvas tools and disappears when there
+are none.
+
+Individual plants are canvas-first (#1727). Normal Graphic has no plant
+sidebar. "Add individual plants" sits in the workspace toolbar on wide
+layouts and in the canvas tools on compact ones; every entry point,
+including List and Graphic object menus, starts the same contextual "Add
+plants" panel. Free placement from the toolbar keeps the camera and locks no
+parent; the deepest measured parent is still classified per stem. A request
+while a draft is open only reveals that draft. Plans that still have
+unpositioned plants are listed in the panel and open the same plan's
+position editor without changing its total. Selecting a saved marker opens
+the existing object preview as the plant inspector: positioned, total and
+pending counts, canopy, spacing, site hints, tasks, plan details, "Edit
+positions" and a trash action. Deep links to a plan open that inspector, or
+the position editor when no plant is positioned yet. The editor keeps the
+per-plant list ("Plant 1") behind a collapsed disclosure.
+
+Removing a selected plant (trash, the last context-menu action, or Delete
+on the focused marker or inspector) opens one confirmation with two
+explicit outcomes, saved through the plan's validated
+`individual-placement` endpoint: "Remove plant" lowers the exact total by
+one, and "Remove position only" keeps the plant planned and pending. A plan
+keeps at least one plant, and a plan with recorded harvests or losses keeps
+its planned total; the dialog then points to the plan details for recording
+a loss instead.
 
 The schematic camera caps measured geometry at 500 CSS pixels per metre and
 allows zooming back to the fitted overview of a large site. The lower canvas

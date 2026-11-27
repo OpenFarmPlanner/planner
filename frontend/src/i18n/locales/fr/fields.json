@@ -274,7 +274,7 @@
     "noCrops": "Ajoutez d’abord une culture.",
     "finishPlaceOnMap": "Terminer le placement",
     "placementNeedsInputs": "Sélectionnez une culture, un mode de culture et une date de plantation dans la saison.",
-    "positionIndex": "Tige {{index}}",
+    "positionIndex": "Plant {{index}}",
     "positionInPlan": "Plant {{index}} sur {{total}}",
     "noOpenTasks": "Aucune tâche ouverte pour ce plan de culture.",
     "bedDimensionsConflict": "Toutes les positions de tiges enregistrées doivent se trouver dans la planche.",
@@ -301,6 +301,22 @@
     "changedElsewhere": "Le plan a changé pendant votre modification. Le rechargement effacera ce brouillon.",
     "count_one": "{{formatted}} plante individuelle",
     "count_other": "{{formatted}} plantes individuelles",
-    "count_many": "{{formatted}} plantes individuelles"
+    "count_many": "{{formatted}} plantes individuelles",
+    "addTitle": "Ajouter des plants",
+    "placePending": "Positionner les plants",
+    "pendingPlans": "Plants pas encore positionnés ({{formatted}})",
+    "plantList": "Plants ({{formatted}})",
+    "undoLastPlacement": "Annuler le dernier placement",
+    "positionedOfTotal": "{{positioned}} sur {{total}} positionnés",
+    "canopyValue": "Diamètre estimé du houppier : {{distance}} m",
+    "removal": {
+      "title": "Supprimer le plant",
+      "plant": "Supprimer le plant",
+      "plantHint": "Le nombre prévu passe de {{from}} à {{to}}.",
+      "position": "Supprimer seulement la position",
+      "positionHint": "Le plant reste prévu et compte comme pas encore positionné.",
+      "finalPlant": "Une série conserve au moins un plant. Supprimez la série entière si nécessaire.",
+      "actualRecords": "Des récoltes ou des pertes sont enregistrées pour cette série. Enregistrez une perte dans les détails de la série au lieu de modifier le nombre prévu."
+    }
   }
 }

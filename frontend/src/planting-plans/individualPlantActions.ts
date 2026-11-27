@@ -10,6 +10,8 @@ import { plantingPlanDetailPath } from './plantingPlanDetailRoutes';
 export interface IndividualCreationTarget {
   parent: PlacementParent;
   locationId: number;
+  /** Free placement from the workspace toolbar: keeps the camera and allows no count-only plan. */
+  free?: boolean;
 }
 
 export const IndividualPlantIcon = GrassOutlinedIcon;

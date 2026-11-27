@@ -274,7 +274,7 @@
     "noCrops": "Añade primero un cultivo.",
     "finishPlaceOnMap": "Terminar la colocación",
     "placementNeedsInputs": "Selecciona un cultivo, un método de cultivo y una fecha de plantación dentro de la temporada.",
-    "positionIndex": "Tallo {{index}}",
+    "positionIndex": "Planta {{index}}",
     "positionInPlan": "Planta {{index}} de {{total}}",
     "noOpenTasks": "No hay tareas pendientes para este plan de cultivo.",
     "bedDimensionsConflict": "Todas las posiciones de los tallos guardadas deben quedar dentro del bancal.",
@@ -301,6 +301,22 @@
     "changedElsewhere": "El plan cambió mientras lo editabas. Al volver a cargarlo, se descartará el borrador.",
     "count_one": "{{formatted}} planta individual",
     "count_other": "{{formatted}} plantas individuales",
-    "count_many": "{{formatted}} plantas individuales"
+    "count_many": "{{formatted}} plantas individuales",
+    "addTitle": "Añadir plantas",
+    "placePending": "Posicionar plantas",
+    "pendingPlans": "Plantas aún sin posición ({{formatted}})",
+    "plantList": "Plantas ({{formatted}})",
+    "undoLastPlacement": "Deshacer la última colocación",
+    "positionedOfTotal": "{{positioned}} de {{total}} posicionadas",
+    "canopyValue": "Diámetro estimado de copa: {{distance}} m",
+    "removal": {
+      "title": "Eliminar planta",
+      "plant": "Eliminar planta",
+      "plantHint": "El número previsto baja de {{from}} a {{to}}.",
+      "position": "Eliminar solo la posición",
+      "positionHint": "La planta sigue prevista y cuenta como aún sin posición.",
+      "finalPlant": "Una serie conserva al menos una planta. Si es necesario, elimina la serie completa.",
+      "actualRecords": "Esta serie tiene cosechas o pérdidas registradas. Registra una pérdida en los detalles de la serie en lugar de cambiar el número previsto."
+    }
   }
 }

@@ -1,11 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { PlantingPlan } from '../src/api/types';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { apiRequest, loginWithDeterministicProject, individualPlantsPanel } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
 const generationTitle = 'Pflanzen automatisch platzieren';
-const panel = (page: Page) => page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+const panel = (page: Page) => individualPlantsPanel(page);
 
 async function choose(page: Page, control: Locator, option: string) {
   await control.click();
@@ -62,7 +62,7 @@ test('previews and saves the same bed grid alongside area and individual plans',
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await page.locator(`[data-graphical-object-target="bed:${bed.id}"]`).press('Enter');
-  await page.getByRole('button', { name: 'Neuer Einzelpflanzenplan', exact: true }).click();
+  await page.getByTestId('graphical-object-preview').getByRole('button', { name: 'Einzelpflanzen hinzufügen', exact: true }).click();
   await choose(page, panel(page).getByRole('combobox', { name: 'Kultur (Sorte)', exact: true }), 'Stangenbohne');
 
   const dialog = await configureBedPreview(page);
@@ -89,7 +89,8 @@ test('previews and saves the same bed grid alongside area and individual plans',
   expect(saved).toMatchObject({ crop: beans.id, bed: bed.id, area_usage_sqm: null, plants_count: 8 });
   expect(saved.individual_positions).toMatchObject(expected);
   await page.goto(`/app/fields-beds?individualPlan=${saved.id}&locationId=${site.id}`);
-  await expect(panel(page).getByText('8 Einzelpflanzen', { exact: true })).toBeVisible();
+  await expect(page.getByTestId('graphical-object-preview').getByTestId('individual-plant-counts')).toHaveText('8 von 8 positioniert');
+  await expect(panel(page)).toHaveCount(0);
   const { results } = await apiRequest<{ results: PlantingPlan[] }>(page, 'GET', `/planting-plans/?bed=${bed.id}`);
   expect(results.find(plan => plan.id === saved.id)?.individual_positions).toEqual(saved.individual_positions);
   expect(results.find(plan => plan.id === existing.id)?.individual_positions).toEqual(existing.individual_positions);
@@ -113,7 +114,7 @@ test.describe('orchard generation on a phone', () => {
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
     const cropPath = `/api/crops/${orchard.crop}/`;
     await page.route(url => url.pathname === cropPath, route => route.fulfill({ status: 500, json: {} }), { times: 1 });
-    await panel(page).getByRole('button', { name: 'Positionen bearbeiten' }).tap();
+    await page.getByTestId('graphical-object-preview').getByRole('button', { name: 'Positionen bearbeiten' }).tap();
     const generate = panel(page).getByRole('button', { name: generationTitle });
     const retry = panel(page).getByRole('button', { name: 'Erneut versuchen' });
     await expect(panel(page).getByText('Kulturen konnten nicht geladen werden.')).toBeVisible();
@@ -139,8 +140,9 @@ test.describe('orchard generation on a phone', () => {
     await dialog.getByRole('button', { name: 'Positionen übernehmen' }).tap();
     await expect(panel(page).getByText('5 Einzelpflanzen', { exact: true })).toBeVisible();
     await panel(page).getByRole('button', { name: 'Abbrechen', exact: true }).tap();
-    await expect(panel(page).getByText('3 Einzelpflanzen', { exact: true })).toBeVisible();
+    await expect(panel(page)).toHaveCount(0);
     await page.reload();
-    await expect(panel(page).getByText('3 Einzelpflanzen', { exact: true })).toBeVisible();
+    await expect(page.getByTestId('graphical-object-preview').getByTestId('individual-plant-counts'))
+      .toHaveText('3 von 3 positioniert');
   });
 });
