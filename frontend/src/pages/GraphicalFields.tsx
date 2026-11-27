@@ -44,7 +44,7 @@ import { getIndividualPlantLabels, individualPlantObjectKey, placeIndividualPlan
   type GraphicalIndividualPlant } from "./graphicalIndividualPlants";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalFreePlantPlacement } from "./GraphicalFreePlantPlacement";
-import { createGraphicPlacementContext } from "./graphicalPlantPlacement";
+import { createGraphicPlacementContext, createParentLocalPlacement } from "./graphicalPlantPlacement";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
 import { analyzeGraphicalGeometry, getBedWorldRect, getGeometryOutlines, getGraphicalBedLayout, getSchematicLocationLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
@@ -1103,19 +1103,23 @@ export default function GraphicalFields({
           const showIndividualPanel = individualSeason && individualPlants.editor.open && !locationIsEditable
             && fullscreenLocationId !== locationId;
           const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
-          const placingStems = Boolean(stemDraft && individualSeason && placementContext && individualPlants.editor.placing
+          const localPlacement = !placementContext && stemDraft
+            ? createParentLocalPlacement(stemDraft.parent, parcels, rotation) : null;
+          const draftPlacement = placementContext ?? localPlacement;
+          const placingStems = Boolean(stemDraft && individualSeason && draftPlacement && individualPlants.editor.placing
             && readyForPlacement(stemDraft, individualSeason));
           const cursorPoint = placementCursor?.location === locationId ? placementCursor.point : null;
-          const placementPreview = placingStems && cursorPoint ? placementContext?.resolveWorld(cursorPoint) ?? null : null;
+          const placementPreview = placingStems && cursorPoint ? draftPlacement?.resolveWorld(cursorPoint) ?? null : null;
           const previewPlacement = (point: Point | null) => setPlacementCursor(point && { location: locationId, point });
           const addStemAt = (point: Point) => {
             previewPlacement(point);
-            const resolution = placementContext?.resolveWorld(point);
+            const resolution = draftPlacement?.resolveWorld(point);
             if (resolution && 'local' in resolution) individualPlants.addStem({ ...resolution.local, graphic: resolution.point });
           };
           const keyboardPlacement = (direction: Point | null) => {
-            if (!boundary) return;
-            const start = cursorPoint ?? { x: boundary.x + boundary.width / 2, y: boundary.y + boundary.height / 2 };
+            const surface = localPlacement?.surface ?? boundary;
+            if (!surface) return;
+            const start = cursorPoint ?? { x: surface.x + surface.width / 2, y: surface.y + surface.height / 2 };
             if (direction) previewPlacement({ x: start.x + direction.x * FIELD_WORLD_PX_PER_METER / 2,
               y: start.y + direction.y * FIELD_WORLD_PX_PER_METER / 2 });
             else addStemAt(start);
@@ -1533,7 +1537,8 @@ export default function GraphicalFields({
                       })}
                       {boundary && renderPlacement({ kind: 'location', id: locationId }, location, boundary, rotation)}
                       {placingStems && <GraphicalFreePlantPlacement viewport={viewport} size={{ width: stageWidth, height: stageHeight }}
-                        point={cursorPoint} preview={placementPreview} onPreview={previewPlacement} onPlace={addStemAt} />}
+                        surface={localPlacement?.surface} point={cursorPoint} preview={placementPreview}
+                        onPreview={previewPlacement} onPlace={addStemAt} />}
 
                       {highlight && <Rect {...highlight} listening={false} cornerRadius={3} strokeWidth={3}
                         strokeScaleEnabled={false} stroke={theme.palette.success.dark}
@@ -1592,7 +1597,7 @@ export default function GraphicalFields({
                 {showIndividualPanel && (
                   <GraphicalIndividualPlantsPanel location={location} fields={parcels.map(({ field }) => field)} beds={beds}
                     season={individualSeason} controller={individualPlants}
-                    placementContext={placementContext} preview={placementPreview} onKeyboardPlacement={keyboardPlacement}
+                    placementContext={draftPlacement} preview={placementPreview} onKeyboardPlacement={keyboardPlacement}
                     onRefreshGeometry={() => setLayoutAttempt(attempt => attempt + 1)}
                     onClose={() => canvasToolsRefs.current[locationId]?.focus({ preventScroll: true })}
                     onFocusParent={focusIndividualParent} />

@@ -2061,6 +2061,7 @@ export interface HarvestAllocation extends HarvestAllocationWrite {
   id: number;
   bed_name: string | null;
   parcel_name?: string | null;
+  site_name?: string | null;
   season_label: string | null;
   planting_date: string | null;
   kilograms_per_harvested_sqm: string | null;
@@ -2091,6 +2092,7 @@ export interface HarvestPlanSuggestion {
   id: number;
   bed_name: string;
   field_name: string;
+  site_name?: string;
   season_label: string;
   planting_date: string | null;
   harvest_start: string | null;

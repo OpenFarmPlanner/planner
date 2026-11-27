@@ -324,7 +324,7 @@ export function GraphicalIndividualPlantsPanel({
             {placing && <Alert role="status" severity={preview && 'error' in preview ? 'warning' : 'info'}>
               {preview ? ('error' in preview ? tr(preview.error)
                 : t('fields:individualPlants.predictedParent', { name: preview.frame.name }))
-                : tr(canAdd ? 'freePlacementHint' : 'placementNeedsInputs')}
+                : tr(!placementContext ? 'geometryUnknown' : canAdd ? 'freePlacementHint' : 'placementNeedsInputs')}
             </Alert>}
             {placing && canAdd && <Button variant="outlined" onClick={() => onKeyboardPlacement(null)} onKeyDown={event => {
               const directions: Record<string, Position> = { ArrowRight: { x: 1, y: 0 }, ArrowLeft: { x: -1, y: 0 },
@@ -439,7 +439,7 @@ export function GraphicalIndividualPlantsPanel({
           onConfirm={positions => {
             const resolved = positions.flatMap(point => {
               const result = placementContext?.resolveLocal(draft.parent, point);
-              return result && 'local' in result && matchesPlacementParent(result.point.parent, draft.parent)
+              return result && 'local' in result && matchesPlacementParent(result.frame.parent, draft.parent)
                 ? [{ ...result.local, graphic: result.point }] : [];
             });
             if (resolved.length !== positions.length) {

@@ -1,5 +1,6 @@
 import type { GraphicPlacementScene, GraphicStemPoint, Location, StemCoordinates } from '../api/types';
 import { getBedWorldRect, type GraphicalParcel } from './graphicalAreaGeometry';
+import { FIELD_WORLD_PX_PER_METER } from './graphicalFieldsGeometry';
 import { parcelMeters, matchesPlacementParent, type PlacementParent } from './individualPlantGeometry';
 import { rotateRectBetweenSizes, type GraphicalRotation, type Position, type Rect } from './graphicalLayoutUtils';
 
@@ -14,7 +15,7 @@ type PlacementFrame = Rect & {
 
 export type GraphicPlacementError = 'geometryUnknown' | 'outsideLocation' | 'parentAmbiguous';
 export type GraphicPlacementResolution = { error: GraphicPlacementError } | {
-  point: GraphicStemPoint;
+  point?: GraphicStemPoint;
   frame: PlacementFrame;
   local: StemCoordinates;
 };
@@ -88,7 +89,8 @@ export function createGraphicPlacementContext(location: Location, boundary: Rect
     return { x: frame.x + x, y: frame.y + y };
   };
 
-  const resolveMetric = (point: Position): GraphicPlacementResolution => {
+  const resolveMetric = (point: Position): { error: GraphicPlacementError }
+    | { point: GraphicStemPoint; frame: PlacementFrame; local: StemCoordinates } => {
     if (!contains(locationFrame, point)) return { error: 'outsideLocation' };
     const field = containingFrame(fieldFrames, point);
     if (typeof field === 'string') return { error: field };
@@ -103,10 +105,6 @@ export function createGraphicPlacementContext(location: Location, boundary: Rect
   const resolveLocal = (parent: PlacementParent, position: StemCoordinates) => {
     const point = localToMetric(parent, position);
     return point ? resolveMetric(point) : { error: 'geometryUnknown' } as const;
-  };
-  const worldPoint = (point: StemCoordinates) => {
-    const world = rotateRectBetweenSizes({ x: point.x_m, y: point.y_m, width: 0, height: 0 }, meters, boundary, rotation);
-    return { x: boundary.x + world.x, y: boundary.y + world.y };
   };
   const generationGeometry = (parent: PlacementParent): PlantGenerationGeometry | null => {
     const frame = getFrame(parent);
@@ -133,7 +131,46 @@ export function createGraphicPlacementContext(location: Location, boundary: Rect
     const metric = localToMetric(source, stem);
     return frame?.measured && metric ? toLocal(frame, metric) : null;
   };
-  return { scene, resolveWorld, resolveLocal, worldPoint, generationGeometry, projectBetweenParents };
+  return { scene, resolveWorld, resolveLocal, generationGeometry, projectBetweenParents };
 }
 
-export type GraphicPlacementContext = NonNullable<ReturnType<typeof createGraphicPlacementContext>>;
+/** Preserve measured-parent placement for sites that predate location dimensions. */
+export function createParentLocalPlacement(parent: PlacementParent, parcels: readonly GraphicalParcel[], rotation: GraphicalRotation) {
+  if (parent.kind === 'location') return null;
+  const parcel = parcels.find(item => parent.kind === 'field' ? item.rect.id === parent.id
+    : item.layout.bedRects.some(bed => bed.id === parent.id));
+  if (!parcel) return null;
+  const bed = parent.kind === 'bed' ? parcel.layout.bedRects.find(item => item.id === parent.id) : undefined;
+  if (bed ? !bed.supportsMetricSpacing : !parcel.layout.pixelsPerMeter) return null;
+  const world = bed ? getBedWorldRect(parcel, bed) : parcel.rect;
+  const orientation = bed?.placementRotation ?? rotation;
+  const inverse = ((360 - orientation) % 360) as GraphicalRotation;
+  const meters = orientation % 180 === 0
+    ? { width: world.width / FIELD_WORLD_PX_PER_METER, height: world.height / FIELD_WORLD_PX_PER_METER }
+    : { width: world.height / FIELD_WORLD_PX_PER_METER, height: world.width / FIELD_WORLD_PX_PER_METER };
+  const bounds = { x: 0, y: 0, ...meters };
+  const frame = { ...bounds, parent, name: bed?.name ?? parcel.field.name, measured: true, world };
+  const toLocal = (rect: Rect) => rotateRectBetweenSizes({ ...rect, x: rect.x - world.x, y: rect.y - world.y }, world, meters, inverse);
+  const excluded = parcel.layout.bedRects.flatMap(other => {
+    if (other.id === bed?.id) return [];
+    const overlap = intersection(world, getBedWorldRect(parcel, other));
+    return overlap ? [toLocal(overlap)] : [];
+  });
+  const resolveLocal = (target: PlacementParent, stem: StemCoordinates): GraphicPlacementResolution => {
+    const point = { x: stem.x_m, y: stem.y_m };
+    if (!matchesPlacementParent(target, parent) || !contains(bounds, point)) return { error: 'geometryUnknown' };
+    if (excluded.some(obstacle => contains(obstacle, point))) return { error: 'parentAmbiguous' };
+    return { frame, local: stem };
+  };
+  const resolveWorld = (point: Position): GraphicPlacementResolution => {
+    const local = toLocal({ ...point, width: 0, height: 0 });
+    return resolveLocal(parent, { x_m: local.x, y_m: local.y });
+  };
+  return { scene: undefined, surface: world, resolveLocal, resolveWorld,
+    generationGeometry: (target: PlacementParent) => matchesPlacementParent(target, parent) ? { bounds, excluded } : null,
+    projectBetweenParents: (source: PlacementParent, target: PlacementParent, stem: StemCoordinates) =>
+      matchesPlacementParent(source, target) ? stem : null };
+}
+
+export type GraphicPlacementContext = NonNullable<ReturnType<typeof createGraphicPlacementContext>
+  | ReturnType<typeof createParentLocalPlacement>>;

@@ -3,16 +3,17 @@ import { alpha, useTheme } from '@mui/material/styles';
 import { Circle, Group, Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { GraphicPlacementResolution } from './graphicalPlantPlacement';
-import type { Position, RectSize } from './graphicalLayoutUtils';
+import type { Position, Rect as CanvasRect, RectSize } from './graphicalLayoutUtils';
 import type { ViewportState } from './graphicalViewport';
 
 type Press = KonvaEventObject<MouseEvent | TouchEvent>;
 
 export function GraphicalFreePlantPlacement({
-  viewport, size, preview, point, onPreview, onPlace,
+  viewport, size, surface, preview, point, onPreview, onPlace,
 }: {
   viewport: ViewportState;
   size: RectSize;
+  surface?: CanvasRect;
   preview: GraphicPlacementResolution | null;
   point: Position | null;
   onPreview: (point: Position | null) => void;
@@ -45,6 +46,8 @@ export function GraphicalFreePlantPlacement({
     event.cancelBubble = true;
     onPlace(world);
   };
+  const target = surface ?? { x: -viewport.x / viewport.scale, y: -viewport.y / viewport.scale,
+    width: size.width / viewport.scale, height: size.height / viewport.scale };
 
   return <Group>
     {preview && 'frame' in preview && <Rect {...preview.frame.world} listening={false}
@@ -53,8 +56,7 @@ export function GraphicalFreePlantPlacement({
     {point && <Circle {...point} radius={6 / viewport.scale} listening={false}
       fill={preview && 'error' in preview ? theme.palette.error.main : theme.palette.primary.main}
       stroke={theme.palette.background.paper} strokeWidth={2} strokeScaleEnabled={false} />}
-    <Rect x={-viewport.x / viewport.scale} y={-viewport.y / viewport.scale}
-      width={size.width / viewport.scale} height={size.height / viewport.scale}
+    <Rect {...target}
       fill="transparent" name="individual-placement-surface" data-testid="individual-free-placement-surface"
       onMouseDown={begin} onMouseMove={move} onMouseLeave={() => { press.current = null; onPreview(null); }}
       onTouchStart={begin} onTouchMove={move}

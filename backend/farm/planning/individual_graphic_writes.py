@@ -15,6 +15,7 @@ from farm.history.records import revision_batch, start_batch_operation
 from farm.models import BatchOperation, EntityRevision, PlantingPlan
 from farm.services.crop_inheritance import lock_crop_project
 from farm.services.seasons import PLANTING_PLAN_COPY_FIELDS
+from farm.services.tasks import generate_plan_tasks
 
 from .individual_graphic import (
     GraphicParentSerializer,
@@ -173,7 +174,8 @@ def _split_plan(view, plan, key, stems, *, exact_count, canopy):
         updated_by=view.request.user,
     )
     result = PlantingPlan.objects.create(**values)
-    # Tasks and actuals already belong to the original plan.
+    # Regenerate plan-specific automatic tasks. Existing task records stay with the source.
+    generate_plan_tasks(result)
     view.record_revision(result, EntityRevision.ACTION_CREATED)
     return result
 

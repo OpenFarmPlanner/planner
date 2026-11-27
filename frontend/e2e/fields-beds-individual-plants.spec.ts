@@ -141,6 +141,42 @@ test('creates a count-only plan from a location row and shows its pending count 
   await expect(page.locator(`[role="row"][data-id="individual-plan-${plan.id}"]`)).toContainText('4 noch nicht positioniert');
 });
 
+test('places a pending stem in a measured parcel of an unmeasured location', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'individual-placement-legacy-location', { loginAsAdmin: true });
+  const { results: [site] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+  await apiRequest(page, 'PATCH', `/locations/${site.id}/`, { width_m: null, length_m: null });
+  const parcel = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    location: site.id, name: 'Gemessene Parzelle', width_m: 14, length_m: 20,
+  });
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+    start_date: '2026-01-01', end_date: '2026-12-31',
+  });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Pflanze in gemessener Parzelle', life_cycle: 'annual', cultivation_types: ['direct_sowing'],
+  });
+  const plan = await apiRequest<Plan>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: crop.id, parcel: parcel.id, planting_date: '2026-05-01', cultivation_type: 'direct_sowing',
+    individual_count: 2, individual_positions: [],
+  });
+  await page.goto(`/app/fields-beds?individualPlan=${plan.id}&locationId=${site.id}`);
+  const panel = page.getByRole('region', { name: 'Einzelpflanzen', exact: true });
+  await panel.getByRole('button', { name: 'Positionen bearbeiten' }).click();
+  await expect(panel.getByRole('button', { name: 'Pflanzen automatisch platzieren' })).toBeEnabled();
+  await panel.getByRole('button', { name: 'Pflanzen in der Grafik platzieren' }).click();
+  await expect.poll(() => shape(page, 'individual-free-placement-surface')).not.toBeNull();
+  const { screen } = (await shape(page, `field-rect-${parcel.id}`))!;
+  await page.mouse.click(screen.x + screen.width / 2, screen.y + screen.height / 2);
+  await expect(panel.getByText('1 noch nicht positioniert', { exact: true })).toBeVisible();
+  await panel.getByRole('button', { name: 'Platzierung beenden' }).click();
+  await panel.getByRole('button', { name: 'Speichern', exact: true }).click();
+  await expect(panel.getByRole('button', { name: 'Positionen bearbeiten' })).toBeVisible();
+  expect(await apiRequest(page, 'GET', `/planting-plans/${plan.id}/`)).toMatchObject({
+    parcel: parcel.id, site: null, plants_count: 2, positioned_plants_count: 1, pending_plants_count: 1,
+  });
+});
+
 test('creates, drags and edits stems with the keyboard and keeps the parcel offsets', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
@@ -403,16 +439,23 @@ async function expectCanopyCentered(page: Page, stemId: string) {
 async function touchStemOrigin(page: Page, stemId: string) {
   const target = `individual-stem-${stemId}`;
   await page.locator('.konvajs-content').scrollIntoViewIfNeeded();
-  const marker = await expectCanopyCentered(page, stemId);
-  const point = { x: Math.round(marker.x), y: Math.round(marker.y) };
-  await expect.poll(() => page.evaluate(({ x, y }) => {
-    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
-      .find(item => item.container()?.isConnected);
-    const canvas = document.elementFromPoint(x, y);
-    if (!stage || canvas?.tagName !== 'CANVAS') return canvas?.tagName ?? null;
-    const bounds = canvas.getBoundingClientRect();
-    return stage.getIntersection({ x: x - bounds.x, y: y - bounds.y })?.getAttr('data-testid') ?? null;
-  }, point)).toBe(target);
+  let point = { x: 0, y: 0 };
+  await expect.poll(async () => {
+    const visible = await page.evaluate(testId => {
+      const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+        .find(item => item.container()?.isConnected);
+      const marker = stage?.find('Circle').find(node => node.getAttr('data-testid') === testId);
+      const bounds = stage?.getContent().getBoundingClientRect();
+      if (!stage || !marker || !bounds) return null;
+      const position = marker.getAbsolutePosition();
+      const x = Math.round(bounds.x + position.x);
+      const y = Math.round(bounds.y + position.y);
+      return document.elementFromPoint(x, y)?.tagName === 'CANVAS'
+        && stage.getIntersection({ x: x - bounds.x, y: y - bounds.y }) === marker ? { x, y } : null;
+    }, target);
+    if (visible) point = visible;
+    return Boolean(visible);
+  }).toBe(true);
   return point;
 }
 
@@ -731,7 +774,8 @@ test.describe('individual plants on a phone', () => {
       const origin = await touchStemOrigin(page, stem.id);
       const before = await expectCanopyCentered(page, stem.id);
       await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
-      for (const step of [10, 16]) {
+      // The legacy orchard stem overlaps a bed. Finish beyond the bed ends, in the same parcel.
+      for (const step of [10, 40, 80]) {
         await touch.send('Input.dispatchTouchEvent', {
           type: 'touchMove', touchPoints: [{ x: origin.x - step, y: origin.y }],
         });

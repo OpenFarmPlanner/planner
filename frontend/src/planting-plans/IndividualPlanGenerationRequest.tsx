@@ -9,7 +9,7 @@ import {
 } from '../pages/individualPlantGeneration';
 import type { RectSize } from '../pages/graphicalLayoutUtils';
 import { getGraphicalBedLayout, getSchematicLocationLayout } from '../pages/graphicalAreaGeometry';
-import { createGraphicPlacementContext, type PlantGenerationGeometry } from '../pages/graphicalPlantPlacement';
+import { createGraphicPlacementContext, createParentLocalPlacement, type PlantGenerationGeometry } from '../pages/graphicalPlantPlacement';
 import { WORKSPACE_MIN_HEIGHT, WORKSPACE_MIN_WIDTH } from '../pages/graphicalFieldsGeometry';
 import type { PlacementParent } from '../pages/individualPlantGeometry';
 import { IndividualPlantGenerationDialog } from './IndividualPlantGenerationDialog';
@@ -50,7 +50,8 @@ export function IndividualPlanGenerationRequest({ input, onComplete }: { input: 
         const field = fieldsById.get(rect.id);
         return field ? [{ field, rect, layout: getGraphicalBedLayout(field, beds.filter(bed => bed.field === rect.id), layouts, 0) }] : [];
       });
-      const context = createGraphicPlacementContext(location, layout.boundary, data.location_boundary ?? layout.unsavedBoundaryOrigin, 0, parcels);
+      const context = createGraphicPlacementContext(location, layout.boundary, data.location_boundary ?? layout.unsavedBoundaryOrigin, 0, parcels)
+        ?? createParentLocalPlacement(parent, parcels, 0);
       const geometry = context?.generationGeometry(parent);
       if (!geometry) { setResult({ error: 'geometryUnknown', attempt }); return; }
       const occupied = collectOccupiedPlantPositions({ parent, plans, period: individualPlacementPeriod(date, crop),

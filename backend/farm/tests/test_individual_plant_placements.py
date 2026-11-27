@@ -4,6 +4,7 @@ from uuid import UUID, uuid4
 
 from crops.models import CropSpecies
 from farm.models import Bed, Crop, Field, Location, PlantingPlan, Project, Season
+from farm.services.bed_capacity import calculate_bed_capacity
 from farm.services.harvests import eligible_harvest_plans
 from farm.services.parcel_rotation_copy import preview_parcel_rotation
 from farm.services.seasons import build_planting_plan_copies, copy_planting_plans
@@ -126,7 +127,32 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(target['individual_positions'], [{'id': stem, 'x_m': 1, 'y_m': 2}])
         self.assertEqual(target['bed'], self.bed.pk)
         self.assertEqual(tuple(target[key] for key in counts), (1, 1, 0))
+        self.assertTrue(PlantingPlan.objects.get(pk=target['id']).tasks.filter(
+            origin='automatic', status='pending',
+        ).exists())
         self.assertEqual(self.client.post(url, move, format='json').status_code, 409)
+
+    def test_count_only_bed_has_unmeasured_capacity_during_occupancy(self):
+        self.graphic_scene()
+        self.create_plan(
+            bed=self.bed.pk, parcel=None, placement_mode='individual_bed',
+            individual_positions=[], individual_count=5,
+        )
+        capacity = calculate_bed_capacity(self.bed, start=date(2026, 5, 1), end=date(2026, 6, 1))
+        self.assertTrue(capacity.has_unmeasured_placement)
+
+    def test_harvest_suggestion_names_the_direct_site(self):
+        self.graphic_scene()
+        plan = self.create_plan(
+            parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
+        ).json()
+        response = self.client.get('/openfarmplanner/api/harvests/suggestions/', {
+            'crop': self.apple.pk, 'date': '2026-09-01',
+        })
+        self.assertEqual(response.status_code, 200, response.data)
+        suggestion, = response.json()
+        self.assertEqual(suggestion['id'], plan['id'])
+        self.assertEqual(suggestion['site_name'], self.location.name)
 
     def test_graphic_rejects_overlapping_geometry_and_protected_split(self):
         scene = self.graphic_scene()

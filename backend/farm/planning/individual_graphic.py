@@ -198,17 +198,17 @@ def lock_graphic_scene(project, submitted):
     if saved_origin:
         _verified(origin[0], site.boundary_x)
         _verified(origin[1], site.boundary_y)
-    fields = (
-        Field.objects.select_for_update(no_key=True)
-        .filter(project=project, location=site)
-        .order_by('pk')
-    )
+    # Match save_location_layouts: evaluate the bed locks before locking fields.
     beds = list(
         Bed.objects.select_for_update(no_key=True, of=('self',))
         .filter(project=project, field__project=project, field__location=site)
         .order_by('pk')
     )
-    fields = list(fields)
+    fields = list(
+        Field.objects.select_for_update(no_key=True)
+        .filter(project=project, location=site)
+        .order_by('pk')
+    )
     frame_rows = submitted['footprints']
     frames = {
         (row['kind'], row['id']): Footprint(row['x'], row['y'], row['width'], row['height'])
