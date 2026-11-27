@@ -133,6 +133,7 @@ class AuthApiTest(APITestCase):
             '/openfarmplanner/api/auth/register/',
             {
                 'email': 'invalid-email',
+                'display_name': 'x' * 256,
                 'password': '123',
                 'password_confirm': '123',
                 'accept_terms': True,
@@ -144,6 +145,7 @@ class AuthApiTest(APITestCase):
         self.assertIn('email', response.data)
         self.assertIn('password', response.data)
         self.assertEqual(response.data['field_errors']['email'], [{'code': 'invalid'}])
+        self.assertEqual(response.data['field_errors']['display_name'], [{'code': 'max_length', 'limit': 255}])
         self.assertEqual(response.data['field_errors']['password'], [{'code': 'min_length', 'limit': 8}])
         email_error = ' '.join(response.data['email'])
         password_error = ' '.join(response.data['password'])
