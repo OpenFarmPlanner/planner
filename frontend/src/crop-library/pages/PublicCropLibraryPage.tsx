@@ -7,7 +7,8 @@ import { SpecificPropertiesDetails } from '../../crops/SpecificPropertiesDetails
 import { hasSpecificPropertyValues } from '../../crops/specificProperties';
 import { loadRetryAlertSx } from '../../components/loadRetryStyles';
 import LoadRetryButton from '../../components/LoadRetryButton';
-import { germinationDetailFields, formatGerminationValue } from '../../crops/germination';
+import { CropGerminationDetails } from '../../crops/CropGerminationDetails';
+import { getGerminationDetailRows } from '../../crops/germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue, lifeCycleDetailFields } from '../../crops/siteHealth';
 import { PlantHealthChips } from '../../crops/PlantHealthChips';
 import { CropSearchFilterButton, CropSearchToolbar } from '../../crops/CropSearchToolbar';
@@ -33,6 +34,7 @@ import {
   IconButton,
   InputLabel,
   ListItemButton,
+  Menu,
   MenuItem,
   Select,
   Stack,
@@ -49,6 +51,7 @@ import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
 import HistoryOutlinedIcon from '@mui/icons-material/HistoryOutlined';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import SpaOutlinedIcon from '@mui/icons-material/SpaOutlined';
 import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined';
@@ -173,6 +176,8 @@ export default function PublicCropLibraryPage() {
   const hasExplicitLibraryState = hasCropIdParam(searchParams) || searchParams.has('tab') || searchParams.has('discussionId');
   const storedViewState = hasExplicitLibraryState ? null : getStoredPublicCropLibraryViewState();
   const activeTab = getPublicCropTabIndex(searchParams.get('tab'), selectedTopicIdFromUrl);
+  const [rangeMenuAnchor, setRangeMenuAnchor] = useState<HTMLElement | null>(null);
+  const [showEmptyRanges, setShowEmptyRanges] = useState(false);
   const selectedTopicId = activeTab === PUBLIC_CROP_TAB_INDEX_BY_PARAM.discussion ? selectedTopicIdFromUrl : null;
   const [query, setQuery] = useState(() => storedViewState?.query ?? '');
   const [isSearchInputFocused, setIsSearchInputFocused] = useState(false);
@@ -551,6 +556,12 @@ export default function PublicCropLibraryPage() {
   const publicLifeCycleRows = selectedCrop ? lifeCycleDetailFields(publicLifeCycle)
     .map(field => ({ field, value: getPublicFieldValue(field, selectedCrop[field]) }))
     .filter(row => hasDetailValue(row.value)) : [];
+  const sowingDepth = getPublicFieldValue('sowing_depth_m', selectedCrop?.sowing_depth_m);
+  const sowingDepthMax = getPublicFieldValue('sowing_depth_max_m', selectedCrop?.sowing_depth_max_m);
+  const showSowingDepth = showEmptyRanges || hasAnyDetailValue(sowingDepth, sowingDepthMax);
+  const germinationRows = selectedCrop ? getGerminationDetailRows(
+    field => getPublicFieldValue(field, selectedCrop[field]), showEmptyRanges,
+  ) : [];
   // A variety entry shows its species entry's neighbours (only that one carries them).
   const companionSourceCrop = selectedCrop && (selectedCrop.variety || '').trim()
     ? selectedSpeciesCrop
@@ -1556,6 +1567,8 @@ export default function PublicCropLibraryPage() {
     <DetailPageActions
       compact={useCompactLibraryLayout}
       suppressTooltips={Boolean(varietyImport)}
+      overflowLabel={activeTab === PUBLIC_CROP_TAB_INDEX_BY_PARAM.details ? t('buttons.moreActions') : undefined}
+      onOpenOverflow={event => setRangeMenuAnchor(event.currentTarget)}
       primaryActions={[
         {
           label: t('library.page.edit.open'),
@@ -1591,6 +1604,7 @@ export default function PublicCropLibraryPage() {
       ]}
     />
   ) : null), [
+    activeTab,
     guestDemoEditReason,
     handleImport,
     importingId,
@@ -1921,6 +1935,17 @@ export default function PublicCropLibraryPage() {
 
                     {activeTab === 0 ? (
                       <Stack spacing={2.5} sx={{ p: { xs: 2, sm: 2.5 } }}>
+                        <Menu anchorEl={rangeMenuAnchor} open={Boolean(rangeMenuAnchor)}
+                          onClose={() => setRangeMenuAnchor(null)}>
+                          <MenuItem role="menuitemcheckbox" aria-checked={showEmptyRanges} selected={showEmptyRanges}
+                            onClick={() => {
+                              setShowEmptyRanges(value => !value);
+                              setRangeMenuAnchor(null);
+                            }}>
+                            <FactCheckOutlinedIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
+                            {t('detail.ranges.showAll')}
+                          </MenuItem>
+                        </Menu>
                         {showVarietyValueLegend ? (
                           <VarietyValueLegend
                             sampleLabel={t('hierarchy.ownValueLegendSample')}
@@ -2009,11 +2034,9 @@ export default function PublicCropLibraryPage() {
                                 locale={locale} t={t} />
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(
+                          showSowingDepth || hasAnyDetailValue(
                             getPublicFieldValue('distance_within_row_m', selectedCrop.distance_within_row_m),
                             getPublicFieldValue('row_spacing_m', selectedCrop.row_spacing_m),
-                            getPublicFieldValue('sowing_depth_m', selectedCrop.sowing_depth_m),
-                            getPublicFieldValue('sowing_depth_max_m', selectedCrop.sowing_depth_max_m),
                           ) ? (
                             <DetailSection key="spacing" title={t('form.sectionPlanting')}>
                               <DetailGrid>
@@ -2023,11 +2046,10 @@ export default function PublicCropLibraryPage() {
                                 {hasDetailValue(getPublicFieldValue('row_spacing_m', selectedCrop.row_spacing_m)) ? (
                                   <DetailRow label={t('library.page.fields.rowSpacing')} value={formatMetersAsCentimeters(getPublicFieldValue('row_spacing_m', selectedCrop.row_spacing_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('row_spacing_m')} />
                                 ) : null}
-                                {hasAnyDetailValue(
-                                  getPublicFieldValue('sowing_depth_m', selectedCrop.sowing_depth_m),
-                                  getPublicFieldValue('sowing_depth_max_m', selectedCrop.sowing_depth_max_m),
-                                ) ? (
-                                  <DetailRow label={t('library.page.fields.sowingDepth')} value={formatMetersRangeAsCentimeters(getPublicFieldValue('sowing_depth_m', selectedCrop.sowing_depth_m), getPublicFieldValue('sowing_depth_max_m', selectedCrop.sowing_depth_max_m), locale, t('library.page.notSpecified'))} source={getPublicFieldSource('sowing_depth_m')} />
+                                {showSowingDepth ? (
+                                  <DetailRow label={t('library.page.fields.sowingDepth')}
+                                    value={formatMetersRangeAsCentimeters(sowingDepth, sowingDepthMax, locale, t)}
+                                    source={getPublicFieldSource('sowing_depth_m') ?? getPublicFieldSource('sowing_depth_max_m')} />
                                 ) : null}
                               </DetailGrid>
                             </DetailSection>
@@ -2079,14 +2101,9 @@ export default function PublicCropLibraryPage() {
                               />
                             </DetailSection>
                           ) : null,
-                          hasAnyDetailValue(...germinationDetailFields(getPublicFieldValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement)).map((field) => getPublicFieldValue(field, selectedCrop[field]))) ? (
-                            <DetailSection key="germination" title={t('germination.title')}>
-                              <DetailGrid>
-                                {germinationDetailFields(getPublicFieldValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement))
-                                  .filter((field) => hasDetailValue(getPublicFieldValue(field, selectedCrop[field])))
-                                  .map((field) => <DetailRow key={field} label={t(`germination.fields.${field}`)} value={formatGerminationValue(field, getPublicFieldValue(field, selectedCrop[field]), t, locale)} source={getPublicFieldSource(field)} />)}
-                              </DetailGrid>
-                            </DetailSection>
+                          germinationRows.length > 0 ? (
+                            <CropGerminationDetails key="germination" rows={germinationRows}
+                              source={getPublicFieldSource} t={t} locale={locale} />
                           ) : null,
                           (publicPlantHealth?.entries.length || hasAnyDetailValue(...SITE_HEALTH_FIELDS.map((field) => getPublicFieldValue(field, selectedCrop[field])))) ? (
                             <DetailSection key="siteHealth" title={t('siteHealth.title')}>

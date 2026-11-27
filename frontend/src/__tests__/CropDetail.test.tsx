@@ -987,7 +987,7 @@ describe('CropDetail Component', () => {
   });
 
 
-  it('displays sowing depth with one decimal place', () => {
+  it('displays the lower sowing depth as a one-sided range', () => {
     const mockOnSelect = vi.fn();
     const cropsWithDepth: Crop[] = [
       {
@@ -1006,7 +1006,23 @@ describe('CropDetail Component', () => {
       />
     );
 
-    expect(screen.getByText('2,0 cm')).toBeInTheDocument();
+    expect(screen.getByText('ab 2 cm')).toBeInTheDocument();
+  });
+
+  it('resolves variety inheritance separately for each range endpoint', () => {
+    const species: Crop = {
+      id: 20, name: 'Carrot', crop_species: 5,
+      germination_temperature_optimal_min_c: 20, germination_temperature_optimal_max_c: 30,
+    };
+    const variety: Crop = {
+      id: 21, name: 'Carrot', variety: 'Nantes', crop_species: 5,
+      germination_temperature_optimal_max_c: 32.5,
+    };
+    renderCropDetail(<CropDetail crops={[species, variety]} selectedCropId={21} onCropSelect={vi.fn()} />);
+
+    const germination = screen.getByRole('region', { name: 'Keimung' });
+    expect(within(germination).getByText('20–32,5 °C')).toBeInTheDocument();
+    expect(within(germination).queryByText('20–30 °C')).not.toBeInTheDocument();
   });
 
   it('displays notes when available', () => {

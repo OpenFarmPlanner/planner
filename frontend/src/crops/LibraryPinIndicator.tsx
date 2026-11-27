@@ -43,14 +43,19 @@ export function LibraryPinIndicator({ libraryValue, t }: LibraryPinIndicatorProp
  * A detail value followed by its pin. Without a pin the value renders
  * unchanged, so its layout and the variety highlight stay as they are.
  */
-export function ValueWithLibraryPin({ pin, children }: { pin?: ReactNode; children: ReactNode }) {
-  if (!pin) {
+export function ValueWithLibraryPin({ pin, secondPin, children }: {
+  pin?: ReactNode;
+  secondPin?: ReactNode;
+  children: ReactNode;
+}) {
+  if (!pin && !secondPin) {
     return <>{children}</>;
   }
   return (
     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
       {children}
       {pin}
+      {secondPin}
     </Box>
   );
 }

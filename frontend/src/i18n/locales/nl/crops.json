@@ -77,6 +77,13 @@
     "supplier_id": "Leverancier"
   },
   "detail": {
+    "ranges": {
+      "showAll": "Alle bereikvelden weergeven",
+      "atLeast": "vanaf {{value}}",
+      "upTo": "tot {{value}}",
+      "dayUnit_one": "dag",
+      "dayUnit_other": "dagen"
+    },
     "sections": {
       "general": "Algemene informatie",
       "notes": "Notities"
@@ -2037,6 +2044,13 @@
     "computedHarvest": "Oogst (berekend)"
   },
   "germination": {
+    "detail": {
+      "optimalTemperature": "Optimale kiemtemperatuur",
+      "minimumTemperature": "Minimale kiemtemperatuur",
+      "days": "Kiemduur",
+      "stratificationDays": "Stratificatieduur",
+      "stratificationTemperature": "Stratificatietemperatuur"
+    },
     "title": "Kieming",
     "optimalTemperature": "Optimale kiemtemperatuur (°C)",
     "days": "Kiemtijd (dagen)",

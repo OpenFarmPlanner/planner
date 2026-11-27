@@ -13,6 +13,7 @@ import { getPublicCropTitle } from '../../publicCropDisplay';
 import { formatPlantHealthValue, formatSeedRateByCultivation } from '../../../pages/cropsHistoryUtils';
 import { getSeedTypeLabel } from '../../../crops/seedType';
 import { readWithLegacyKey } from '../../../compat/legacyCropNames';
+import { formatCropDetailRange } from '../../../crops/cropDetailFormatters';
 
 export type PublicCropTab = 'details' | 'versions' | 'discussion';
 
@@ -227,15 +228,11 @@ export function formatMetersRangeAsCentimeters(
   lower: number | null | undefined,
   upper: number | null | undefined,
   locale: string,
-  fallback: string,
+  t: TFunction<'crops'>,
 ): string {
-  const from = lower ?? upper;
-  const to = upper ?? lower;
-  if (from === null || from === undefined || to === null || to === undefined || from === to) {
-    return formatMetersAsCentimeters(from, locale, fallback);
-  }
-  const format = (value: number) => formatLocalizedNumber(value * 100, locale, fallback, { maximumFractionDigits: 1 });
-  return `${format(from)}–${format(to)} cm`;
+  const from = lower == null ? null : lower * 100;
+  const to = upper == null ? null : upper * 100;
+  return formatCropDetailRange(from, to, 'centimeters', t, locale);
 }
 
 export function getNutrientDemandLabel(

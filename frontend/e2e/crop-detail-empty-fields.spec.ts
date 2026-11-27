@@ -117,3 +117,70 @@ test('hides empty details in the crop library and keeps the crop form order', as
     await page.screenshot({ animations: 'disabled', path: testInfo.outputPath(`library-detail-${viewport.key}.png`) });
   }
 });
+
+test('shows equivalent compact ranges in project and library crop details', async ({ page, request }, testInfo) => {
+  await loginWithDeterministicProject(page, request, 'crop-detail-ranges', { loginAsAdmin: true });
+  const { results: [species] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/crop-species/');
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: species.name,
+    variety: `E2E Keimungsbereiche ${Date.now()}`,
+    crop_species: species.id,
+    growth_duration_days: 42,
+    harvest_duration_days: 14,
+    germination_temperature_optimal_min_c: 20,
+    germination_temperature_optimal_max_c: 30,
+    germination_temperature_min_c: 13,
+    germination_days_min: 5,
+    germination_days_max: 15,
+    germination_temperature_requirement: 'frost_treatment',
+    stratification_days_min: 0,
+    stratification_days_max: 0,
+    stratification_temperature_max_c: -5.5,
+  });
+  const { public_crop: published } = await apiRequest<{ public_crop: { id: number } }>(page, 'POST', `/crops/${crop.id}/publish-public/`, {
+    accepted_public_library_terms: true,
+    crop_species_id: species.id,
+    original_language_code: 'de',
+  });
+
+  for (const [view, url] of [
+    ['project', `/app/crops?cropId=${crop.id}`],
+    ['library', `/app/crop-library?cropId=${published.id}`],
+  ] as const) {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.goto(url);
+    const germination = page.getByRole('region', { name: 'Keimung', exact: true });
+    for (const [label, value] of [
+      ['Optimale Keimtemperatur', '20–30 °C'],
+      ['Mindestkeimtemperatur', '13 °C'],
+      ['Keimdauer', '5–15 Tage'],
+      ['Stratifikationsdauer', '0 Tage'],
+      ['Stratifikationstemperatur', 'bis -5,5 °C'],
+    ]) {
+      const row = germination.getByText(label, { exact: true }).locator('..');
+      await expect(row.getByText(value, { exact: true })).toBeVisible();
+    }
+    await expect(germination.getByText(/(?:von|bis) \(°C\)/)).toHaveCount(0);
+    const main = page.getByRole('main');
+    const depth = main.getByText('Saattiefe', { exact: true });
+    await expect(depth).toHaveCount(0);
+    const actions = main.getByRole('button', { name: 'Weitere Aktionen', exact: true });
+    const toggle = page.getByRole('menuitemcheckbox', { name: 'Alle Bereichsfelder anzeigen' });
+    await actions.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-checked', 'false');
+    await toggle.press('Enter');
+    await expect(depth.locator('..').getByText('—', { exact: true })).toHaveCount(1);
+    await expect(actions).toBeFocused();
+    await actions.press('Enter');
+    await expect(toggle).toHaveAttribute('aria-checked', 'true');
+    await toggle.press('Enter');
+    await expect(depth).toHaveCount(0);
+
+    for (const viewport of [...VIEWPORTS, PHONE_LANDSCAPE]) {
+      await page.setViewportSize({ width: viewport.width, height: viewport.height });
+      await germination.scrollIntoViewIfNeeded();
+      await expectNoHorizontalOverflow(page, `${view}-${viewport.key}`);
+      await page.screenshot({ path: testInfo.outputPath(`ranges-${view}-${viewport.key}.png`), animations: 'disabled' });
+    }
+  }
+});

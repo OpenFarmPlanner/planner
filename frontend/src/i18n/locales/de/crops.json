@@ -77,6 +77,13 @@
     "supplier_id": "Lieferant"
   },
   "detail": {
+    "ranges": {
+      "showAll": "Alle Bereichsfelder anzeigen",
+      "atLeast": "ab {{value}}",
+      "upTo": "bis {{value}}",
+      "dayUnit_one": "Tag",
+      "dayUnit_other": "Tage"
+    },
     "sections": {
       "general": "Allgemeine Informationen",
       "notes": "Notizen"
@@ -2037,6 +2044,13 @@
     "computedHarvest": "Ernte (berechnet)"
   },
   "germination": {
+    "detail": {
+      "optimalTemperature": "Optimale Keimtemperatur",
+      "minimumTemperature": "Mindestkeimtemperatur",
+      "days": "Keimdauer",
+      "stratificationDays": "Stratifikationsdauer",
+      "stratificationTemperature": "Stratifikationstemperatur"
+    },
     "title": "Keimung",
     "optimalTemperature": "Keimtemperatur optimal (°C)",
     "days": "Keimdauer (Tage)",
