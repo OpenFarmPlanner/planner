@@ -126,12 +126,6 @@ TURNSTILE_UNAVAILABLE_MESSAGE = (
 )
 
 
-class AccountSerializerValidationError(serializers.ValidationError):
-    def __init__(self, error: serializers.ValidationError, serializer: serializers.Serializer) -> None:
-        super().__init__(error.detail)
-        self.fields = serializer.fields
-
-
 def _field_error_entries(codes: object, field: serializers.Field | None) -> list[dict[str, str | int]]:
     entries = []
     for code in codes if isinstance(codes, list) else [codes]:
@@ -147,16 +141,16 @@ def _field_error_entries(codes: object, field: serializers.Field | None) -> list
 
 
 class AccountAPIView(APIView):
+    _validation_serializer: serializers.Serializer | None = None
+
     def validate_serializer(self, serializer: serializers.Serializer) -> None:
-        try:
-            _validate_serializer_in_german(serializer)
-        except serializers.ValidationError as exc:
-            raise AccountSerializerValidationError(exc, serializer) from exc
+        self._validation_serializer = serializer
+        _validate_serializer_in_german(serializer)
 
     def handle_exception(self, exc: Exception) -> Response:
         response = super().handle_exception(exc)
         if isinstance(exc, serializers.ValidationError) and isinstance(response.data, dict):
-            fields = exc.fields if isinstance(exc, AccountSerializerValidationError) else {}
+            fields = self._validation_serializer.fields if self._validation_serializer is not None else {}
             codes = exc.get_codes()
             if isinstance(codes, dict):
                 response.data = {
