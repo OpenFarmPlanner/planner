@@ -43,9 +43,19 @@
       "previousDay": "Jour précédent",
       "nextDay": "Jour suivant",
       "taskDateNote": "Les échéances et l’urgence des tâches se calculent à partir d’aujourd’hui.",
-      "legend": "Légende du graphique",
-      "cropLegend": "Les couleurs indiquent la croissance ou la récolte prévue. Les cultures pérennes occupent la planche en dehors de la récolte. Une couleur neutre indique des plans mixtes ou incertains.",
-      "combinedCropLegend": "Le nom et la phase des cultures sont indiqués sur la planche.",
+      "legend": "Légende",
+      "legendBoundary": "Limite du site",
+      "legendGeometry": {
+        "outside": "Hors limites",
+        "overlap": "Chevauchement",
+        "shortGap": "Espace insuffisant pour les allées"
+      },
+      "legendStem": "Le point indique la tige.",
+      "legendStemTasks": "Sur les plants individuels, le symbole indique l’urgence de la tâche du plan.",
+      "legendCropGrowth": "Croissance ou occupation prévue",
+      "legendCropMixed": "Plans mixtes ou incertains",
+      "cropLegend": "Les teintes varient selon la culture. Les cultures pérennes occupent la planche en dehors de la récolte.",
+      "combinedCropLegend": "Les noms et les phases des cultures s’affichent si l’espace le permet.",
       "taskLegend": "La couleur et le symbole indiquent la tâche ouverte la plus urgente. Les planches sans tâche ouverte gardent leur couleur habituelle.",
       "cropLoadError": "Impossible de charger les plans de culture.",
       "phase": {

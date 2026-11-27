@@ -43,9 +43,19 @@
       "previousDay": "Giorno precedente",
       "nextDay": "Giorno successivo",
       "taskDateNote": "Le scadenze e l’urgenza delle attività si calcolano a partire da oggi.",
-      "legend": "Legenda del grafico",
-      "cropLegend": "I colori indicano la crescita o la raccolta prevista. Le colture perenni occupano l’aiuola anche fuori dal raccolto. Un colore neutro indica piani misti o incerti.",
-      "combinedCropLegend": "I nomi e le fasi delle colture sono indicati sull’aiuola.",
+      "legend": "Legenda",
+      "legendBoundary": "Confine del sito",
+      "legendGeometry": {
+        "outside": "Fuori dal confine",
+        "overlap": "Aree sovrapposte",
+        "shortGap": "Spazio insufficiente per i passaggi"
+      },
+      "legendStem": "Il punto indica il fusto.",
+      "legendStemTasks": "Sulle singole piante, il simbolo indica l’urgenza dell’attività del piano.",
+      "legendCropGrowth": "Crescita o occupazione prevista",
+      "legendCropMixed": "Piani misti o incerti",
+      "cropLegend": "Le tonalità variano secondo la coltura. Le colture perenni occupano l’aiuola anche fuori dal raccolto.",
+      "combinedCropLegend": "I nomi e le fasi delle colture sono visibili quando c’è spazio.",
       "taskLegend": "Il colore e il simbolo indicano l’attività aperta più urgente. Le aiuole senza attività aperte mantengono il loro colore abituale.",
       "cropLoadError": "Impossibile caricare i piani di coltivazione.",
       "phase": {

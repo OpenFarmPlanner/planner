@@ -151,10 +151,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const cropReference = useMemo(() => activeSeason ? getCropReference(cropDate, activeSeason) : undefined,
     [activeSeason, cropDate]);
   const [graphicFullscreen, setGraphicFullscreen] = useState(false);
-  const [displayLegendAnchor, setDisplayLegendAnchor] = useState<HTMLButtonElement | null>(null);
   const displayControlProps = useMemo(() => ({
     mode: displayMode, onMode: setDisplayMode, season: activeSeason, reference: cropReference,
-    onDate: setCropDate, onOpenLegend: setDisplayLegendAnchor,
+    onDate: setCropDate,
   }), [activeSeason, cropReference, displayMode, setDisplayMode]);
   const displayControls = useMemo(() => <GraphicalDisplayControls {...displayControlProps} fullscreen />, [displayControlProps]);
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
@@ -636,8 +635,6 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             cropReference={cropReference}
             fullscreenDisplayControls={displayControls}
             onFullscreenChange={setGraphicFullscreen}
-            displayLegendAnchor={displayLegendAnchor}
-            closeDisplayLegend={() => setDisplayLegendAnchor(null)}
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}
             editRequestedIndividualPlan={editRequestedIndividualPlan}

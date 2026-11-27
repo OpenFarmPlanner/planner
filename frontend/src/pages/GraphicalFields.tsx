@@ -29,8 +29,8 @@ import { useContextMenuHint } from "../components/data-grid/useContextMenuHint";
 import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
 import { GraphicalDisplayLegend } from "./GraphicalDisplayLegend";
 import { GraphicalBedLabels } from "./GraphicalBedLabels";
-import { getGanttPhaseColors } from "../utils/colorContrast";
 import { bedCropDisplayName, bedCropPhaseLabel, includesCrops, includesTasks, indexBedCultivations, projectBedCultivation } from "./graphicalCultivation";
+import { graphicalBedCropFill, graphicalCropPhaseColor, graphicalGeometryOutline } from './graphicalDisplayStyle';
 import { GraphicalCanvasTools } from "./GraphicalCanvasTools";
 import { bedTaskColors } from "./graphicalBedTaskStyle";
 import { bedTaskDateBounds, orderBedTasks, summarizeBedTasks } from "../components/tasks/bedTaskUrgency";
@@ -114,8 +114,6 @@ export default function GraphicalFields({
   cropReference,
   fullscreenDisplayControls,
   onFullscreenChange,
-  displayLegendAnchor,
-  closeDisplayLegend,
   individualSeason,
   canEditIndividualPlants = false,
   requestedIndividualPlan,
@@ -134,14 +132,8 @@ export default function GraphicalFields({
 }: GraphicalFieldsProps) {
   const { t } = useTranslation(["fields", "common", "ganttChart"]);
   const theme = useTheme();
-  const getOutlineProps = (kind: OutlineKind | undefined, color: string, width: number) => {
-    switch (kind) {
-      case "outside": return { stroke: theme.palette.warning.dark, strokeWidth: 2.5, dash: [9, 4] };
-      case "overlap": return { stroke: theme.palette.error.dark, strokeWidth: 2.5, dash: [4, 2] };
-      case "shortGap": return { stroke: theme.palette.secondary.dark, strokeWidth: 2.5, dash: [2, 4] };
-      default: return { stroke: color, strokeWidth: width };
-    }
-  };
+  const getOutlineProps = (kind: OutlineKind | undefined, color: string, width: number) =>
+    kind ? graphicalGeometryOutline(theme, kind) : { stroke: color, strokeWidth: width };
   const internalHierarchyData = useHierarchyData(hierarchyData === undefined);
   const { loading, error, locations, fields, beds } = hierarchyData ?? internalHierarchyData;
   const activeLocationId = locations.find(location => location.id === selectedLocationId)?.id
@@ -1086,11 +1078,27 @@ export default function GraphicalFields({
               }
             }
           }
+          const bedWarnings = new Map<number, OutlineKind>();
+          for (const { rect } of parcels) {
+            const issues = geometry.parcelReports.get(rect.id)?.issues ?? [];
+            if (!parcelWarnings.has(rect.id) && issues.some(issue => issue.kind === 'noPathSpace')) {
+              parcelWarnings.set(rect.id, 'shortGap');
+            }
+            for (const [id, kind] of getGeometryOutlines(issues)) bedWarnings.set(id, kind);
+          }
           const contentBounds = getContentBoundsForLocation(locationId);
           const locationIsEditable = isLocationEditMode(locationId);
           const showIndividualPanel = individualSeason && individualPlants.editor.open && !locationIsEditable
             && fullscreenLocationId !== locationId;
           const stemDraft = showIndividualPanel ? individualPlants.editor.draft : null;
+          const renderedPlantPlans = [...plansByParent].flatMap(([key, plans]) => {
+            const area = areaObjects.get(key);
+            if (!area?.rect || !parcelMeters(area.metrics)) return [];
+            return plans.filter(({ plan }) => plan.id !== stemDraft?.planId && plan.individual_positions?.length);
+          });
+          const hasDraftStems = Boolean(stemDraft?.stems.length);
+          const hasCanopies = (hasDraftStems && Number(stemDraft?.canopy ?? 0) > 0)
+            || renderedPlantPlans.some(({ plan }) => Number(plan.estimated_canopy_diameter_m ?? 0) > 0);
           // In graphic edit mode a placed stem is its own drag target, above beds and parcels (#1579).
           const draggableStemPlans = locationIsEditable ? getDirectlyDraggableStemPlans(individualPlants) : undefined;
           const viewport =
@@ -1145,10 +1153,7 @@ export default function GraphicalFields({
               const summary = showTasks && !locationIsEditable ? plantTaskSummaries.get(plan.id) : undefined;
               const urgency = summary?.outstanding ? summary.urgency ?? undefined : undefined;
               const phase = showCrops && !locationIsEditable ? crop.phase : undefined;
-              const color = crop.plan.color;
-              const phaseColors = phase && !showTasks
-                ? getGanttPhaseColors(color && /^#[\da-f]{6}$/i.test(color) ? color : theme.palette.success.main) : null;
-              const phaseColor = phaseColors?.[phase === 'harvest' ? 'harvest' : 'growth'];
+              const phaseColor = phase && !showTasks ? graphicalCropPhaseColor(theme, phase, crop.plan.color) : undefined;
               return (plan.individual_positions ?? []).map(stem => {
                 const key = individualPlantObjectKey(stem.id);
                 const object = plantObjects.get(key);
@@ -1210,7 +1215,7 @@ export default function GraphicalFields({
                     borderRadius: 2,
                     border: "1px solid",
                     borderColor: "divider",
-                    touchAction: "none",
+                    '& .konvajs-content': { touchAction: 'none' },
                     position: "relative",
                     bgcolor: "background.paper",
                     height:
@@ -1219,14 +1224,6 @@ export default function GraphicalFields({
                         : undefined,
                   }}
                 >
-                  {!objects.selection && device === 'touch' && showTouchContextMenuHint && (
-                    <GraphicalObjectHint device="touch" onClose={closeTouchContextMenuHint}
-                      hasWarning={fieldsOutsideBoundary.size > 0} />
-                  )}
-                  {!objects.selection && device === 'desktop' && showContextMenuHint && (
-                    <GraphicalObjectHint device="desktop" onClose={closeContextMenuHint}
-                      hasWarning={fieldsOutsideBoundary.size > 0} />
-                  )}
                   <GraphicalCanvasTools key={activeSeasonId ?? 'no-season'}
                     width={stageWidth} height={stageHeight} fullscreen={fullscreenLocationId === locationId}
                     onTriggerChange={button => { canvasToolsRefs.current[locationId] = button; }}
@@ -1252,16 +1249,6 @@ export default function GraphicalFields({
                       right: 110, width: 'fit-content', bgcolor: 'background.paper' }}>
                       {fullscreenDisplayControls}
                     </Box>
-                  )}
-                  {displayLegendAnchor && closeDisplayLegend && (
-                    <GraphicalDisplayLegend anchor={displayLegendAnchor} onClose={closeDisplayLegend}
-                      showCrops={showCrops} showTasks={showTasks}
-                      cropLoading={locationPlans.loading} cropFailed={locationPlans.failed} onRetryCrops={locationPlans.refresh}
-                      beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
-                        id: bed.id, name: bed.name, parcel: field.name,
-                      })))}
-                      summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed && (!showCrops || !locationPlans.failed)}
-                      onRetry={bedTasks.refresh} onOpenBed={onOpenBed} />
                   )}
                   {!locationIsEditable && ((showCrops && (locationPlans.loading || locationPlans.failed))
                     || (showTasks && (bedTasks.loading || bedTasks.failed))) && (
@@ -1300,29 +1287,6 @@ export default function GraphicalFields({
                       value: viewport.scale.toFixed(2),
                     })}
                   </Typography>
-                  {fieldsOutsideBoundary.size > 0 ? (
-                    <Typography
-                      variant="caption"
-                      color="warning.dark"
-                      data-testid="location-boundary-overflow-hint"
-                      sx={{
-                        position: "absolute",
-                        left: 12,
-                        bottom: 12,
-                        right: 12,
-                        zIndex: 2,
-                        px: 1,
-                        py: 0.5,
-                        borderRadius: 2,
-                        width: "fit-content",
-                        maxWidth: "calc(100% - 24px)",
-                        bgcolor: (theme) => alpha(theme.palette.common.white, 0.78),
-                        backdropFilter: "blur(2px)",
-                      }}
-                    >
-                      {t("fields:graphical.fieldsOutsideLocation")}
-                    </Typography>
-                  ) : null}
                   <Stage
                     key={`stage-${locationId}-${interactionMode}-${locationIsEditable ? "edit" : "view"}`}
                     width={stageWidth}
@@ -1413,12 +1377,10 @@ export default function GraphicalFields({
                         const { fieldSize, usableArea: fieldUsableArea, storedUsableArea, pixelsPerMeter, bedRects } = layout;
                         const baseRect = { field, width: fieldSize.width, height: fieldSize.height };
                         const parcelReport = geometry.parcelReports.get(fieldId);
-                        const bedWarnings = getGeometryOutlines(parcelReport?.issues ?? []);
                         const bedSpacing = pixelsPerMeter
                           ? { centimeters: pathSpacing.bed_path_spacing_cm, pixelsPerMeter }
                           : undefined;
-                        const fieldWarning = parcelWarnings.get(fieldId)
-                          ?? (parcelReport?.issues.some(issue => issue.kind === "noPathSpace") ? "shortGap" : undefined);
+                        const fieldWarning = parcelWarnings.get(fieldId);
                         const fieldDragProps = getFieldInteractionProps(
                           fieldId, baseRect, currentFieldRect,
                           { width: contentWidth, height: contentHeight },
@@ -1499,11 +1461,7 @@ export default function GraphicalFields({
                                 const urgency = tasks.length ? taskSummaries.get(bedVm.id)?.urgency : undefined;
                                 const taskColors = urgency ? bedTaskColors(theme, urgency) : null;
                                 const phase = entries.length === 1 ? entries[0].phase : null;
-                                const color = entries[0]?.plan.color;
-                                const phaseColors = phase
-                                  ? getGanttPhaseColors(color && /^#[\da-f]{6}$/i.test(color) ? color : theme.palette.success.main) : null;
-                                const cropFill = phaseColors ? alpha(phaseColors[phase === 'harvest' ? 'harvest' : 'growth'], 0.45)
-                                  : entries.length ? alpha(theme.palette.grey[700], 0.22) : undefined;
+                                const cropFill = entries.length ? graphicalBedCropFill(theme, phase, entries[0].plan.color) : undefined;
                                 const fill = includesTasks(shownMode) ? taskColors?.fill : cropFill;
                                 const bed = bedsById.get(bedVm.id);
                                 return (
@@ -1543,6 +1501,33 @@ export default function GraphicalFields({
                       <GraphicalSnapGuides guides={activeGuides} scale={viewport.scale} />
                     </Layer>
                   </Stage>
+                  <GraphicalDisplayLegend
+                    mode={locationIsEditable ? 'areas' : displayMode}
+                    compact={stageWidth < theme.breakpoints.values.md}
+                    hasBoundary={Boolean(boundary)}
+                    freeSite={Boolean(boundary && locationCoverage.freeRects?.length)}
+                    freeParcel={parcels.some(({ rect, layout }) => layout.pixelsPerMeter
+                      && geometry.parcelReports.get(rect.id)?.coverage.freeRects?.length)}
+                    geometryOutlines={new Set([...parcelWarnings.values(), ...bedWarnings.values()])}
+                    hasStems={hasDraftStems || renderedPlantPlans.length > 0}
+                    hasCanopies={hasCanopies}
+                    canvasHint={device && !objects.selection && (device === 'touch' ? showTouchContextMenuHint : showContextMenuHint) && (
+                      <GraphicalObjectHint device={device} onClose={device === 'touch' ? closeTouchContextMenuHint : closeContextMenuHint} />
+                    )}
+                    boundaryWarning={fieldsOutsideBoundary.size > 0 && (
+                      <Typography variant="caption" color="warning.dark" data-testid="location-boundary-overflow-hint"
+                        sx={{ minWidth: 0, px: 1, py: 0.5, borderRadius: 2, overflowWrap: 'anywhere',
+                          bgcolor: (theme) => alpha(theme.palette.common.white, 0.78), backdropFilter: 'blur(2px)' }}>
+                        {t('fields:graphical.fieldsOutsideLocation')}
+                      </Typography>
+                    )}
+                    cropLoading={locationPlans.loading} cropFailed={locationPlans.failed} onRetryCrops={locationPlans.refresh}
+                    beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
+                      id: bed.id, name: bed.name, parcel: field.name,
+                    })))}
+                    summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed && (!showCrops || !locationPlans.failed)}
+                    onRetry={bedTasks.refresh} onOpenBed={onOpenBed}
+                  />
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
                     openDetails={details} onOpenCrop={onOpenIndividualCrop} onFocusObject={focusArea}

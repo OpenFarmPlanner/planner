@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, graphicDisplayButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
+import { activateCanvasTool, apiRequest, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -212,6 +212,42 @@ for (const mobile of [false, true]) {
       await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
       const ordinaryFill = (await getBed())?.fill;
       await expect.poll(() => findShape(page, 'graphical-free-area-site')).not.toBeNull();
+      const legendButton = graphicLegendButton(page);
+      const zoom = page.getByRole('button', { name: 'Herauszoomen', exact: true });
+      const input = mobile ? 'touch' : 'keyboard';
+      await display.press('Enter');
+      await expect(page.getByRole('menuitemradio')).toHaveCount(4);
+      await expect(page.getByRole('menuitem')).toHaveCount(mobile ? 1 : 0);
+      await page.keyboard.press('Escape');
+      const triggerBounds = (await legendButton.boundingBox())!;
+      expect(triggerBounds.width).toBeGreaterThanOrEqual(44);
+      const areaLegend = await openGraphicLegend(page, input);
+      await expect(areaLegend).toBeFocused();
+      await expect(areaLegend.getByText('Freifläche außerhalb der Parzellen')).toBeVisible();
+      await expect(areaLegend.getByText('Zu wenig Platz für Wege')).toBeVisible();
+      await expect(areaLegend.getByText('Offen ohne Termin')).toHaveCount(0);
+      await expect(areaLegend.getByText(/Wachstum oder Belegung/)).toHaveCount(0);
+      const panelBounds = (await areaLegend.boundingBox())!;
+      expect(panelBounds.y + panelBounds.height).toBeLessThan(triggerBounds.y);
+      if (mobile) await zoom.tap();
+      else await zoom.click();
+      await expect(areaLegend).toHaveCount(0);
+      await expect(zoom).toBeFocused();
+      expect(await legendButton.boundingBox()).toEqual(triggerBounds);
+      await activateCanvasTool(page, 'Alles einpassen');
+      await selectGraphicDisplay(page, 'Kulturen');
+      const cropLegend = await openGraphicLegend(page, input);
+      await expect(cropLegend.getByText(/Wachstum oder Belegung/)).toBeVisible();
+      await expect(cropLegend.getByText('Offen ohne Termin')).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await expect(legendButton).toBeFocused();
+      await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
+      const combinedLegend = await openGraphicLegend(page, input);
+      await expect(combinedLegend.getByText(/Kulturnamen und Phasen/)).toBeVisible();
+      await expect(combinedLegend.getByText('Offen ohne Termin')).toBeVisible();
+      await expect(combinedLegend.getByText(/Wachstum oder Belegung/)).toHaveCount(0);
+      await page.keyboard.press('Escape');
+      await selectGraphicDisplay(page, 'Anbauflächen');
       const preview = page.getByTestId('graphical-object-preview');
       const bedTarget = page.locator(`[data-graphical-object-target="bed:${bedId}"]`);
       await bedTarget.press('Enter');
@@ -226,7 +262,7 @@ for (const mobile of [false, true]) {
       await page.keyboard.press('Escape');
       await expect(preview).toHaveCount(0);
       await selectGraphicDisplay(page, 'Aufgaben');
-      let panel = await openGraphicLegend(page);
+      let panel = await openGraphicLegend(page, input);
       await expect(panel.getByRole('switch')).toHaveCount(0);
       await expect(panel.getByText('Offen ohne Termin', { exact: true })).toBeVisible();
       await page.keyboard.press('Escape');
@@ -252,8 +288,8 @@ for (const mobile of [false, true]) {
       await expect.poll(getBed).toMatchObject({ urgency: 'overdue', fill: colored?.fill, hasTaskIcon: false });
       await display.press('Enter');
       await expect(page.getByRole('menuitemradio', { name: 'Aufgaben', exact: true })).toHaveAttribute('aria-checked', 'true');
-      await page.getByRole('menuitem', { name: 'Legende der Grafik' }).press('Enter');
-      panel = page.getByRole('dialog', { name: 'Legende der Grafik' });
+      await page.keyboard.press('Escape');
+      panel = await openGraphicLegend(page, input);
       await panel.getByRole('combobox', { name: 'Beet auswählen' }).click();
       await page.getByRole('option', { name: /Südbeet · Lernparzelle/ }).click();
       await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
@@ -262,13 +298,33 @@ for (const mobile of [false, true]) {
       await testInfo.attach(`bed-tasks-${mobile ? 'phone' : 'desktop'}`, {
         body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
       });
+      await page.screenshot({ path: testInfo.outputPath(`legend-${mobile ? 'phone' : 'desktop'}.png`), animations: 'disabled' });
       if (mobile) {
         await page.setViewportSize({ width: 800, height: 375 });
         await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
         expect(await panel.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(0);
+        await expect.poll(() => panel.evaluate(element => {
+          const rect = element.getBoundingClientRect();
+          return rect.y >= 0 && rect.bottom <= window.innerHeight && element.scrollHeight > element.clientHeight;
+        })).toBe(true);
+        const bounds = (await panel.boundingBox())!;
+        const touch = await page.context().newCDPSession(page);
+        const start = { x: Math.round(bounds.x + bounds.width / 2), y: Math.round(bounds.y + bounds.height - 16) };
+        await panel.evaluate(element => { element.scrollTop = 0; });
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
+        for (const offset of [12, 27, 42, 57, 72, 95]) {
+          // Deliver separate touch moves at a pace the browser can scroll with.
+          await page.waitForTimeout(35);
+          await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x, y: start.y - offset }] });
+        }
+        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+        await expect.poll(() => panel.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
+        await touch.detach();
+        await panel.evaluate(element => { element.scrollTop = 0; });
         await testInfo.attach('bed-tasks-phone-landscape', {
           body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
         });
+        await page.screenshot({ path: testInfo.outputPath('legend-landscape.png'), animations: 'disabled' });
         await page.setViewportSize({ width: 375, height: 800 });
       }
       const details = panel.getByRole('button', { name: 'Beetdetails' });

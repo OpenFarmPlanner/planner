@@ -43,9 +43,19 @@
       "previousDay": "Vorheriger Tag",
       "nextDay": "Nächster Tag",
       "taskDateNote": "Für die Fälligkeit und Dringlichkeit der Aufgaben gilt das heutige Datum.",
-      "legend": "Legende der Grafik",
-      "cropLegend": "Die Kulturfarben zeigen das geplante Wachstum oder die geplante Ernte. Mehrjährige Kulturen belegen das Beet auch außerhalb der Ernte. Eine neutrale Farbe steht für gemischte oder unklare Pläne.",
-      "combinedCropLegend": "Kulturnamen und Phasen stehen als Text im Beet.",
+      "legend": "Legende",
+      "legendBoundary": "Standortgrenze",
+      "legendGeometry": {
+        "outside": "Außerhalb der Grenze",
+        "overlap": "Überlappung",
+        "shortGap": "Zu wenig Platz für Wege"
+      },
+      "legendStem": "Der Punkt markiert den Stängel.",
+      "legendStemTasks": "Bei Einzelpflanzen zeigt das Symbol die Dringlichkeit der Planaufgabe.",
+      "legendCropGrowth": "Voraussichtliches Wachstum oder Belegung",
+      "legendCropMixed": "Gemischte oder unklare Anbaupläne",
+      "cropLegend": "Die Farbtöne variieren je nach Kultur. Mehrjährige Kulturen belegen das Beet auch außerhalb der Ernte.",
+      "combinedCropLegend": "Kulturnamen und Phasen erscheinen als Text, wenn genug Platz ist.",
       "taskLegend": "Farbe und Symbol zeigen die dringendste offene Aufgabe. Beete ohne offene Aufgaben behalten ihre normale Farbe.",
       "cropLoadError": "Die Anbaupläne konnten nicht geladen werden.",
       "phase": {

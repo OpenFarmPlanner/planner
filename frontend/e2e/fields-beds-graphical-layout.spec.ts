@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, graphicDisplayButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
+import { activateCanvasTool, apiRequest, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -509,9 +509,16 @@ test.describe('responsive canvas tools', () => {
     await beds.getByRole('option').first().tap();
     await page.keyboard.press('Escape');
     await expect(tasks).toHaveCount(0);
-    await expect(display).toBeFocused();
+    await expect(graphicLegendButton(page)).toBeFocused();
     await toolbar.getByRole('button', { name: 'Vollbild schließen' }).tap();
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
+    const layoutBefore = (await canvasRects(page, 'field-rect-')).map(rect => [rect.id, rect.x, rect.y]);
+    await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).tap();
+    const editLegend = await openGraphicLegend(page, 'touch');
+    await expect(editLegend.getByText('Anbauflächen', { exact: true })).toBeVisible();
+    await expect(editLegend.getByText('Offen ohne Termin')).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    expect((await canvasRects(page, 'field-rect-')).map(rect => [rect.id, rect.x, rect.y])).toEqual(layoutBefore);
   });
 });
 
@@ -606,6 +613,7 @@ test.describe('location spacing in a touch-capable browser', () => {
       await expect(mode.getByTestId('graphical-display-chevron')).toBeVisible();
       await mode.tap();
       await expect(page.getByRole('menuitemradio')).toHaveCount(4);
+      await expect(page.getByRole('menuitem')).toHaveCount(1);
       await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
       const menuBox = (await page.getByRole('menu').boundingBox())!;
       expect(menuBox.x).toBeGreaterThanOrEqual(0);

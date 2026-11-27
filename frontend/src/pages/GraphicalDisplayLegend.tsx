@@ -1,19 +1,30 @@
-import { useId, useState } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import {
-  Alert, Box, Button, MenuItem, Popover, Stack,
-  TextField, Typography, useTheme,
+  Alert, Box, Button, ClickAwayListener, MenuItem, Paper, Stack, TextField, Typography, useTheme,
 } from '@mui/material';
+import LegendToggleIcon from '@mui/icons-material/LegendToggle';
+import { AppTooltip } from '../components/AppTooltip';
+import { freeAreaColor } from '../components/hierarchy/utils/freeAreaColors';
 import LoadRetryButton from '../components/LoadRetryButton';
 import { BED_TASK_URGENCIES, bedTaskUrgencyLabel, type BedTaskSummary } from '../components/tasks/bedTaskUrgency';
 import { useTranslation } from '../i18n';
+import type { OutlineKind } from './graphicalAreaGeometry';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
+import { includesCrops, includesTasks, type GraphicalDisplayMode } from './graphicalCultivation';
+import { GRAPHICAL_GEOMETRY_OUTLINES, graphicalBedCropFill, graphicalGeometryOutline, graphicalPlantColors } from './graphicalDisplayStyle';
 import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 
 interface Props {
-  anchor: HTMLButtonElement | null;
-  onClose: () => void;
-  showCrops: boolean;
-  showTasks: boolean;
+  mode: GraphicalDisplayMode;
+  compact: boolean;
+  hasBoundary: boolean;
+  freeSite: boolean;
+  freeParcel: boolean;
+  geometryOutlines: ReadonlySet<OutlineKind>;
+  hasStems: boolean;
+  hasCanopies: boolean;
+  canvasHint?: ReactNode;
+  boundaryWarning?: ReactNode;
   cropLoading: boolean;
   cropFailed: boolean;
   onRetryCrops: () => void;
@@ -25,90 +36,187 @@ interface Props {
   onOpenBed?: (id: number) => void;
 }
 
+function LegendItem({ marker, children }: { marker: ReactNode; children: ReactNode }) {
+  return <Stack component="li" direction="row" spacing={1} sx={{ alignItems: 'center' }}>
+    <Box aria-hidden sx={{ width: 24, flexShrink: 0, display: 'grid', placeItems: 'center' }}>{marker}</Box>
+    <Typography variant="body2">{children}</Typography>
+  </Stack>;
+}
+
+function FillSwatch({ color }: { color: string }) {
+  return <Box sx={{ width: 20, height: 14, border: '1px solid', borderColor: 'divider', borderRadius: 0.5, bgcolor: color }} />;
+}
+
+const legendList = { p: 0, m: 0, listStyle: 'none' };
+
 export function GraphicalDisplayLegend({
-  anchor, onClose, showCrops, showTasks, cropLoading, cropFailed, onRetryCrops,
+  mode, compact, hasBoundary, freeSite, freeParcel, geometryOutlines, hasStems, hasCanopies, canvasHint, boundaryWarning,
+  cropLoading, cropFailed, onRetryCrops,
   beds, summaries, loading, failed, onRetry, onOpenBed,
 }: Props) {
-  const { t } = useTranslation(['fields', 'dashboard', 'common', 'hierarchy']);
+  const { t } = useTranslation(['fields', 'dashboard', 'common', 'hierarchy', 'help']);
   const theme = useTheme();
   const id = useId();
+  const trigger = useRef<HTMLButtonElement>(null);
+  const panel = useRef<HTMLDivElement>(null);
+  const [open, setOpen] = useState(false);
   const [bedId, setBedId] = useState<number | ''>('');
+  const showCrops = includesCrops(mode);
+  const showTasks = includesTasks(mode);
   const bed = beds.find(item => item.id === bedId);
   const selected = bed ? summaries.get(bed.id) : undefined;
   const name = bed ? `${bed.name} · ${bed.parcel}` : '';
   const title = t('graphical.display.legend');
-  const container = getGraphicalPortalContainer();
+  const plantColors = graphicalPlantColors(theme);
+
+  const close = () => {
+    if (!open) return;
+    if (panel.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
+    setOpen(false);
+    setBedId('');
+  };
+
+  useEffect(() => {
+    if (open) panel.current?.focus({ preventScroll: true });
+  }, [open]);
 
   return (
-    <Popover open={Boolean(anchor)} anchorEl={anchor} onClose={onClose}
-      container={container}
-      anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-      transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-      slotProps={{ paper: {
-        id, role: 'dialog', 'aria-modal': true, 'aria-labelledby': `${id}-title`,
-        sx: { width: 340, maxWidth: 'calc(100% - 32px)', maxHeight: '75vh' },
-      } }}>
-      <Stack spacing={1.25} sx={{ p: 2, overflowWrap: 'anywhere' }}>
-        <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>{title}</Typography>
-        {showCrops && <Stack spacing={0.5}>
-          <Typography variant="subtitle2">{t('graphical.display.mode.crops')}</Typography>
-          <Typography variant="body2">{t(showTasks ? 'graphical.display.combinedCropLegend' : 'graphical.display.cropLegend')}</Typography>
-          {cropLoading && <Typography role="status" variant="caption">{t('common:messages.loading')}</Typography>}
-          {cropFailed && <Alert severity="error" action={<LoadRetryButton onClick={onRetryCrops} />}>
-            {t('graphical.display.cropLoadError')}
-          </Alert>}
-        </Stack>}
-        {showTasks && (
-          <>
-            <Typography variant="subtitle2">{t('graphical.taskLayer.title')}</Typography>
-            <Stack component="ul"  spacing={0.5} sx={{ p: 0, m: 0, listStyle: 'none' }}>
-              {BED_TASK_URGENCIES.filter(urgency => urgency !== 'completed').map(urgency => {
-                const colors = bedTaskColors(theme, urgency);
-                return (
-                  <Stack component="li" key={urgency} direction="row" spacing={1} sx={{ alignItems: 'center' }}>
-                    <Box aria-hidden sx={{ width: 21, flexShrink: 0, bgcolor: colors.fill,
-                      color: colors.glyph, textAlign: 'center', borderRadius: 0.5, fontWeight: 700 }}>
-                      {BED_TASK_SYMBOLS[urgency]}
-                    </Box>
-                    <Typography variant="body2">{bedTaskUrgencyLabel(urgency, t)}</Typography>
-                  </Stack>
-                );
-              })}
-            </Stack>
-            <Typography variant="caption" color="text.secondary">{t('graphical.display.taskLegend')}</Typography>
-            {loading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
-            {failed && <Alert severity="error" action={<LoadRetryButton onClick={onRetry} />}>
-              {t('graphical.taskLayer.loadError')}
-            </Alert>}
-          </>
-        )}
-        {onOpenBed && beds.length > 0 && (
-          <>
-            <TextField select fullWidth size="small" label={t('graphical.taskLayer.chooseBed')} value={bed?.id ?? ''}
-              slotProps={{ select: { MenuProps: { container } } }}
-              onChange={event => setBedId(Number(event.target.value))}>
-              {beds.map(item => <MenuItem key={item.id} value={item.id}
-                sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}>
-                {item.name} · {item.parcel}
-              </MenuItem>)}
-            </TextField>
-            {bed && showTasks && !loading && !failed && (
-              <Stack aria-live="polite" spacing={0.25}>
-                <Typography variant="body2">
-                  {name} · {selected?.urgency ? bedTaskUrgencyLabel(selected.urgency, t) : t('graphical.taskLayer.none')}
+    <ClickAwayListener mouseEvent="onMouseDown" touchEvent="onTouchStart" onClickAway={close}>
+      <Box sx={{ position: 'absolute', inset: 8, zIndex: 3, pointerEvents: 'none' }}
+        onKeyDown={event => {
+          if (open && event.key === 'Escape' && !event.defaultPrevented) {
+            event.preventDefault();
+            event.stopPropagation();
+            close();
+          }
+        }}>
+        {!open && canvasHint}
+        <Stack direction="row" spacing={1} sx={{ position: 'absolute', insetInline: 0, bottom: 0, alignItems: 'end' }}>
+          <Paper elevation={3} sx={{ borderRadius: 3, pointerEvents: 'auto', flexShrink: 0 }}>
+            <AppTooltip title={compact && !open ? title : ''} placement="top" disableInteractive
+              slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
+              <Button ref={trigger} aria-label={title} aria-haspopup="dialog" aria-expanded={open}
+                aria-controls={open ? id : undefined} onClick={open ? close : () => setOpen(true)}
+                sx={{ minWidth: 44, minHeight: 44, px: 1, gap: 0.5, borderRadius: 3, color: 'text.primary' }}>
+                <LegendToggleIcon aria-hidden fontSize="small" />
+                {!compact && <span>{title}</span>}
+              </Button>
+            </AppTooltip>
+          </Paper>
+          {boundaryWarning}
+        </Stack>
+        {open && <Paper ref={panel} id={id} role="dialog" aria-labelledby={`${id}-title`} tabIndex={-1} elevation={4}
+          sx={{ position: 'absolute', left: 0, bottom: 52, width: 340, maxWidth: 'calc(100% - 56px)',
+            maxHeight: 'calc(100% - 52px)', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
+            pointerEvents: 'auto', borderRadius: 2, outline: 'none' }}>
+          <Stack spacing={1.25} sx={{ p: 2, overflowWrap: 'anywhere' }}>
+            <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>{title}</Typography>
+            <Typography variant="subtitle2">{t(`graphical.display.mode.${mode}`)}</Typography>
+            {showCrops && <Stack spacing={0.5}>
+              <Typography variant="body2">{t(showTasks ? 'graphical.display.combinedCropLegend' : 'graphical.display.cropLegend')}</Typography>
+              {!showTasks && <Stack component="ul" spacing={0.5} sx={legendList}>
+                <LegendItem marker={<FillSwatch color={graphicalBedCropFill(theme, 'growth')} />}>
+                  {t('graphical.display.legendCropGrowth')}
+                </LegendItem>
+                <LegendItem marker={<FillSwatch color={graphicalBedCropFill(theme, 'harvest')} />}>
+                  {t('graphical.display.phase.harvest')}
+                </LegendItem>
+                <LegendItem marker={<FillSwatch color={graphicalBedCropFill(theme, null)} />}>
+                  {t('graphical.display.legendCropMixed')}
+                </LegendItem>
+              </Stack>}
+              {cropLoading && <Typography role="status" variant="caption">{t('common:messages.loading')}</Typography>}
+              {cropFailed && <Alert severity="error" action={<LoadRetryButton onClick={onRetryCrops} />}>
+                {t('graphical.display.cropLoadError')}
+              </Alert>}
+            </Stack>}
+            {showTasks && (
+              <>
+                <Stack component="ul" spacing={0.5} sx={legendList}>
+                  {BED_TASK_URGENCIES.filter(urgency => urgency !== 'completed').map(urgency => {
+                    const colors = bedTaskColors(theme, urgency);
+                    return (
+                      <LegendItem key={urgency} marker={
+                        <Box sx={{ width: 21, bgcolor: colors.fill,
+                          color: colors.glyph, textAlign: 'center', borderRadius: 0.5, fontWeight: 700 }}>
+                          {BED_TASK_SYMBOLS[urgency]}
+                        </Box>}>
+                        {bedTaskUrgencyLabel(urgency, t)}
+                      </LegendItem>
+                    );
+                  })}
+                </Stack>
+                <Typography variant="caption" color="text.secondary">{t('graphical.display.taskLegend')}
+                  {hasStems && <> {t('graphical.display.legendStemTasks')}</>}
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {t('graphical.taskLayer.outstanding', { count: selected?.outstanding ?? 0 })}
-                  {selected?.undated ? ` · ${t('graphical.taskLayer.undatedCount', { count: selected.undated })}` : ''}
-                </Typography>
-              </Stack>
+                {loading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
+                {failed && <Alert severity="error" action={<LoadRetryButton onClick={onRetry} />}>
+                  {t('graphical.taskLayer.loadError')}
+                </Alert>}
+              </>
             )}
-            <Button sx={{ minHeight: 44 }} disabled={!bed} onClick={() => { if (bed) onOpenBed(bed.id); }}>
-              {t('hierarchy:details.open.bed')}
-            </Button>
-          </>
-        )}
-      </Stack>
-    </Popover>
+            <Stack component="ul" spacing={0.5} sx={legendList}>
+              {mode === 'areas' && <>
+                {hasBoundary && <LegendItem marker={<Box sx={{ width: 20, height: 14, border: '1px dashed', borderColor: 'text.secondary' }} />}>
+                  {t('graphical.display.legendBoundary')}
+                </LegendItem>}
+                <LegendItem marker={<FillSwatch color={theme.palette.grey[200]} />}>
+                  {t('hierarchy:details.entityType.field')}
+                </LegendItem>
+                {beds.length > 0 && <LegendItem marker={<FillSwatch color={theme.palette.info.light} />}>
+                  {t('hierarchy:details.entityType.bed')}
+                </LegendItem>}
+              </>}
+              {freeSite && <LegendItem marker={<FillSwatch color={freeAreaColor(theme, 'site')} />}>
+                {t('hierarchy:details.coverage.outsideParcels')}
+              </LegendItem>}
+              {freeParcel && <LegendItem marker={<FillSwatch color={freeAreaColor(theme, 'parcel')} />}>
+                {t('hierarchy:details.coverage.withoutBeds')}
+              </LegendItem>}
+              {GRAPHICAL_GEOMETRY_OUTLINES.filter(kind => geometryOutlines.has(kind)).map(kind => {
+                const { stroke, strokeWidth, dash: [mark, gap] } = graphicalGeometryOutline(theme, kind);
+                return <LegendItem key={kind} marker={<Box sx={{ width: 24, height: strokeWidth,
+                  background: `repeating-linear-gradient(to right, ${stroke} 0 ${mark}px, transparent ${mark}px ${mark + gap}px)` }} />}>
+                  {t(`graphical.display.legendGeometry.${kind}`)}
+                </LegendItem>;
+              })}
+              {hasStems && <LegendItem marker={<Box sx={{ width: 18, height: 18, borderRadius: '50%',
+                display: 'grid', placeItems: 'center', bgcolor: hasCanopies ? plantColors.canopyFill : undefined,
+                border: hasCanopies ? `1px solid ${plantColors.canopyOutline}` : undefined }}>
+                <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: plantColors.stem }} />
+              </Box>}>
+                {t(hasCanopies ? 'help:pages.graphical.symbols.individualPlant' : 'graphical.display.legendStem')}
+              </LegendItem>}
+            </Stack>
+            {onOpenBed && beds.length > 0 && (
+              <>
+                <TextField select fullWidth size="small" label={t('graphical.taskLayer.chooseBed')} value={bed?.id ?? ''}
+                  slotProps={{ select: { MenuProps: { container: getGraphicalPortalContainer } } }}
+                  onChange={event => setBedId(Number(event.target.value))}>
+                  {beds.map(item => <MenuItem key={item.id} value={item.id}
+                    sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}>
+                    {item.name} · {item.parcel}
+                  </MenuItem>)}
+                </TextField>
+                {bed && showTasks && !loading && !failed && (
+                  <Stack aria-live="polite" spacing={0.25}>
+                    <Typography variant="body2">
+                      {name} · {selected?.urgency ? bedTaskUrgencyLabel(selected.urgency, t) : t('graphical.taskLayer.none')}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {t('graphical.taskLayer.outstanding', { count: selected?.outstanding ?? 0 })}
+                      {selected?.undated ? ` · ${t('graphical.taskLayer.undatedCount', { count: selected.undated })}` : ''}
+                    </Typography>
+                  </Stack>
+                )}
+                <Button sx={{ minHeight: 44 }} disabled={!bed} onClick={() => { if (bed) onOpenBed(bed.id); }}>
+                  {t('hierarchy:details.open.bed')}
+                </Button>
+              </>
+            )}
+          </Stack>
+        </Paper>}
+      </Box>
+    </ClickAwayListener>
   );
 }
