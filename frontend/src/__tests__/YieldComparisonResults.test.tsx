@@ -1,10 +1,12 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { expect, it } from 'vitest';
 import type { YieldComparisonSeason } from '../api/types';
 import { YieldComparisonResults } from '../pages/YieldComparisonResults';
 import { YieldComparisonSummaryPanel } from '../pages/YieldComparisonSummary';
 import { YieldCropMatrix } from '../pages/YieldCropMatrix';
+import { YieldSeasonDetails } from '../pages/YieldSeasonDetails';
 import { groupYieldComparisonCrops } from '../pages/yieldComparisonFilters';
 import { yieldChartScale, yieldChartSeries, yieldChartUnits } from '../pages/yieldSeasonChartData';
 
@@ -101,6 +103,56 @@ it('shows a measured zero and a missing matrix cell without inventing a trend', 
   expect(within(cells[0]).getByText('Nicht erfasst')).toBeInTheDocument();
   expect(within(cells[1]).getByText('0 kg/m²')).toBeVisible();
   expect(within(cells[2]).getByText('Keine vergleichbare Entwicklung')).toBeInTheDocument();
+});
+
+it.each([
+  ['de-DE', '11,37', '< 0,01'], ['en-US', '11.37', '< 0.01'],
+])('formats rate cells without equating small yields with zero in %s', (locale, rounded, small) => {
+  const seasons = [missing, { ...missing, id: 2, label: '25/26' }, { ...missing, id: 3, label: '26/27' }];
+  render(<YieldCropMatrix crops={[{
+    key: 'name:lauch', name: 'Lauch', crop_ids: [1], trend: null,
+    rates: [
+      { season_id: 1, status: 'measured', value: '11.3691', partial: false, below_resolution: false },
+      { season_id: 2, status: 'measured', value: '0.004', partial: false, below_resolution: false },
+      { season_id: 3, status: 'measured', value: '0', partial: false, below_resolution: true },
+    ],
+  }]} seasons={seasons} groups={[]} locale={locale} onOpen={() => undefined} />);
+
+  const cells = within(screen.getByRole('row', { name: /^Lauch/ })).getAllByRole('cell');
+  expect(cells[0]).toHaveTextContent(`${rounded} kg/m²`);
+  expect(cells[1]).toHaveTextContent(`${small} kg/m²`);
+  expect(cells[2]).toHaveTextContent(`${small} kg/m²`);
+});
+
+it('formats forecast, recorded and harvested-area rates in the season details', async () => {
+  const user = userEvent.setup();
+  const row: YieldComparisonSeason = {
+    ...missing,
+    forecast_kg: '43.123456',
+    forecast_kg_per_sqm: '11.362988',
+    recorded_kg_per_plan_sqm: '0.004',
+    recorded_kg_per_plan_sqm_estimated: true,
+    recorded: { ...missing.recorded, quantities: [{ quantity: '12', unit: 'piece' }] },
+    harvested_areas: [
+      { id: 1, date: '2025-01-12', plan_id: 3, bed_name: 'Beet 1', area_sqm: '12.34567', kg_per_sqm: '2.506', estimated: true },
+      { id: 2, date: '2025-01-13', plan_id: 4, bed_name: 'Beet 2', area_sqm: '3', kg_per_sqm: null, estimated: false },
+    ],
+  };
+  render(<MemoryRouter><YieldSeasonDetails cropName="Lauch" comparison={{
+    seasons: [row], crop_timing: {}, crop_yields: [], summary: {
+      planned_area_sqm: null, plans_without_area_count: 0, recorded_quantities: row.recorded.quantities,
+      excluded_unassigned_records: 0, crop_count: 1, recorded_crop_count: 1,
+    },
+  }} /></MemoryRouter>);
+
+  expect(screen.getByText('11,36 kg/m²')).toBeVisible();
+  expect(screen.getByText(/^< 0,01 kg\/m² geschätzt/)).toBeVisible();
+  expect(screen.getByText(/^43,123456\s+kg$/)).toBeVisible();
+  expect(screen.getByText('12 Stück')).toBeVisible();
+
+  await user.click(screen.getByLabelText('Termine und Beobachtungen · 24/25'));
+  expect(screen.getByText(/Beet 1 · 12,34567 m² · 2,51 kg\/m² geschätzt/)).toBeVisible();
+  expect(screen.getByText(/Beet 2 · 3 m² · Kein Gewicht verfügbar/)).toBeVisible();
 });
 
 it('shows partial scope, keeps harvest units separate, and reports an empty selection', () => {

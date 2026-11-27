@@ -4,7 +4,7 @@ import {
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router';
 import type { YieldComparison, YieldComparisonSeason } from '../api/types';
-import { formatHarvestQuantity, formatHarvestTotals } from '../harvests/harvestDisplay';
+import { formatHarvestQuantity, formatHarvestTotals, formatYieldPerAreaValue } from '../harvests/harvestDisplay';
 import { useTranslation } from '../i18n';
 import { formatCropLossExtent } from '../planting-plans/cropLossDisplay';
 import { getPlanActivityDates, type PlantingPlanDateComparison } from '../planting-plans/plantingPlanActualDates';
@@ -15,7 +15,7 @@ import { formatLocalizedNumber } from '../utils/numberLocalization';
 
 const numericOptions = { maximumFractionDigits: 6 };
 const number = (value: number | string, locale: string) => formatLocalizedNumber(Number(value), locale, numericOptions);
-const perArea = (value: string, locale: string) => `${number(value, locale)} kg/m²`;
+const perArea = (value: string, locale: string) => `${formatYieldPerAreaValue(value, locale)} kg/m²`;
 
 function SeasonObservations({ row, plans, locale }: {
   row: YieldComparisonSeason;

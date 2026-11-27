@@ -63,7 +63,7 @@ test('compares measured yields and exposes a table and actual date deviations wi
   await expect(results.getByRole('heading', { name: 'Termine in der Anbausaison' })).toBeVisible();
   await expect(results.getByText('2 Tage später', { exact: true }).first()).toBeVisible();
   await expect(results.getByRole('heading', { name: 'Ertrag pro m² beernteter Fläche' })).toBeVisible();
-  await expect(results.getByText(/16,5 m²/)).toBeVisible();
+  await expect(results.getByText(/16,5 m².*2,83 kg\/m²/)).toBeVisible();
 
   const forecast = page.getByTestId('topbar-workspace-controls').getByRole('button', { name: 'Prognosekalender' });
   await forecast.press('Enter');

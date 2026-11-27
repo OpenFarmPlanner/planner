@@ -12,7 +12,7 @@ import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
 import { HarvestDialog, type HarvestPlanContext } from './HarvestDialog';
-import { formatHarvestQuantity, formatHarvestTotals } from './harvestDisplay';
+import { formatHarvestQuantity, formatHarvestTotals, formatYieldPerAreaValue } from './harvestDisplay';
 
 interface HarvestRecordsProps {
   scope: string;
@@ -100,7 +100,7 @@ export function HarvestRecords({ scope, initialDate, plan, planId, planTotals, r
         </Typography>}
         {planTotals.actual_kg_per_sqm && <Typography variant="body2">
           {t(planTotals.estimated_kg ? 'estimatedYieldPerPlanArea' : 'yieldPerPlanArea', {
-            value: formatLocalizedNumber(Number(planTotals.actual_kg_per_sqm), locale),
+            value: formatYieldPerAreaValue(planTotals.actual_kg_per_sqm, locale),
           })}
         </Typography>}
         {planTotals.forecast_kg && planTotals.forecast_percentage && <Typography variant="body2">
@@ -136,7 +136,7 @@ export function HarvestRecords({ scope, initialDate, plan, planId, planTotals, r
                 </Typography>}
                 {allocation?.kilograms_per_harvested_sqm && <Typography variant="body2" color="text.secondary">
                   {t(row.estimated_kg ? 'estimatedYieldPerHarvestedArea' : 'yieldPerHarvestedArea', {
-                    value: formatLocalizedNumber(Number(allocation.kilograms_per_harvested_sqm), locale),
+                    value: formatYieldPerAreaValue(allocation.kilograms_per_harvested_sqm, locale),
                   })}
                 </Typography>}
                 {row.note && <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{row.note}</Typography>}

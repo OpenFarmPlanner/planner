@@ -6,6 +6,7 @@
  */
 
 import type { Crop, CultivationType } from '../api/types';
+import { formatYieldPerAreaValue } from '../harvests/harvestDisplay';
 import {
   formatDistance,
   formatCropDetailRange,
@@ -26,7 +27,7 @@ export interface CropComparisonField {
   id: string;
   keys: (keyof Crop)[];
   labelKey: string;
-  format: (crop: Crop, t: TranslateFn, locale: string, context: ComparisonFormatContext) => string;
+  format: (crop: Crop, t: TranslateFn, locale: string, context: ComparisonFormatContext, speciesCrop: Crop) => string;
   /**
    * Overrides the default "effective value per key" resolution (variety's
    * own value for each of `keys`, falling back to the crop's) for fields
@@ -194,7 +195,13 @@ export const CROP_COMPARISON_FIELDS: CropComparisonField[] = [
     id: 'expectedYield',
     keys: ['expected_yield'],
     labelKey: 'form.expectedYield',
-    format: (crop, t, locale) => `${formatNumber(crop.expected_yield ?? null, t, locale)} ${t('detail.units.kilograms')}`,
+    format: (crop, t, locale, _context, speciesCrop) => {
+      const harvestMethod = crop.harvest_method || speciesCrop.harvest_method;
+      if (harvestMethod === 'per_sqm' && crop.expected_yield != null) {
+        return `${formatYieldPerAreaValue(crop.expected_yield, locale)} ${t('detail.units.kgPerSqm')}`;
+      }
+      return `${formatNumber(crop.expected_yield, t, locale)} ${t('detail.units.kilograms')}`;
+    },
   },
 ];
 
@@ -281,5 +288,5 @@ export function getComparisonCellValue(
     return EMPTY_CELL_VALUE;
   }
 
-  return field.format({ ...variety, ...effective } as Crop, t, locale, context);
+  return field.format({ ...variety, ...effective } as Crop, t, locale, context, cropCrop);
 }

@@ -126,6 +126,7 @@ import {
   formatCropDetailRange,
   formatNumber,
 } from './cropDetailFormatters';
+import { formatYieldPerAreaValue } from '../harvests/harvestDisplay';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
 import { CropTimingWindowsDetail } from './CropTimingWindowsDetail';
 import { hasAnyDetailValue, hasDetailValue } from './cropDetailFieldVisibility';
@@ -617,6 +618,10 @@ const detailSectionGridSx = {
     .filter(row => hasDetailValue(row.value)) : [];
   const sowingDepth = getCropValue('sowing_depth_cm', selectedCrop?.sowing_depth_cm);
   const sowingDepthMax = getCropValue('sowing_depth_max_cm', selectedCrop?.sowing_depth_max_cm);
+  const harvestMethod = getCropValue('harvest_method', selectedCrop?.harvest_method);
+  const expectedYield = getCropValue('expected_yield', selectedCrop?.expected_yield);
+  const expectedYieldUnit = harvestMethod === 'per_plant' ? t('detail.units.kgPerPlant')
+    : harvestMethod === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms');
   const showSowingDepth = showEmptyRanges || hasAnyDetailValue(sowingDepth, sowingDepthMax);
   const germinationRows = selectedCrop ? getGerminationDetailRows(
     field => getCropValue(field, selectedCrop[field]), showEmptyRanges,
@@ -1302,8 +1307,8 @@ const detailSectionGridSx = {
 
             {/* Yield Section */}
             {hasAnyDetailValue(
-              getCropValue('harvest_method', selectedCrop.harvest_method),
-              getCropValue('expected_yield', selectedCrop.expected_yield),
+              harvestMethod,
+              expectedYield,
               getCropValue('default_harvest_unit', selectedCrop.default_harvest_unit),
               getCropValue('average_harvest_piece_weight_g', selectedCrop.average_harvest_piece_weight_g),
               getCropValue('average_harvest_bunch_weight_g', selectedCrop.average_harvest_bunch_weight_g),
@@ -1323,28 +1328,29 @@ const detailSectionGridSx = {
                   justifyContent: 'start',
                 }}
               >
-                {hasDetailValue(getCropValue('harvest_method', selectedCrop.harvest_method)) && (
+                {hasDetailValue(harvestMethod) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.yieldUnit')}
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('harvest_method')}>
                       <Typography variant="body1" sx={getOwnValueSx('harvest_method')}>
-                        {getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant'
+                        {harvestMethod === 'per_plant'
                           ? t('form.yieldUnitPerPlant')
                           : t('form.yieldUnitPerSqm')}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
                 )}
-                {hasDetailValue(getCropValue('expected_yield', selectedCrop.expected_yield)) && (
+                {expectedYield != null && hasDetailValue(expectedYield) && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('form.expectedYield')}
                     </Typography>
                     <ValueWithLibraryPin pin={getLibraryPin('expected_yield')}>
                       <Typography variant="body1" sx={getOwnValueSx('expected_yield')}>
-                        {`${formatNumber(getCropValue('expected_yield', selectedCrop.expected_yield), t, locale)} ${getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getCropValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}`}
+                        {harvestMethod === 'per_sqm' ? formatYieldPerAreaValue(expectedYield, locale)
+                          : formatNumber(expectedYield, t, locale)} {expectedYieldUnit}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>

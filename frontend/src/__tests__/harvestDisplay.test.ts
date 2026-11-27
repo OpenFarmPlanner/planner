@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import i18n from '../i18n/config';
-import { formatHarvestQuantity, formatHarvestTotals } from '../harvests/harvestDisplay';
+import { formatHarvestQuantity, formatHarvestTotals, formatYieldPerAreaValue } from '../harvests/harvestDisplay';
 import { resolveLocaleFromLanguage } from '../utils/numberLocalization';
 
 describe('harvest quantities', () => {
@@ -27,4 +27,18 @@ describe('harvest quantities', () => {
     ], locale, t)).toBe(`${formatHarvestQuantity('1.125', 'kg', locale, t)} + ${pieces}`);
     expect(formatHarvestTotals([], locale, t)).toBe('');
   });
+});
+
+it.each([
+  ['de', ','], ['en', '.'], ['es', ','], ['fr', ','], ['it', ','], ['pt', ','], ['nl', ','],
+])('rounds yield per square metre to two places in %s', (language, decimal) => {
+  const locale = resolveLocaleFromLanguage(language);
+  expect(formatYieldPerAreaValue('11.362988', locale)).toBe(`11${decimal}36`);
+  expect(formatYieldPerAreaValue('2.506', locale)).toBe(`2${decimal}51`);
+  expect(formatYieldPerAreaValue('2.5', locale)).toBe(`2${decimal}5`);
+  expect(formatYieldPerAreaValue(3, locale)).toBe('3');
+  expect(formatYieldPerAreaValue('0', locale)).toBe('0');
+  expect(formatYieldPerAreaValue('0.005', locale)).toBe(`0${decimal}01`);
+  expect(formatYieldPerAreaValue('0.0049', locale)).toBe(`< 0${decimal}01`);
+  expect(formatYieldPerAreaValue('0', locale, true)).toBe(`< 0${decimal}01`);
 });
