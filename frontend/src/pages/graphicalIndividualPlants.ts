@@ -11,11 +11,13 @@ export interface IndividualPlanProjection {
   plan: SavedPlan;
   parent: PlacementParent;
   crop: BedCultivationEntry;
+  cropProjected: boolean;
 }
 
 export function projectIndividualPlants(
   plans: readonly PlantingPlan[], reference: CropReference | undefined,
   season: Pick<Season, 'start_date' | 'end_date'> | undefined, focusedPlan: number | null,
+  taskPlans?: ReadonlyMap<number, unknown>,
 ) {
   const byParent = new Map<string, IndividualPlanProjection[]>();
   for (const source of plans) {
@@ -24,8 +26,11 @@ export function projectIndividualPlants(
     const plan = { ...source, id: source.id };
     const cultivation = cultivationPlan(plan);
     const crop = reference && season ? projectBedCultivation([cultivation], reference, season)[0] : undefined;
-    if (reference && season && !crop && plan.id !== focusedPlan) continue;
-    const item = { plan, parent, crop: crop ?? { plan: cultivation, phase: null, recordedHarvest: false } };
+    // Task targets and an active editing draft keep their marker even when the
+    // crop window excludes the plan. They receive no crop phase or date label.
+    if (reference && season && !crop && plan.id !== focusedPlan && !taskPlans?.has(plan.id)) continue;
+    const item = { plan, parent, cropProjected: Boolean(crop),
+      crop: crop ?? { plan: cultivation, phase: null, recordedHarvest: false } };
     const key = graphicalObjectKey(parent.kind, parent.id);
     const existing = byParent.get(key);
     if (existing) existing.push(item);

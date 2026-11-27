@@ -995,6 +995,7 @@ test('keeps crop dates directly reachable and shows the selected year on a compa
     ['2027-01-01', '01.01.27', /0?1\.0?1\.2027/],
   ] as const) {
     await date.click();
+    await dateDialog.getByRole('button', { name: 'Stichtag', exact: true }).click();
     await dateDialog.locator('input[type="date"]').fill(iso);
     await page.keyboard.press('Escape');
     await expect(date).toHaveAccessibleName(fullYear);
@@ -1019,6 +1020,164 @@ test('keeps crop dates directly reachable and shows the selected year on a compa
   await date.click();
   await dateDialog.getByRole('button', { name: 'Ganze Saison' }).click();
   await expect(date).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
+});
+
+test.describe('crop time on a touch-capable phone', () => {
+  test.use({ hasTouch: true });
+
+  test('synchronizes the season slider and calendar through a leap day and in fullscreen', async ({ page, request }, testInfo) => {
+    await page.setViewportSize({ width: 375, height: 800 });
+    await page.clock.setFixedTime(new Date(2024, 1, 28, 12));
+    await loginWithDeterministicProject(page, request, 'graphical-leap-timeline', { loginAsAdmin: true });
+    await apiRequest(page, 'POST', '/seasons/', {
+      start_date: '2023-12-31', end_date: '2024-03-31', custom_label: 'Schaltjahrsaison',
+    });
+    await apiRequest(page, 'POST', '/seasons/', {
+      start_date: '2024-04-01', end_date: '2024-12-31', custom_label: 'Folgesaison',
+    });
+    await selectionFixture(page);
+    const switcher = page.getByRole('button', { name: 'Aktive Saison wechseln' });
+    const switchSeason = async (label: string) => {
+      await switcher.tap();
+      await page.getByRole('menuitem').filter({ hasText: label }).tap();
+      await expect(switcher).toContainText(label);
+    };
+    await switchSeason('Schaltjahrsaison');
+
+    const trigger = page.getByTestId('graphical-crop-date');
+    const dialog = page.getByRole('dialog', { name: 'Stichtag für Kulturen' });
+    const picker = dialog.getByLabel('Stichtag', { exact: true });
+    const slider = dialog.getByRole('slider', { name: 'Saisonzeitachse' });
+    await trigger.tap();
+    await expect(dialog.getByRole('button', { name: 'Heute' })).toHaveAttribute('aria-pressed', 'true');
+    await dialog.getByRole('button', { name: 'Stichtag', exact: true }).tap();
+    await expect(picker).toHaveValue('2024-02-28');
+    await expect(slider).toHaveAttribute('aria-valuemax', '91');
+    await slider.press('ArrowRight');
+    await expect(picker).toHaveValue('2024-02-29');
+    await expect(slider).toHaveAttribute('aria-valuetext', /29\.0?2\.2024/);
+    await dialog.getByRole('button', { name: 'Nächster Tag' }).tap();
+    await expect(picker).toHaveValue('2024-03-01');
+    await slider.press('Home');
+    await expect(picker).toHaveValue('2023-12-31');
+    await expect(dialog.getByRole('button', { name: 'Vorheriger Tag' })).toBeDisabled();
+    await slider.press('End');
+    await expect(picker).toHaveValue('2024-03-31');
+    await expect(dialog.getByRole('button', { name: 'Nächster Tag' })).toBeDisabled();
+    await picker.fill('2024-01-01');
+    await expect(slider).toHaveAttribute('aria-valuenow', '1');
+
+    const track = (await dialog.locator('.MuiSlider-root').boundingBox())!;
+    const camera = await activeCamera(page);
+    const touch = await page.context().newCDPSession(page);
+    const point = (fraction: number) => ({ x: Math.round(track.x + track.width * fraction), y: Math.round(track.y + track.height / 2) });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point(0.05)] });
+    for (const fraction of [0.15, 0.3, 0.5]) {
+      await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point(fraction)] });
+    }
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(picker).toHaveValue(/2024-02-1[345]/);
+    expect(await activeCamera(page)).toEqual(camera);
+    await page.keyboard.press('Escape');
+    await expect(trigger).toBeFocused();
+
+    for (const viewport of [
+      { width: 320, height: 800 }, { width: 375, height: 800 }, { width: 768, height: 1024 },
+      { width: 1024, height: 900 }, { width: 1440, height: 900 }, { width: 800, height: 375 },
+    ]) {
+      await page.setViewportSize(viewport);
+      await trigger.tap();
+      await expect(slider).toBeVisible();
+      const box = (await dialog.boundingBox())!;
+      expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+      expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+      await page.screenshot({ path: testInfo.outputPath(`crop-timeline-${viewport.width}.png`), animations: 'disabled' });
+      await page.keyboard.press('Escape');
+    }
+    await page.setViewportSize({ width: 320, height: 800 });
+    await activateCanvasTool(page, 'Vollbild öffnen', 'touch');
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
+    await expect.poll(async () => {
+      const [date, modes] = await Promise.all([trigger.boundingBox(), graphicDisplayButton(page).boundingBox()]);
+      return Boolean(date && modes && Math.abs(date.y - modes.y) <= 1);
+    }).toBe(true);
+    await trigger.tap();
+    await expect(slider).toBeVisible();
+    expect(await dialog.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
+    await dialog.getByRole('button', { name: 'Zeitraum' }).tap();
+    await expect(dialog.getByLabel('Von', { exact: true })).toBeVisible();
+    await expect(dialog.getByLabel('Bis', { exact: true })).toBeVisible();
+    expect(await dialog.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await dialog.getByLabel('Von', { exact: true }).fill('2023-12-31');
+    await dialog.getByLabel('Bis', { exact: true }).fill('2024-03-01');
+    await page.screenshot({ path: testInfo.outputPath('crop-timeline-fullscreen-320.png'), animations: 'disabled' });
+    await page.keyboard.press('Escape');
+    await activateCanvasTool(page, 'Vollbild schließen', 'touch');
+    await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
+
+    await switchSeason('Folgesaison');
+    await trigger.tap();
+    await expect(dialog.getByRole('button', { name: 'Heute' })).toBeDisabled();
+    await expect(picker).toHaveValue('2024-04-01');
+    await page.keyboard.press('Escape');
+    await switchSeason('Schaltjahrsaison');
+    await expect(trigger).toHaveAccessibleName(/Zeitraum · .*31\.12\.2023.*0?1\.0?3\.2024/);
+  });
+});
+
+test('keeps an individual plant task target and its open-task state across crop periods', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'graphical-individual-period', { loginAsAdmin: true });
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', { start_date: '2026-01-01', end_date: '2026-12-31' });
+  const { bed } = await selectionFixture(page);
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Zeitraumkultur', growth_duration_days: 14, harvest_duration_days: 5,
+  });
+  const plan = await apiRequest<{ id: number; individual_positions: { id: string }[] }>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: crop.id, bed: bed.id, planting_date: '2026-02-01',
+    placement_mode: 'individual_bed', cultivation_type: 'direct_sowing', individual_positions: [{ x_m: 1, y_m: 1 }],
+  });
+  const { results: generated } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
+  for (const task of generated) await apiRequest(page, 'PATCH', `/tasks/${task.id}/`, { status: 'completed' });
+  for (const [title, due_date, status] of [
+    ['Zeitraumstamm prüfen', '2026-05-14', 'pending'],
+    ['Junge Triebe prüfen', '2026-05-19', 'pending'],
+    ['Beet beobachten', '2026-06-15', 'pending'],
+    ['Notizen ergänzen', null, 'pending'],
+    ['Erledigte Stammaufgabe', '2026-05-01', 'completed'],
+  ]) {
+    await apiRequest(page, 'POST', '/tasks/', { title, due_date, status, season: season.id, planting_plan: plan.id });
+  }
+  await page.reload();
+  await expectGraphicDisplayMode(page, 'Kulturen & Aufgaben');
+  const [stem] = plan.individual_positions;
+  const marker = page.locator(`[data-graphical-object-target="plant:${stem.id}"]`);
+  await expect(marker).toHaveAccessibleDescription(/Überfällig.*4 offene Aufgaben/);
+  await marker.press('Enter');
+  const preview = page.getByTestId('graphical-object-preview');
+  await expect(preview).toContainText('Außerhalb des gewählten Kulturzeitraums');
+  await expect(preview).toContainText('Zeitraumstamm prüfen');
+  await expect(preview).not.toContainText('Erledigte Stammaufgabe');
+
+  const trigger = page.getByTestId('graphical-crop-date');
+  const dialog = page.getByRole('dialog', { name: 'Stichtag für Kulturen' });
+  await trigger.click();
+  await dialog.getByRole('button', { name: 'Zeitraum' }).click();
+  await dialog.getByLabel('Von', { exact: true }).fill('2026-02-01');
+  await dialog.getByLabel('Bis', { exact: true }).fill('2026-02-15');
+  await page.keyboard.press('Escape');
+  await expect(preview).toContainText(/0?1\.0?2\.2026.*20\.0?2\.2026/);
+  await expect(marker).toHaveAccessibleDescription(/Überfällig.*4 offene Aufgaben/);
+  await expect(preview).not.toContainText('Geplantes Wachstum');
+
+  await trigger.click();
+  await dialog.getByRole('button', { name: 'Heute' }).click();
+  await expect(preview).toContainText('Außerhalb des gewählten Kulturzeitraums');
+  await expect(marker).toHaveAccessibleDescription(/Überfällig.*4 offene Aufgaben/);
+  await preview.getByRole('button', { name: /Zeitraumstamm prüfen.*als erledigt markieren/ }).click();
+  await expect(marker).toHaveAccessibleDescription(/3 offene Aufgaben/);
+  await expect(preview.getByText('Zeitraumstamm prüfen', { exact: true })).toHaveCount(0);
 });
 
 test('draws a sized location boundary and flags plots that cross it', async ({ page, request }, testInfo) => {
@@ -1303,6 +1462,11 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   const harvest = id('Erntebeet');
   const mixed = id('Misch- und Folgebeet');
   const free = id('Freies Beispielbeet');
+  const { results: mixedPlans } = await apiRequest<{ results: {
+    crop_name: string; crop_display_name: string | null; crop_variety: string | null; planting_date: string;
+  }[] }>(page, 'GET', `/planting-plans/?bed=${mixed}`);
+  const chronologicalNames = mixedPlans.sort((a, b) => a.planting_date.localeCompare(b.planting_date))
+    .map(plan => (plan.crop_display_name || plan.crop_name) + (plan.crop_variety ? ` (${plan.crop_variety})` : ''));
   const { results: growthPlans } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', `/planting-plans/?bed=${growth}`);
   for (const plan of growthPlans) {
     const { results: tasks } = await apiRequest<{ results: { id: number; status: string }[] }>(page, 'GET', `/tasks/?planting_plan=${plan.id}`);
@@ -1323,7 +1487,7 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await selectLocation(page, site.name);
   const display = graphicDisplayButton(page);
   await expectGraphicDisplayMode(page, 'Kulturen & Aufgaben');
-  const dateButton = page.getByRole('button', { name: /^Stichtag für Kulturen · / });
+  const dateButton = page.getByTestId('graphical-crop-date');
   await expect(dateButton).toHaveAccessibleName(/^Stichtag für Kulturen · Heute(?: · .*2026)?$/);
 
   const shape = (id: number) => page.evaluate(id => {
@@ -1370,12 +1534,44 @@ test('projects demo crops by date, preserves real task urgency and remembers the
 
   await dateButton.click();
   const dateDialog = page.getByRole('dialog', { name: 'Stichtag für Kulturen' });
+  await dateDialog.getByRole('button', { name: 'Stichtag', exact: true }).click();
   await dateDialog.locator('input[type="date"]').fill('2026-04-15');
-  await expect(dateDialog.getByText(/heutige Datum/)).toBeVisible();
+  await expect(dateDialog.getByText(/heutige Datum/)).toHaveCount(0);
   await page.keyboard.press('Escape');
   await expect(dateButton).not.toHaveAccessibleName('Stichtag für Kulturen · Heute');
   await expect.poll(async () => (await shape(mixed)).phase).toBe('growth');
   await expect.poll(async () => (await shape(harvest)).urgency).toBe(harvestUrgency);
+
+  await target(mixed).press('Enter');
+  await dateButton.click();
+  await dateDialog.getByRole('button', { name: 'Zeitraum' }).click();
+  const from = dateDialog.getByLabel('Von', { exact: true });
+  const to = dateDialog.getByLabel('Bis', { exact: true });
+  await from.fill('2026-04-01');
+  await to.fill('2026-06-10');
+  await from.fill('2026-06-11');
+  await expect(dateDialog.getByRole('alert')).toContainText('Enddatum');
+  await from.fill('');
+  await expect(dateDialog.getByRole('alert')).toHaveText('Gib beide Daten ein.');
+  await from.fill('2025-12-31');
+  await expect(dateDialog.getByRole('alert')).toContainText('ausgewählten Saison');
+  await expect(dateDialog.getByText(/Gezeigter Zeitraum: .*0?1\.0?4\.2026.*10\.0?6\.2026/)).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(dateButton).toBeFocused();
+  await expect(dateButton).toHaveAccessibleName(/Zeitraum · .*0?1\.0?4\.2026.*10\.0?6\.2026/);
+  await expect(preview).toHaveAccessibleName('Misch- und Folgebeet');
+  const projected = preview.getByRole('region', { name: 'Kulturen' });
+  await expect(projected.getByRole('listitem').locator('p')).toHaveText(chronologicalNames);
+  await expect(projected).not.toContainText(/Geplantes Wachstum|Geplante Ernte/);
+  await expect(projected.getByRole('listitem').first()).toContainText(/2026.*2026/);
+  await expect.poll(async () => (await shape(harvest)).urgency).toBe(harvestUrgency);
+
+  await dateButton.click();
+  await from.fill('2026-04-15');
+  await to.fill('2026-04-15');
+  await page.keyboard.press('Escape');
+  await expect.poll(async () => (await shape(mixed)).phase).toBe('growth');
+  await expect(projected.getByRole('listitem')).toHaveCount(1);
   await dateButton.click();
   await dateDialog.getByRole('button', { name: 'Ganze Saison' }).click();
   await target(mixed).press('Enter');

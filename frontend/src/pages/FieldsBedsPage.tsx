@@ -1,5 +1,5 @@
 import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, useMediaQuery } from '@mui/material';
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
 import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
@@ -10,8 +10,9 @@ import { CompactViewSwitch } from '../components/buttons/CompactViewSwitch';
 import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
 import { GraphicalDisplayControls } from './GraphicalDisplayControls';
 import {
-  GRAPHICAL_DISPLAY_MODES, getCropReference, type CropDateSelection, type GraphicalDisplayMode,
+  GRAPHICAL_DISPLAY_MODES, getCropReference, readCropDateSelection, type CropDateSelection, type GraphicalDisplayMode,
 } from './graphicalCultivation';
+import { clearSeasonSwitchState, peekSeasonSwitchState, registerSeasonSwitchState } from '../seasons/seasonSwitchState';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
 import { HierarchyAddIcon } from '../components/hierarchy/HierarchyAddIcon';
 import { useCommandContextTag, useRegisterCommands, useRegisterCreateActions } from '../commands/useCommandContext';
@@ -49,6 +50,7 @@ import { useGrowingAreaIndividualPlans } from '../components/hierarchy/hooks/use
 import { indexIndividualHierarchy } from '../components/hierarchy/utils/individualHierarchyRows';
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
+const CROP_TIME_SWITCH_KEY = 'growingAreasCropTime';
 const ADD_PARCEL_ACTION = 'add-parcel';
 const NO_TITLE_ACTIONS: TopbarContextAction[] = [];
 
@@ -149,9 +151,20 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     setDisplayPreference({ key: preferenceKey, mode });
     try { localStorage.setItem(preferenceKey, mode); } catch { /* Storage may be disabled. */ }
   }, [preferenceKey]);
-  const [cropDate, setCropDate] = useState<CropDateSelection | null>(null);
+  const [cropDate, setCropDate] = useState<CropDateSelection | null>(() => projectId === null
+    ? null : readCropDateSelection(peekSeasonSwitchState(projectId, CROP_TIME_SWITCH_KEY)));
+  const cropDateSnapshot = useRef(cropDate);
+  useEffect(() => {
+    if (projectId !== null) clearSeasonSwitchState(projectId, CROP_TIME_SWITCH_KEY);
+  }, [projectId]);
+  useEffect(() => { cropDateSnapshot.current = cropDate; }, [cropDate]);
+  useEffect(() => registerSeasonSwitchState(CROP_TIME_SWITCH_KEY, () => cropDateSnapshot.current), []);
   const cropReference = useMemo(() => activeSeason ? getCropReference(cropDate, activeSeason) : undefined,
     [activeSeason, cropDate]);
+  const projection = useMemo(() => ({ seasonId: activeSeason?.id, reference: cropReference }), [activeSeason?.id, cropReference]);
+  const deferredProjection = useDeferredValue(projection);
+  const projectedCropReference = deferredProjection.seasonId === projection.seasonId
+    ? deferredProjection.reference : cropReference;
   const [graphicFullscreen, setGraphicFullscreen] = useState(false);
   const displayControlProps = useMemo(() => ({
     mode: displayMode, onMode: setDisplayMode, season: activeSeason, reference: cropReference,
@@ -642,7 +655,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             activeSeasonId={activeSeason?.id}
             individualSeason={activeSeason}
             displayMode={displayMode}
-            cropReference={cropReference}
+            cropReference={projectedCropReference}
             fullscreenDisplayControls={displayControls}
             onFullscreenChange={setGraphicFullscreen}
             canEditIndividualPlants={Boolean(activeProjectMembership)}

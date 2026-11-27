@@ -4,16 +4,43 @@ import { getPlanPropagationInfo } from './planSowingDate';
 
 export const GRAPHICAL_DISPLAY_MODES = ['areas', 'crops', 'tasks', 'cropsAndTasks'] as const;
 export type GraphicalDisplayMode = typeof GRAPHICAL_DISPLAY_MODES[number];
-export type CropDateSelection = { kind: 'today' | 'season' } | { kind: 'date'; date: string };
-export type CropReference = { kind: 'season' } | { kind: 'date'; date: string; today: boolean };
+export type CropDateRange = { kind: 'range'; start: string; end: string };
+export type CropDateSelection = { kind: 'today' | 'season' } | { kind: 'date'; date: string } | CropDateRange;
+export type CropReference = { kind: 'season' } | { kind: 'date'; date: string; today: boolean } | CropDateRange;
+
+export function readCropDateSelection(value: unknown): CropDateSelection | null {
+  if (!value || typeof value !== 'object' || !('kind' in value)) return null;
+  if (value.kind === 'today' || value.kind === 'season') return { kind: value.kind };
+  if (value.kind === 'date' && 'date' in value && typeof value.date === 'string') {
+    return { kind: 'date', date: value.date };
+  }
+  if (value.kind === 'range' && 'start' in value && 'end' in value
+    && typeof value.start === 'string' && typeof value.end === 'string') {
+    return { kind: 'range', start: value.start, end: value.end };
+  }
+  return null;
+}
 
 type SeasonBounds = Pick<Season, 'start_date' | 'end_date'>;
 
 export const includesCrops = (mode: GraphicalDisplayMode) => mode === 'crops' || mode === 'cropsAndTasks';
 export const includesTasks = (mode: GraphicalDisplayMode) => mode === 'tasks' || mode === 'cropsAndTasks';
 
-function inSeason(date: string, season: SeasonBounds): boolean {
-  return date >= season.start_date && date <= season.end_date;
+export function isCropDateInSeason(date: string, season: SeasonBounds): boolean {
+  if (date < season.start_date || date > season.end_date) return false;
+  const parsed = parseIsoDate(date);
+  return parsed !== null && formatIsoDate(parsed) === date;
+}
+
+export function isCropRangeInSeason(start: string, end: string, season: SeasonBounds): boolean {
+  return start <= end && isCropDateInSeason(start, season) && isCropDateInSeason(end, season);
+}
+
+/** Number of calendar days between two ISO dates, independent of DST and locale. */
+export function cropDateOffset(start: string, date: string): number {
+  const left = parseIsoDate(start);
+  const right = parseIsoDate(date);
+  return left && right ? (right.getTime() - left.getTime()) / 86_400_000 : 0;
 }
 
 export function getCropReference(
@@ -22,10 +49,11 @@ export function getCropReference(
   today = formatDateToAPI(new Date()),
 ): CropReference {
   if (selection?.kind === 'season') return { kind: 'season' };
-  if (selection?.kind === 'date' && inSeason(selection.date, season)) {
+  if (selection?.kind === 'range' && isCropRangeInSeason(selection.start, selection.end, season)) return selection;
+  if (selection?.kind === 'date' && isCropDateInSeason(selection.date, season)) {
     return { kind: 'date', date: selection.date, today: false };
   }
-  return inSeason(today, season)
+  return isCropDateInSeason(today, season)
     ? { kind: 'date', date: today, today: true }
     : { kind: 'date', date: season.start_date, today: false };
 }
@@ -124,8 +152,10 @@ export function projectBedCultivation(
   reference: CropReference,
   season: SeasonBounds,
 ): BedCultivationEntry[] {
-  const range = reference.kind === 'date'
-    ? { start_date: reference.date, end_date: reference.date } : season;
+  const date = reference.kind === 'date' ? reference.date
+    : reference.kind === 'range' && reference.start === reference.end ? reference.start : null;
+  const range = reference.kind === 'range' ? { start_date: reference.start, end_date: reference.end }
+    : date ? { start_date: date, end_date: date } : season;
   return plans.flatMap<BedCultivationEntry>(plan => {
     const recordedPeriods = plan.recordedHarvest.filter(period =>
       period.start_date <= range.end_date && period.end_date >= range.start_date,
@@ -133,15 +163,15 @@ export function projectBedCultivation(
     const isOutside = (plan.start !== null && plan.start > range.end_date)
       || (plan.end !== null && plan.end < range.start_date);
     if (isOutside && recordedPeriods.length === 0) return [];
-    if (reference.kind === 'season') return [{ plan, phase: null, recordedHarvest: false, recordedPeriods }];
+    if (date === null) return [{ plan, phase: null, recordedHarvest: false, recordedPeriods }];
     const recorded = recordedPeriods[0];
     if (recorded) return [{ plan, phase: 'harvest', recordedHarvest: true, harvest: recorded }];
     if (plan.start === null || plan.end === null || plan.crop === null) {
       return [{ plan, phase: null, recordedHarvest: false }];
     }
-    const harvest = plan.estimatedHarvest.find(period => periodIncludes(period, reference.date));
+    const harvest = plan.estimatedHarvest.find(period => periodIncludes(period, date));
     const windows = [...plan.estimatedHarvest, ...plan.recordedHarvest];
-    const beforeHarvest = windows.length > 0 && windows.every(period => reference.date < period.start_date);
+    const beforeHarvest = windows.length > 0 && windows.every(period => date < period.start_date);
     return [{
       plan, phase: harvest ? 'harvest' : !plan.perennial && beforeHarvest ? 'growth' : 'occupancy',
       recordedHarvest: false, harvest,

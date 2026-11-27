@@ -19,6 +19,7 @@ export interface CanvasStem extends StemCoordinates {
   urgency?: BedTaskUrgency;
   phase?: BedCultivationEntry['phase'];
   phaseColor?: string;
+  neutralCrop?: boolean;
   label?: { name: string; phase: string | null; x: number; y: number; width: number; height: number };
 }
 
@@ -98,7 +99,7 @@ export function GraphicalIndividualPlantsLayer({
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
         const taskColors = stem.urgency ? bedTaskColors(theme, stem.urgency) : null;
-        const colors = graphicalPlantColors(theme, stem.phaseColor, taskColors);
+        const colors = graphicalPlantColors(theme, stem.phaseColor, taskColors, stem.neutralCrop);
         const radius = stem.urgency || stem.selected ? 6 : 4.5;
         const label = stem.label;
         return <Group key={stem.key} {...point} draggable={canDrag} dragDistance={8}

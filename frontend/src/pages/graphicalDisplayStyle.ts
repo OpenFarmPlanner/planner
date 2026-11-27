@@ -21,11 +21,13 @@ export function graphicalBedCropFill(theme: Theme, phase: 'growth' | 'harvest' |
   return phase ? alpha(graphicalCropPhaseColor(theme, phase, color), 0.45) : alpha(theme.palette.grey[700], 0.22);
 }
 
-export function graphicalPlantColors(theme: Theme, phaseColor?: string, taskColors?: { fill: string; glyph: string } | null) {
+export function graphicalPlantColors(
+  theme: Theme, phaseColor?: string, taskColors?: { fill: string; glyph: string } | null, neutralCrop = false,
+) {
   const coloredInk = taskColors?.glyph ?? phaseColor;
   return {
     stem: coloredInk ?? theme.palette.text.primary,
-    canopyFill: taskColors?.fill ?? alpha(phaseColor ?? theme.palette.success.main, 0.15),
-    canopyOutline: alpha(coloredInk ?? theme.palette.success.dark, coloredInk ? 0.65 : 0.36),
+    canopyFill: taskColors?.fill ?? alpha(phaseColor ?? (neutralCrop ? theme.palette.grey[700] : theme.palette.success.main), 0.15),
+    canopyOutline: alpha(coloredInk ?? (neutralCrop ? theme.palette.grey[700] : theme.palette.success.dark), coloredInk ? 0.65 : 0.36),
   };
 }

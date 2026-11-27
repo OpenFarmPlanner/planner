@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { PlantingPlan } from '../api/types';
-import { getCropReference, indexBedCultivations, projectBedCultivation, stepCropDate } from '../pages/graphicalCultivation';
+import {
+  cropDateOffset, getCropReference, indexBedCultivations, isCropRangeInSeason,
+  projectBedCultivation, readCropDateSelection, stepCropDate,
+} from '../pages/graphicalCultivation';
 
 const season = { start_date: '2025-10-01', end_date: '2026-09-30' };
 const plan = (changes: Partial<PlantingPlan> = {}): PlantingPlan => ({
@@ -11,6 +14,8 @@ const plan = (changes: Partial<PlantingPlan> = {}): PlantingPlan => ({
 
 const project = (plans: PlantingPlan[], date: string) => projectBedCultivation(indexBedCultivations(plans).get(20) ?? [],
   { kind: 'date', date, today: false }, season);
+const projectRange = (plans: PlantingPlan[], start: string, end: string) =>
+  projectBedCultivation(indexBedCultivations(plans).get(20) ?? [], { kind: 'range', start, end }, season);
 
 describe('crop reference dates', () => {
   it('uses local today only inside the selected season and keeps valid explicit dates', () => {
@@ -27,6 +32,22 @@ describe('crop reference dates', () => {
     expect(getCropReference({ kind: 'season' }, season, '2027-05-01')).toEqual({ kind: 'season' });
     expect(stepCropDate('2025-12-31', 1, season)).toBe('2026-01-01');
     expect(stepCropDate(season.end_date, 1, season)).toBe(season.end_date);
+  });
+
+  it('counts inclusive season positions over a leap day and keeps only valid custom selections', () => {
+    const crossYear = { start_date: '2023-12-31', end_date: '2024-03-01' };
+    const range = { kind: 'range', start: '2023-12-31', end: '2024-02-29' } as const;
+    expect(readCropDateSelection(range)).toEqual(range);
+    expect(readCropDateSelection({ kind: 'range', start: '2023-12-31', end: 4 })).toBeNull();
+    expect(cropDateOffset(crossYear.start_date, crossYear.end_date)).toBe(61);
+    expect(stepCropDate(crossYear.start_date, 60, crossYear)).toBe('2024-02-29');
+    expect(stepCropDate(crossYear.start_date, 62, crossYear)).toBe(crossYear.end_date);
+    expect(getCropReference(range, crossYear, '2024-01-15')).toEqual(range);
+    expect(getCropReference(range, season, '2027-05-01')).toEqual({ kind: 'date', date: season.start_date, today: false });
+    expect(isCropRangeInSeason('2024-02-29', '2024-02-29', crossYear)).toBe(true);
+    expect(isCropRangeInSeason('2024-02-29', '2024-02-28', crossYear)).toBe(false);
+    expect(isCropRangeInSeason('2024-01-01', '2024-02-30', crossYear)).toBe(false);
+    expect(isCropRangeInSeason('', crossYear.end_date, crossYear)).toBe(false);
   });
 });
 
@@ -101,5 +122,33 @@ describe('bed cultivation projection', () => {
     expect(project([perennial], '2026-06-10')).toMatchObject([{ phase: 'harvest', recordedHarvest: false }]);
     expect(project([perennial], '2026-06-16')).toMatchObject([{ phase: 'harvest', recordedHarvest: true }]);
     expect(project([perennial], '2026-07-19')).toEqual([]);
+  });
+
+  it('includes overlapping, consecutive, carried and uncertain occupations in order without inventing a phase', () => {
+    const carried = plan({ id: 3, carried_over: true, planting_date: '2025-09-20',
+      harvest_date: '2025-10-01', harvest_end_date: '2025-10-10', occupancy_end_date: '2025-10-10' });
+    const perennial = plan({ id: 2, crop_life_cycle: 'perennial', planting_date: '2024-03-05',
+      clearing_date: '2026-04-03', occupancy_end_date: '2026-04-03' });
+    const next = plan({ id: 4, planting_date: '2026-05-04', harvest_date: '2026-05-23',
+      harvest_end_date: '2026-06-01', occupancy_end_date: '2026-06-01' });
+    const nursery = plan({ id: 5, cultivation_type: 'pre_cultivation', actual_sowing_date: '2026-04-01',
+      actual_transplanting_date: '2026-05-05', harvest_date: '2026-07-01', occupancy_end_date: '2026-07-01' });
+    const uncertain = plan({ id: 6, planting_date: null, harvest_date: null, harvest_end_date: null, occupancy_end_date: null });
+    const projection = projectRange([next, nursery, uncertain, plan(), carried, perennial], '2025-10-10', '2026-05-04');
+    expect(projection.map(({ plan, phase }) => [plan.id, phase])).toEqual([[2, null], [3, null], [1, null], [4, null], [6, null]]);
+    expect(projection[4].plan).toMatchObject({ start: null, end: null });
+    expect(projectRange([plan()], '2026-05-04', '2026-05-05')).toEqual([]);
+  });
+
+  it('agrees with a specific date for a one-day range and keeps recorded harvests disjoint', () => {
+    const recorded = plan({ id: 2, harvest_actual_occurrences: [{
+      year: null, planned_start_date: null, planned_end_date: null,
+      actual_start_date: '2026-05-09', actual_end_date: '2026-05-10',
+    }] });
+    expect(projectRange([plan(), recorded], '2026-04-07', '2026-04-07')).toEqual(project([plan(), recorded], '2026-04-07'));
+    expect(projectRange([recorded], '2026-05-04', '2026-05-08')).toEqual([]);
+    expect(projectRange([recorded], '2026-05-08', '2026-05-09')).toMatchObject([{
+      phase: null, recordedPeriods: [{ start_date: '2026-05-09', end_date: '2026-05-10' }],
+    }]);
   });
 });

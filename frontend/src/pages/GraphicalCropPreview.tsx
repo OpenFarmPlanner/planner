@@ -3,6 +3,7 @@ import LoadRetryButton from '../components/LoadRetryButton';
 import { useTranslation } from '../i18n';
 import { formatSeasonDate, resolveSeasonDateLocale } from '../seasons/formatSeasonDate';
 import { bedCropDisplayName, bedCropPhaseLabel, type BedCultivationEntry, type CropReference } from './graphicalCultivation';
+import { formatCropInterval, formatCropOccupation, formatCropReference } from './graphicalCropTimeLabels';
 
 export interface CropPreviewData {
   reference: CropReference;
@@ -16,14 +17,12 @@ export function GraphicalCropPreview({ reference, entries, loading, failed, refr
   const { t, i18n } = useTranslation(['fields', 'common', 'ganttChart']);
   const locale = resolveSeasonDateLocale(i18n);
   const dateText = (date: string) => formatSeasonDate(date, locale);
-  const interval = (start: string | null, end: string | null) => start && end
-    ? t('graphical.display.range', { start: dateText(start), end: dateText(end) })
-    : start || end ? dateText((start ?? end)!) : null;
+  const interval = (start: string, end: string) => formatCropInterval(start, end, locale, t);
   return (
     <Stack component="section" spacing={0.5} aria-label={t('graphical.display.mode.crops')}>
       <Typography variant="subtitle2" component="h3">{t('graphical.display.mode.crops')}</Typography>
       <Typography variant="caption" color="text.secondary">
-        {reference.kind === 'season' ? t('graphical.display.entireSeason') : dateText(reference.date)}
+        {formatCropReference(reference, locale, t)}
       </Typography>
       {loading ? <Typography role="status" variant="caption">{t('common:messages.loading')}</Typography> : null}
       {failed ? <Alert severity="error" action={<LoadRetryButton onClick={refresh} />}>
@@ -33,7 +32,7 @@ export function GraphicalCropPreview({ reference, entries, loading, failed, refr
         {entries.map(entry => {
           const { plan, harvest, recordedPeriods } = entry;
           const phase = bedCropPhaseLabel(entry, t);
-          const period = interval(plan.start, plan.end);
+          const period = formatCropOccupation(plan, locale, t);
           return <Box component="li" key={plan.id} sx={{ mb: 0.5, overflowWrap: 'anywhere' }}>
             <Typography variant="body2">{bedCropDisplayName(plan, t)}</Typography>
             {phase && <Typography component="div" variant="caption" color="text.secondary">
@@ -43,7 +42,7 @@ export function GraphicalCropPreview({ reference, entries, loading, failed, refr
             {plan.planted && <Typography component="div" variant="caption" color="text.secondary">
               {t('graphical.display.recordedPlanting', { date: dateText(plan.planted) })}
             </Typography>}
-            {reference.kind === 'season' && period && <Typography component="div" variant="caption" color="text.secondary">
+            {reference.kind !== 'date' && period && <Typography component="div" variant="caption" color="text.secondary">
               {t('graphical.display.phase.occupancy')} · {period}
             </Typography>}
             {recordedPeriods?.map(actual => <Typography key={`${actual.start_date}:${actual.end_date}`}
