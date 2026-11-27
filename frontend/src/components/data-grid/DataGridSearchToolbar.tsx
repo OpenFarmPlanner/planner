@@ -44,6 +44,8 @@ export interface DataGridSearchToolbarProps {
   /** Anchors the columns panel to this button. */
   columnsButtonRef?: Ref<HTMLButtonElement>;
   testId?: string;
+  compact?: boolean;
+  leadingControls?: ReactNode;
   viewControls?: ReactNode;
 }
 
@@ -72,6 +74,8 @@ export function DataGridSearchToolbar({
   onColumnsPanelOpenChange,
   columnsButtonRef,
   testId,
+  compact = false,
+  leadingControls,
   viewControls,
 }: DataGridSearchToolbarProps) {
   const panelId = useId();
@@ -79,8 +83,9 @@ export function DataGridSearchToolbar({
   const panelTitleRef = useRef<HTMLHeadingElement>(null);
 
   return (
-    <Box sx={{ mb: 1, containerType: 'inline-size', containerName: 'list-toolbar' }} data-testid={testId}>
+    <Box sx={{ mb: 1, px: compact ? 1 : undefined, containerType: 'inline-size', containerName: 'list-toolbar' }} data-testid={testId}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        {leadingControls}
         <PageSearchField
           value={query}
           onChange={onQueryChange}
@@ -89,12 +94,16 @@ export function DataGridSearchToolbar({
           ariaLabel={labels.searchAriaLabel}
           clearLabel={labels.searchClear}
           inputRef={searchInputRef}
-          shortcutHint="/"
+          shortcutHint={compact ? undefined : '/'}
           sx={{
-            flex: '1 1 8rem', minWidth: 'min(8rem, 100%)', maxWidth: '100%',
-            '& .MuiInputBase-root': { minHeight: 44 },
+            flex: compact ? '1 1 6.5rem' : '1 1 8rem',
+            minWidth: compact ? 'min(6.5rem, 100%)' : 'min(8rem, 100%)', maxWidth: '100%',
+            '& .MuiInputBase-root': { minHeight: 44, px: compact ? 0.5 : undefined },
             '& .MuiIconButton-root': { minWidth: 44, minHeight: 44 },
-            [LIST_TOOLBAR_LABEL_QUERY]: { flex: '0 1 340px' },
+            ...(compact ? {
+              '& .MuiInputAdornment-positionStart': { mr: 0.5 },
+              '& .MuiInputAdornment-positionEnd': { ml: 0, '& .MuiIconButton-root': { mr: 0 } },
+            } : { [LIST_TOOLBAR_LABEL_QUERY]: { flex: '0 1 340px' } }),
           }}
         />
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', maxWidth: '100%' }}>
@@ -110,6 +119,7 @@ export function DataGridSearchToolbar({
               color={activeFilterCount > 0 ? 'primary' : 'inherit'}
               label={labels.filterButton}
               labelQuery={LIST_TOOLBAR_LABEL_QUERY}
+              iconOnly={compact}
               icon={<FilterListIcon fontSize="small" />}
               aria-haspopup="dialog"
               aria-expanded={isFilterPanelOpen}
@@ -129,8 +139,9 @@ export function DataGridSearchToolbar({
           ) : null}
           {viewControls}
         </Box>
-        {count ? <Box sx={{ ml: 'auto', pl: 1 }}>{count}</Box> : null}
+        {!compact && count ? <Box sx={{ ml: 'auto', pl: 1 }}>{count}</Box> : null}
       </Box>
+      {compact && count}
       {hasFilters && activeFilterChips ? <Box sx={{ mt: 1 }}>{activeFilterChips}</Box> : null}
 
       <Popover

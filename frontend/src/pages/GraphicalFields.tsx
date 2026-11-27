@@ -26,6 +26,7 @@ import { useTranslation } from "../i18n";
 import { GraphicalObjectHint, GraphicalObjectOverlays, type GraphicalAreaObject, type GraphicalObject } from "./GraphicalObjectOverlays";
 import { graphicalObjectKey, useGraphicalObjectInteraction } from "./useGraphicalObjectInteraction";
 import { useContextMenuHint } from "../components/data-grid/useContextMenuHint";
+import { useTouchOnly } from '../hooks/useTouchOnly';
 import { GraphicalFreeRectangles } from "./GraphicalFreeAreas";
 import { GraphicalDisplayLegend } from "./GraphicalDisplayLegend";
 import { GraphicalBedLabels } from "./GraphicalBedLabels";
@@ -238,7 +239,8 @@ export default function GraphicalFields({
   } : undefined;
   const coarsePointer = useMediaQuery('(pointer: coarse)');
   const finePointer = useMediaQuery('(pointer: fine)');
-  const device = objects.device ?? (coarsePointer ? 'touch' : finePointer ? 'desktop' : null);
+  const touchOnly = useTouchOnly();
+  const device = touchOnly ? 'touch' : objects.device ?? (coarsePointer ? 'touch' : finePointer ? 'desktop' : null);
   const {
     showContextMenuHint, showTouchContextMenuHint, closeContextMenuHint, closeTouchContextMenuHint,
     markContextMenuHintUsed, markTouchContextMenuHintUsed,

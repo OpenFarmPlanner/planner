@@ -243,8 +243,8 @@ test('a phone configures parcel and bed order and copies a reviewed rotation', a
   if (!(await northRow.isVisible())) {
     await page.getByRole('button', { name: /^Aufklappen:.*Versuchsgarten/ }).click();
   }
-  // Rotation groups are project-wide: the list toolbar opens their management (#1576).
-  await page.getByRole('button', { name: 'Rotationsgruppen verwalten' }).click();
+  await page.getByRole('button', { name: 'Arbeitsbereichsmenü' }).click();
+  await page.getByRole('menuitem', { name: 'Rotationsgruppen verwalten' }).click();
   const settings = page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' });
   await settings.getByRole('textbox', { name: 'Gruppenname' }).fill('Nord–Süd');
   for (const name of ['Nord', 'Süd']) {

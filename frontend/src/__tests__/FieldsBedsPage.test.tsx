@@ -409,6 +409,7 @@ describe('FieldsBedsPage', () => {
   });
 
   it('keeps location selection across representations and falls back safely after removal', async () => {
+    projectRequirementState.activeProjectMembership = { project_id: 1 };
     locationListMock.mockResolvedValue({ data: { results: [{ id: 1, name: 'Hof Nord' }, { id: 2, name: 'Hof Süd' }] } });
     fieldListMock.mockResolvedValue({ data: { results: [{ id: 11, name: 'Nord', location: 1 }, { id: 21, name: 'Süd', location: 2 }] } });
     window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
@@ -435,12 +436,14 @@ describe('FieldsBedsPage', () => {
   });
 
   it('resets graphic editing and location data when the active project changes', async () => {
+    projectRequirementState.activeProjectMembership = { project_id: 1 };
     window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
     const user = userEvent.setup();
     const view = render(workspace());
     await user.click(await screen.findByRole('button', { name: 'Grafik bearbeiten' }));
     expect(screen.getByText('EditMode-edit')).toBeInTheDocument();
     projectRequirementState.activeProjectId = 2;
+    projectRequirementState.activeProjectMembership = { project_id: 2 };
     locationListMock.mockResolvedValue({ data: { results: [{ id: 7, name: 'Anderer Hof' }] } });
     fieldListMock.mockResolvedValue({ data: { results: [{ id: 77, name: 'Anderes Feld', location: 7 }] } });
     bedListMock.mockResolvedValue({ data: { results: [{ id: 777, name: 'Anderes Beet', field: 77 }] } });
@@ -449,6 +452,14 @@ describe('FieldsBedsPage', () => {
     expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('7');
     expect(screen.getByText('EditMode-view')).toBeInTheDocument();
     expect(screen.queryByText('Standort: Hofstelle')).not.toBeInTheDocument();
+  });
+
+  it('keeps the graphic read-only when there is no active project membership', async () => {
+    window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
+    render(workspace());
+    expect(await screen.findByText('EditMode-view')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Grafik bearbeiten' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Abstände' })).not.toBeInTheDocument();
   });
 
 });

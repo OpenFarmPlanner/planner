@@ -22,6 +22,7 @@
   "cancel": "Abbrechen",
   "submit": "Erstellen",
   "selectLocation": "Standort auswählen",
+  "workspaceActions": "Arbeitsbereichsmenü",
   "representation": {
     "label": "Darstellung",
     "ariaLabel": "Darstellung auswählen",
@@ -148,6 +149,7 @@
     "locationEditModeHelp": "Im Bearbeitungsmodus lassen sich Parzellen und Beete verschieben.",
     "editModeShortcut": "Tastenkürzel: Alt+E",
     "locationEditModeAction": "Grafik bearbeiten",
+    "locationEditModeExit": "Grafikbearbeitung beenden",
     "locationEditModeActive": "Grafikbearbeitung aktiv",
     "enableLocationEditMode": "Grafik bearbeiten",
     "disableLocationEditMode": "Grafikbearbeitung für Standort „{{name}}“ beenden",

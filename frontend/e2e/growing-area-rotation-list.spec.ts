@@ -6,7 +6,7 @@ test.use({ serviceWorkers: 'block' });
 type Entity = { id: number; name: string };
 
 // Long, but within the auto-sized name column's maximum width.
-const LONG_NAME = 'Nordparzelle am langen Heckenrand';
+const LONG_NAME = 'Nordparzelle am Heckenrand';
 
 /** Two parcels in one rotation group; the first has a long name (#1576). */
 async function seedRotation(page: Page) {
@@ -119,39 +119,51 @@ test('fits search, active filters and rotation management in the compact list to
 
   const toolbar = page.getByTestId('growing-area-search-toolbar');
   const manage = toolbar.getByRole('button', { name: 'Rotationsgruppen verwalten' });
+  const workspace = toolbar.getByRole('button', { name: 'Arbeitsbereichsmenü' });
   const filter = toolbar.getByRole('button', { name: 'Filter', exact: true });
   const search = toolbar.getByRole('searchbox', { name: 'Anbauflächen durchsuchen' });
+  const count = toolbar.getByTestId('growing-area-search-count');
   for (const viewport of [{ width: 320, height: 800 }, { width: 375, height: 800 },
-    { width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
+    { width: 800, height: 375 }, { width: 768, height: 1024 }, { width: 1024, height: 768 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
-    await expect(manage).toBeInViewport();
+    const compact = viewport.width < 600 || viewport.height < 500;
+    const rotation = compact ? workspace : manage;
+    await expect(rotation).toBeInViewport();
+    if (compact) {
+      await expect(manage).toHaveCount(0);
+      await expect(count).toBeEmpty();
+    } else await expect(count).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth)).toBeLessThanOrEqual(0);
-    for (const action of [filter, manage]) {
+    for (const action of [filter, rotation]) {
       const target = await box(action);
       expect(target.width).toBeGreaterThanOrEqual(44);
       expect(target.height).toBeGreaterThanOrEqual(44);
-      if (viewport.width <= 768) await expect(action.locator('[data-toolbar-action-label]')).toBeHidden();
+      if (compact || viewport.width <= 768) await expect(action.locator('[data-toolbar-action-label]')).toBeHidden();
       if (viewport.width === 1440) await expect(action.locator('[data-toolbar-action-label]')).toBeVisible();
     }
-    if ([375, 768].includes(viewport.width)) {
-      const [searchBounds, filterBounds, manageBounds] = await Promise.all([
-        box(search.locator('..')), box(filter), box(manage),
-      ]);
-      expect(searchBounds.width).toBeGreaterThanOrEqual(128);
-      expect(Math.abs(filterBounds.y - searchBounds.y)).toBeLessThanOrEqual(1);
-      expect(Math.abs(manageBounds.y - filterBounds.y)).toBeLessThanOrEqual(1);
+    if (compact) {
+      const primaryControls = [
+        toolbar.getByRole('button', { name: 'Liste', exact: true }),
+        toolbar.getByRole('button', { name: 'Grafik', exact: true }),
+        search.locator('..'), filter, workspace,
+      ];
+      const targets = await Promise.all(primaryControls.map(box));
+      expect(targets[2].width).toBeGreaterThanOrEqual(104);
+      expect(targets.every(target => Math.abs(target.y - targets[0].y) <= 1)).toBe(true);
     }
     await testInfo.attach(`rotation-list-${viewport.width}`, {
       body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
     });
   }
   await page.setViewportSize({ width: 375, height: 800 });
-  const count = toolbar.getByTestId('growing-area-search-count');
-  const originalCount = await count.innerText();
+  await expect(count).toBeEmpty();
   await search.fill('Nord');
-  await expect(count).not.toHaveText(originalCount);
+  await expect(count).toBeVisible();
+  expect((await box(count)).y).toBeGreaterThanOrEqual((await box(filter)).y + 44);
+  await search.fill('Nicht vorhandene Parzelle');
+  await expect(count).toHaveText(/^0\b/);
   await search.press('Escape');
-  await expect(count).toHaveText(originalCount);
+  await expect(count).toBeEmpty();
 
   await filter.press('Enter');
   const filterDialog = page.getByRole('dialog', { name: 'Filter' });
@@ -160,18 +172,20 @@ test('fits search, active filters and rotation management in the compact list to
   const activeFilter = toolbar.getByRole('button', { name: 'Filter, 1 Filter aktiv' });
   await expect(activeFilter).toBeFocused();
   await expect(activeFilter).toHaveClass(/MuiButton-colorPrimary\b/);
+  await expect(count).toBeVisible();
   await expect(toolbar.locator('.MuiBadge-badge')).toHaveText('1');
   await expect(page.getByRole('tooltip')).toHaveCount(0);
   await activeFilter.press('Enter');
   await filterDialog.getByRole('button', { name: 'Zurücksetzen' }).click();
   await page.keyboard.press('Escape');
   await expect(filter).toBeFocused();
-  await expect(count).toHaveText(originalCount);
+  await expect(count).toBeEmpty();
 
-  await manage.focus();
+  await workspace.focus();
   await page.keyboard.press('Enter');
+  await page.getByRole('menuitem', { name: 'Rotationsgruppen verwalten' }).press('Enter');
   await expect(page.getByRole('dialog', { name: 'Rotationsgruppen verwalten' })).toBeVisible();
   await page.keyboard.press('Escape');
-  await expect(manage).toBeFocused();
+  await expect(workspace).toBeFocused();
   await expect(page.getByRole('tooltip')).toHaveCount(0);
 });

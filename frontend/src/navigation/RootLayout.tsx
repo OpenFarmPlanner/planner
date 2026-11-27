@@ -35,6 +35,7 @@ import { createRootCommands } from '../commands/commands';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import MenuIcon from '@mui/icons-material/Menu';
+import { CompactViewSwitch } from '../components/buttons/CompactViewSwitch';
 import ViewListOutlinedIcon from '@mui/icons-material/ViewListOutlined';
 import MapOutlinedIcon from '@mui/icons-material/MapOutlined';
 import LocalFloristOutlinedIcon from '@mui/icons-material/LocalFloristOutlined';
@@ -136,22 +137,6 @@ interface SnackbarState {
   actionLabel?: string;
   onAction?: () => void | Promise<void>;
 }
-
-function getCompactTopbarActionIcon(actionId: string): React.ReactNode {
-  switch (actionId) {
-    case 'fields-view-mode-list':
-      return <ViewListOutlinedIcon fontSize="small" />;
-    case 'fields-view-mode-graphical':
-      return <MapOutlinedIcon fontSize="small" />;
-    case 'calendar-view-mode-occupancy':
-      return <EventNoteOutlinedIcon fontSize="small" />;
-    case 'calendar-view-mode-seedlings':
-      return <LocalFloristOutlinedIcon fontSize="small" />;
-    default:
-      return null;
-  }
-}
-
 
 /**
  * Root layout component with navigation.
@@ -858,58 +843,12 @@ function RootLayout() {
   );
   const titleActionButtons = (
     topbarTitleActions.length > 0 ? (
-              isCompactTopbar ? (
-                <ToggleButtonGroup
-                  exclusive
-                  size="small"
-                  value={topbarTitleActions.find((action) => action.active)?.id ?? null}
-                  aria-label={isCalendarPage ? t('ganttChart:modeAriaLabel') : t('fields:representation.ariaLabel')}
-                  sx={{
-                    ml: 0.5,
-                    flexShrink: 0,
-                    '& .MuiToggleButton-root': {
-                      width: COMPACT_TOPBAR_TOGGLE_SIZE,
-                      height: COMPACT_TOPBAR_TOGGLE_SIZE,
-                      p: 0,
-                      borderColor: 'divider',
-                      color: 'text.primary',
-                      visibility: 'visible',
-                      '&.Mui-selected': {
-                        bgcolor: 'success.main',
-                        color: 'success.contrastText',
-                        borderColor: 'success.dark',
-                        borderWidth: 2,
-                        boxShadow: 1,
-                      },
-                      '&.Mui-selected:hover': {
-                        bgcolor: 'success.dark',
-                      },
-                    },
-                  }}
-                >
-                  {topbarTitleActions.map((action) => {
-                    const icon = getCompactTopbarActionIcon(action.id);
-                    if (!icon) {
-                      return null;
-                    }
-                    return (
-                      <AppTooltip key={action.id} title={action.tooltip ?? action.label} describeChild enterTouchDelay={0}>
-                        <ToggleButton
-                          value={action.id}
-                          aria-label={action.ariaLabel ?? action.label}
-                          onClick={action.onClick}
-                          disabled={action.disabled}
-                          sx={action.hidden ? {
-                            visibility: 'hidden',
-                            pointerEvents: 'none',
-                          } : undefined}
-                        >
-                          {icon}
-                        </ToggleButton>
-                      </AppTooltip>
-                    );
-                  })}
-                </ToggleButtonGroup>
+              isCompactTopbar || (isFieldsBedsGraphicalViewActive && isLowHeightNarrowViewport) ? (
+                <CompactViewSwitch
+                  actions={topbarTitleActions}
+                  label={isCalendarPage ? t('ganttChart:modeAriaLabel') : t('fields:representation.ariaLabel')}
+                  marginLeft={0.5}
+                />
               ) : (
               <ButtonGroup
                 size="small"

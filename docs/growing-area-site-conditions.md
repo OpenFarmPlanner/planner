@@ -113,11 +113,12 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
   are never filtered out.
 - The filters apply only to the list (desktop grid and mobile list), never to
   the graphical view.
-- The list toolbar keeps Search beside Filter and rotation management where
-  space allows. The toolbar's available width controls whether Filter, Columns
-  and rotation management show labels. Compact actions have localized names and
-  44 px targets. Planting Plans uses the same toolbar on its grid. Its mobile
-  filter sheet and the Cultures sidebar already use compact filter buttons.
+- On the touch-friendly list, the view switch, Search, Filter and workspace
+  menu share a row. The workspace menu opens rotation management. The result
+  count appears below the row while search or filters are active, including
+  zero results. Desktop keeps Search, Filter, Columns, rotation management
+  and the total count above the grid. Compact actions have localized names
+  and 44 px targets.
 - Light, Moisture and Irrigation available are optional grid columns,
   hidden by default (`useColumnVisibility`'s `defaultHiddenFields`, persisted
   under `tableColumns.fieldsBedsHierarchy`). They show the effective value;
@@ -128,12 +129,13 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
 
 ## Graphic workspace toolbar
 
-On narrow widths, the workspace row keeps the view switch, location and edit
-action beside the graphic menu. The menu keeps the four display choices and
-also opens the existing Spacing dialog for project members. A crop
-reference date stays directly available in crop modes and wraps when needed.
-Wider workspaces put Spacing back beside Edit graphic. In-canvas tools use their
-own menu in every layout.
+On narrow widths and in phone landscape, the workspace row keeps the view
+switch, location and crop reference date directly reachable. Its workspace
+menu offers the four display modes, graphic editing and Spacing. The menu
+button highlights active editing. Compact dates include a two-digit year when
+space allows and the date control exposes the full date. Wider workspaces
+keep the direct display, editing and spacing controls and full-year dates.
+In-canvas navigation uses its own menu in every layout.
 
 The Legend button stays in the bottom-left corner of the canvas during pan,
 zoom and fullscreen. It opens a scrollable popover with the current display

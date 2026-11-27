@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
+import { activateCanvasTool, apiRequest, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -513,7 +513,7 @@ test.describe('responsive canvas tools', () => {
     await toolbar.getByRole('button', { name: 'Vollbild schließen' }).tap();
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(false);
     const layoutBefore = (await canvasRects(page, 'field-rect-')).map(rect => [rect.id, rect.x, rect.y]);
-    await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).tap();
+    await toggleGraphicEdit(page, 'touch');
     const editLegend = await openGraphicLegend(page, 'touch');
     await expect(editLegend.getByText('Anbauflächen', { exact: true })).toBeVisible();
     await expect(editLegend.getByText('Offen ohne Termin')).toHaveCount(0);
@@ -586,32 +586,33 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
-    for (const [locale, button, title, edit, shift, details, displayLabel] of [
-      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Darstellung der Grafik · Kulturen & Aufgaben'],
-      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/, 'View details', 'Graphic display · Crops & tasks'],
-      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Affichage du graphique · Cultures et tâches'],
-      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Vista del gráfico · Cultivos y tareas'],
-      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Visualizzazione del grafico · Colture e attività'],
-      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Modo de visualização · Culturas e tarefas'],
-      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Grafiekweergave · Gewassen en taken'],
+    for (const [locale, button, title, edit, shift, details, workspaceLabel, modeLabel] of [
+      ['de', 'Abstände', 'Abstände (Wege)', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Arbeitsbereichsmenü', 'Kulturen & Aufgaben'],
+      ['en', 'Spacing', 'Spacing (paths)', 'Edit graphic', /Hold Shift/, 'View details', 'Workspace menu', 'Crops & tasks'],
+      ['fr', 'Espacement', 'Espacement (allées)', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Menu de l’espace de travail', 'Cultures et tâches'],
+      ['es', 'Distancias', 'Distancias (caminos)', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Menú del área de trabajo', 'Cultivos y tareas'],
+      ['it', 'Distanze', 'Distanze (passaggi)', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Menu dell’area di lavoro', 'Colture e attività'],
+      ['pt', 'Espaçamento', 'Espaçamento (caminhos)', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Menu da área de trabalho', 'Culturas e tarefas'],
+      ['nl', 'Afstanden', 'Afstanden (paden)', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Werkruimtemenu', 'Gewassen en taken'],
     ] as const) {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
       await page.setViewportSize({ width: 375, height: 800 });
       await page.reload();
       const spacingButton = page.getByRole('button', { name: button, exact: true });
       const editButton = page.getByRole('button', { name: edit, exact: true });
-      const mode = page.getByRole('button', { name: displayLabel, exact: true });
-      await expect(editButton).toBeVisible();
-      await expect(editButton.locator('[data-toolbar-action-label]')).toBeHidden();
+      const mode = page.getByRole('button', { name: workspaceLabel, exact: true });
+      const date = page.getByTestId('graphical-crop-date');
+      await expect(editButton).toHaveCount(0);
+      await expect(mode).toHaveAccessibleDescription(modeLabel);
       await expect(spacingButton).toHaveCount(0);
       await expect.poll(async () => {
-        const [editBox, menuBox] = await Promise.all([editButton.boundingBox(), mode.boundingBox()]);
-        return editBox && menuBox && [editBox, menuBox].every(box => box.width >= 44 && box.height >= 44)
-          && menuBox.x >= editBox.x + editBox.width - 1
-          && menuBox.y < editBox.y + editBox.height && menuBox.x + menuBox.width <= 375;
+        const [dateBox, menuBox] = await Promise.all([date.boundingBox(), mode.boundingBox()]);
+        return dateBox && menuBox && [dateBox, menuBox].every(box => box.width >= 44 && box.height >= 44)
+          && menuBox.x >= dateBox.x + dateBox.width - 1
+          && Math.abs(menuBox.y - dateBox.y) <= 1 && menuBox.x + menuBox.width <= 375;
       }).toBe(true);
-      await expect(mode.getByTestId('graphical-display-chevron')).toBeVisible();
       await mode.tap();
+      await expect(page.getByRole('menuitemcheckbox', { name: edit, exact: true })).toHaveAttribute('aria-checked', 'false');
       await expect(page.getByRole('menuitemradio')).toHaveCount(4);
       await expect(page.getByRole('menuitem')).toHaveCount(1);
       await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
@@ -854,10 +855,12 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await page.setViewportSize(viewport);
     const edit = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
     const spacing = page.getByRole('button', { name: 'Abstände', exact: true });
-    const compact = viewport.width <= 375;
+    const compact = viewport.width < 600 || viewport.height < 500;
     const display = graphicDisplayButton(page);
+    const date = page.getByTestId('graphical-crop-date');
     const location = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
     if (compact) {
+      await expect(edit).toHaveCount(0);
       await expect(spacing).toHaveCount(0);
       await display.press('Enter');
       await page.getByRole('menuitem', { name: 'Abstände', exact: true }).press('Enter');
@@ -869,7 +872,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       await expect.poll(async () => {
         const targets = await Promise.all([
           page.getByRole('button', { name: 'Liste', exact: true }),
-          page.getByRole('button', { name: 'Grafik', exact: true }), location, edit, display,
+          page.getByRole('button', { name: 'Grafik', exact: true }), location, date, display,
         ].map(item => item.boundingBox()));
         return targets.every(box => box && box.width >= 44 && box.height >= 44)
           && targets.every(box => box && targets[0] && Math.abs(box.y - targets[0].y) <= 1);
@@ -883,7 +886,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       await page.getByRole('button', { name: 'Sidebar ausklappen' }).click();
       await expect(label).toBeHidden();
     }
-    for (const button of compact ? [edit] : [edit, spacing]) {
+    for (const button of compact ? [display] : [edit, spacing]) {
       const label = button.locator('[data-toolbar-action-label]');
       if (viewport.width >= 1440) await expect(label).toBeVisible();
       if (viewport.width < 1200) await expect(label).toBeHidden();
@@ -895,7 +898,8 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),
-        ...['Liste', 'Grafik', 'Grafik bearbeiten'].map(name => page.getByRole('button', { name, exact: true })),
+        ...['Liste', 'Grafik'].map(name => page.getByRole('button', { name, exact: true })),
+        compact ? date : edit,
         compact ? display : spacing,
         page.getByRole('button', { name: /^Standort hinzufügen/ }),
         location,
@@ -925,17 +929,20 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
         await expect(page.getByRole('tooltip')).toContainText('Im Bearbeitungsmodus lassen sich Parzellen und Beete verschieben.');
         await edit.press('Enter');
       } else {
-        await edit.click();
+        await toggleGraphicEdit(page);
       }
-      await expect(edit).toHaveAttribute('aria-pressed', 'true');
-      await expect(edit).toHaveClass(/MuiButton-contained\b/);
-      await expect(edit).toHaveClass(/MuiButton-colorSuccess\b/);
+      const editState = compact ? display : edit;
+      if (compact) await expect(display).toHaveAccessibleDescription(/Bearbeitungsmodus/);
+      else await expect(edit).toHaveAttribute('aria-pressed', 'true');
+      await expect(editState).toHaveClass(/MuiButton-contained\b/);
+      await expect(editState).toHaveClass(/MuiButton-colorSuccess\b/);
       await expect(page.getByRole('tooltip')).toHaveCount(0);
       await expect(page.getByText(/^Grafikbearbeitung aktiv:/)).toHaveCount(0);
       await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before?.y, height: before?.height });
       await page.screenshot({ path: testInfo.outputPath(`workspace-edit-${viewport.width}.png`), animations: 'disabled' });
-      await edit.click();
-      await expect(edit).toHaveAttribute('aria-pressed', 'false');
+      await toggleGraphicEdit(page);
+      if (compact) await expect(display).not.toHaveAccessibleDescription(/Bearbeitungsmodus/);
+      else await expect(edit).toHaveAttribute('aria-pressed', 'false');
     }
     await page.screenshot({ path: testInfo.outputPath(`workspace-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
     await page.getByRole('button', { name: 'Liste', exact: true }).click();
@@ -973,6 +980,45 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     const canvas = (await canvasRects(page, 'field-rect-'))[0];
     return Boolean(canvas && canvas.stage.width <= 375 && canvas.container.y + canvas.stage.height <= 801);
   }).toBe(true);
+});
+
+test('keeps crop dates directly reachable and shows the selected year on a compact workspace', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.clock.setFixedTime(new Date(2026, 10, 14, 12));
+  await loginWithDeterministicProject(page, request, 'graphical-cross-year-date', { loginAsAdmin: true });
+  await apiRequest(page, 'POST', '/seasons/', { start_date: '2026-09-01', end_date: '2027-03-31' });
+  await selectionFixture(page);
+  const date = page.getByTestId('graphical-crop-date');
+  const dateDialog = page.getByRole('dialog', { name: 'Stichtag für Kulturen' });
+  for (const [iso, shortened, fullYear] of [
+    ['2026-11-15', '15.11.26', /15\.11\.2026/],
+    ['2027-01-01', '01.01.27', /0?1\.0?1\.2027/],
+  ] as const) {
+    await date.click();
+    await dateDialog.locator('input[type="date"]').fill(iso);
+    await page.keyboard.press('Escape');
+    await expect(date).toHaveAccessibleName(fullYear);
+    await expect(date.getByText(shortened, { exact: true })).toBeVisible();
+  }
+  const workspace = page.getByTestId('topbar-workspace-controls');
+  const controls = [workspace.getByRole('button', { name: 'Liste', exact: true }),
+    workspace.getByRole('button', { name: 'Grafik', exact: true }), workspace.getByRole('combobox'),
+    date, graphicDisplayButton(page)];
+  await expect.poll(async () => {
+    const targets = await Promise.all(controls.map(control => control.boundingBox()));
+    return targets.filter(box => !box || box.height < 44 || box.width < 44
+      || box.x + box.width > 375 || Math.abs(box.y - targets[0]!.y) > 1);
+  }).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath('graphical-cross-year-375.png'), animations: 'disabled' });
+  await page.setViewportSize({ width: 320, height: 800 });
+  await expect(date).toHaveAccessibleName(/0?1\.0?1\.2027/);
+  await expect(date.getByText('01.01.27', { exact: true })).toBeHidden();
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(date).toHaveText(/0?1\.0?1\.2027/);
+  await expect(page.getByRole('button', { name: 'Grafik bearbeiten', exact: true })).toBeVisible();
+  await date.click();
+  await dateDialog.getByRole('button', { name: 'Ganze Saison' }).click();
+  await expect(date).toHaveAccessibleName('Stichtag für Kulturen · Ganze Saison');
 });
 
 test('draws a sized location boundary and flags plots that cross it', async ({ page, request }, testInfo) => {
@@ -1133,7 +1179,7 @@ for (const input of ['mouse', 'touch'] as const) {
       };
       await page.goto('/app/fields-beds');
       await activate('Grafik');
-      await activate('Grafik bearbeiten');
+      await toggleGraphicEdit(page, input);
       await expect.poll(async () => (await bedOffsets()).length).toBe(2);
       const before = await plot();
       const offsets = await bedOffsets();
@@ -1276,9 +1322,9 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, site.name);
   const display = graphicDisplayButton(page);
-  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+  await expectGraphicDisplayMode(page, 'Kulturen & Aufgaben');
   const dateButton = page.getByRole('button', { name: /^Stichtag für Kulturen · / });
-  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
+  await expect(dateButton).toHaveAccessibleName(/^Stichtag für Kulturen · Heute(?: · .*2026)?$/);
 
   const shape = (id: number) => page.evaluate(id => {
     const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
@@ -1345,17 +1391,17 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   expect((await shape(harvest)).urgency).toBeNull();
   expect((await shape(harvest)).fill).not.toBe(combinedHarvest.fill);
   await page.reload();
-  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen');
+  await expectGraphicDisplayMode(page, 'Kulturen');
   await selectGraphicDisplay(page, 'Aufgaben');
   await expect(dateButton).toHaveCount(0);
   expect((await shape(harvest)).phase).toBeNull();
   await expect.poll(async () => (await shape(harvest)).fill).toBe(combinedHarvest.fill);
   await page.reload();
-  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Aufgaben');
+  await expectGraphicDisplayMode(page, 'Aufgaben');
   await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
-  await expect(dateButton).toHaveAccessibleName('Stichtag für Kulturen · Heute');
+  await expect(dateButton).toHaveAccessibleName(/^Stichtag für Kulturen · Heute · .*2026$/);
   await page.reload();
-  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+  await expectGraphicDisplayMode(page, 'Kulturen & Aufgaben');
   await expect.poll(() => shape(harvest)).toMatchObject(combinedHarvest);
   await page.screenshot({ path: testInfo.outputPath('graphic-display-combined-375.png') });
   await display.press('Enter');
@@ -1364,7 +1410,7 @@ test('projects demo crops by date, preserves real task urgency and remembers the
   await page.keyboard.press('Escape');
   await selectGraphicDisplay(page, 'Anbauflächen');
   await page.reload();
-  await expect(display).toHaveAccessibleName('Darstellung der Grafik · Anbauflächen');
+  await expectGraphicDisplayMode(page, 'Anbauflächen');
   await expect(dateButton).toHaveCount(0);
   await target(harvest).press('Enter');
   await expect(preview).toContainText('Geplante Ernte');

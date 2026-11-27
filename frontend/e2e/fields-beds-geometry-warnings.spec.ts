@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay } from './utils';
+import { activateCanvasTool, apiRequest, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -207,7 +207,7 @@ for (const mobile of [false, true]) {
       const getBed = () => findShape(page, `bed-rect-${bedId}`);
       const getNeighbor = () => findShape(page, `bed-rect-${neighborId}`);
       const display = graphicDisplayButton(page);
-      await expect(display).toHaveAccessibleName('Darstellung der Grafik · Kulturen & Aufgaben');
+      await expectGraphicDisplayMode(page, 'Kulturen & Aufgaben');
       await selectGraphicDisplay(page, 'Anbauflächen');
       await expect.poll(async () => (await getBed())?.issue).toBe('shortGap');
       const ordinaryFill = (await getBed())?.fill;
@@ -345,7 +345,7 @@ for (const mobile of [false, true]) {
       expect(saved.status).toBe('completed');
       await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
       await page.getByRole('button', { name: 'Grafik', exact: true }).click();
-      await expect(display).toHaveAccessibleName('Darstellung der Grafik · Aufgaben');
+      await expectGraphicDisplayMode(page, 'Aufgaben');
       await expect.poll(async () => (await getBed())?.urgency).toBe('undated');
       expect(taskWrites).toHaveLength(1);
       expect(taskWrites[0]).toMatch(new RegExp(`/tasks/${overdue.id}/$`));
@@ -418,7 +418,7 @@ for (const input of ['mouse', 'touch'] as const) {
 
       const getBed = () => findShape(page, `bed-rect-${bedId}`);
       const getField = () => findShape(page, `field-rect-${fieldId}`);
-      await activate('Grafik bearbeiten');
+      await toggleGraphicEdit(page, input);
       await activate('Hineinzoomen');
       const bed = (await getBed())!;
       const parcel = (await getField())!;
@@ -457,7 +457,7 @@ for (const input of ['mouse', 'touch'] as const) {
       }).toBeLessThan(2);
 
       if (input === 'mouse') {
-        await activate('Grafik bearbeiten');
+        await toggleGraphicEdit(page, input);
         await activate('Alles einpassen');
         const full = (await findShape(page, `field-rect-${fullFieldId}`))!;
         await page.mouse.click(full.screen.x + full.screen.width / 2, full.screen.y + 8);

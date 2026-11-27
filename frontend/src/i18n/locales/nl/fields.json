@@ -22,6 +22,7 @@
   "cancel": "Annuleren",
   "submit": "Maken",
   "selectLocation": "Locatie kiezen",
+  "workspaceActions": "Werkruimtemenu",
   "representation": {
     "label": "Weergave",
     "ariaLabel": "Weergave kiezen",
@@ -148,6 +149,7 @@
     "locationEditModeHelp": "In de bewerkingsmodus kun je percelen en bedden verplaatsen.",
     "editModeShortcut": "Sneltoets: Alt+E",
     "locationEditModeAction": "Grafische weergave bewerken",
+    "locationEditModeExit": "Grafiekbewerking voltooien",
     "locationEditModeActive": "Grafisch bewerken actief",
     "enableLocationEditMode": "Grafische weergave bewerken",
     "disableLocationEditMode": "Grafisch bewerken voor locatie ‘{{name}}’ stoppen",

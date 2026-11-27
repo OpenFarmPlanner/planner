@@ -8,14 +8,37 @@ const defaultBackendPort = process.env.BACKEND_PORT ?? '8000';
 const e2eApiBase = process.env.PLAYWRIGHT_E2E_API_BASE ?? `http://127.0.0.1:${defaultBackendPort}/api/__e2e__/invite-flow/`;
 const e2eToken = process.env.E2E_TEST_TOKEN || 'openfarmplanner-e2e-token';
 
-export const graphicDisplayButton = (page: Page) => page.getByRole('button', { name: /^Darstellung der Grafik · / });
+export const graphicDisplayButton = (page: Page) => page.getByTestId('graphical-display-mode').or(
+  page.getByTestId('topbar-workspace-controls').getByRole('button', { name: 'Arbeitsbereichsmenü', exact: true }),
+).filter({ visible: true });
 export const graphicLegendButton = (page: Page) => page.getByRole('button', { name: 'Legende', exact: true });
+
+export async function expectGraphicDisplayMode(page: Page, mode: string) {
+  const trigger = graphicDisplayButton(page);
+  await expect(trigger).toBeVisible();
+  if (await trigger.getAttribute('data-testid')) await expect(trigger).toHaveAccessibleName(`Darstellung der Grafik · ${mode}`);
+  else await expect(trigger).toHaveAccessibleDescription(mode);
+}
 
 export async function selectGraphicDisplay(page: Page, mode: string) {
   await graphicDisplayButton(page).press('Enter');
   const item = page.getByRole('menuitemradio', { name: mode, exact: true });
   await item.press('Enter');
-  await expect(graphicDisplayButton(page)).toHaveAccessibleName(`Darstellung der Grafik · ${mode}`);
+  await expectGraphicDisplayMode(page, mode);
+}
+
+export async function toggleGraphicEdit(page: Page, input: 'mouse' | 'touch' = 'mouse') {
+  const direct = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
+  const activate = input === 'touch' ? 'tap' : 'click';
+  const trigger = graphicDisplayButton(page);
+  await expect(trigger).toBeVisible();
+  if (await direct.isVisible()) await direct[activate]();
+  else {
+    await trigger[activate]();
+    const menu = page.getByRole('menu', { name: 'Arbeitsbereichsmenü' });
+    await menu.getByRole('menuitemcheckbox', { name: /^(Grafik bearbeiten|Grafikbearbeitung beenden)$/ })[activate]();
+    await expect(menu).toHaveCount(0);
+  }
 }
 
 export async function openGraphicLegend(page: Page, input: 'keyboard' | 'touch' = 'keyboard') {

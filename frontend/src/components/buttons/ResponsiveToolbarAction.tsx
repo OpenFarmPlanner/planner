@@ -9,6 +9,7 @@ interface ResponsiveToolbarActionProps extends Omit<ButtonProps, 'children' | 's
   icon: ReactNode;
   labelQuery?: string;
   labelBreakpoint?: Breakpoint;
+  iconOnly?: boolean;
   ref?: Ref<HTMLButtonElement>;
   help?: string;
   disabledReason?: string;
@@ -19,7 +20,7 @@ export const WORKSPACE_TOOLBAR_LABEL_QUERY = '@container workspace-topbar (min-w
 export const TOOLBAR_ACTION_MIN_HEIGHT = 44;
 
 export function ResponsiveToolbarAction({
-  label, icon, labelQuery, labelBreakpoint, help, disabledReason, onClick, ref, ...buttonProps
+  label, icon, labelQuery, labelBreakpoint, iconOnly, help, disabledReason, onClick, ref, ...buttonProps
 }: ResponsiveToolbarActionProps) {
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const activated = useRef(false);
@@ -61,7 +62,7 @@ export function ResponsiveToolbarAction({
             minWidth: 44,
             flexShrink: 0,
             whiteSpace: 'nowrap',
-            ...(labelQuery ? {
+            ...(iconOnly ? { '& [data-toolbar-action-label]': { display: 'none' } } : labelQuery ? {
               '& [data-toolbar-action-label]': { display: 'none' },
               [labelQuery]: labelBreakpoint ? { [theme.breakpoints.up(labelBreakpoint)]: labelledSx } : labelledSx,
             } : labelledSx),

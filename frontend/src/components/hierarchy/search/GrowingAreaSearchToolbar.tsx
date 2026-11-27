@@ -120,6 +120,8 @@ interface GrowingAreaSearchToolbarProps {
   columnsPanelOpen?: boolean;
   onColumnsPanelOpenChange?: (open: boolean) => void;
   columnsButtonRef?: Ref<HTMLButtonElement>;
+  compact?: boolean;
+  leadingControls?: ReactNode;
   /** Extra page-level controls after Filter/Columns, e.g. rotation-group management. */
   viewControls?: ReactNode;
 }
@@ -136,18 +138,22 @@ export function GrowingAreaSearchToolbar({
   columnsPanelOpen,
   onColumnsPanelOpenChange,
   columnsButtonRef,
+  compact = false,
+  leadingControls,
   viewControls,
 }: GrowingAreaSearchToolbarProps) {
   const { t } = useTranslation(['hierarchy']);
   const options = useFilterOptions(search, locations, fields);
   const activeCount = search.activeFilterGroups.length;
-  const countText = search.isActive
+  const countText = compact && !search.isActive ? '' : search.isActive
     ? t('hierarchy:search.filteredCount', { shown: search.matchCount, total: search.totalCount })
     : t('hierarchy:search.count', { count: search.totalCount });
 
   return (
     <DataGridSearchToolbar
       testId="growing-area-search-toolbar"
+      compact={compact}
+      leadingControls={leadingControls}
       query={search.query}
       onQueryChange={search.setQuery}
       onClearQuery={search.clearSearch}
@@ -172,12 +178,12 @@ export function GrowingAreaSearchToolbar({
       }}
       count={(
         <Typography
-          variant="body2"
+          variant={compact ? 'caption' : 'body2'}
           color="text.secondary"
           role="status"
           aria-live="polite"
           data-testid="growing-area-search-count"
-          sx={{ whiteSpace: 'nowrap' }}
+          sx={compact ? { display: 'block', mt: search.isActive ? 0.5 : 0 } : { whiteSpace: 'nowrap' }}
         >
           {countText}
         </Typography>

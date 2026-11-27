@@ -22,6 +22,7 @@
   "cancel": "Annulla",
   "submit": "Crea",
   "selectLocation": "Seleziona sito",
+  "workspaceActions": "Menu dell’area di lavoro",
   "representation": {
     "label": "Rappresentazione",
     "ariaLabel": "Seleziona rappresentazione",
@@ -153,6 +154,7 @@
     "locationEditModeHelp": "In modalità di modifica puoi spostare appezzamenti e aiuole.",
     "editModeShortcut": "Scorciatoia: Alt+E",
     "locationEditModeAction": "Modifica grafica",
+    "locationEditModeExit": "Termina la modifica del grafico",
     "locationEditModeActive": "Modifica grafica attiva",
     "enableLocationEditMode": "Modifica grafica",
     "disableLocationEditMode": "Termina la modifica grafica del sito «{{name}}»",
