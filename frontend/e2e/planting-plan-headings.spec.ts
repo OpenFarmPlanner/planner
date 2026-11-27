@@ -13,9 +13,10 @@ const languages = [
 const fields = ['sowing_date', 'planting_date', 'harvest_date', 'harvest_end_date'];
 
 async function expectReadableHeader(header: Locator, text: string, allowTruncation = false) {
+  await expect(header.locator('xpath=ancestor::*[@aria-busy][1]')).toHaveAttribute('aria-busy', 'false');
   await header.scrollIntoViewIfNeeded();
   const rect = await header.boundingBox();
-  await header.hover({ position: { x: rect!.width - 8, y: rect!.height - 4 } });
+  await header.hover({ position: { x: 8, y: rect!.height - 4 } });
   const label = header.locator('.MuiDataGrid-columnHeaderTitleContainerContent > span');
   await expect(label).toHaveText(text);
   await expect.poll(() => label.evaluate((node, allowTruncation) => {

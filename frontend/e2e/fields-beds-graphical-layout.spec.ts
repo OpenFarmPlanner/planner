@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -329,7 +329,7 @@ test('selects the deepest object, keeps the native blank-canvas menu and support
   await expect(hint).toBeVisible();
 
   const at = async (id: string, x?: number, y?: number) => shapePoint((await canvasRects(page, id))[0], x, y);
-  const bedPoint = await at(`bed-rect-${bed.id}`);
+  const bedPoint = await canvasInteractionPoint(page, `bed-rect-${bed.id}`);
   await page.mouse.move(bedPoint.x, bedPoint.y);
   await expect(page.getByRole('tooltip')).toContainText('2 × 4 m');
   await page.mouse.click(bedPoint.x, bedPoint.y);

@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { LocationLayoutsResponse, PaginatedResponse, YoungPlantDemand } from '../src/api/types';
-import { apiRequest, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
 
 type Stem = { id: string; x_m: number; y_m: number };
 type Plan = {
@@ -443,29 +443,6 @@ async function expectCanopyCentered(page: Page, stemId: string) {
   return marker;
 }
 
-async function touchStemOrigin(page: Page, stemId: string) {
-  const target = `individual-stem-${stemId}`;
-  await page.locator('.konvajs-content').scrollIntoViewIfNeeded();
-  let point = { x: 0, y: 0 };
-  await expect.poll(async () => {
-    const visible = await page.evaluate(testId => {
-      const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
-        .find(item => item.container()?.isConnected);
-      const marker = stage?.find('Circle').find(node => node.getAttr('data-testid') === testId);
-      const bounds = stage?.getContent().getBoundingClientRect();
-      if (!stage || !marker || !bounds) return null;
-      const position = marker.getAbsolutePosition();
-      const x = Math.round(bounds.x + position.x);
-      const y = Math.round(bounds.y + position.y);
-      return document.elementFromPoint(x, y)?.tagName === 'CANVAS'
-        && stage.getIntersection({ x: x - bounds.x, y: y - bounds.y }) === marker ? { x, y } : null;
-    }, target);
-    if (visible) point = visible;
-    return Boolean(visible);
-  }).toBe(true);
-  return point;
-}
-
 test('places annual beans in a mixed bed and moves the bed separately from parcel-direct stems', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
@@ -776,9 +753,10 @@ test.describe('individual plants on a phone', () => {
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
     await page.getByRole('region', { name: 'Einzelpflanzen', exact: true }).getByRole('button', { name: 'Schließen' }).tap();
     await toggleGraphicEdit(page, 'touch');
+    await activateCanvasTool(page, 'Alles einpassen', 'touch');
     const touch = await page.context().newCDPSession(page);
     const dragStart = async () => {
-      const origin = await touchStemOrigin(page, stem.id);
+      const origin = await canvasInteractionPoint(page, `individual-stem-${stem.id}`);
       const before = await expectCanopyCentered(page, stem.id);
       await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
       // The legacy orchard stem overlaps a bed. Finish beyond the bed ends, in the same parcel.
@@ -836,7 +814,7 @@ test.describe('individual plants on a phone', () => {
     await expect(panel.getByRole('button', { name: 'In der Grafik verschieben' })).toHaveCount(0);
     const surfaceId = 'individual-free-placement-surface';
     const [first] = orchard.individual_positions;
-    const origin = await touchStemOrigin(page, first.id);
+    const origin = await canvasInteractionPoint(page, `individual-stem-${first.id}`);
     const touch = await page.context().newCDPSession(page);
     await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
     for (const step of [9, 18]) {
