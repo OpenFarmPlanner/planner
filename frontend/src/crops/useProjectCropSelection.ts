@@ -39,6 +39,12 @@ export function useProjectCropSelection(projectId: number | null | undefined, cr
   const selectionButton = useRef<HTMLButtonElement>(null);
   const controlsId = useId();
   const selected = selection && selection.project === projectId ? selection.ids : null;
+  const selectedVarietyColorIds = selected?.size ? crops.flatMap(crop => (
+    crop.id !== undefined && selected.has(crop.id) && crop.variety?.trim()
+      && (crop.display_color_override === undefined ? crop.display_color : crop.display_color_override)
+      ? [crop.id]
+      : []
+  )) : [];
 
   if (previous.projectId !== projectId || previous.groups !== groups) {
     setPrevious({ projectId, groups });
@@ -69,7 +75,7 @@ export function useProjectCropSelection(projectId: number | null | undefined, cr
   };
 
   return {
-    selected, selectionButton, controlsId, setSelected, cancel,
+    selected, selectedVarietyColorIds, selectionButton, controlsId, setSelected, cancel,
     isMixed: (id: number) => Boolean(selected && !selected.has(id)
       && groups.get(id)?.some(variety => selected.has(variety))),
     setCropSelected: (id: number, checked: boolean) => setSelected([id, ...(groups.get(id) ?? [])], checked),

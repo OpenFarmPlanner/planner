@@ -19,6 +19,7 @@ import { AppTooltip } from '../components/AppTooltip';
 import { CropFiltersPopover } from './CropFiltersPopover';
 import { CropMobileSelectorDialog } from './CropMobileSelectorDialog';
 import { CropBulkSelectionActions, CropBulkSelectionRow } from './CropBulkSelectionControls';
+import { CropColorSwatch } from './CropColorSwatch';
 import { CropSelectionButton } from './CropSelectionButton';
 import { CropSearchFilterButton, CropSearchToolbar } from './CropSearchToolbar';
 import type { ProjectCropSelection } from './useProjectCropSelection';
@@ -119,6 +120,7 @@ interface CropDetailProps {
   isPublishingCrop?: boolean;
   searchInputRef?: Ref<HTMLInputElement>;
   bulkSelection?: ProjectCropSelection;
+  onResetColors?: () => void;
 }
 
 import {
@@ -161,6 +163,7 @@ export function CropDetail({
   isPublishingCrop = false,
   searchInputRef,
   bulkSelection,
+  onResetColors,
 }: CropDetailProps) {
   const { t, i18n } = useTranslation('crops');
   const currentLanguage = i18n.resolvedLanguage ?? i18n.language;
@@ -838,7 +841,9 @@ const detailSectionGridSx = {
             }}
           >
             {selectorControl}
-            {bulkSelection ? <CropBulkSelectionActions selection={bulkSelection} visibleIds={bulkVisibleCropIds} /> : null}
+            {bulkSelection ? (
+              <CropBulkSelectionActions selection={bulkSelection} visibleIds={bulkVisibleCropIds} onResetColors={onResetColors} />
+            ) : null}
             {visibleCropRows.length === 0 ? (
               // Rendered instead of the listbox, not inside it: a plain <li>
               // in there carries no role of its own and gets pruned, and an
@@ -899,6 +904,7 @@ const detailSectionGridSx = {
                       primary={node.label}
                       isPrimaryEmphasized={node.kind === 'species'}
                       secondary={undefined}
+                      colorAdornment={crop?.display_color ? <CropColorSwatch crop={crop} /> : undefined}
                       varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
                       showZeroVarietyCount={node.kind === 'species'}
                       highlightQuery={normalizedSearchQuery}
@@ -999,7 +1005,8 @@ const detailSectionGridSx = {
                           alignSelf: 'stretch',
                           flexShrink: 0,
                         }}
-                        aria-label={t('form.displayColorAria')}
+                        role="img"
+                        aria-label={`${t('form.displayColorAria')} ${selectedCrop.display_color}`}
                         title={selectedCrop.display_color}
                       />
                     ) : null}
@@ -1023,6 +1030,12 @@ const detailSectionGridSx = {
                           <Typography variant="body2" color="text.primary" sx={{ fontWeight: 600 }}>
                             {selectedCrop.variety}
                           </Typography>
+                          {selectedCrop.display_color_override !== undefined && selectedCrop.display_color ? (
+                            <Typography variant="caption" color="text.secondary">
+                              {t(selectedCrop.display_color_override === null ? 'form.colorInherited' : 'form.colorOwn')}
+                              {' · '}{selectedCrop.display_color.toUpperCase()}
+                            </Typography>
+                          ) : null}
                         </Stack>
                       ) : null}
                       <Box data-testid="crop-detail-badge-row" sx={{ display: 'flex', gap: 1, mt: 1, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -1520,6 +1533,7 @@ const detailSectionGridSx = {
           highlightQuery={normalizedSearchQuery}
           matchedGroupRowIds={matchedGroupRowIds}
           bulkSelection={bulkSelection}
+          onResetColors={onResetColors}
           bulkVisibleCropIds={bulkVisibleCropIds}
           onSelect={(crop, itemKind, speciesKey) => {
             setSelectedSpeciesViewKey(itemKind === 'species' ? speciesKey : null);

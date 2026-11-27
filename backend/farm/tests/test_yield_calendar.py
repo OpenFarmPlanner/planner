@@ -97,6 +97,28 @@ class YieldCalendarAPITest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual([week['crops'][0]['yield'] for week in response.json()], [6, 30])
 
+    def test_graphical_and_calendar_plan_color_uses_override_but_forecast_uses_base(self):
+        species = CropSpecies.objects.create(name='Forecast color species')
+        general = Crop.objects.create(
+            name='Lettuce', project=self.project, crop_species=species,
+            display_color='#123456', expected_yield=2, harvest_method='per_sqm',
+        )
+        variety = Crop.objects.create(
+            name='Lettuce', variety='Red', project=self.project, crop_species=species,
+        )
+        plan = self._create_plan(
+            crop=variety, harvest_start=date(2026, 3, 2), harvest_end=date(2026, 3, 5),
+        )
+        plan_url = f'/openfarmplanner/api/planting-plans/{plan.id}/'
+        self.assertEqual(self.client.get(plan_url).data['crop_display_color'], '#123456')
+        variety.display_color = '#ab2345'
+        variety.save()
+        self.assertEqual(self.client.get(plan_url).data['crop_display_color'], '#ab2345')
+        general.display_color = '#654321'
+        general.save()
+        forecast = self.client.get('/openfarmplanner/api/yield-calendar/?year=2026').json()
+        self.assertEqual(forecast[0]['crops'][0]['color'], '#654321')
+
     def test_per_plant_forecast_uses_inherited_rate_unit_and_canonical_count(self):
         species = CropSpecies.objects.create(name='Yield inheritance fixture')
         Crop.objects.create(

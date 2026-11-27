@@ -307,6 +307,10 @@
     "sowingDepthRangeError": "Le maximum doit être supérieur ou égal au minimum.",
     "displayColor": "Couleur d'affichage",
     "displayColorError": "Format de couleur non valide (utilisez #RRGGBB).",
+    "colorInherited": "Couleur héritée",
+    "colorOwn": "Couleur personnalisée",
+    "colorUseOwn": "Utiliser une couleur personnalisée",
+    "colorReset": "Utiliser la couleur de la culture",
     "seedRateSectionTitle": "Besoin en semences",
     "seedRateDirectSectionTitle": "Besoin en semences pour le semis direct",
     "seedRatePreCultivationSectionTitle": "Besoin en semences pour la plantation",
@@ -638,6 +642,7 @@
       "undo": "Annuler cette action"
     },
     "import": {
+    "colorInheritRequiresVariety": "Seules les variétés acceptent la valeur inherit dans la colonne de couleur.",
       "summary_one": "{{count}} culture importée",
       "summary_other": "{{count}} cultures importées",
       "actions": "Actions de l’import",
@@ -817,7 +822,7 @@
         "required": "Seule la colonne « {{name}} » est obligatoire. Toutes les autres colonnes peuvent rester vides ou manquer. L’ordre des colonnes n’a pas d’importance.",
         "numbers": "Écrivez les nombres avec une virgule ou un point, par ex. 1,5 ou 1.5.",
         "multipleValues": "Séparez plusieurs valeurs d’une cellule par « ; », par ex. les modes de culture « {{example}} ».",
-        "color": "Indiquez « {{column}} » en code hexadécimal, par ex. #2E7D32. Sans valeur, une couleur est attribuée automatiquement."
+        "color": "Indiquez « {{column}} » au format #RRGGBB, par exemple #2E7D32. Une cellule vide donne aux nouvelles variétés la couleur de leur culture et conserve la couleur des lignes existantes. Saisissez inherit pour rétablir la couleur héritée d’une variété."
       },
       "varieties": {
         "withoutVariety": "Une ligne sans « {{variety}} » décrit la culture elle-même.",
@@ -1855,6 +1860,17 @@
       "previous": "précédente, culture",
       "next": "suivante, culture"
     }
+  },
+  "colorReset": {
+    "action": "Réinitialiser les couleurs des variétés",
+    "confirm_one": "Réinitialiser la couleur de {{count}} variété sélectionnée dans « {{project}} » ? Elle reprendra la couleur de sa culture.",
+    "confirm_other": "Réinitialiser les couleurs de {{count}} variétés sélectionnées dans « {{project}} » ? Elles reprendront les couleurs de leurs cultures.",
+    "done_one": "Couleur de {{count}} variété réinitialisée.",
+    "done_other": "Couleurs de {{count}} variétés réinitialisées.",
+    "restored_one": "Couleur de {{count}} variété restaurée.",
+    "restored_other": "Couleurs de {{count}} variétés restaurées.",
+    "failed": "Impossible de réinitialiser les couleurs sélectionnées. Rechargez les cultures et réessayez.",
+    "undoFailed": "Impossible d’annuler la réinitialisation. Consultez l’historique de la variété."
   },
   "bulkDelete": {
     "title": "Supprimer la sélection ?",

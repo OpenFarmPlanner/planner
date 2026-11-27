@@ -307,6 +307,10 @@
     "sowingDepthRangeError": "El máximo debe ser mayor o igual que el mínimo.",
     "displayColor": "Color de visualización",
     "displayColorError": "Formato de color no válido (usa #RRGGBB).",
+    "colorInherited": "Color heredado",
+    "colorOwn": "Color propio",
+    "colorUseOwn": "Usar un color propio",
+    "colorReset": "Usar el color del cultivo",
     "seedRateSectionTitle": "Necesidad de semillas",
     "seedRateDirectSectionTitle": "Necesidad de semillas para siembra directa",
     "seedRatePreCultivationSectionTitle": "Necesidad de semillas para trasplante",
@@ -638,6 +642,7 @@
       "undo": "Deshacer esta acción"
     },
     "import": {
+    "colorInheritRequiresVariety": "Solo las variedades admiten el valor inherit en la columna de color.",
       "summary_one": "{{count}} cultivo importado",
       "summary_other": "{{count}} cultivos importados",
       "actions": "Acciones de importación",
@@ -817,7 +822,7 @@
         "required": "Solo la columna «{{name}}» es obligatoria. Las demás columnas pueden quedar vacías o faltar. El orden de las columnas no importa.",
         "numbers": "Escribe los números con coma o punto, p. ej. 1,5 o 1.5.",
         "multipleValues": "Separa varios valores de una celda con «;», p. ej. tipos de cultivo «{{example}}».",
-        "color": "Indica «{{column}}» como código hexadecimal, p. ej. #2E7D32. Si no indicas ninguno, se asigna un color automáticamente."
+        "color": "Indica «{{column}}» en formato #RRGGBB, p. ej. #2E7D32. Si dejas la celda vacía, las variedades nuevas heredan el color del cultivo y las filas existentes conservan su color. Escribe inherit para restablecer el color heredado de una variedad."
       },
       "varieties": {
         "withoutVariety": "Una fila sin «{{variety}}» describe el propio cultivo.",
@@ -1855,6 +1860,17 @@
       "previous": "anterior, cultivo",
       "next": "siguiente, cultivo"
     }
+  },
+  "colorReset": {
+    "action": "Restablecer los colores de las variedades",
+    "confirm_one": "¿Restablecer el color de {{count}} variedad seleccionada en «{{project}}»? Usará el color de su cultivo.",
+    "confirm_other": "¿Restablecer los colores de {{count}} variedades seleccionadas en «{{project}}»? Usarán los colores de sus cultivos.",
+    "done_one": "Se ha restablecido el color de {{count}} variedad.",
+    "done_other": "Se han restablecido los colores de {{count}} variedades.",
+    "restored_one": "Se ha recuperado el color de {{count}} variedad.",
+    "restored_other": "Se han recuperado los colores de {{count}} variedades.",
+    "failed": "No se han podido restablecer los colores seleccionados. Vuelve a cargar los cultivos e inténtalo de nuevo.",
+    "undoFailed": "No se ha podido deshacer el cambio. Consulta el historial de la variedad."
   },
   "bulkDelete": {
     "title": "¿Eliminar la selección?",

@@ -31,6 +31,7 @@ from farm.services.timing_windows import (
 )
 from farm.utils import normalize_supplier_name, normalize_text
 
+from .field_specs import INHERIT_DISPLAY_COLOR
 from .germination import apply_germination_cells
 from .plant_health import apply_plant_health_cell
 from .specific_properties import SpecificPropertyImportError, apply_specific_property_cells
@@ -177,7 +178,7 @@ def _normalize_crop_family(crop_data: dict) -> None:
         crop_data['crop_family'] = coerce_plant_family_key(raw_family) or raw_family
 
 
-def _resolve_crop_species(crop_data: dict) -> None:
+def resolve_import_crop_species(crop_data: dict) -> None:
     """Link a new row to the species its name names, as the crop form does.
 
     A sheet has no species column, so without this an imported Sorte had no
@@ -287,6 +288,8 @@ def compute_crop_diff(existing_crop: Crop, import_data: dict) -> list[dict]:
         if field in import_data:
             import_value = import_data[field]
             existing_value = existing_data.get(field)
+            if field == 'display_color' and existing_crop.variety_normalized:
+                existing_value = existing_crop.display_color or INHERIT_DISPLAY_COLOR
             # A linked Sorte keeps family and nutrient demand on its Kultur and
             # the import routes them there, so its own column is not the value.
             if field in CROP_SPECIES_INVARIANT_FIELDS and field in effective_values:
@@ -378,7 +381,10 @@ def _import_error_details(error: Exception) -> dict[str, Any]:
     code_reader = getattr(error, 'get_codes', None)
     if callable(code_reader):
         codes = str(code_reader())
-        for code in ('companion_notes_invalid', LEGACY_COMPANION_LIMIT_CODE):
+        for code in (
+            'companion_notes_invalid', LEGACY_COMPANION_LIMIT_CODE, 'invalid_color',
+            'color_inherit_requires_variety',
+        ):
             if code in codes:
                 details['error_code'] = code
                 break
@@ -393,6 +399,30 @@ def _validate_perennial_harvest_cells(data: dict[str, Any], serializer: CropSeri
             data[field] = serializer.fields[field].run_validation(data[field])
         except ValidationError as error:
             raise ValidationError({field: error.detail}) from error
+
+
+def _validate_display_color_cell(data: dict[str, Any], serializer: CropSerializer) -> None:
+    if 'display_color' not in data:
+        return
+    color = data['display_color']
+    if color is None or (isinstance(color, str) and not color.strip()):
+        del data['display_color']
+    elif isinstance(color, str) and color.strip().casefold() == INHERIT_DISPLAY_COLOR:
+        if not normalize_text(data.get('variety')):
+            raise ValidationError(
+                'Only a variety can inherit a display colour.',
+                code='color_inherit_requires_variety',
+            )
+        data['display_color'] = INHERIT_DISPLAY_COLOR
+    else:
+        try:
+            data['display_color'] = serializer.validate_display_color(
+                serializer.fields['display_color'].run_validation(color),
+            )
+        except ValidationError as error:
+            raise ValidationError(
+                {'display_color': str(error.detail)}, code='invalid_color',
+            ) from error
 
 
 def preview_crop_import(
@@ -434,6 +464,7 @@ def preview_crop_import(
 
         try:
             _validate_perennial_harvest_cells(crop_data, field_validator)
+            _validate_display_color_cell(crop_data, field_validator)
             germination_issues = apply_germination_cells(crop_data)
             _normalize_crop_family(crop_data)
             matching_crop = _match_import_row(project, crop_data)
@@ -479,7 +510,9 @@ def _save_import_row(
     project: Project, crop_data: dict, matching_crop: Crop | None,
 ) -> tuple[Crop | None, dict]:
     if matching_crop is None:
-        _resolve_crop_species(crop_data)
+        resolve_import_crop_species(crop_data)
+    if crop_data.get('display_color') == INHERIT_DISPLAY_COLOR:
+        crop_data['display_color'] = ''
     # Resolve project-scoped references from trusted context; any project
     # supplied by the file is ignored by the read-only serializer field.
     serializer = CropSerializer(
@@ -519,13 +552,22 @@ def apply_crop_import(
     ]
 
     unique_rows = ((idx, row) for idx, row in enumerate(rows) if idx not in duplicates)
-    for idx, crop_data in unique_rows:
+    # Explicit general rows take precedence over implicit parents, regardless
+    # of the order the workbook lists its varieties.
+    ordered_rows = sorted(
+        unique_rows,
+        key=lambda pair: isinstance(pair[1], dict)
+        and bool(str(pair[1].get('variety') or '').strip()),
+    )
+    field_validator = CropSerializer()
+    for idx, crop_data in ordered_rows:
         if not _is_importable_row(crop_data):
             errors.append({'index': idx, 'error': _ROW_SHAPE_ERROR})
             results.append({'index': idx, 'status': 'error'})
             continue
 
         try:
+            _validate_display_color_cell(crop_data, field_validator)
             companions = _pop_companions(crop_data)
             preview_row_companions(companion_resolver, {} if defer_companions else companions)
             germination_issues = apply_germination_cells(crop_data)

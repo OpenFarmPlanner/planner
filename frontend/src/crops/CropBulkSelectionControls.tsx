@@ -5,10 +5,11 @@ import { useTranslation } from '../i18n';
 import { formatCropDisplayName } from './cropDisplay';
 import type { ProjectCropSelection } from './useProjectCropSelection';
 
-export function CropBulkSelectionActions({ selection, visibleIds, onOpenPreview }: {
+export function CropBulkSelectionActions({ selection, visibleIds, onOpenPreview, onResetColors }: {
   selection: ProjectCropSelection;
   visibleIds: number[];
   onOpenPreview?: () => void;
+  onResetColors?: () => void;
 }) {
   const { t } = useTranslation('crops');
   if (!selection.selected) return null;
@@ -26,6 +27,12 @@ export function CropBulkSelectionActions({ selection, visibleIds, onOpenPreview 
         {t(allVisible ? 'library.batchImport.clearVisible' : 'library.batchImport.selectVisible', { count: selectableIds.length })}
       </Button>
       <Button size="small" onClick={selection.cancel}>{t('library.batchImport.cancelSelection')}</Button>
+      {onResetColors && selection.selectedVarietyColorIds.length > 0 ? (
+        <Button size="small" onClick={() => {
+          onOpenPreview?.();
+          onResetColors();
+        }}>{t('colorReset.action')}</Button>
+      ) : null}
       <Button size="small" color="error" variant="contained" disabled={!selection.selected.size}
         onClick={() => {
           onOpenPreview?.();

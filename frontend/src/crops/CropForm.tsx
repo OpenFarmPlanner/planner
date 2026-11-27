@@ -1586,7 +1586,18 @@ export function CropForm({
             {isProjectForm
               ? crop ? <CropCompanionsSection crop={crop} crops={(crops ?? []) as Crop[]} onEdit={isSaving ? undefined : onEditCompanions} /> : null
               : <CompanionsSection state={companionRows} disabled={isSaving} />}
-            <ColorSection formData={formData} errors={errors} onChange={handleChange} t={t} defaultColor={DEFAULT_DISPLAY_COLOR} />
+            {isProjectForm ? (
+              <ColorSection
+                formData={formData}
+                errors={errors}
+                onChange={handleChange}
+                t={t}
+                defaultColor={DEFAULT_DISPLAY_COLOR}
+                isVariety={formKind === 'variety'}
+                parentColor={isSpeciesLinkedVariety && selectedSpeciesCrop?.crop_species === formData.crop_species
+                  ? selectedSpeciesCrop?.display_color : undefined}
+              />
+            ) : null}
             {isProjectForm ? (
               <NotesSection formData={formData} onChange={handleChange} t={t} errors={errors} getFieldPinProps={getFieldPinProps} />
             ) : null}

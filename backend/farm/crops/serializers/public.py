@@ -527,7 +527,7 @@ class PublicCropUpdateSerializer(serializers.ModelSerializer):
             'winter_hardiness': {'required': False, 'allow_blank': True},
             'seed_rate_unit': {'required': False, 'allow_null': True, 'allow_blank': True},
             'seeding_requirement_type': {'required': False, 'allow_blank': True},
-            'display_color': {'required': False, 'allow_blank': True},
+            'display_color': {'read_only': True},
         }
 
     def validate_plant_health(self, value: Any) -> dict | None:

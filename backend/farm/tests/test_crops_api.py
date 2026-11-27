@@ -1696,6 +1696,106 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             growth_duration_days=65,
         )
 
+    def test_variety_colors_resolve_parent_and_preserve_identical_override(self):
+        url = '/openfarmplanner/api/crops/'
+        varieties = [self.client.post(url, {
+            'name': 'Karotte', 'variety': f'Variety {number}', 'crop_species': self.species.id,
+        }, format='json') for number in range(10)]
+        for response in varieties:
+            self.assertEqual(response.status_code, 201, response.data)
+            self.assertEqual(response.data['display_color'], self.general.display_color)
+            self.assertIsNone(response.data['display_color_override'])
+        explicit_id = varieties[0].data['id']
+        explicit_url = f'{url}{explicit_id}/'
+        # Legacy writes treat a hex value as explicit, even if it matches the parent.
+        original_color = self.general.display_color
+        response = self.client.patch(explicit_url, {'display_color': original_color}, format='json')
+        self.assertEqual(response.data['display_color_override'], original_color)
+        response = self.client.patch(f'{url}{self.general.id}/', {
+            'display_color': '#486721', 'cultivation_types': ['direct_sowing'],
+            'seed_rate_direct_unit': 'g_per_m2',
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['display_color'], '#486721')
+        rows = {row['id']: row for row in self.client.get(url).data['results']}
+        self.assertEqual(rows[explicit_id]['display_color'], original_color)
+        inherited_colors = {rows[row.data['id']]['display_color'] for row in varieties[1:]}
+        self.assertEqual(inherited_colors, {'#486721'})
+
+        response = self.client.patch(explicit_url, {
+            'display_color_override': 'invalid',
+        }, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('display_color_override', response.data)
+        response = self.client.patch(explicit_url, {
+            'display_color': original_color, 'display_color_override': None,
+        }, format='json')
+        self.assertEqual(response.data['display_color'], '#486721')
+        self.assertIsNone(response.data['display_color_override'])
+
+        species = CropSpecies.objects.create(name='Reparented color species')
+        general = Crop.objects.create(
+            project=self.project, crop_species=species,
+            name='Other carrot', display_color='#aaccee',
+        )
+        response = self.client.patch(explicit_url, {'crop_species': species.id}, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['general_crop'], general.id)
+        self.assertEqual(response.data['display_color'], '#aaccee')
+        # Legacy missing-parent rows remain readable and resume inheritance when restored.
+        other = Project.objects.create(name='Unaffiliated project', slug='isolated-color-project')
+        Crop.objects.create(
+            project=other, crop_species=species, name=general.name, display_color='#111111',
+        )
+        Crop.objects.filter(pk=general.pk).update(deleted_at=general.updated_at)
+        self.assertEqual(self.client.get(explicit_url).data['display_color'], '#3b82f6')
+        Crop.all_objects.filter(pk=general.pk).update(deleted_at=None)
+        self.assertEqual(self.client.get(explicit_url).data['display_color'], '#aaccee')
+
+    def test_bulk_color_reset_is_scoped_atomic_and_restorable(self):
+        self.sorte.display_color = self.general.display_color
+        self.sorte.save()
+        other = Project.objects.create(name='Other project', slug='other-color-project')
+        foreign = Crop.objects.create(
+            project=other, name='Carrot', variety='Other', display_color='#123456',
+        )
+        url = '/openfarmplanner/api/crops/'
+        target = {'expected_project_id': self.project.id, 'crop_ids': [self.sorte.id]}
+        for bad_id in (foreign.id, self.general.id):
+            response = self.client.post(f'{url}reset-colors/', {
+                **target, 'crop_ids': [self.sorte.id, bad_id],
+            }, format='json')
+            self.assertEqual(response.status_code, 409, response.data)
+        self.sorte.refresh_from_db()
+        self.assertEqual(self.sorte.display_color, self.general.display_color)
+
+        response = self.client.post(f'{url}reset-colors/', target, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['updated_count'], 1)
+        history = EntityRevision.objects.filter(
+            project=self.project, entity_type='crop', object_id=self.sorte.id,
+        )
+        reset_revision = history.latest('id')
+        self.assertEqual(reset_revision.snapshot['display_color'], '')
+        self.assertIn('display_color', reset_revision.changed_fields)
+        undo = {'expected_project_id': self.project.id, 'undo_token': response.data['undo_token']}
+        wrong_project = self.client.post(f'{url}undo-color-reset/', {
+            **undo, 'expected_project_id': other.id,
+        }, format='json')
+        self.assertEqual(wrong_project.status_code, 409)
+        response = self.client.post(f'{url}undo-color-reset/', undo, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.sorte.refresh_from_db()
+        self.assertEqual(self.sorte.display_color, self.general.display_color)
+        response = self.client.post(f'{url}undo-color-reset/', undo, format='json')
+        self.assertEqual(response.status_code, 409)
+        restored = self.client.post(f'{url}{self.sorte.id}/restore/', {
+            'history_id': reset_revision.id,
+        }, format='json')
+        self.assertEqual(restored.status_code, 200, restored.data)
+        self.assertIsNone(restored.data['display_color_override'])
+        self.assertEqual(restored.data['display_color'], self.general.display_color)
+
     def test_seed_type_is_set_on_a_sorte_and_defaults_to_blank(self):
         url = f'/openfarmplanner/api/crops/{self.sorte.id}/'
         self.assertEqual(self.client.get(url).data['seed_type'], '')

@@ -671,6 +671,14 @@ def get_general_crop(
     return resolved
 
 
+def resolve_crop_display_color(crop: Crop, index: GeneralCropIndex | None = None) -> str:
+    """Resolve the project-local color used by planning and crop views."""
+    if crop.display_color:
+        return crop.display_color
+    general = get_general_crop(crop, index)
+    return (general.display_color if general else '') or '#3b82f6'
+
+
 def forces_species_invariant_inheritance(crop: Crop | None, field: str) -> bool:
     """Whether ``field`` must come from the general Kultur when one exists.
 

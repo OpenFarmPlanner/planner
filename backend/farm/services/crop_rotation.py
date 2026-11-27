@@ -509,10 +509,14 @@ class RotationService:
             break_years, break_source = family_default, BREAK_SOURCE_FAMILY
         else:
             break_years, break_source = None, None
+        species = crop.crop_species if crop.crop_species_id else None
         settings_crop = crop
         if forces_species_invariant_inheritance(crop, 'rotation_break_years'):
-            settings_crop = get_general_crop(crop, index) or crop
-        species = crop.crop_species if crop.crop_species_id else None
+            general = get_general_crop(crop, index)
+            if general is not None:
+                # The index keys by the same species already loaded on the variety.
+                general.crop_species = species
+                settings_crop = general
         categories = species.categories if species is not None else []
         result = RotationCrop(
             crop_id=crop.pk,

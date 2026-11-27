@@ -44,6 +44,15 @@ existing values on update. JSON can send an empty string as
 them. See [perennial harvest planning](crop-detail.md#perennial-harvest-planning)
 for inheritance, cross-year windows and leap days.
 
+The display color column (`display_color` in JSON) accepts a `#RRGGBB` color
+for a general crop or an explicit variety override. A blank or absent cell
+preserves the stored color on an existing crop. A new general crop gets an
+automatic base color and a new variety inherits. Enter `inherit` on a variety
+to remove a saved override. The preview identifies that reset, and exports
+use `inherit` so a reimport preserves the inheritance setting. An explicit
+general row is applied before its varieties, regardless of its position in
+the file.
+
 ## Preview and identity
 
 `POST /crops/import/preview/` still accepts the legacy array. The optional

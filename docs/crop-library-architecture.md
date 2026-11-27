@@ -137,12 +137,12 @@ The public Crop Library follows an open-data model:
   `public_crop_update_changes()` finds an actual compared-field difference — a
   translation-only bump, or a value the copy already matches, is not a pending
   update (nothing to review, nothing to disable the push over). The compared
-  set is `CROP_COPY_FIELDS` minus `display_color` (a project-local colour: an
-  imported crop always has an auto one, a public entry often none) and, on a
-  species-linked Sorte, `crop_family` / `nutrient_demand` (they live on the
-  species entry). An apply overwrites exactly that same set — `variety`
-  included, so a rename can never be applied without appearing in the preview;
-  `display_color` is popped from the apply too, matching the diff.
+  set comes from `CROP_COPY_FIELDS`. On a species-linked Sorte it excludes
+  `crop_family` / `nutrient_demand` (they live on the species entry). A pull
+  applies that same set, including variety renames shown in the preview.
+  Display colour is project-local and excluded from publishing, importing,
+  linking and sync. An imported general crop owns a base colour and an
+  imported variety can inherit it.
   Fields the user pinned locally (`Crop.library_pinned_fields`, see "Locally
   pinned fields" below) drop out of this set as well. A Kultur compared with a
   species-level entry adds the virtual field `companions`, its good and bad
@@ -394,7 +394,7 @@ The public Crop Library follows an open-data model:
   dialog does not push "all differences" any more: `GET
   /api/crops/<id>/public-sync/?public_crop_id=` lists every compared field that
   differs (the same set as the pull diff: `CROP_COPY_FIELDS` minus
-  `display_color`, minus `crop_family` / `nutrient_demand` on a species-linked
+  `crop_family` / `nutrient_demand` on a species-linked
   Sorte, `variety` and `name` included — except `variety` against a general
   (species-level) entry, where a linked Sorte, e.g. after a
   `publish_as_general` publish, differs by granularity, not by an edit
@@ -504,7 +504,7 @@ The public Crop Library follows an open-data model:
   - *Data.* `Crop.library_pinned_fields` is a JSON list of model field names
     (names only, never values; migration `0117_crop_library_pinned_fields`).
     Only compared fields can be pinned (`LIBRARY_PINNABLE_FIELDS`:
-    `CROP_COPY_FIELDS` minus `name`, `variety` and `display_color`, plus
+    `CROP_COPY_FIELDS` minus `name` and `variety`, plus
     `companions` on a Kultur), and the
     species-invariant `crop_family` / `nutrient_demand` never on a Sorte
     linked to its Kultur (`forces_species_invariant_inheritance`); a general
@@ -2421,7 +2421,7 @@ The complete 58-column audit uses the following presentation owners:
 | `harvest_method`, `expected_yield` | Shared yield-unit and generic expected-yield labels. Values are kg per plant or m² according to the row's unit; the header no longer assumes kg/m². |
 | `distance_within_row_cm`, `row_spacing_cm`, `sowing_depth` | Shared spacing/depth labels in cm; the single depth column demonstrates a range. |
 | `thousand_kernel_weight_g`, `sowing_calculation_safety_percent`, and the direct/pre-cultivation amount, unit and safety fields | Shared form labels; per-method headers prepend the cultivation context so the two Amount/Unit fields remain unambiguous. |
-| `display_color`, `notes`, `good_companions`, `bad_companions` | Shared color, notes and companion labels; valid hex, text and neighbour examples. |
+| `display_color`, `notes`, `good_companions`, `bad_companions` | Project color, notes and companion labels, with hex, inheritance, text and neighbour examples. |
 | `specific_properties.cooking_type`, `specific_properties.maturity_group` | Registry-owned localized labels, as in form/details; actual potato values, not template-only fields. |
 
 The potato notes explicitly describe propagation from botanical seed rather

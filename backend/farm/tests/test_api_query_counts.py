@@ -514,19 +514,27 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         one lookup of the user's pending edit proposals per page. The plant
         family names and default breaks come from the family list, loaded once
         (two queries: families and their translations)."""
+        url = '/openfarmplanner/api/crops/'
+        self.assert_list_query_count(url, 16, expected_rows=ROW_COUNT * 2)
+        colors = {}
         for crop in self.crops:
             crop.plant_health = {'entries': [
                 {'name': f'Local health selection {crop.pk}'},
             ]}
             crop.save(update_fields=['plant_health'])
-            Crop.objects.create(
+            variety = Crop.objects.create(
                 project=self.project, name=crop.name, variety='Rename sibling',
                 crop_species=crop.crop_species,
             )
+            colors[variety.pk] = crop.display_color or '#3b82f6'
         # Imported copies and additional varieties must keep the list budget flat.
-        self.assert_list_query_count(
-            '/openfarmplanner/api/crops/', 16, expected_rows=ROW_COUNT * 3,
-        )
+        with self.assertNumQueries(16):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        rows = response.data['results']
+        self.assertEqual(len(rows), ROW_COUNT * 3)
+        shown_colors = {row['id']: row['display_color'] for row in rows if row['id'] in colors}
+        self.assertEqual(shown_colors, colors)
 
     def test_crops_list_query_count_stays_flat_after_import_batches(self) -> None:
         for batch in range(2):
@@ -760,6 +768,34 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
         self.assert_list_query_count(
             '/openfarmplanner/api/planting-plans/', 16, expected_rows=2 * ROW_COUNT,
+        )
+
+    def test_planting_plans_list_inherits_variety_colors_without_per_row_queries(self):
+        url = '/openfarmplanner/api/planting-plans/'
+        parents = {
+            crop.pk: Crop.objects.create(
+                project=self.project, name=crop.name, crop_species=crop.crop_species,
+            ) if crop.variety else crop
+            for crop in self.crops
+        }
+        self.assert_list_query_count(url, 16)
+        colors = {}
+        for crop, bed in zip(self.crops, self.beds, strict=True):
+            variety = Crop.objects.create(
+                project=self.project, name=crop.name, variety='Color sibling',
+                crop_species=crop.crop_species,
+            )
+            plan = PlantingPlan.objects.create(
+                project=self.project, crop=variety, bed=bed, planting_date=date(2026, 5, 1),
+            )
+            colors[plan.pk] = parents[crop.pk].display_color
+        with self.assertNumQueries(16):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        rows = response.data['results']
+        self.assertEqual(len(rows), ROW_COUNT * 2)
+        self.assertEqual(
+            {row['id']: row['crop_display_color'] for row in rows if row['id'] in colors}, colors,
         )
 
     def test_planting_plans_list_query_count_with_perennial_plans(self):
@@ -1032,13 +1068,12 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
 
     def test_planting_plans_list_query_count_with_companion_findings(self):
         """Bad neighbours on every bed add a constant cost: the Kultur index and
-        the project's bed occupancies, each loaded once per page. The species-
-        linked Kulturen this fixture adds also make the page-wide general-crop
-        lookups load their species (two queries each for rotation and timing),
-        independent of the plan count."""
+        the project's bed occupancies, each loaded once per page. A linked
+        Kultur shares the species and translations already loaded for its Sorte.
+        """
         self._add_bad_neighbours_on_every_bed()
 
-        with self.assertNumQueries(22):
+        with self.assertNumQueries(18):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']

@@ -300,6 +300,10 @@
     "sowingDepthRangeError": "Het maximum moet minstens gelijk zijn aan het minimum.",
     "displayColor": "Weergavekleur",
     "displayColorError": "Ongeldig kleurformaat (gebruik #RRGGBB).",
+    "colorInherited": "Overgenomen kleur",
+    "colorOwn": "Eigen kleur",
+    "colorUseOwn": "Eigen kleur gebruiken",
+    "colorReset": "Kleur van het gewas gebruiken",
     "seedRateSectionTitle": "Zaad",
     "seedRateDirectSectionTitle": "Zaadbehoefte voor directe zaai",
     "seedRatePreCultivationSectionTitle": "Zaadbehoefte voor uitplanten",
@@ -623,6 +627,7 @@
       "undo": "Deze actie ongedaan maken"
     },
     "import": {
+    "colorInheritRequiresVariety": "Alleen rassen accepteren de waarde inherit in de kleurkolom.",
       "summary_one": "{{count}} gewas geïmporteerd",
       "summary_other": "{{count}} gewassen geïmporteerd",
       "actions": "Importacties",
@@ -790,7 +795,7 @@
         "required": "Alleen de kolom ‘{{name}}’ is verplicht. Alle andere kolommen mogen leeg zijn of helemaal ontbreken. De volgorde van de kolommen maakt niet uit.",
         "numbers": "Schrijf getallen met een komma of een punt, bijvoorbeeld 1,5 of 1.5.",
         "multipleValues": "Scheid meerdere waarden in één cel met ‘;’, bijvoorbeeld teeltwijzen ‘{{example}}’.",
-        "color": "Geef ‘{{column}}’ op als hexcode, bijvoorbeeld #2E7D32. Zonder code wordt automatisch een kleur toegewezen."
+        "color": "Geef ‘{{column}}’ op als #RRGGBB, bijvoorbeeld #2E7D32. Bij een lege cel nemen nieuwe rassen de kleur van het gewas over en behouden bestaande rijen hun kleur. Vul inherit in om een ras weer de kleur van het gewas te geven."
       },
       "varieties": {
         "withoutVariety": "Een rij zonder ‘{{variety}}’ beschrijft het gewas zelf.",
@@ -1806,6 +1811,17 @@
       "previous": "vorig, gewas",
       "next": "volgend, gewas"
     }
+  },
+  "colorReset": {
+    "action": "Raskleuren herstellen",
+    "confirm_one": "De kleur van {{count}} geselecteerd ras in ‘{{project}}’ herstellen? Het ras neemt de kleur van het gewas over.",
+    "confirm_other": "De kleuren van {{count}} geselecteerde rassen in ‘{{project}}’ herstellen? Ze nemen de kleuren van hun gewassen over.",
+    "done_one": "Kleur van {{count}} ras hersteld.",
+    "done_other": "Kleuren van {{count}} rassen hersteld.",
+    "restored_one": "Vorige kleur van {{count}} ras teruggezet.",
+    "restored_other": "Vorige kleuren van {{count}} rassen teruggezet.",
+    "failed": "De geselecteerde kleuren konden niet worden hersteld. Laad de gewassen opnieuw en probeer het nog eens.",
+    "undoFailed": "De wijziging kon niet ongedaan worden gemaakt. Bekijk de geschiedenis van het ras."
   },
   "bulkDelete": {
     "title": "Selectie verwijderen?",

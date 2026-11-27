@@ -48,7 +48,7 @@ const buildTemplateCrops = (t: TemplateT, potatoSpecies: TemplateSpecies): Crop[
     default_harvest_unit: 'bunch', average_harvest_bunch_weight_g: 250,
     distance_within_row_cm: 4, row_spacing_cm: 25, sowing_depth_cm: 1, sowing_depth_max_cm: 1.5,
     seed_rate_direct_value: 0.7, seed_rate_direct_unit: 'g_per_m2', sowing_calculation_safety_percent_direct: 12,
-    display_color: '#ea580c', notes: t('import.template.sampleNote'),
+    display_color_override: null, notes: t('import.template.sampleNote'),
     timing_windows: [
       { ...emptyTimingWindow('direct_sowing', 'decade'), start_month: 3, start_decade: 'early', end_month: 6, end_decade: 'late' },
       { ...emptyTimingWindow('direct_sowing', 'iso_week'), start_week: 30, end_week: 30 },

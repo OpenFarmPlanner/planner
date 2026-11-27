@@ -14,6 +14,8 @@ from farm.services.crop_display import resolve_crop_display_name
 from farm.services.crop_inheritance import (
     GeneralCropIndex,
     build_general_crop_index,
+    get_general_crop,
+    resolve_crop_display_color,
     resolve_crop_field,
 )
 from farm.services.plant_count import PLANT_COUNT_BLOCKER_MISSING_AREA, compute_plan_plant_count
@@ -229,7 +231,7 @@ def build_yield_forecast(
             for projection in projections:
                 _accumulate_plan_yield(
                     weekly_data, plan, expected.kilograms, projection,
-                    language_code, project.region,
+                    language_code, project.region, general_crops,
                 )
         elif include_incomplete:
             blockers = expected.blockers + (() if projections else ('missing_harvest_period',))
@@ -300,6 +302,7 @@ def _accumulate_plan_yield(
     projection: HarvestProjection,
     language_code: str,
     region: str,
+    general_crops: GeneralCropIndex,
 ) -> None:
     """Allocate the rounded cumulative yield between each pair of week boundaries."""
     first_day = projection.window_start.toordinal()
@@ -308,9 +311,10 @@ def _accumulate_plan_yield(
     limit = projection.end_date.toordinal() + 1
     first_week = start - projection.start_date.weekday()
     display_name, display_language = resolve_crop_display_name(plan.crop, language_code, region)
+    general = get_general_crop(plan.crop, general_crops)
     crop_key = (
         plan.crop_id, plan.crop.name, display_name, display_language,
-        plan.crop.display_color or '#3b82f6',
+        resolve_crop_display_color(general or plan.crop, general_crops),
     )
 
     allocated = _plan_yield_through(kilograms, start - first_day, days)

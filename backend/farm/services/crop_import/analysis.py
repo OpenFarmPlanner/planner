@@ -26,6 +26,7 @@ from farm.services.crop_tags import normalize_tags
 
 from .field_specs import (
     DIMENSION_LENGTH,
+    INHERIT_DISPLAY_COLOR,
     INPUT_KEY_INDEX,
     KIND_COLOR,
     KIND_ENUM,
@@ -73,6 +74,7 @@ MESSAGES: dict[str, str] = {
     'enum_unknown': 'Value is not one of the allowed values.',
     'too_long': 'Text exceeds the maximum length and was not truncated.',
     'invalid_color': 'Colour must be a #RRGGBB hex string.',
+    'color_inherit_requires_variety': 'Only a variety can inherit a display colour.',
     'not_a_list': 'Value must be a list.',
     'missing_name': 'A crop name is required.',
     'specific_properties_invalid': 'Crop-specific properties do not match the resolved species or contain unsupported values.',
@@ -262,16 +264,17 @@ def _analyze_string_list(analysis: FieldAnalysis, raw_value: Any) -> None:
 
 
 def _analyze_color(analysis: FieldAnalysis, raw_value: Any) -> None:
-    """Validate a hex colour string."""
-    if raw_value is None or str(raw_value).strip() == '':
-        analysis.api_value = ''
+    """An empty cell supplies no update. The reset marker is explicit."""
+    text = str(raw_value).strip() if raw_value is not None else ''
+    if not text:
         return
-    text = str(raw_value).strip()
-    if not HEX_COLOR_PATTERN.match(text):
+    if text.casefold() == INHERIT_DISPLAY_COLOR:
+        analysis.api_value = INHERIT_DISPLAY_COLOR
+    elif HEX_COLOR_PATTERN.fullmatch(text):
+        analysis.api_value = text
+    else:
         analysis.errors.append(_issue('invalid_color'))
         analysis.confidence = CONFIDENCE_INVALID
-        return
-    analysis.api_value = text
 
 
 def _analyze_number(
@@ -606,9 +609,13 @@ def _annotate_existing_values(analyses: dict[str, FieldAnalysis], existing: Crop
         if analysis.errors or field_name == 'supplier_name':
             continue
         current = existing.specific_properties.get(field_name.removeprefix('specific_properties.')) if field_name.startswith('specific_properties.') else getattr(existing, field_name, None)
+        if field_name == 'display_color' and existing.variety and not current:
+            current = INHERIT_DISPLAY_COLOR
         if isinstance(current, Decimal):
             current = float(current)
         analysis.current_value = current
+        if field_name == 'display_color' and analysis.api_value is None:
+            continue
         analysis.changes_existing = not _values_match(current, analysis.api_value)
 
 
@@ -679,6 +686,10 @@ def analyze_item(
     identity = _resolve_identity(analyses)
     if not identity['name']:
         row_errors.append(_issue('missing_name'))
+    color = analyses.get('display_color')
+    if color and color.api_value == INHERIT_DISPLAY_COLOR and not identity['variety']:
+        color.errors.append(_issue('color_inherit_requires_variety'))
+        color.confidence = CONFIDENCE_INVALID
 
     _validate_coupled_seed_rates(analyses)
     _validate_seed_rate_unit_constraints(analyses)

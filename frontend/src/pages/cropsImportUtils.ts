@@ -3,6 +3,7 @@ import { parseCropImportJson } from '../crops/importUtils';
 import type { SeedRateUnit, SeedRateUnitConstraints } from '../api/types';
 import { seedRateValueViolatesConstraint } from '../crops/seedRateConstraints';
 import { CROP_COLUMNS } from '../crops/spreadsheetColumns';
+import { INHERIT_DISPLAY_COLOR } from '../crops/displayColor';
 import type { ImportFailedEntry, ImportPreviewResult } from './cropsPageUtils';
 import { formatHistoryChangeValue, getCropFieldLabel } from './cropsHistoryUtils';
 
@@ -139,7 +140,9 @@ const toDisplayValue = (value: unknown, field: string): unknown => {
 };
 
 export const formatImportValue = (value: unknown, field: string, t: TFunction<'crops'>): string =>
-  formatHistoryChangeValue(toDisplayValue(value, field), field, t);
+  field === 'display_color' && value === INHERIT_DISPLAY_COLOR
+    ? t('form.colorInherited')
+    : formatHistoryChangeValue(toDisplayValue(value, field), field, t);
 
 export const formatImportDiffChange = (change: ImportDiffChange, t: TFunction<'crops'>): string => (
   `${getCropFieldLabel(change.field, t)}: ${formatImportValue(change.current, change.field, t)}`
@@ -187,6 +190,8 @@ export const formatImportFailure = (
   if (entry.error_code === 'companion_notes_invalid') return t('companions.import.invalid');
   if (entry.error_code === 'legacy_companion_import_limit') return t('companions.import.legacyLimit');
   if (entry.error_code === 'specific_properties_invalid') return t('specificProperties.importInvalid');
+  if (entry.error_code === 'invalid_color') return t('form.displayColorError');
+  if (entry.error_code === 'color_inherit_requires_variety') return t('import.colorInheritRequiresVariety');
   const importData = entry.importData ?? {};
   const fieldErrors = typeof entry.error === 'object' && entry.error !== null ? Object.keys(entry.error) : [];
   const lines = fieldErrors

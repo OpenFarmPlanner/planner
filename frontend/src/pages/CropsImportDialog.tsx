@@ -18,7 +18,7 @@ import {
 import { useTranslation } from '../i18n';
 import type { ImportPreviewResult } from './cropsPageUtils';
 import type { TFunction } from 'i18next';
-import { DISPLAY_COLOR_PATTERN } from '../crops/displayColor';
+import { DISPLAY_COLOR_PATTERN, INHERIT_DISPLAY_COLOR } from '../crops/displayColor';
 import { getCropFieldLabel } from './cropsHistoryUtils';
 import { formatImportDiffChange, formatImportFailure, formatImportValue, formatImportRowRanges } from './cropsImportUtils';
 import type { CropImportState } from './useCropImportState';
@@ -92,16 +92,24 @@ function NewCropsSection({ entries, t }: { entries: ImportPreviewResult[]; t: Tr
         {t('import.newCrops')} ({entries.length})
       </Typography>
       <List dense>
-        {entries.map((result) => (
-          <ListItem key={result.index}>
-            <ListItemText
-              primary={renderCropLabel(result)}
-              secondary={Array.isArray(result.import_data.timing_windows)
-                ? formatImportValue(result.import_data.timing_windows, 'timing_windows', cropsT)
-                : undefined}
-            />
-          </ListItem>
-        ))}
+        {entries.map((result) => {
+          const color = result.import_data.display_color
+            || (result.import_data.variety ? INHERIT_DISPLAY_COLOR : undefined);
+          const windows = result.import_data.timing_windows;
+          return (
+            <ListItem key={result.index}>
+              <ListItemText
+                primary={renderCropLabel(result)}
+                secondary={color || Array.isArray(windows) ? <>
+                  {color ? <Box component="span" sx={{ display: 'block' }}>
+                    {cropsT('form.displayColor')} {'·'} <ColorValue value={color} t={cropsT} />
+                  </Box> : null}
+                  {Array.isArray(windows) ? formatImportValue(windows, 'timing_windows', cropsT) : null}
+                </> : undefined}
+              />
+            </ListItem>
+          );
+        })}
       </List>
     </Box>
   );

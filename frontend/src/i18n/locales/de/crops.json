@@ -300,6 +300,10 @@
     "sowingDepthRangeError": "Der Höchstwert muss mindestens dem Mindestwert entsprechen.",
     "displayColor": "Anzeigefarbe",
     "displayColorError": "Ungültiges Farbformat (verwenden Sie #RRGGBB)",
+    "colorInherited": "Geerbte Farbe",
+    "colorOwn": "Eigene Farbe",
+    "colorUseOwn": "Eigene Farbe verwenden",
+    "colorReset": "Farbe der Kultur verwenden",
     "seedRateSectionTitle": "Saatgutbedarf",
     "seedRateDirectSectionTitle": "Saatgutbedarf Direktsaat",
     "seedRatePreCultivationSectionTitle": "Saatgutbedarf Pflanzung",
@@ -623,6 +627,7 @@
       "undo": "Diese Aktion rückgängig machen"
     },
     "import": {
+    "colorInheritRequiresVariety": "Nur Sorten können in der Farbspalte den Wert inherit verwenden.",
       "summary_one": "{{count}} Kultur importiert",
       "summary_other": "{{count}} Kulturen importiert",
       "actions": "Importaktionen",
@@ -790,7 +795,7 @@
         "required": "Pflicht ist nur die Spalte „{{name}}“. Alle anderen Spalten dürfen leer sein oder ganz fehlen. Die Reihenfolge der Spalten ist egal.",
         "numbers": "Zahlen schreibst du mit Komma oder Punkt, z. B. 1,5 oder 1.5.",
         "multipleValues": "Mehrere Werte in einer Zelle trennst du mit „;“, z. B. bei der Anbauart „{{example}}“.",
-        "color": "„{{column}}“ gibst du als Hex-Code an, z. B. #2E7D32. Ohne Angabe wird automatisch eine Farbe vergeben."
+        "color": "Gib „{{column}}“ als Hex-Code an, z. B. #2E7D32. Neue Sorten erben bei leerer Zelle die Farbe der Kultur. Bei vorhandenen Kulturen und Sorten bleibt die Farbe bei leerer Zelle gleich. Mit inherit setzt du eine Sorte auf die Farbe der Kultur zurück."
       },
       "varieties": {
         "withoutVariety": "Eine Zeile ohne „{{variety}}“ beschreibt die Kultur selbst.",
@@ -1806,6 +1811,17 @@
       "previous": "vorherige, kultur",
       "next": "nächste, kultur"
     }
+  },
+  "colorReset": {
+    "action": "Sortenfarben zurücksetzen",
+    "confirm_one": "Farbe von {{count}} ausgewählten Sorte in „{{project}}“ zurücksetzen? Sie übernimmt die Farbe ihrer Kultur.",
+    "confirm_other": "Farben von {{count}} ausgewählten Sorten in „{{project}}“ zurücksetzen? Sie übernehmen die Farben ihrer Kulturen.",
+    "done_one": "Farbe von {{count}} Sorte zurückgesetzt.",
+    "done_other": "Farben von {{count}} Sorten zurückgesetzt.",
+    "restored_one": "Farbe von {{count}} Sorte wiederhergestellt.",
+    "restored_other": "Farben von {{count}} Sorten wiederhergestellt.",
+    "failed": "Die ausgewählten Farben konnten nicht zurückgesetzt werden. Lade die Kulturen neu und versuche es erneut.",
+    "undoFailed": "Das Zurücksetzen konnte nicht rückgängig gemacht werden. Schau im Sortenverlauf nach."
   },
   "bulkDelete": {
     "title": "Auswahl löschen?",

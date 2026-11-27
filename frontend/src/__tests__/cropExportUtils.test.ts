@@ -52,6 +52,16 @@ describe('crop export mapping', () => {
     expect(portable).not.toHaveProperty('supplier');
   });
 
+  it.each([
+    [null, 'inherit'],
+    ['#227744', '#227744'],
+    [undefined, '#227744'],
+  ])('preserves variety color intent (%s) in the JSON round trip', (override, color) => {
+    const exported = buildSingleCropExport({ ...crop, display_color: '#227744', display_color_override: override });
+    const imported = parseCropImportJson(JSON.stringify(exported));
+    expect(imported.entries[0].display_color).toBe(color);
+  });
+
   it('writes all cultivation types, the primary one first', () => {
     const portable = toPortableCrop({
       ...crop, cultivation_type: 'direct_sowing', cultivation_types: ['pre_cultivation', 'direct_sowing'],

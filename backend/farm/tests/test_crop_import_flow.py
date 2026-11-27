@@ -6,6 +6,7 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.test import APIClient, APITestCase
 
+from crops.models import CropSpecies
 from farm.models import (
     Crop,
     CropImportDraft,
@@ -79,6 +80,33 @@ class PreviewIsReadOnlyTests(CropImportFlowTestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Crop.objects.filter(project=self.project).count(), 0)
+
+    def test_explicit_variety_reset_survives_draft_apply(self):
+        species = CropSpecies.objects.create(name='Agent color fixture')
+        variety_row = {'name': species.name, 'variety': 'Spring'}
+        draft = self.preview(
+            {**variety_row, 'display_color': '#227744'},
+            {'name': species.name, 'display_color': '#227744'},
+        ).data
+        response = self.apply(draft)
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertEqual(response.data['created_count'], 2)
+        crops = Crop.objects.filter(project=self.project, crop_species=species)
+        general = crops.get(variety_normalized__isnull=True)
+        variety = crops.get(variety='Spring')
+        self.assertEqual(variety.display_color, general.display_color)
+
+        draft = self.preview({**variety_row, 'display_color': ''}).data
+        self.assertEqual(draft['items'][0]['action'], 'skip')
+        draft = self.preview({**variety_row, 'display_color': 'inherit'}).data
+        item = draft['items'][0]
+        self.assertEqual(item['action'], 'update')
+        change = next(field for field in item['fields'] if field['field'] == 'display_color')
+        self.assertEqual((change['current_value'], change['api_value']), ('#227744', 'inherit'))
+        response = self.apply(draft)
+        self.assertEqual(response.status_code, 200, response.data)
+        variety.refresh_from_db()
+        self.assertEqual(variety.display_color, '')
 
     def test_preview_does_not_modify_a_matched_crop(self):
         existing = Crop.objects.create(
@@ -163,7 +191,11 @@ class ApplyRequiresConfirmationTests(CropImportFlowTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.data['created_count'], 1)
 
-        crop = Crop.objects.get(project=self.project, name='Brokkoli')
+        crops = Crop.objects.filter(project=self.project, name='Brokkoli')
+        crop = crops.get(variety='Calabrese')
+        general = crops.get(variety_normalized__isnull=True)
+        self.assertEqual(crop.crop_species_id, general.crop_species_id)
+        self.assertEqual(crop.display_color, '')
         self.assertAlmostEqual(crop.row_spacing_m, 0.5)
         self.assertAlmostEqual(crop.distance_within_row_m, 0.4)
 
@@ -237,7 +269,7 @@ class WarningAcknowledgementTests(CropImportFlowTestCase):
 class IdempotencyTests(CropImportFlowTestCase):
     """Re-running an import must converge, never duplicate."""
 
-    def test_applying_the_same_draft_twice_creates_one_crop(self):
+    def test_applying_the_same_draft_twice_creates_one_variety_and_its_parent(self):
         draft = self.preview(
             {'name': 'Brokkoli', 'variety': 'Calabrese', 'row_spacing_cm': 50}
         ).data
@@ -249,7 +281,8 @@ class IdempotencyTests(CropImportFlowTestCase):
         self.assertEqual(second.status_code, 200)
         self.assertFalse(first.data['already_applied'])
         self.assertTrue(second.data['already_applied'])
-        self.assertEqual(Crop.objects.filter(project=self.project, name='Brokkoli').count(), 1)
+        crops = Crop.objects.filter(project=self.project, name='Brokkoli')
+        self.assertCountEqual(crops.values_list('variety', flat=True), ['', 'Calabrese'])
 
     def test_re_previewing_the_same_payload_yields_a_skip(self):
         payload = {'name': 'Brokkoli', 'variety': 'Calabrese', 'row_spacing_cm': 50}
@@ -260,7 +293,7 @@ class IdempotencyTests(CropImportFlowTestCase):
         self.assertEqual(second_preview.data['items'][0]['action'], 'skip')
         self.assertEqual(second_preview.data['summary']['create'], 0)
 
-    def test_running_the_whole_flow_twice_creates_one_crop(self):
+    def test_running_the_whole_flow_twice_creates_one_variety_and_its_parent(self):
         payload = {'name': 'Brokkoli', 'variety': 'Calabrese', 'row_spacing_cm': 50}
         self.apply(self.preview(payload).data)
         second = self.apply(self.preview(payload).data)
@@ -268,7 +301,8 @@ class IdempotencyTests(CropImportFlowTestCase):
         self.assertEqual(second.status_code, 200)
         self.assertEqual(second.data['created_count'], 0)
         self.assertEqual(second.data['skipped_count'], 1)
-        self.assertEqual(Crop.objects.filter(project=self.project, name='Brokkoli').count(), 1)
+        crops = Crop.objects.filter(project=self.project, name='Brokkoli')
+        self.assertCountEqual(crops.values_list('variety', flat=True), ['', 'Calabrese'])
 
     def test_applied_draft_reports_its_result_on_retrieval(self):
         draft = self.preview({'name': 'Brokkoli'}).data

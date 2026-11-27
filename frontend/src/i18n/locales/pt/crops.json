@@ -303,6 +303,10 @@
     "sowingDepthRangeError": "O máximo tem de ser pelo menos igual ao mínimo.",
     "displayColor": "Cor de apresentação",
     "displayColorError": "Formato de cor inválido (utilizar #RRGGBB).",
+    "colorInherited": "Cor herdada",
+    "colorOwn": "Cor própria",
+    "colorUseOwn": "Usar uma cor própria",
+    "colorReset": "Usar a cor da cultura",
     "seedRateSectionTitle": "Sementes",
     "seedRateDirectSectionTitle": "Necessidades de sementes para sementeira direta",
     "seedRatePreCultivationSectionTitle": "Necessidades de sementes para transplantação",
@@ -637,6 +641,7 @@
       "undo": "Anular esta ação"
     },
     "import": {
+    "colorInheritRequiresVariety": "Apenas as variedades aceitam o valor inherit na coluna de cor.",
       "summary_one": "{{count}} cultura importada",
       "summary_other": "{{count}} culturas importadas",
       "actions": "Ações de importação",
@@ -808,7 +813,7 @@
         "required": "Apenas a coluna «{{name}}» é obrigatória. Todas as outras colunas podem ficar vazias ou faltar por completo. A ordem das colunas não importa.",
         "numbers": "Os números escrevem-se com vírgula ou ponto, por exemplo 1,5 ou 1.5.",
         "multipleValues": "Separe vários valores numa célula com «;», por exemplo tipos de cultivo «{{example}}».",
-        "color": "«{{column}}» indica-se como código hexadecimal, por exemplo #2E7D32. Sem indicação, é atribuída automaticamente uma cor."
+        "color": "Indique «{{column}}» no formato #RRGGBB, por exemplo #2E7D32. Se a célula estiver vazia, as variedades novas herdam a cor da cultura e as linhas existentes mantêm a sua cor. Introduza inherit para repor a cor herdada de uma variedade."
       },
       "varieties": {
         "withoutVariety": "Uma linha sem «{{variety}}» descreve a própria cultura.",
@@ -1854,6 +1859,17 @@
       "previous": "anterior, cultura",
       "next": "seguinte, cultura"
     }
+  },
+  "colorReset": {
+    "action": "Repor as cores das variedades",
+    "confirm_one": "Repor a cor de {{count}} variedade selecionada em «{{project}}»? A variedade passará a usar a cor da sua cultura.",
+    "confirm_other": "Repor as cores de {{count}} variedades selecionadas em «{{project}}»? As variedades passarão a usar as cores das respetivas culturas.",
+    "done_one": "Cor de {{count}} variedade reposta.",
+    "done_other": "Cores de {{count}} variedades repostas.",
+    "restored_one": "Cor anterior de {{count}} variedade recuperada.",
+    "restored_other": "Cores anteriores de {{count}} variedades recuperadas.",
+    "failed": "Não foi possível repor as cores selecionadas. Recarregue as culturas e tente novamente.",
+    "undoFailed": "Não foi possível anular a reposição. Consulte o histórico da variedade."
   },
   "bulkDelete": {
     "title": "Eliminar a seleção?",

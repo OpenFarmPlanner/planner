@@ -2,11 +2,11 @@
  * ColorSection: Display color picker
  * @remarks Presentational, no internal state
  */
-import { Box, Stack, Typography } from '@mui/material';
+import { Box, Button, Stack, Typography } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import type { Crop } from '../../api/types';
 import type { TFunction } from 'i18next';
-import { DISPLAY_COLOR_PATTERN } from '../displayColor';
+import { DISPLAY_COLOR_PATTERN, FALLBACK_CROP_DISPLAY_COLOR } from '../displayColor';
 
 interface ColorSectionProps {
   formData: Partial<Crop>;
@@ -14,11 +14,18 @@ interface ColorSectionProps {
   onChange: <K extends keyof Crop>(name: K, value: Crop[K]) => void;
   t: TFunction;
   defaultColor: string;
+  isVariety: boolean;
+  parentColor?: string;
 }
 
-
-export function ColorSection({ formData, errors, onChange, t, defaultColor }: ColorSectionProps) {
-  const displayColor = formData.display_color || defaultColor;
+export function ColorSection({ formData, errors, onChange, t, defaultColor, isVariety, parentColor }: ColorSectionProps) {
+  const ownColor = formData.display_color_override === undefined
+    ? formData.display_color
+    : formData.display_color_override;
+  const inherited = isVariety && !ownColor;
+  const displayColor = isVariety
+    ? ownColor || parentColor || FALLBACK_CROP_DISPLAY_COLOR
+    : formData.display_color || defaultColor;
   const swatchColor = DISPLAY_COLOR_PATTERN.test(displayColor) ? displayColor : defaultColor;
   const displayValue = DISPLAY_COLOR_PATTERN.test(displayColor) ? displayColor.toUpperCase() : displayColor;
 
@@ -28,7 +35,8 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
       <Stack spacing={0.75} sx={{ maxWidth: 360 }}>
         <Stack direction="row" spacing={1.25} sx={{ alignItems: "center", }} >
           <Box
-            component="label"
+            component={inherited ? 'span' : 'label'}
+            aria-hidden={inherited || undefined}
             sx={{
               width: 38,
               height: 38,
@@ -37,7 +45,7 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
               borderColor: 'divider',
               bgcolor: swatchColor,
               boxShadow: (theme) => `inset 0 0 0 1px ${alpha(theme.palette.common.white, 0.45)}`,
-              cursor: 'pointer',
+              cursor: inherited ? 'default' : 'pointer',
               flexShrink: 0,
               position: 'relative',
               '&:focus-within': {
@@ -48,12 +56,14 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
             }}
             title={displayValue}
           >
-            <Box
+            {inherited ? null : <Box
               component="input"
               type="color"
               aria-label={t('form.displayColor')}
               value={swatchColor}
-              onChange={e => onChange('display_color', e.target.value)}
+              onChange={e => isVariety
+                ? onChange('display_color_override', e.target.value)
+                : onChange('display_color', e.target.value)}
               sx={{
                 position: 'absolute',
                 inset: 0,
@@ -62,7 +72,7 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
                 height: '100%',
                 cursor: 'pointer',
               }}
-            />
+            />}
           </Box>
           <Typography
             variant="body2"
@@ -72,8 +82,19 @@ export function ColorSection({ formData, errors, onChange, t, defaultColor }: Co
             {displayValue}
           </Typography>
         </Stack>
-        {errors.display_color ? (
-          <Typography variant="body2" color="error">{errors.display_color}</Typography>
+        {isVariety ? (
+          <Stack direction="row" useFlexGap sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
+            <Typography variant="body2" color="text.secondary">
+              {t(inherited ? 'form.colorInherited' : 'form.colorOwn')}
+            </Typography>
+            <Button size="small" sx={{ minHeight: 44 }} onClick={() =>
+              onChange('display_color_override', inherited ? swatchColor : null)}>
+              {t(inherited ? 'form.colorUseOwn' : 'form.colorReset')}
+            </Button>
+          </Stack>
+        ) : null}
+        {errors.display_color_override || errors.display_color ? (
+          <Typography variant="body2" color="error">{errors.display_color_override || errors.display_color}</Typography>
         ) : null}
       </Stack>
     </>

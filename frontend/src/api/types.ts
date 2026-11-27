@@ -280,6 +280,8 @@ export interface Crop {
   sowing_calculation_safety_percent?: number;
   
   display_color?: string;
+  /** Saved project-local variety color. Null means the variety uses its general crop color. */
+  display_color_override?: string | null;
   
   // Computed, read-only.
   plants_per_m2?: number | null;

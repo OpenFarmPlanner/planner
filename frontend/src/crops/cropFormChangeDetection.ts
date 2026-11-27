@@ -194,7 +194,9 @@ export function normalizeCropFormData(crop: Partial<Crop>): Record<string, unkno
   });
 
   normalized.cultivation_types = normalizeCultivationTypes(crop);
-  normalized.display_color = normalizeColor(crop.display_color);
+  normalized.display_color = normalizeColor(crop.variety?.trim() && crop.display_color_override !== undefined
+    ? crop.display_color_override
+    : crop.display_color);
   normalized.seed_rate_by_cultivation = normalizeSeedRateByCultivation(crop.seed_rate_by_cultivation);
   normalized.supplier_data = normalizeSupplierRows(crop.supplier_data);
   normalized.specific_properties = Object.fromEntries(Object.entries(crop.specific_properties ?? {}).sort(([a], [b]) => a.localeCompare(b)));

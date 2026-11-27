@@ -637,6 +637,8 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         )
 
     def test_publish_project_crop_creates_separate_public_crop(self):
+        self.crop.display_color = '#445566'
+        self.crop.save()
         response = self.publish_current_crop()
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -650,11 +652,13 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(public_crop.source_project_crop, self.crop)
         self.assertEqual(public_crop.crop_species, self.species)
         self.assertEqual(public_crop.original_language_code, 'en')
+        self.assertEqual(public_crop.display_color, '')
         self.assertEqual(public_crop.seed_packages[0]['size_value'], 25.0)
         self.assertEqual(response.data['duplicates'], [])
         general_public_crop = PublicCrop.objects.get(variety='')
         self.assertEqual(general_public_crop.crop_species, self.species)
         self.assertEqual(general_public_crop.growth_duration_days, 50)
+        self.assertEqual(general_public_crop.display_color, '')
         self.assertTrue(
             DocumentConsent.objects.filter(
                 user=self.user,
@@ -3765,16 +3769,29 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
         self.assertEqual(reject.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_a_display_color_only_difference_is_not_a_pending_update(self):
-        """An imported crop always gets an auto colour; a public entry often has
-        none, so a colour mismatch alone never announces a library update."""
+        """Legacy library colors have no effect on a project's color choices."""
+        PublicCrop.objects.create(
+            name='Carrot', status='published', created_by=self.user,
+            display_color='#227744', crop_species=self.species,
+        )
         public_crop = PublicCrop.objects.create(
             name='Carrot', variety='Danvers', status='published', created_by=self.user,
-            growth_duration_days=70,
+            growth_duration_days=70, display_color='#227744', crop_species=self.species,
         )
         import_response = self.client.post(
             f'/openfarmplanner/api/public-crops/{public_crop.id}/import/', {}, format='json',
         )
         imported = Crop.objects.get(id=import_response.data['crop']['id'])
+        parent = Crop.objects.get(
+            project=self.project, crop_species=self.species, variety_normalized__isnull=True,
+        )
+        self.assertEqual(imported.display_color, '')
+        self.assertEqual(import_response.data['crop']['display_color'], parent.display_color)
+        self.assertNotEqual(parent.display_color, '#227744')
+        imported.display_color = '#445566'
+        imported.save()
+        imported.refresh_from_db()
+        self.assertFalse(imported.is_modified_from_source)
         # Bump the version and change *only* the colour.
         PublicCrop.objects.filter(pk=public_crop.pk).update(
             version=public_crop.version + 1, display_color='#abcdef',
@@ -3783,6 +3800,14 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
 
         preview = self.client.get(f'/openfarmplanner/api/crops/{imported.id}/public-update/')
         self.assertEqual(preview.data, {'available': False})
+        PublicCrop.objects.filter(pk=public_crop.pk).update(growth_duration_days=90)
+        applied = self.client.post(
+            f'/openfarmplanner/api/public-crops/{public_crop.id}/import/',
+            {'mode': 'update'}, format='json',
+        )
+        self.assertEqual(applied.status_code, 200, applied.data)
+        imported.refresh_from_db()
+        self.assertEqual(imported.display_color, '#445566')
 
     def test_crop_list_flags_a_pending_public_update(self):
         _, imported = self._import_and_rename_variety()
