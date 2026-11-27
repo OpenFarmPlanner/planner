@@ -68,7 +68,7 @@
       "legendCropGrowth": "Crescimento ou ocupação previstos",
       "legendCropMixed": "Planos mistos ou incertos",
       "cropLegend": "Os tons variam consoante a cultura. As culturas perenes ocupam o canteiro fora da colheita.",
-      "combinedCropLegend": "Os nomes e as fases das culturas são apresentados quando há espaço.",
+      "combinedCropLegend": "Os nomes e as fases das culturas são apresentados em texto quando há espaço.",
       "taskLegend": "A cor e o símbolo indicam a tarefa em aberto mais urgente. Os canteiros sem tarefas em aberto mantêm a sua cor habitual.",
       "cropLoadError": "Não foi possível carregar os planos de cultivo.",
       "phase": {
@@ -111,7 +111,6 @@
       },
       "noFill": "Os canteiros sem indicador não têm tarefas nesta campanha.",
       "none": "Este canteiro não tem tarefas nesta campanha.",
-      "chooseBed": "Selecionar canteiro",
       "loadError": "Não foi possível carregar as tarefas dos canteiros.",
       "saveError": "Não foi possível guardar o estado da tarefa.",
       "outstanding_one": "{{count}} tarefa em aberto",

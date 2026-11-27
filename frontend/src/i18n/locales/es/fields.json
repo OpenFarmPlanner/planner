@@ -68,7 +68,7 @@
       "legendCropGrowth": "Crecimiento u ocupación previstos",
       "legendCropMixed": "Planes mixtos o inciertos",
       "cropLegend": "Los tonos varían según el cultivo. Los cultivos perennes ocupan el bancal fuera de la cosecha.",
-      "combinedCropLegend": "Los nombres y las fases de los cultivos se muestran cuando hay espacio.",
+      "combinedCropLegend": "Los nombres y las fases de los cultivos se muestran como texto cuando hay espacio.",
       "taskLegend": "El color y el símbolo indican la tarea abierta más urgente. Los bancales sin tareas abiertas conservan su color habitual.",
       "cropLoadError": "No se pudieron cargar los planes de cultivo.",
       "phase": {
@@ -111,7 +111,6 @@
       },
       "noFill": "Los bancales sin indicador no tienen tareas en esta temporada.",
       "none": "Este bancal no tiene tareas en esta temporada.",
-      "chooseBed": "Seleccionar bancal",
       "loadError": "No se pudieron cargar las tareas de los bancales.",
       "saveError": "No se pudo guardar el estado de la tarea.",
       "outstanding_one": "{{count}} tarea abierta",

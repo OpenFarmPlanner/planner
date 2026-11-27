@@ -1,12 +1,9 @@
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
-import {
-  Alert, Box, Button, ClickAwayListener, MenuItem, Paper, Stack, TextField, Typography, useTheme,
-} from '@mui/material';
+import { Box, Button, ClickAwayListener, Paper, Stack, Typography, useTheme } from '@mui/material';
 import LegendToggleIcon from '@mui/icons-material/LegendToggle';
 import { AppTooltip } from '../components/AppTooltip';
 import { freeAreaColor } from '../components/hierarchy/utils/freeAreaColors';
-import LoadRetryButton from '../components/LoadRetryButton';
-import { BED_TASK_URGENCIES, bedTaskUrgencyLabel, type BedTaskSummary } from '../components/tasks/bedTaskUrgency';
+import { BED_TASK_URGENCIES, bedTaskUrgencyLabel } from '../components/tasks/bedTaskUrgency';
 import { useTranslation } from '../i18n';
 import type { OutlineKind } from './graphicalAreaGeometry';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
@@ -18,6 +15,7 @@ interface Props {
   mode: GraphicalDisplayMode;
   compact: boolean;
   hasBoundary: boolean;
+  hasBeds: boolean;
   freeSite: boolean;
   freeParcel: boolean;
   geometryOutlines: ReadonlySet<OutlineKind>;
@@ -25,15 +23,6 @@ interface Props {
   hasCanopies: boolean;
   canvasHint?: ReactNode;
   boundaryWarning?: ReactNode;
-  cropLoading: boolean;
-  cropFailed: boolean;
-  onRetryCrops: () => void;
-  beds: readonly { id: number; name: string; parcel: string }[];
-  summaries: ReadonlyMap<number, BedTaskSummary>;
-  loading: boolean;
-  failed: boolean;
-  onRetry: () => void;
-  onOpenBed?: (id: number) => void;
 }
 
 function LegendItem({ marker, children }: { marker: ReactNode; children: ReactNode }) {
@@ -50,22 +39,16 @@ function FillSwatch({ color }: { color: string }) {
 const legendList = { p: 0, m: 0, listStyle: 'none' };
 
 export function GraphicalDisplayLegend({
-  mode, compact, hasBoundary, freeSite, freeParcel, geometryOutlines, hasStems, hasCanopies, canvasHint, boundaryWarning,
-  cropLoading, cropFailed, onRetryCrops,
-  beds, summaries, loading, failed, onRetry, onOpenBed,
+  mode, compact, hasBoundary, hasBeds, freeSite, freeParcel, geometryOutlines, hasStems, hasCanopies, canvasHint, boundaryWarning,
 }: Props) {
-  const { t } = useTranslation(['fields', 'dashboard', 'common', 'hierarchy', 'help']);
+  const { t } = useTranslation(['fields', 'dashboard', 'hierarchy', 'help']);
   const theme = useTheme();
   const id = useId();
   const trigger = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
-  const [bedId, setBedId] = useState<number | ''>('');
   const showCrops = includesCrops(mode);
   const showTasks = includesTasks(mode);
-  const bed = beds.find(item => item.id === bedId);
-  const selected = bed ? summaries.get(bed.id) : undefined;
-  const name = bed ? `${bed.name} · ${bed.parcel}` : '';
   const title = t('graphical.display.legend');
   const plantColors = graphicalPlantColors(theme);
 
@@ -73,7 +56,6 @@ export function GraphicalDisplayLegend({
     if (!open) return;
     if (panel.current?.contains(document.activeElement)) trigger.current?.focus({ preventScroll: true });
     setOpen(false);
-    setBedId('');
   };
 
   useEffect(() => {
@@ -125,10 +107,6 @@ export function GraphicalDisplayLegend({
                   {t('graphical.display.legendCropMixed')}
                 </LegendItem>
               </Stack>}
-              {cropLoading && <Typography role="status" variant="caption">{t('common:messages.loading')}</Typography>}
-              {cropFailed && <Alert severity="error" action={<LoadRetryButton onClick={onRetryCrops} />}>
-                {t('graphical.display.cropLoadError')}
-              </Alert>}
             </Stack>}
             {showTasks && (
               <>
@@ -149,10 +127,6 @@ export function GraphicalDisplayLegend({
                 <Typography variant="caption" color="text.secondary">{t('graphical.display.taskLegend')}
                   {hasStems && <> {t('graphical.display.legendStemTasks')}</>}
                 </Typography>
-                {loading && <Typography role="status" variant="body2">{t('common:messages.loading')}</Typography>}
-                {failed && <Alert severity="error" action={<LoadRetryButton onClick={onRetry} />}>
-                  {t('graphical.taskLayer.loadError')}
-                </Alert>}
               </>
             )}
             <Stack component="ul" spacing={0.5} sx={legendList}>
@@ -163,7 +137,7 @@ export function GraphicalDisplayLegend({
                 <LegendItem marker={<FillSwatch color={theme.palette.grey[200]} />}>
                   {t('hierarchy:details.entityType.field')}
                 </LegendItem>
-                {beds.length > 0 && <LegendItem marker={<FillSwatch color={theme.palette.info.light} />}>
+                {hasBeds && <LegendItem marker={<FillSwatch color={theme.palette.info.light} />}>
                   {t('hierarchy:details.entityType.bed')}
                 </LegendItem>}
               </>}
@@ -188,32 +162,6 @@ export function GraphicalDisplayLegend({
                 {t(hasCanopies ? 'help:pages.graphical.symbols.individualPlant' : 'graphical.display.legendStem')}
               </LegendItem>}
             </Stack>
-            {onOpenBed && beds.length > 0 && (
-              <>
-                <TextField select fullWidth size="small" label={t('graphical.taskLayer.chooseBed')} value={bed?.id ?? ''}
-                  slotProps={{ select: { MenuProps: { container: getGraphicalPortalContainer } } }}
-                  onChange={event => setBedId(Number(event.target.value))}>
-                  {beds.map(item => <MenuItem key={item.id} value={item.id}
-                    sx={{ minHeight: { xs: 44, sm: 44 }, whiteSpace: 'normal' }}>
-                    {item.name} · {item.parcel}
-                  </MenuItem>)}
-                </TextField>
-                {bed && showTasks && !loading && !failed && (
-                  <Stack aria-live="polite" spacing={0.25}>
-                    <Typography variant="body2">
-                      {name} · {selected?.urgency ? bedTaskUrgencyLabel(selected.urgency, t) : t('graphical.taskLayer.none')}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                      {t('graphical.taskLayer.outstanding', { count: selected?.outstanding ?? 0 })}
-                      {selected?.undated ? ` · ${t('graphical.taskLayer.undatedCount', { count: selected.undated })}` : ''}
-                    </Typography>
-                  </Stack>
-                )}
-                <Button sx={{ minHeight: 44 }} disabled={!bed} onClick={() => { if (bed) onOpenBed(bed.id); }}>
-                  {t('hierarchy:details.open.bed')}
-                </Button>
-              </>
-            )}
           </Stack>
         </Paper>}
       </Box>

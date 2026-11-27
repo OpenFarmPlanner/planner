@@ -1,8 +1,67 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
 
 test.use({ serviceWorkers: 'block' });
+
+async function expectExplanatoryLegend(legend: Locator) {
+  await expect(legend.getByRole('combobox')).toHaveCount(0);
+  await expect(legend.getByRole('button')).toHaveCount(0);
+  await expect(legend.getByRole('status')).toHaveCount(0);
+  await expect(legend.getByText(/offene Aufgaben.*ohne Termin/)).toHaveCount(0);
+}
+
+test.describe('read-only plant and bed previews', () => {
+  test.use({ viewport: { width: 375, height: 800 }, hasTouch: true });
+
+  test('shows task details in read-only canvas previews', async ({ page, request }) => {
+    await loginWithDeterministicProject(page, request, 'graphical-read-only-previews', {
+      demoProject: true, demoYear: 2026, loginAsAdmin: true,
+    });
+    const { results: sites } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
+    const site = sites.find(item => item.name === 'Hofgarten')!;
+    const { results: plans } = await apiRequest<{ results: { id: number; season: number; parcel: number | null }[] }>(
+      page, 'GET', `/planting-plans/?individual_location=${site.id}`,
+    );
+    const orchard = plans.find(plan => plan.parcel !== null)!;
+    await apiRequest(page, 'POST', '/tasks/', {
+      title: 'Obststamm kontrollieren', season: orchard.season, planting_plan: orchard.id, due_date: null,
+    });
+    // Simulate a session with a project membership but no write access to this project.
+    await page.route('**/api/auth/me/', async route => {
+      const response = await route.fetch();
+      const user = await response.json();
+      const memberships = user.memberships.map((membership: { project_id: number }) => ({ ...membership, project_id: -1 }));
+      await route.fulfill({ response, json: { ...user, memberships } });
+    });
+    await page.goto('/app/fields-beds');
+    await page.getByRole('button', { name: 'Grafik', exact: true }).tap();
+    const locations = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
+    await locations.tap();
+    await page.getByRole('option', { name: 'Hofgarten', exact: true }).tap();
+    await selectGraphicDisplay(page, 'Aufgaben');
+    await activateCanvasTool(page, 'Alles einpassen', 'touch');
+    const preview = page.getByTestId('graphical-object-preview');
+    for (const [kind, shape, details] of [
+      ['bed', 'bed-rect-', 'Details anzeigen'],
+      ['plant', 'individual-stem-', 'Anbauplan-Details'],
+    ] as const) {
+      const target = page.locator(`[data-graphical-object-target^="${kind}:"][aria-description*="offene Aufgabe"]`).first();
+      await expect(target).toHaveCount(1);
+      const key = (await target.getAttribute('data-graphical-object-target'))!.split(':')[1];
+      const point = await canvasInteractionPoint(page, `${shape}${key}`);
+      await page.touchscreen.tap(point.x, point.y);
+      await expect(preview.getByRole('status')).toContainText(/offene Aufgabe/);
+      await expect(preview.getByRole('listitem').first()).toBeVisible();
+      await expect(preview.getByRole('button', { name: /als erledigt markieren/ })).toHaveCount(0);
+      await expect(preview.getByRole('button', { name: details, exact: true })).toBeVisible();
+      await preview.getByRole('button', { name: 'Schließen', exact: true }).tap();
+    }
+    const legend = await openGraphicLegend(page, 'touch');
+    await expectExplanatoryLegend(legend);
+    await expect(legend.getByText('Offen ohne Termin', { exact: true })).toBeVisible();
+  });
+});
 
 async function findShape(page: Page, testId: string) {
   return page.evaluate(testId => {
@@ -223,6 +282,7 @@ for (const mobile of [false, true]) {
       expect(triggerBounds.width).toBeGreaterThanOrEqual(44);
       const areaLegend = await openGraphicLegend(page, input);
       await expect(areaLegend).toBeFocused();
+      await expectExplanatoryLegend(areaLegend);
       await expect(areaLegend.getByText('Freifläche außerhalb der Parzellen')).toBeVisible();
       await expect(areaLegend.getByText('Zu wenig Platz für Wege')).toBeVisible();
       await expect(areaLegend.getByText('Offen ohne Termin')).toHaveCount(0);
@@ -237,30 +297,39 @@ for (const mobile of [false, true]) {
       await activateCanvasTool(page, 'Alles einpassen');
       await selectGraphicDisplay(page, 'Kulturen');
       const cropLegend = await openGraphicLegend(page, input);
+      await expectExplanatoryLegend(cropLegend);
       await expect(cropLegend.getByText(/Wachstum oder Belegung/)).toBeVisible();
       await expect(cropLegend.getByText('Offen ohne Termin')).toHaveCount(0);
       await page.keyboard.press('Escape');
       await expect(legendButton).toBeFocused();
       await selectGraphicDisplay(page, 'Kulturen & Aufgaben');
       const combinedLegend = await openGraphicLegend(page, input);
+      await expectExplanatoryLegend(combinedLegend);
       await expect(combinedLegend.getByText(/Kulturnamen und Phasen/)).toBeVisible();
       await expect(combinedLegend.getByText('Offen ohne Termin')).toBeVisible();
+      await expect(combinedLegend.getByText(/Farbe und Symbol zeigen die dringendste offene Aufgabe/)).toBeVisible();
       await expect(combinedLegend.getByText(/Wachstum oder Belegung/)).toHaveCount(0);
       await page.keyboard.press('Escape');
-      await selectGraphicDisplay(page, 'Anbauflächen');
       const preview = page.getByTestId('graphical-object-preview');
       const bedTarget = page.locator(`[data-graphical-object-target="bed:${bedId}"]`);
-      await bedTarget.press('Enter');
-      await expect(preview).toHaveAccessibleName('Südbeet');
-      await expect(preview.getByText(/2 offene Aufgaben.*1 ohne Termin/)).toBeVisible();
-      await expect(preview.getByText('Überfällige Kontrolle')).toBeVisible();
-      await expect(preview.getByText('Material besorgen')).toBeVisible();
-      await expect(preview.getByText('Parzellenzaun prüfen')).toHaveCount(0);
-      await expect(preview.getByText('Bewässerung abgebrochen')).toHaveCount(0);
-      await expect(preview.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toBeVisible();
-      await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
+      for (const mode of ['Anbauflächen', 'Kulturen', 'Kulturen & Aufgaben']) {
+        await selectGraphicDisplay(page, mode);
+        await bedTarget.press('Enter');
+        await expect(preview).toHaveAccessibleName('Südbeet');
+        await expect(preview.getByText(/2 offene Aufgaben.*1 ohne Termin/)).toBeVisible();
+        await expect(preview.getByText('Überfällige Kontrolle')).toBeVisible();
+        await expect(preview.getByText('Material besorgen')).toBeVisible();
+        await expect(preview.getByText('Parzellenzaun prüfen')).toHaveCount(0);
+        await expect(preview.getByText('Bewässerung abgebrochen')).toHaveCount(0);
+        await expect(preview.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toBeVisible();
+        await expect(preview.getByRole('button', { name: 'Details anzeigen' })).toBeVisible();
+        if (mode === 'Anbauflächen') await expect.poll(async () => (await getBed())?.fill).toBe(ordinaryFill);
+        await page.keyboard.press('Escape');
+        await expect(preview).toHaveCount(0);
+      }
+      await page.locator(`[data-graphical-object-target="bed:${neighborId}"]`).press('Enter');
+      await expect(preview.getByText('Keine offenen Aufgaben für dieses Beet.')).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(preview).toHaveCount(0);
       await selectGraphicDisplay(page, 'Aufgaben');
       let panel = await openGraphicLegend(page, input);
       await expect(panel.getByRole('switch')).toHaveCount(0);
@@ -290,10 +359,10 @@ for (const mobile of [false, true]) {
       await expect(page.getByRole('menuitemradio', { name: 'Aufgaben', exact: true })).toHaveAttribute('aria-checked', 'true');
       await page.keyboard.press('Escape');
       panel = await openGraphicLegend(page, input);
-      await panel.getByRole('combobox', { name: 'Beet auswählen' }).click();
-      await page.getByRole('option', { name: /Südbeet · Lernparzelle/ }).click();
-      await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
-      await expect(panel.getByText(/2 offene Aufgaben.*1 ohne Termin/)).toBeVisible();
+      await expectExplanatoryLegend(panel);
+      for (const label of ['Überfällig', 'Heute oder in den nächsten 7 Tagen', 'Später fällig', 'Offen ohne Termin']) {
+        await expect(panel.getByText(label, { exact: true })).toBeVisible();
+      }
       expect(await panel.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(0);
       await testInfo.attach(`bed-tasks-${mobile ? 'phone' : 'desktop'}`, {
         body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
@@ -301,61 +370,48 @@ for (const mobile of [false, true]) {
       await page.screenshot({ path: testInfo.outputPath(`legend-${mobile ? 'phone' : 'desktop'}.png`), animations: 'disabled' });
       if (mobile) {
         await page.setViewportSize({ width: 800, height: 375 });
-        await expect(panel.getByText(/Südbeet · Lernparzelle · Überfällig/)).toBeVisible();
+        await expect(panel.getByText('Offen ohne Termin', { exact: true })).toBeVisible();
         expect(await panel.evaluate(node => node.scrollWidth - node.clientWidth)).toBeLessThanOrEqual(0);
         await expect.poll(() => panel.evaluate(element => {
           const rect = element.getBoundingClientRect();
-          return rect.y >= 0 && rect.bottom <= window.innerHeight && element.scrollHeight > element.clientHeight;
+          return rect.y >= 0 && rect.bottom <= window.innerHeight;
         })).toBe(true);
-        const bounds = (await panel.boundingBox())!;
-        const touch = await page.context().newCDPSession(page);
-        const start = { x: Math.round(bounds.x + bounds.width / 2), y: Math.round(bounds.y + bounds.height - 16) };
-        await panel.evaluate(element => { element.scrollTop = 0; });
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
-        for (const offset of [12, 27, 42, 57, 72, 95]) {
-          // Deliver separate touch moves at a pace the browser can scroll with.
-          await page.waitForTimeout(35);
-          await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: start.x, y: start.y - offset }] });
-        }
-        await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-        await expect.poll(() => panel.evaluate(element => element.scrollTop)).toBeGreaterThan(0);
-        await touch.detach();
-        await panel.evaluate(element => { element.scrollTop = 0; });
         await testInfo.attach('bed-tasks-phone-landscape', {
           body: await page.screenshot({ animations: 'disabled' }), contentType: 'image/png',
         });
         await page.screenshot({ path: testInfo.outputPath('legend-landscape.png'), animations: 'disabled' });
         await page.setViewportSize({ width: 375, height: 800 });
       }
-      const details = panel.getByRole('button', { name: 'Beetdetails' });
-      if (mobile) await details.tap();
-      else {
-        await details.focus();
-        await page.keyboard.press('Enter');
-      }
+      await page.keyboard.press('Escape');
+      await expect(panel).toHaveCount(0);
+      const openBedPreview = async () => {
+        const point = await canvasInteractionPoint(page, `bed-rect-${bedId}`);
+        if (mobile) await page.touchscreen.tap(point.x, point.y);
+        else await page.mouse.click(point.x, point.y);
+        await expect(preview).toHaveAccessibleName('Südbeet');
+      };
+      await activateCanvasTool(page, 'Alles einpassen', mobile ? 'touch' : 'mouse');
+      await openBedPreview();
+      await expect(preview.getByText(/14\.5\.2026/)).toBeVisible();
+      await expect(preview.getByText(/Überfällig · 2 offene Aufgaben/)).toBeVisible();
+      await preview.getByRole('button', { name: 'Details anzeigen' }).click();
       await expect(page).toHaveURL(new RegExp(`/fields-beds/beds/${bedId}$`));
       await expect(page.getByRole('heading', { name: 'Südbeet', level: 1 })).toBeVisible();
       await expect(page.getByRole('link', { name: 'Alle Aufgaben' })).toHaveAttribute('href', /dashboard$/);
       await expect(page.getByText('Material besorgen')).toBeVisible();
       await expect(page.getByText(/Überfällig · 2 offene Aufgaben/)).toBeVisible();
       await expect(page.getByText('Parzellenzaun prüfen')).toHaveCount(0);
-      await page.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' }).click();
-      await expect(page.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toHaveCount(0);
-      const saved = await apiRequest<{ status: string }>(page, 'GET', `/tasks/${overdue.id}/`);
-      expect(saved.status).toBe('completed');
-      await page.getByRole('button', { name: 'Zurück zu den Anbauflächen' }).click();
-      await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+      await page.getByRole('button', { name: 'Zurück zur Grafik', exact: true }).click();
       await expectGraphicDisplayMode(page, 'Aufgaben');
+      await activateCanvasTool(page, 'Alles einpassen', mobile ? 'touch' : 'mouse');
+      const graphicUrl = page.url();
+      await openBedPreview();
+      await preview.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' }).click();
+      await expect(preview.getByRole('button', { name: '„Überfällige Kontrolle“ als erledigt markieren' })).toHaveCount(0);
+      expect((await apiRequest<{ status: string }>(page, 'GET', `/tasks/${overdue.id}/`)).status).toBe('completed');
       await expect.poll(async () => (await getBed())?.urgency).toBe('undated');
       expect(taskWrites).toHaveLength(1);
       expect(taskWrites[0]).toMatch(new RegExp(`/tasks/${overdue.id}/$`));
-      const { screen } = (await getBed())!;
-      const point = { x: Math.round(screen.x + screen.width / 2), y: Math.round(screen.y + screen.height / 2) };
-      await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, point)).toBe('CANVAS');
-      const graphicUrl = page.url();
-      if (mobile) await page.touchscreen.tap(point.x, point.y);
-      else await page.mouse.click(point.x, point.y);
-      await expect(preview).toHaveAccessibleName('Südbeet');
       await expect(preview.getByText('Material besorgen')).toBeVisible();
       await expect(page).toHaveURL(graphicUrl);
       await page.route(`**/api/tasks/${undated.id}/`, async route => {

@@ -614,11 +614,9 @@ test.describe('responsive canvas tools', () => {
     const tasks = await openGraphicLegend(page);
     await expect(tasks).toBeVisible();
     expect(await tasks.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
-    await tasks.getByRole('combobox', { name: 'Beet auswählen' }).tap();
-    const beds = page.getByRole('listbox', { name: 'Beet auswählen' });
-    await expect(beds).toBeVisible();
-    expect(await beds.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
-    await beds.getByRole('option').first().tap();
+    await expect(tasks.getByRole('combobox')).toHaveCount(0);
+    await expect(tasks.getByRole('button')).toHaveCount(0);
+    await expect(tasks.getByText('Offen ohne Termin', { exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(tasks).toHaveCount(0);
     await expect(graphicLegendButton(page)).toBeFocused();
@@ -1291,6 +1289,9 @@ test('keeps an individual plant task target and its open-task state across crop 
   await preview.getByRole('button', { name: /Zeitraumstamm prüfen.*als erledigt markieren/ }).click();
   await expect(marker).toHaveAccessibleDescription(/3 offene Aufgaben/);
   await expect(preview.getByText('Zeitraumstamm prüfen', { exact: true })).toHaveCount(0);
+  await expect(preview.getByText(/3 offene Aufgaben/)).toHaveCount(1);
+  await preview.getByRole('button', { name: 'Anbauplan-Details', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/planting-plans/${plan.id}$`));
 });
 
 test('draws a sized location boundary and flags plots that cross it', async ({ page, request }, testInfo) => {

@@ -68,7 +68,7 @@
       "legendCropGrowth": "Crescita o occupazione prevista",
       "legendCropMixed": "Piani misti o incerti",
       "cropLegend": "Le tonalità variano secondo la coltura. Le colture perenni occupano l’aiuola anche fuori dal raccolto.",
-      "combinedCropLegend": "I nomi e le fasi delle colture sono visibili quando c’è spazio.",
+      "combinedCropLegend": "I nomi e le fasi delle colture sono mostrati come testo quando c’è spazio.",
       "taskLegend": "Il colore e il simbolo indicano l’attività aperta più urgente. Le aiuole senza attività aperte mantengono il loro colore abituale.",
       "cropLoadError": "Impossibile caricare i piani di coltivazione.",
       "phase": {
@@ -111,7 +111,6 @@
       },
       "noFill": "Le aiuole senza indicatore non hanno attività in questa stagione.",
       "none": "Questa aiuola non ha attività in questa stagione.",
-      "chooseBed": "Seleziona aiuola",
       "loadError": "Impossibile caricare le attività delle aiuole.",
       "saveError": "Impossibile salvare lo stato dell’attività.",
       "outstanding_one": "{{count}} attività aperta",

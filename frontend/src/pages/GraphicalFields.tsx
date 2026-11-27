@@ -131,7 +131,6 @@ export default function GraphicalFields({
   editRequestedIndividualPlan,
   individualCreationTarget,
   onIndividualCreationHandled,
-  onOpenBed,
   onOpenDetails,
   onOpenIndividualPlan,
   onOpenIndividualCrop,
@@ -220,7 +219,8 @@ export default function GraphicalFields({
   const selectedPlans = useAreaPlantingPlans('bed', loadLocationPlans ? null : selectedBedId, activeSeasonId);
   const bedTasks = useBedTasks('location', showTasks || selectedPlantKey || (showCrops && selectedBedId !== null) ? activeLocationId : null,
     activeSeasonId, { sharedPlans: locationPlans });
-  const taskPlans = showTasks ? bedTasks.tasksByPlan : undefined;
+  // Keep out-of-period task markers mounted while the same scope refreshes.
+  const taskPlans = showTasks ? bedTasks.taskTargetPlans : undefined;
   const plansByParent = useMemo(() => projectIndividualPlants(
     individualPlants.plans, plantCropReference, individualSeason, focusedPlanId, taskPlans,
   ), [individualPlants.plans, plantCropReference, individualSeason, focusedPlanId, taskPlans]);
@@ -1705,6 +1705,7 @@ export default function GraphicalFields({
                     mode={locationIsEditable ? 'areas' : displayMode}
                     compact={stageWidth < theme.breakpoints.values.md}
                     hasBoundary={Boolean(boundary)}
+                    hasBeds={parcels.some(({ layout }) => layout.bedRects.length > 0)}
                     freeSite={Boolean(boundary && locationCoverage.freeRects?.length)}
                     freeParcel={parcels.some(({ rect, layout }) => layout.pixelsPerMeter
                       && geometry.parcelReports.get(rect.id)?.coverage.freeRects?.length)}
@@ -1721,12 +1722,6 @@ export default function GraphicalFields({
                         {t('fields:graphical.fieldsOutsideLocation')}
                       </Typography>
                     )}
-                    cropLoading={locationPlans.loading} cropFailed={locationPlans.failed} onRetryCrops={locationPlans.refresh}
-                    beds={parcels.flatMap(({ field, layout }) => layout.bedRects.map(bed => ({
-                      id: bed.id, name: bed.name, parcel: field.name,
-                    })))}
-                    summaries={taskSummaries} loading={bedTasks.loading} failed={bedTasks.failed && (!showCrops || !locationPlans.failed)}
-                    onRetry={bedTasks.refresh} onOpenBed={onOpenBed}
                   />
                   {objectInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}

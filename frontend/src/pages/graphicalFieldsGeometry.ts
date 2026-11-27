@@ -69,7 +69,6 @@ export interface GraphicalFieldsProps {
   editRequestedIndividualPlan?: boolean;
   individualCreationTarget?: IndividualCreationTarget | null;
   onIndividualCreationHandled?: () => void;
-  onOpenBed?: (id: number) => void;
   onOpenDetails?: (type: HierarchyEntityType, id: number) => void;
   onOpenIndividualPlan?: (id: number) => void;
   onOpenIndividualCrop?: (id: number) => void;

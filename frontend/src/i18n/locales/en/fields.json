@@ -108,7 +108,6 @@
       },
       "noFill": "Beds without a marker have no tasks in this season.",
       "none": "This bed has no tasks in this season.",
-      "chooseBed": "Select bed",
       "loadError": "The bed tasks could not be loaded.",
       "saveError": "The task status could not be saved.",
       "outstanding_one": "{{count}} open task",

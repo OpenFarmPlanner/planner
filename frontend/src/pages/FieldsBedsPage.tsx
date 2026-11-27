@@ -663,7 +663,6 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             editRequestedIndividualPlan={editRequestedIndividualPlan}
             individualCreationTarget={individualCreationTarget}
             onIndividualCreationHandled={finishIndividualCreationRequest}
-            onOpenBed={id => navigate(getEntityDetailPath('bed', id))}
             onOpenDetails={openGraphicalDetails}
             onOpenIndividualPlan={id => void navigate(plantingPlanDetailPath(id))}
             onOpenIndividualCrop={id => void navigate(`/app/crops?cropId=${id}`)}
