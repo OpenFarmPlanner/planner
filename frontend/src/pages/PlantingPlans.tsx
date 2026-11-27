@@ -2916,6 +2916,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
             const linkedBed = plan.bed ? bedById.get(plan.bed) : undefined;
             const linkedFieldId = linkedBed?.field ?? plan.parcel ?? undefined;
             const linkedField = linkedFieldId === undefined ? undefined : fieldById.get(linkedFieldId);
+            const locationId = linkedField?.location ?? plan.site ?? plan.parcel_location_id ?? undefined;
+            const linkedLocation = locationId === undefined ? undefined : locationById.get(locationId);
             return {
               ...plan,
               id: plan.id!,
@@ -2926,8 +2928,8 @@ function PlantingPlans({ onOpenDetails, detailOpen = false, detailRevision = 0, 
               bed_name: plan.bed_name || "",
               field_id: linkedFieldId,
               field_name: linkedField?.name ?? plan.parcel_name ?? undefined,
-              location_id: linkedField?.location,
-              location_name: linkedField ? locationById.get(linkedField.location)?.name : undefined,
+              location_id: locationId,
+              location_name: linkedLocation?.name ?? plan.site_name ?? undefined,
               planting_date: plan.planting_date,
               harvest_date: plan.harvest_date,
               harvest_end_date: plan.harvest_end_date,

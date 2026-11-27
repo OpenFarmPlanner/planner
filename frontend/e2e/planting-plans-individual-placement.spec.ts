@@ -74,6 +74,7 @@ test('records an exact location count from the table before any position is chos
     individual_positions: [], area_usage_sqm: null });
   await page.reload();
   await expect(page.locator(`[role="row"][data-id="${saved.id}"] [data-field="plants_count"]`)).toHaveText('3');
+  await expect(page.locator(`[role="row"][data-id="${saved.id}"] [data-field="bed"]`)).toContainText('Hofgarten');
   await page.goto(`/app/planting-plans/${saved.id}`);
   await expect(page.getByText('3 noch nicht positioniert', { exact: true })).toBeVisible();
 });

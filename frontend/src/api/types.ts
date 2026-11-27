@@ -2168,6 +2168,7 @@ export interface IncompleteYieldPlan {
   crop_variety: string | null;
   bed_name: string;
   parcel_name?: string;
+  site_name?: string;
   planting_date: string | null;
   calculation_blockers: (
     | 'missing_crop'
@@ -2195,6 +2196,7 @@ export type YieldComparisonPlanDates = PlantingPlanActualDates & Pick<PlantingPl
     id: number;
     bed_name: string;
     parcel_name?: string;
+    site_name?: string;
     crop_label?: string;
   };
 
@@ -2245,6 +2247,7 @@ export interface YieldComparisonSeason {
     plan_id: number;
     bed_name: string;
     parcel_name?: string;
+    site_name?: string;
     area_sqm: string;
     kg_per_sqm: string | null;
     estimated: boolean;
@@ -2253,6 +2256,7 @@ export interface YieldComparisonSeason {
     planting_plan_id: number;
     bed_name: string;
     parcel_name?: string;
+    site_name?: string;
   })[];
   plan_dates: YieldComparisonPlanDates[];
 }

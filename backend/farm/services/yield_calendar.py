@@ -152,7 +152,7 @@ def _forecast_plans(
     )
     plans = (
         PlantingPlan.objects.filter(project=project)
-        .select_related('crop', 'crop__crop_species', 'bed', 'parcel')
+        .select_related('crop', 'crop__crop_species', 'bed', 'parcel', 'site')
         .prefetch_related('crop__crop_species__translations')
         .alias(occupied_until=PlantingPlan.occupancy_end_expression())
         .order_by('pk')
@@ -295,6 +295,7 @@ def _incomplete_plan(
         'crop_variety': crop.variety if crop else '',
         'bed_name': plan.bed.name if plan.bed else '',
         'parcel_name': plan.parcel.name if plan.parcel_id else '',
+        'site_name': plan.site.name if plan.site_id else '',
         'planting_date': plan.planting_date,
         'calculation_blockers': list(blockers),
     }

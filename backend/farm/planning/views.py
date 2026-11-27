@@ -566,6 +566,8 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
             area_filter = Q(**{lookup: area_id})
             if name == 'field':
                 area_filter |= Q(parcel_id=area_id)
+            if name == 'location':
+                area_filter |= Q(site_id=area_id)
             if name == 'individual_location':
                 area_filter |= Q(individual_bed=True, bed__field__location_id=area_id)
                 area_filter |= Q(site_id=area_id)

@@ -101,8 +101,9 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         ).json()
         counts = ('plants_count', 'positioned_plants_count', 'pending_plants_count')
         self.assertEqual(tuple(original[key] for key in counts), (3, 0, 3))
-        by_location = self.client.get(f'{URL}?individual_location={self.location.pk}').json()
-        self.assertEqual(by_location['results'][0]['id'], original['id'])
+        for key in ('individual_location', 'location'):
+            by_location = self.client.get(URL, {key: self.location.pk}).json()
+            self.assertEqual([plan['id'] for plan in by_location['results']], [original['id']])
         demand = self.client.get('/openfarmplanner/api/young-plant-demand/').json()['results'][0]
         self.assertEqual(demand['plant_count'], 3)
         response = self.client.post(f'{URL}graphic-placement/', {

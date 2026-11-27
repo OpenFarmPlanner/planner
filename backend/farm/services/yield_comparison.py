@@ -288,6 +288,7 @@ def _activity_dates(
     return {
         'id': plan.pk, 'bed_name': plan.bed.name if plan.bed_id else '',
         'parcel_name': plan.parcel.name if plan.parcel_id else '',
+        'site_name': plan.site.name if plan.site_id else '',
         'cultivation_type': plan.cultivation_type,
         'crop_label': format_crop_label(plan.crop, language_code, plan.crop.project.region),
         **_crop_timing(plan.crop, crop_index),
@@ -398,6 +399,7 @@ def _record_harvest_allocation(
         'id': allocation.pk, 'date': harvest.date, 'plan_id': plan.pk,
         'bed_name': plan.bed.name if plan.bed_id else '',
         'parcel_name': plan.parcel.name if plan.parcel_id else '',
+        'site_name': plan.site.name if plan.site_id else '',
         'area_sqm': harvest_number(area),
         'kg_per_sqm': harvest_number(weight / area) if weight is not None else None,
         'estimated': estimated is not None,
@@ -553,6 +555,7 @@ def _record_window_losses(
                 'extent_value': harvest_number(loss['extent_value']),
                 'bed_name': plan.bed.name if plan.bed_id else '',
                 'parcel_name': plan.parcel.name if plan.parcel_id else '',
+                'site_name': plan.site.name if plan.site_id else '',
             })
 
 
