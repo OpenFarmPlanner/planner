@@ -25,7 +25,7 @@ confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
 
 ## 0. Sync: remove Accepted rows
 
-1. Freeze a candidate manifest the way the launcher does: preview with
+1. Start from current trusted `main`. Freeze a candidate manifest the way the launcher does: preview with
    `python3 scripts/local_qa/start.py sync --preview`, then build the manifest
    with `live_queue()`, `metadata()`, `references()`/`issue_links()` and
    `plan('sync', …)` from `scripts/local_qa/rounds.py` (its `launch()` needs
@@ -43,9 +43,10 @@ confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
 3. Show the eligible rows (with their manual hints), the skips and each
    explicit QA follow-up. Follow-ups keep their own rows; never remove them
    with the original.
-4. Apply directly under the standing authorization (no chat confirmation).
-   Immediately before writing, re-read decisions and the queue via the trusted
-   reader. Check its body is identical to `gh api repos/OpenFarmPlanner/planner/issues/1058`
+4. Apply directly under the standing authorization. Immediately before writing,
+   repeat the live checks in step 2 for each proposed removal and re-read the
+   queue via the trusted reader. Drop any row that became ineligible. Check the
+   queue body is identical to `gh api repos/OpenFarmPlanner/planner/issues/1058`
    (`.body`). Remove only the eligible lines under "Ordered work items" and
    keep every other byte. Write the new body as JSON with
    `gh api -X PATCH … --input <file>`, then re-fetch and compare byte-for-byte.
@@ -62,8 +63,8 @@ confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
    decisions first and never write back an earlier snapshot. Set the remaining
    cards' `position` from the new queue, update `issueCounts`/`summary`, and
    write atomically. Rebuild with the dashboard's `build()` and
-   `project-links.py` as in section 4. Confirm
-   `start.py sync --preview` now prints "No changes to process".
+   `project-links.py` as in section 4. Run `start.py sync --preview` again and
+   verify that applied rows no longer appear. Report any remaining candidates.
 
 ## 1. Find candidates
 
