@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { Bed, BedLayoutEntry, Field } from '../api/types';
 import { buildBulkBedPreview, getBulkBedPreviewContext } from '../components/hierarchy/utils/bulkBedPreview';
 import type { BulkBedFormValues } from '../components/hierarchy/utils/bulkBedCreatePlan';
-import { getGraphicalBedLayout, getSchematicFieldSize } from '../pages/graphicalAreaGeometry';
+import { getGraphicalBedLayout } from '../pages/graphicalAreaGeometry';
 import { rotateRect, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
 
 const field: Field = { id: 1, location: 1, name: 'Parcel', length_m: 75, width_m: 85 };
@@ -30,8 +30,7 @@ describe('bulk bed geometry shared with the Graphic', () => {
     const newBeds = names.map((name, index) => ({ id: 100 + index, name, field: 1, width_m: 1.2, length_m: 10 }));
     const newLayouts = Object.fromEntries(preview.placements.map((placement, index) => [100 + index,
       { ...placement, bed: 100 + index, location: 1 }]));
-    const rendered = getGraphicalBedLayout(field, getSchematicFieldSize(field),
-      [...existing, ...newBeds], { ...saved, ...newLayouts }, 0);
+    const rendered = getGraphicalBedLayout(field, [...existing, ...newBeds], { ...saved, ...newLayouts }, 0);
     for (const bed of context.existing) {
       const after = rendered.bedRects.find(rect => rect.id === bed.id)!;
       expect(after.x / rendered.pixelsPerMeter!.x).toBeCloseTo(bed.rect.x);
@@ -51,7 +50,7 @@ describe('bulk bed geometry shared with the Graphic', () => {
       const newBed = { ...oldBed, id: 11, name: 'New bed' };
       const layouts = { ...stored, 11: { ...placement, bed: 11, location: 1 } };
       for (const rotation of [0, 90, 180, 270] satisfies GraphicalRotation[]) {
-        const view = getGraphicalBedLayout(parcel, getSchematicFieldSize(parcel), [oldBed, newBed], layouts, rotation);
+        const view = getGraphicalBedLayout(parcel, [oldBed, newBed], layouts, rotation);
         const scale = view.pixelsPerMeter!.x;
         expect(view.pixelsPerMeter!.y).toBe(scale);
         [preview.existing[0].rect, preview.beds[0].rect].forEach((rect, index) => {

@@ -46,12 +46,13 @@ import { getIndividualPlantLabels, individualPlantObjectKey, placeIndividualPlan
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { GraphicalGeometryWarnings } from "./GraphicalGeometryWarnings";
 import { GraphicalSnapGuides } from "./GraphicalSnapGuides";
-import { analyzeGraphicalGeometry, getGeometryOutlines, getGraphicalBedLayout, getSchematicLocationLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
+import { analyzeGraphicalGeometry, getBedWorldRect, getGeometryOutlines, getGraphicalBedLayout, getSchematicLocationLayout, type GeometryPreview, type GraphicalParcel, type OutlineKind } from "./graphicalAreaGeometry";
 import ModeToggle from "../components/ModeToggle";
 import {
   clampInsideBoundary,
   clampInsideParent,
   isRectOutsideBoundary,
+  rectsOverlap,
   DEFAULT_GRAPHICAL_ROTATION,
   rotateRect,
   rotateRectBetweenSizes,
@@ -77,8 +78,6 @@ import {
   zoomAroundPoint,
 } from "./graphicalViewport";
 import {
-  FIELD_INNER_OFFSET_X,
-  FIELD_INNER_OFFSET_Y,
   FIELD_SNAP_THRESHOLD,
   FIELD_WORLD_PX_PER_METER,
   PAN_FAST_STEP,
@@ -104,6 +103,11 @@ const canvasPanOffsets = {
   up: [0, PAN_STEP], down: [0, -PAN_STEP], left: [PAN_STEP, 0], right: [-PAN_STEP, 0],
 } as const;
 
+function createCanvasTextMeasurer(font: string) {
+  const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
+  if (context) context.font = font;
+  return (value: string) => context?.measureText(value).width ?? Array.from(value).length * 6.5;
+}
 
 export default function GraphicalFields({
   showTitle = true,
@@ -145,11 +149,11 @@ export default function GraphicalFields({
   const showCrops = includesCrops(displayMode);
   const plantCropReference = showCrops ? cropReference : undefined;
   const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
-  const measurePlantText = useMemo(() => {
-    const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
-    if (context) context.font = '11px Arial, sans-serif';
-    return (value: string) => context?.measureText(value).width ?? Array.from(value).length * 6.5;
-  }, []);
+  const measureText = useMemo(() => ({
+    plant: createCanvasTextMeasurer('11px Arial, sans-serif'),
+    location: createCanvasTextMeasurer('12px Arial, sans-serif'),
+    parcel: createCanvasTextMeasurer('bold 12px Arial, sans-serif'),
+  }), []);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
   >({});
@@ -467,12 +471,14 @@ export default function GraphicalFields({
       const rect = fieldRectsById.get(field.id!);
       if (!rect) return [];
       return [{ field, rect, layout: getGraphicalBedLayout(
-        field, stored, beds.filter(bed => bed.field === rect.id), layoutsByBed, rotation,
+        field, beds.filter(bed => bed.field === rect.id), layoutsByBed, rotation,
       ) }];
     });
     const spacing = getLocationPathSpacing(location);
     const savedGeometry = analyzeGraphicalGeometry(location, boundary, parcels, spacing, rotation, null, true);
-    return { parcels, fieldRectsById, spacing, savedGeometry };
+    const bedBounds = parcels.flatMap(parcel => parcel.layout.bedRects.map(bed => getBedWorldRect(parcel, bed)));
+    const contentBounds = getContentBoundsFromRects([...(boundary ? [boundary] : []), ...fieldViewModels, ...bedBounds]);
+    return { parcels, fieldRectsById, spacing, savedGeometry, contentBounds };
   }, [activeLayout, beds, layoutsByBed]);
   const geometry = useMemo(() => {
     if (!activeLayout || !activeScene) return null;
@@ -493,7 +499,8 @@ export default function GraphicalFields({
       key: locationKey, type: 'location', id: locationId, name: location.name,
       metrics: location, rect: boundary, coverage: geometry.locationReport.coverage,
     }]]);
-    for (const { field, rect, layout } of parcels) {
+    for (const parcel of parcels) {
+      const { field, rect, layout } = parcel;
       const fieldKey = graphicalObjectKey('field', rect.id);
       model.set(fieldKey, { key: fieldKey, id: rect.id, type: 'field', name: field.name,
         parent: location.name, metrics: field, rect, coverage: geometry.parcelReports.get(rect.id)?.coverage });
@@ -501,7 +508,7 @@ export default function GraphicalFields({
         const key = graphicalObjectKey('bed', bed.id);
         const entity = bedsById.get(bed.id);
         if (entity) model.set(key, { key, id: bed.id, type: 'bed', name: bed.name, parent: field.name,
-          metrics: entity, rect: { ...bed, x: rect.x + FIELD_INNER_OFFSET_X + bed.x, y: rect.y + FIELD_INNER_OFFSET_Y + bed.y } });
+          metrics: entity, rect: getBedWorldRect(parcel, bed) });
       }
     }
     return model;
@@ -510,12 +517,12 @@ export default function GraphicalFields({
   const plantObjects = useMemo(() => {
     const result = new Map<string, GraphicalIndividualPlant>();
     if (!activeLayout || !activeScene || !browseIndividualPlants) return result;
-    const add = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect) => {
+    const add = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect, rotation: GraphicalRotation) => {
       const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
       for (const projection of parentPlans) {
         const name = bedCropDisplayName(projection.crop.plan, t);
         const phase = bedCropPhaseLabel(projection.crop, t);
-        for (const plant of placeIndividualPlantObjects(projection, dimensions, surface, activeLayout.rotation, name, phase)) {
+        for (const plant of placeIndividualPlantObjects(projection, dimensions, surface, rotation, name, phase)) {
           result.set(plant.key, plant);
         }
       }
@@ -523,11 +530,11 @@ export default function GraphicalFields({
     for (const { field, rect, layout } of activeScene.parcels) {
       const { usableArea, bedRects } = layout;
       if (layout.pixelsPerMeter) add({ kind: 'field', id: rect.id }, field,
-        { ...usableArea, x: rect.x + usableArea.x, y: rect.y + usableArea.y });
+        { ...usableArea, x: rect.x + usableArea.x, y: rect.y + usableArea.y }, activeLayout.rotation);
       for (const bed of bedRects) {
         const area = areaObjects.get(graphicalObjectKey('bed', bed.id));
         const entity = bedsById.get(bed.id);
-        if (area?.rect && entity) add({ kind: 'bed', id: bed.id }, entity, area.rect);
+        if (area?.rect && entity) add({ kind: 'bed', id: bed.id }, entity, area.rect, bed.placementRotation);
       }
     }
     return result;
@@ -580,11 +587,10 @@ export default function GraphicalFields({
       return toContentBounds({ width: stageWidth, height: stageHeight });
     }
 
-    const fieldBounds = getContentBoundsFromRects(
-      layout.boundary ? [layout.boundary, ...layout.fieldViewModels] : layout.fieldViewModels,
-    );
+    const areaBounds = locationId === activeLocationId && activeScene ? activeScene.contentBounds
+      : getContentBoundsFromRects(layout.boundary ? [layout.boundary, ...layout.fieldViewModels] : layout.fieldViewModels);
     return (
-      fieldBounds ??
+      areaBounds ??
       toContentBounds({
         width: layout.contentWidth,
         height: layout.contentHeight,
@@ -849,7 +855,6 @@ export default function GraphicalFields({
 
   const getFieldInteractionProps = (
     fieldId: number,
-    baseRect: Pick<(typeof locationLayouts)[number]["defaultFieldRects"][number], "field" | "width" | "height">,
     currentFieldRect: RectViewModel,
     contentBounds: { width: number; height: number },
     fieldViewModels: RectViewModel[],
@@ -861,12 +866,11 @@ export default function GraphicalFields({
   ): KonvaNodeEvents & { draggable: boolean } => {
     if (!isLocationEditMode(locationId)) return { draggable: false };
 
-    const fieldSize = { width: baseRect.width, height: baseRect.height };
     // Plots stay on the workspace and, when the location has a boundary,
     // inside it; plots without a boundary keep the workspace-only clamp.
     const constrain = (position: Point): Point => {
-      const onWorkspace = clampInsideParent(position, fieldSize, contentBounds);
-      return boundary ? clampInsideBoundary(onWorkspace, fieldSize, boundary) : onWorkspace;
+      const onWorkspace = clampInsideParent(position, currentFieldRect, contentBounds);
+      return boundary ? clampInsideBoundary(onWorkspace, currentFieldRect, boundary) : onWorkspace;
     };
 
     const drag: AreaDragOptions = {
@@ -879,7 +883,7 @@ export default function GraphicalFields({
       onPreview: position => setGeometryPreview(position && { type: "field", id: fieldId, locationId, position }),
       onDrop: position => {
         const inverseRotation = ((360 - rotation) % 360) as GraphicalRotation;
-        const stored = rotateRect({ ...baseRect, ...position }, contentBounds, inverseRotation);
+        const stored = rotateRect({ ...currentFieldRect, ...position }, contentBounds, inverseRotation);
         saveFieldLayout(locationId, {
           field: fieldId, location: locationId, x: stored.x, y: stored.y, version: 1,
         }, unsavedBoundaryOrigin);
@@ -895,7 +899,7 @@ export default function GraphicalFields({
   const getBedInteractionProps = (
     bedVm: BedViewModel,
     currentFieldRect: RectViewModel,
-    fieldInnerSize: { width: number; height: number },
+    fieldInnerSize: PlacementRect,
     bedViewModels: BedViewModel[],
     locationId: number,
     storedFieldInnerSize: RectSize,
@@ -909,11 +913,11 @@ export default function GraphicalFields({
       neighbors: bedViewModels,
       snapping,
       constrain: position => clampInsideParent(position, bedVm, fieldInnerSize),
-      offset: { x: FIELD_INNER_OFFSET_X, y: FIELD_INNER_OFFSET_Y },
+      offset: fieldInnerSize,
       onPreview: position => setGeometryPreview(position && { type: "bed", id: bedVm.id, locationId, position }),
       onGuides: guides => setActiveGuides(guides.map(guide => {
-        const x = currentFieldRect.x + FIELD_INNER_OFFSET_X;
-        const y = currentFieldRect.y + FIELD_INNER_OFFSET_Y;
+        const x = currentFieldRect.x + fieldInnerSize.x;
+        const y = currentFieldRect.y + fieldInnerSize.y;
         const vertical = guide.orientation === "vertical";
         return {
           ...guide,
@@ -1123,10 +1127,20 @@ export default function GraphicalFields({
           const plantLabels = showCrops && plantObjects.size
             ? getIndividualPlantLabels([...plantObjects.values()], [...areaObjects.values()].flatMap(object =>
               object.type === 'bed' && object.rect ? [object.rect] : []), viewport,
-              { width: stageWidth, height: stageHeight }, measurePlantText) : null;
+              { width: stageWidth, height: stageHeight }, measureText.plant) : null;
           const showFallbackLocationLabel = !boundary || viewport.x + (boundary.x + boundary.width) * viewport.scale < 0
             || viewport.x + boundary.x * viewport.scale > stageWidth - 100
             || viewport.y + boundary.y * viewport.scale < 60 || viewport.y + boundary.y * viewport.scale > stageHeight;
+          const locationLabel = boundary ? t("fields:graphical.locationBoundaryLabel", {
+            name: location.name,
+            width: formatLocalizedNumber(location.width_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
+            length: formatLocalizedNumber(location.length_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
+          }) : '';
+          const locationLabelVisible = Boolean(boundary && (!showFallbackLocationLabel || !objectInteractionEnabled));
+          const locationLabelBounds = boundary && locationLabelVisible ? {
+            x: boundary.x * viewport.scale, y: boundary.y * viewport.scale,
+            width: measureText.location(locationLabel), height: 14,
+          } : null;
           const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
           const focusArea = (rect: PlacementRect): void => {
             setViewportByLocation(previous => ({ ...previous, [locationId]: {
@@ -1147,9 +1161,9 @@ export default function GraphicalFields({
             if (fullscreenLocationId === locationId) void toggleFullscreen(locationId).then(start);
             else start();
           };
-          const renderPlacement = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect) => {
-            const measured = parcelMeters(dimensions);
-            if (!measured) return null;
+          const renderPlacement = (parent: PlacementParent, dimensions: PlacementDimensions, surface: PlacementRect,
+            placementRotation: GraphicalRotation) => {
+            if (!parcelMeters(dimensions)) return null;
             const draft = matchesPlacementParent(stemDraft?.parent, parent) ? stemDraft : null;
             const parentPlans = plansByParent.get(graphicalObjectKey(parent.kind, parent.id)) ?? [];
             const stems: CanvasStem[] = parentPlans.flatMap(({ plan, crop, cropProjected }) => {
@@ -1175,14 +1189,9 @@ export default function GraphicalFields({
             const placing = Boolean(draft && individualSeason && individualPlants.editor.placing
               && readyForPlacement(draft, individualSeason) && draft.stems.length < MAX_INDIVIDUAL_POSITIONS);
             if (!placing && !stems.length) return null;
-            const transposed = rotation === 90 || rotation === 270;
-            const pixelsPerMeter = {
-              x: surface.width / (transposed ? measured.height : measured.width),
-              y: surface.height / (transposed ? measured.width : measured.height),
-            };
             return <GraphicalIndividualPlantsLayer field={dimensions} surface={surface}
               surfaceId={`individual-place-surface-${parent.kind === 'bed' ? 'bed-' : ''}${parent.id}`}
-              pixelsPerMeter={pixelsPerMeter} rotation={rotation} zoom={viewport.scale} stems={stems}
+              rotation={placementRotation} zoom={viewport.scale} stems={stems}
               placing={placing} editablePlanId={draft && !individualPlants.editor.saving ? draft.planId ?? null : undefined}
               onAdd={individualPlants.addStem} draggablePlanIds={draggableStemPlans}
               captureStems={locationIsEditable && individualPlants.canEdit}
@@ -1355,23 +1364,18 @@ export default function GraphicalFields({
                             strokeWidth={2}
                             strokeScaleEnabled={false}
                             dash={[8, 6]}
-                            cornerRadius={4}
                             listening={false}
                             data-testid={`location-boundary-${locationId}`}
                           />
                           <Text
                             x={boundary.x}
                             y={boundary.y - (FIELD_LABEL_SCREEN_PADDING + 14) / viewport.scale}
-                            text={t("fields:graphical.locationBoundaryLabel", {
-                              name: location.name,
-                              width: formatLocalizedNumber(location.width_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
-                              length: formatLocalizedNumber(location.length_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
-                            })}
+                            text={locationLabel}
                             fill={theme.palette.text.secondary}
                             wrap="none"
                             scaleX={1 / viewport.scale}
                             scaleY={1 / viewport.scale}
-                            visible={!showFallbackLocationLabel || !objectInteractionEnabled}
+                            visible={locationLabelVisible}
                             listening={objectInteractionEnabled && !showFallbackLocationLabel}
                             data-graphical-object-key={locationKey}
                             data-testid={`location-boundary-label-${locationId}`}
@@ -1380,15 +1384,22 @@ export default function GraphicalFields({
                       ) : null}
                       {parcels.map(({ field, rect: currentFieldRect, layout }) => {
                         const fieldId = currentFieldRect.id;
-                        const { fieldSize, usableArea: fieldUsableArea, storedUsableArea, pixelsPerMeter, bedRects } = layout;
-                        const baseRect = { field, width: fieldSize.width, height: fieldSize.height };
+                        const { usableArea: fieldUsableArea, storedUsableArea, pixelsPerMeter, bedRects } = layout;
                         const parcelReport = geometry.parcelReports.get(fieldId);
                         const bedSpacing = pixelsPerMeter
                           ? { centimeters: pathSpacing.bed_path_spacing_cm, pixelsPerMeter }
                           : undefined;
                         const fieldWarning = parcelWarnings.get(fieldId);
+                        const showFieldLabel = shouldShowFieldLabel(currentFieldRect, viewport.scale);
+                        const labelWidth = getFieldLabelScreenWidth(currentFieldRect, viewport.scale);
+                        const overlapsLocationLabel = showFieldLabel && locationLabelBounds && rectsOverlap(locationLabelBounds, {
+                          x: currentFieldRect.x * viewport.scale + FIELD_LABEL_SCREEN_PADDING,
+                          y: currentFieldRect.y * viewport.scale,
+                          width: Math.min(labelWidth, measureText.parcel(field.name)),
+                          height: 14,
+                        });
                         const fieldDragProps = getFieldInteractionProps(
-                          fieldId, baseRect, currentFieldRect,
+                          fieldId, currentFieldRect,
                           { width: contentWidth, height: contentHeight },
                           fieldViewModels, locationId, rotation, boundary, unsavedBoundaryOrigin,
                           { ...snapping, thresholdPx: FIELD_SNAP_THRESHOLD, spacing: {
@@ -1405,56 +1416,42 @@ export default function GraphicalFields({
                             data-testid={`field-group-${fieldId}`}
                             {...fieldDragProps}
                           >
-                            {/* The full parcel is a view-mode hit target. In edit mode
-                                only the original outline and bed handles start a drag. */}
-                            <Rect
-                              width={baseRect.width}
-                              height={baseRect.height}
-                              fill={theme.palette.grey[200]}
-                              cornerRadius={4}
-                              listening={objectInteractionEnabled}
-                              data-graphical-object-key={graphicalObjectKey('field', fieldId)}
-                              data-testid={`field-margin-${fieldId}`}
-                            />
                             <Rect
                               x={fieldUsableArea.x}
                               y={fieldUsableArea.y}
                               width={fieldUsableArea.width}
                               height={fieldUsableArea.height}
-                              fill={theme.palette.common.white}
-                              listening={false}
+                              fill={theme.palette.background.paper}
+                              listening={objectInteractionEnabled || locationIsEditable}
+                              data-graphical-object-key={graphicalObjectKey('field', fieldId)}
                               data-testid={`field-usable-area-${fieldId}`}
                             />
                             {pixelsPerMeter ? <GraphicalFreeRectangles coverage={parcelReport?.coverage}
                               origin={fieldUsableArea} scale={pixelsPerMeter} kind="parcel" /> : null}
                             <Rect
-                              width={baseRect.width}
-                              height={baseRect.height}
+                              width={currentFieldRect.width}
+                              height={currentFieldRect.height}
+                              dash={pixelsPerMeter ? undefined : [6, 4]}
                               {...getOutlineProps(fieldWarning, theme.palette.primary.main, 2)}
                               data-geometry-issue={fieldWarning}
-                              cornerRadius={4}
                               data-testid={`field-rect-${fieldId}`}
                               data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
                               data-graphical-object-key={graphicalObjectKey('field', fieldId)}
                             />
-                            {shouldShowFieldLabel(
-                              {
-                                width: baseRect.width,
-                                height: baseRect.height,
-                              },
-                              viewport.scale,
-                            ) ? (
+                            {showFieldLabel && !overlapsLocationLabel ? (
                               <Text
                                 x={FIELD_LABEL_SCREEN_PADDING / viewport.scale}
-                                y={FIELD_LABEL_SCREEN_PADDING / viewport.scale}
-                                text={baseRect.field.name}
-                                width={getFieldLabelScreenWidth(baseRect, viewport.scale)}
+                                y={-(FIELD_LABEL_SCREEN_PADDING + 14) / viewport.scale}
+                                text={field.name}
+                                width={labelWidth}
+                                fill={theme.palette.text.primary}
                                 wrap="none"
                                 ellipsis
                                 fontStyle="bold"
                                 listening={false}
                                 scaleX={1 / viewport.scale}
                                 scaleY={1 / viewport.scale}
+                                data-testid={`field-label-${fieldId}`}
                               />
                             ) : null}
                             {bedRects.filter(bedVm => visibility.showBeds
@@ -1472,7 +1469,7 @@ export default function GraphicalFields({
                                 const bed = bedsById.get(bedVm.id);
                                 return (
                                   <Group key={bedVm.id} name="graphical-editable" data-testid={`bed-group-${bedVm.id}`}
-                                    x={FIELD_INNER_OFFSET_X + bedVm.x} y={FIELD_INNER_OFFSET_Y + bedVm.y}
+                                    x={fieldUsableArea.x + bedVm.x} y={fieldUsableArea.y + bedVm.y}
                                     {...getBedInteractionProps(
                                       bedVm, currentFieldRect, fieldUsableArea, bedRects, locationId, storedUsableArea,
                                       rotation, { ...snapping, thresholdPx: SNAP_THRESHOLD, spacing: bedSpacing },
@@ -1481,6 +1478,7 @@ export default function GraphicalFields({
                                       width={bedVm.width}
                                       height={bedVm.height}
                                       fill={fill ?? theme.palette.info.light}
+                                      dash={bedVm.supportsMetricSpacing ? undefined : [6, 4]}
                                       {...getOutlineProps(bedWarnings.get(bedVm.id), theme.palette.info.main, 1)}
                                       data-geometry-issue={bedWarnings.get(bedVm.id)}
                                       data-task-urgency={urgency}
@@ -1492,11 +1490,11 @@ export default function GraphicalFields({
                                       mode={shownMode} detailedArea={visibility.showDetailedBedLabels}
                                       crops={entries} tasks={tasks} urgency={urgency} />}
                                     {bed && renderPlacement({ kind: 'bed', id: bedVm.id }, bed,
-                                      { x: 0, y: 0, width: bedVm.width, height: bedVm.height })}
+                                      { x: 0, y: 0, width: bedVm.width, height: bedVm.height }, bedVm.placementRotation)}
                                   </Group>
                                 );
                               })}
-                            {pixelsPerMeter && renderPlacement({ kind: 'field', id: fieldId }, field, fieldUsableArea)}
+                            {pixelsPerMeter && renderPlacement({ kind: 'field', id: fieldId }, field, fieldUsableArea, rotation)}
                           </Group>
                         );
                       })}

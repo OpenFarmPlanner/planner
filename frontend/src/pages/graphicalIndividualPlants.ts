@@ -87,21 +87,30 @@ export function getIndividualPlantLabels(
   const inset = 8;
   const right = size.width - (size.width < 650 ? 58 : 116);
   const cellSize = 24;
-  const markers = new Set<string>();
+  const markerRadius = 8;
+  const markers = new Map<string, Rect[]>();
   const points = plants.map(plant => ({ plant, point: toScreen(plant.rect, viewport) }));
-  for (const { point } of points) markers.add(`${Math.floor(point.x / cellSize)}:${Math.floor(point.y / cellSize)}`);
+  for (const { point } of points) {
+    const key = `${Math.floor(point.x / cellSize)}:${Math.floor(point.y / cellSize)}`;
+    const bounds = { x: point.x - markerRadius, y: point.y - markerRadius,
+      width: 2 * markerRadius, height: 2 * markerRadius };
+    const cell = markers.get(key);
+    if (cell) cell.push(bounds);
+    else markers.set(key, [bounds]);
+  }
   const occupied = beds.map(rect => {
     const screen = toScreen(rect, viewport);
     return { ...screen, height: Math.min(screen.height, screen.width < 64 ? screen.height : 45) };
   });
-  const coversMarker = ({ x, y, width, height }: Rect) => {
-    const firstX = Math.floor((x - 4) / cellSize);
-    const lastX = Math.floor((x + width + 4) / cellSize);
-    const firstY = Math.floor((y - 4) / cellSize);
-    const lastY = Math.floor((y + height + 4) / cellSize);
+  const coversMarker = (rect: Rect) => {
+    const { x, y, width, height } = rect;
+    const firstX = Math.floor((x - markerRadius) / cellSize);
+    const lastX = Math.floor((x + width + markerRadius) / cellSize);
+    const firstY = Math.floor((y - markerRadius) / cellSize);
+    const lastY = Math.floor((y + height + markerRadius) / cellSize);
     for (let column = firstX; column <= lastX; column += 1) {
       for (let row = firstY; row <= lastY; row += 1) {
-        if (markers.has(`${column}:${row}`)) return true;
+        if (markers.get(`${column}:${row}`)?.some(marker => overlaps(marker, rect))) return true;
       }
     }
     return false;
@@ -119,7 +128,7 @@ export function getIndividualPlantLabels(
     for (const x of choices) {
       const rect = { x, y: top, width, height };
       if (x < inset || x + width > right || top < inset || top + height > size.height - inset) continue;
-      if (coversMarker(rect) || occupied.some(area => overlaps(area, rect))) continue;
+      if (occupied.some(area => overlaps(area, rect)) || coversMarker(rect)) continue;
       labels.set(plant.stemId, { ...rect, x: x - point.x, y: top - point.y });
       occupied.push({ ...rect, x: rect.x - 2, y: rect.y - 2, width: width + 4, height: height + 4 });
       break;

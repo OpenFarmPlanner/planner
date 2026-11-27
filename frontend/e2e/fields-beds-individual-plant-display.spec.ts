@@ -74,6 +74,8 @@ async function shape(page: Page, key: string) {
     return {
       x: bounds.x + canvas.x + bounds.width / 2,
       y: bounds.y + canvas.y + bounds.height / 2,
+      world: node.getAbsolutePosition(stage),
+      radius: node.getAttr('radius') ?? null,
       urgency: node.getAttr('data-task-urgency') ?? null,
       phase: node.getAttr('data-crop-phase') ?? null,
       fill: node.getAttr('fill') ?? null,
@@ -98,6 +100,7 @@ async function clickStem(page: Page, id: string, button: 'left' | 'right' = 'lef
 async function setCropDate(page: Page, value: string) {
   await page.getByRole('button', { name: /^Stichtag für Kulturen · / }).click();
   const dialog = page.getByRole('dialog', { name: 'Stichtag für Kulturen' });
+  await dialog.getByRole('button', { name: 'Stichtag', exact: true }).click();
   await dialog.locator('input[type="date"]').fill(value);
   await page.keyboard.press('Escape');
 }
@@ -113,6 +116,16 @@ test('shows phases and shared plan tasks on orchard and mixed-bed markers in all
   const neutral = (await stem(page, first.id))!.fill;
   expect(await shape(page, `individual-canopy-${first.id}`)).toBeNull();
   await expect.poll(() => shape(page, `individual-canopy-${apple.id}`)).toMatchObject({ listening: false });
+  const canopy = (await shape(page, `individual-canopy-${apple.id}`))!;
+  const appleShape = (await stem(page, apple.id))!;
+  const appleParcel = (await shape(page, `field-rect-${orchard.parcel}`))!;
+  const bedShape = (await shape(page, `bed-rect-${bed.id}`))!;
+  const firstShape = (await stem(page, first.id))!;
+  expect(canopy.radius).toBeCloseTo(Number(orchard.estimated_canopy_diameter_m) * 18 / 2);
+  expect(canopy.world).toEqual(appleShape.world);
+  expect(appleShape.world.y - appleParcel.world.y).toBeCloseTo(Number(apple.x_m) * 18);
+  expect(firstShape.world.y - bedShape.world.y).toBeCloseTo(Number(first.x_m) * 18);
+  expect(firstShape.world.x - bedShape.world.x).toBeCloseTo((6 - Number(first.y_m)) * 18);
   await selectGraphicDisplay(page, 'Kulturen');
   await expect.poll(() => stem(page, first.id)).toMatchObject({ phase: 'growth', urgency: null });
   expect((await stem(page, first.id))!.fill).not.toBe(neutral);

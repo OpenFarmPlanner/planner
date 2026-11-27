@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { fieldUsesWorldScale, rotateRect, rotateRectBetweenSizes, turnRotation, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
+import { rotateRect, rotateRectBetweenSizes, turnRotation, type GraphicalRotation } from '../pages/graphicalLayoutUtils';
 import { arrangeFieldRects, areaToRectSize, clampInsideBoundary, clampInsideParent, findFreePlacementPosition, getBedRectSize, getBedRectSizeWithinField, getBedScaleFromField, getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, isRectOutsideBoundary, placeFieldRects, rectsOverlap, FIELD_PLACEMENT_SPACING, type Rect } from '../pages/graphicalLayoutUtils';
 
 describe('graphicalLayoutUtils', () => {
-  it('allows metric parcel gaps only for measured rectangles rendered at the location scale', () => {
-    const measured = { length_m: 10, width_m: 8, area_sqm: 80 };
+  it('retains the minimum side in the legacy storage frame', () => {
     const enlarged = { length_m: 10, width_m: 1, area_sqm: 10 };
-    const estimated = { length_m: null, width_m: null, area_sqm: 10 };
-    expect(fieldUsesWorldScale(measured, getFieldRectSize(measured, 18), 18)).toBe(true);
     expect(getFieldRectSize(enlarged, 18)).toEqual({ width: 72, height: 720 });
-    expect(fieldUsesWorldScale(enlarged, getFieldRectSize(enlarged, 18), 18)).toBe(false);
-    expect(fieldUsesWorldScale(estimated, getFieldRectSize(estimated, 18), 18)).toBe(false);
   });
 
   it('rotates positions and dimensions clockwise through all four orientations', () => {

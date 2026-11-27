@@ -32,6 +32,7 @@ export interface RectViewModel {
 }
 
 export interface BedViewModel extends RectViewModel {
+  placementRotation: GraphicalRotation;
   id: number;
   name: string;
   area: number;
@@ -96,10 +97,8 @@ export const FIELD_INNER_OFFSET_Y = FIELD_INNER_OFFSET_X + FIELD_LABEL_HEIGHT;
 export const FIELD_INNER_BOTTOM_PADDING = FIELD_INNER_OFFSET_X;
 
 /**
- * The part of a field (Parzelle) beds can be placed in, in the field's own
- * coordinates: the border and the label strip at the top are kept free. The
- * single source for both the placement clamp and the drawn usable area, so
- * what the user sees and where a bed can go never disagree.
+ * The old parcel frame's inner size, used to read and write existing bed
+ * layout offsets. Its label strip and padding were presentation space.
  */
 export const getFieldUsableArea = (fieldSize: { width: number; height: number }): {
   x: number;

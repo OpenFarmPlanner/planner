@@ -12,12 +12,21 @@ async function canvasRects(page: Page, prefix: string) {
       .flatMap(stage => stage.find('Rect, Text').map(node => ({
         id: String(node.getAttr('data-testid') ?? ''),
         ...node.getAbsolutePosition(stage), width: node.width(), height: node.height(),
-        rotation: node.rotation(), bounds: node.getClientRect(),
+        rotation: node.rotation(), bounds: node.getClientRect(), issue: node.getAttr('data-geometry-issue') ?? null,
         screenSize: { width: node.width() * stage.scaleX(), height: node.height() * stage.scaleY() },
         stage: { width: stage.width(), height: stage.height() },
         container: { x: stage.container().getBoundingClientRect().x, y: stage.container().getBoundingClientRect().y },
       }))).filter(rect => rect.id.startsWith(prefix));
   }, prefix);
+}
+
+async function waitForParcelDragTarget(page: Page, fieldId: number) {
+  await expect.poll(() => page.evaluate(fieldId => {
+    const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+      .find(item => item.container()?.isConnected);
+    return stage?.find<Konva.Group>('Group').find(group => group.getAttr('data-testid') === `field-group-${fieldId}`)
+      ?.draggable() ?? false;
+  }, fieldId)).toBe(true);
 }
 
 test('fits unsaved plots together and shows readable beds in the schematic view', async ({ page, request }, testInfo) => {
@@ -30,15 +39,15 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
   page.on('request', request => {
     if (/\/layouts\/$/.test(new URL(request.url()).pathname) && request.method() !== 'GET') layoutWrites.push(request.method());
   });
-  for (const [index, width, length] of [[1, 10, 20], [2, 24, 10], [3, 8, 8]]) {
+  for (const [index, width, length] of [[1, 10, 20], [2, 24, 6], [3, 8, 8]]) {
     const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
       name: `Parzelle ${index}`, location: location.id, width_m: width, length_m: length,
     });
     fieldIds.push(field.id);
     const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
       name: `Beet ${index} mit einem langen lesbaren Namen`, field: field.id,
-      width_m: index === 1 ? 2 : index === 2 ? 18 : 4,
-      length_m: index === 1 ? 15 : index === 2 ? 3 : 4,
+      width_m: 2,
+      length_m: index === 1 ? 15 : 4,
     });
     bedIds.push(bed.id);
   }
@@ -75,7 +84,7 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
       expect(field.bounds.y + field.bounds.height).toBeLessThanOrEqual(field.stage.height + 1);
     }
     expect(fields[0].width / fields[0].height).toBeCloseTo(2);
-    expect(fields[1].width / fields[1].height).toBeCloseTo(1 / 2.4);
+    expect(fields[1].width / fields[1].height).toBeCloseTo(1 / 4);
     for (const [index, field] of fields.entries()) {
       for (const other of fields.slice(index + 1)) {
         expect(field.x + field.width <= other.x || other.x + other.width <= field.x ||
@@ -83,6 +92,8 @@ test('fits unsaved plots together and shows readable beds in the schematic view'
       }
     }
     const beds = (await canvasRects(page, 'bed-rect-')).filter(bed => bedIds.includes(Number(bed.id.replace('bed-rect-', ''))));
+    expect(beds[1].screenSize).toEqual(beds[2].screenSize);
+    expect(beds[1].screenSize.width / fields[1].screenSize.width).toBeCloseTo(4 / 6);
     const labels = await canvasRects(page, 'bed-label-');
     for (const bed of beds) {
       const label = labels.find(label => label.id === bed.id.replace('bed-rect-', 'bed-label-'));
@@ -1193,6 +1204,9 @@ test('draws a sized location boundary and flags plots that cross it', async ({ p
   const outside = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
     name: 'Zu groß', location: location.id, width_m: 20, length_m: 40,
   });
+  const longBed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    name: 'Beet außerhalb der Parzelle', field: inside.id, width_m: 2, length_m: 45,
+  });
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, 'Grenzhof');
@@ -1223,6 +1237,10 @@ test('draws a sized location boundary and flags plots that cross it', async ({ p
     const [hintBox, cardBox] = [await hint.boundingBox(), await card.boundingBox()];
     expect(hintBox!.x + hintBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width + 1);
     const boundary = (await canvasRects(page, `location-boundary-${location.id}`))[0];
+    const bed = (await canvasRects(page, `bed-rect-${longBed.id}`))[0];
+    expect(bed.issue).toBe('outside');
+    expect(bed.bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bed.bounds.x + bed.bounds.width).toBeLessThanOrEqual(bed.stage.width + 1);
     expect(boundary.bounds.x).toBeGreaterThanOrEqual(0);
     expect(boundary.bounds.x + boundary.bounds.width).toBeLessThanOrEqual(boundary.stage.width + 1);
     await page.screenshot({ path: testInfo.outputPath(`boundary-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
@@ -1249,9 +1267,12 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
   const dragPlotBy = async (dx: number, dy: number) => {
     const plot = await fieldRect();
     const start = { x: plot.container.x + plot.bounds.x + plot.bounds.width / 2, y: plot.container.y + plot.bounds.y + plot.bounds.height / 2 };
+    await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, start)).toBe('CANVAS');
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
-    await page.mouse.move(start.x + dx, start.y + dy, { steps: 12 });
+    const viewport = page.viewportSize()!;
+    await page.mouse.move(Math.max(1, Math.min(viewport.width - 2, start.x + dx)),
+      Math.max(1, Math.min(viewport.height - 2, start.y + dy)), { steps: 12 });
     const saved = page.waitForResponse(response => response.url().endsWith(`/locations/${location.id}/layouts/`)
       && response.request().method() === 'PUT'
       && (response.request().postDataJSON() as { field_layouts: unknown[] }).field_layouts.length > 0);
@@ -1265,7 +1286,8 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     await page.getByRole('button', { name: 'Grafik', exact: true }).click();
     await selectLocation(page, 'Klemmhof');
     await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
-    await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+    await toggleGraphicEdit(page);
+    await waitForParcelDragTarget(page, field.id);
     for (const zoomClicks of [0, 2]) {
       for (let i = 0; i < zoomClicks; i += 1) {
         await page.getByRole('button', { name: 'Herauszoomen', exact: true }).first().click();
@@ -1278,6 +1300,7 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     }
     await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`boundary-drag-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+    if (viewport.width > 375) await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true, pressed: true }).click();
     await page.waitForLoadState('networkidle');
   }
 
@@ -1339,14 +1362,16 @@ for (const input of ['mouse', 'touch'] as const) {
       await page.goto('/app/fields-beds');
       await activate('Grafik');
       await toggleGraphicEdit(page, input);
+      await waitForParcelDragTarget(page, field.id);
       await expect.poll(async () => (await bedOffsets()).length).toBe(2);
       const before = await plot();
       const offsets = await bedOffsets();
       const touch = input === 'touch' ? await page.context().newCDPSession(page) : null;
       const start = {
-        x: Math.round(before.container.x + before.bounds.x + before.bounds.width / 2),
-        y: Math.round(before.container.y + before.bounds.y + before.bounds.height * 0.12),
+        x: Math.round(before.container.x + before.bounds.x + before.bounds.width * 0.22),
+        y: Math.round(before.container.y + before.bounds.y + before.bounds.height * 0.21),
       };
+      await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, start)).toBe('CANVAS');
       const beginDrag = async () => {
         if (touch) {
           await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [start] });
@@ -1354,7 +1379,7 @@ for (const input of ['mouse', 'touch'] as const) {
           await page.mouse.move(start.x, start.y);
           await page.mouse.down();
         }
-        for (const distance of [9, 20]) {
+        for (const distance of [18, 36]) {
           const point = { x: start.x + distance, y: start.y + distance };
           if (touch) {
             await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point] });

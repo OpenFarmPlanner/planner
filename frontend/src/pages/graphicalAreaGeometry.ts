@@ -8,9 +8,9 @@ import {
   type BedViewModel, type Point, type RectViewModel,
 } from './graphicalFieldsGeometry';
 import {
-  arrangeFieldRects, clampInsideParent, DEFAULT_PLACEMENT_SPACING, fieldUsesWorldScale, getBedRectSizeWithinField,
-  getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, placeFieldRects, rotateRect,
-  rotateRectBetweenSizes, type GraphicalRotation, type Rect, type RectSize,
+  arrangeFieldRects, clampInsideParent, DEFAULT_PLACEMENT_SPACING, getBedRectSizeWithinField,
+  getFieldRectSize, getLocationBoundaryRect, initialAutoLayout, placeFieldRects, rotateRect, turnRotation,
+  type GraphicalRotation, type Rect, type RectSize,
 } from './graphicalLayoutUtils';
 import { getContentBoundsFromRects } from './graphicalViewport';
 
@@ -33,39 +33,47 @@ export function getMeasuredArea(area: Pick<Field, 'width_m' | 'length_m'>): numb
   return size ? size.width * size.height : null;
 }
 
-export function getSchematicFieldSize(field: Field): RectSize {
-  return getFieldRectSize(field, FIELD_WORLD_PX_PER_METER, {
+function legacyUsableArea(field: Field): Rect {
+  const frame = getFieldRectSize(field, FIELD_WORLD_PX_PER_METER, {
     baseWidth: FIELD_WORLD_BASE_WIDTH,
     minWidth: FIELD_WORLD_MIN_WIDTH,
     maxWidth: FIELD_WORLD_MAX_WIDTH,
     minHeight: FIELD_WORLD_MIN_HEIGHT,
     scaleFactor: FIELD_WORLD_SCALE_FACTOR,
   });
+  return getFieldUsableArea(frame);
+}
+
+function sizeInWorld(meters: RectSize): RectSize {
+  return { width: meters.width * FIELD_WORLD_PX_PER_METER, height: meters.height * FIELD_WORLD_PX_PER_METER };
+}
+
+export function getSchematicFieldSize(field: Field): RectSize {
+  const meters = measuredSize(field, 0);
+  if (meters) return sizeInWorld(meters);
+  const { width, height } = legacyUsableArea(field);
+  return { width, height };
 }
 
 export function getGraphicalBedLayout(
   field: Field,
-  storedField: RectSize,
   beds: readonly Bed[],
   savedLayouts: Readonly<Record<number, BedLayoutEntry>>,
   rotation: GraphicalRotation,
 ) {
-  const fieldSize = rotation % 180 ? { width: storedField.height, height: storedField.width } : storedField;
-  const available = getFieldUsableArea(fieldSize);
-  const storedUsableArea = getFieldUsableArea(storedField);
+  const storedUsableArea = legacyUsableArea(field);
+  const unrotated = getSchematicFieldSize(field);
+  const usableArea = rotateRect({ ...unrotated, x: 0, y: 0 }, unrotated, rotation);
+  const scaleX = unrotated.width / storedUsableArea.width;
+  const scaleY = unrotated.height / storedUsableArea.height;
   const storedMeters = measuredSize(field, 0);
   const storedPixelsPerMeter = storedMeters
     ? { x: storedUsableArea.width / storedMeters.width, y: storedUsableArea.height / storedMeters.height }
     : null;
   const fieldMeters = measuredSize(field, rotation);
-  const scale = fieldMeters ? Math.min(available.width / fieldMeters.width, available.height / fieldMeters.height) : null;
-  const pixelsPerMeter = scale === null ? null : { x: scale, y: scale };
-  // Keep the saved coordinate system while fitting the measured parcel into
-  // the display area with the same metric scale on both axes.
-  const usableArea = fieldMeters && scale !== null
-    ? { ...available, width: fieldMeters.width * scale, height: fieldMeters.height * scale }
-    : available;
+  const pixelsPerMeter = fieldMeters ? { x: FIELD_WORLD_PX_PER_METER, y: FIELD_WORLD_PX_PER_METER } : null;
   const sizes = new Map<number, RectSize>();
+  const storedSizes = new Map<number, RectSize>();
   const missing: number[] = [];
   const occupied: Rect[] = [];
   for (const bed of beds) {
@@ -73,28 +81,37 @@ export function getGraphicalBedLayout(
     const saved = savedLayouts[bed.id];
     const dimensions = saved?.runs_across_parcel
       ? { ...bed, length_m: bed.width_m, width_m: bed.length_m } : bed;
-    const size = getBedRectSizeWithinField(dimensions, field, storedUsableArea);
+    const bedMeters = measuredSize(dimensions, 0);
+    const storedSize = getBedRectSizeWithinField(dimensions, field, storedUsableArea);
+    const size = bedMeters ? sizeInWorld(bedMeters)
+      : { width: storedSize.width * scaleX, height: storedSize.height * scaleY };
+    const packingSize = storedPixelsPerMeter || !bedMeters ? storedSize
+      : { width: size.width / scaleX, height: size.height / scaleY };
     sizes.set(bed.id, size);
-    if (saved) occupied.push({ x: saved.x, y: saved.y, ...size });
+    storedSizes.set(bed.id, packingSize);
+    if (saved) occupied.push({ x: saved.x, y: saved.y, ...packingSize });
     else missing.push(bed.id);
   }
+  // Retain the inferred offsets for existing measured parcels as well.
   const arranged = initialAutoLayout(
-    missing, sizes, storedUsableArea, DEFAULT_PLACEMENT_SPACING, occupied, DEFAULT_PLACEMENT_SPACING,
+    missing, storedSizes, storedUsableArea, DEFAULT_PLACEMENT_SPACING, occupied, DEFAULT_PLACEMENT_SPACING,
   );
   const bedRects: BedViewModel[] = beds.flatMap(bed => {
     if (bed.id === undefined) return [];
     const size = sizes.get(bed.id)!;
-    const saved = savedLayouts[bed.id];
     // A subsequent resize may leave the saved position outside the usable area.
     // Keep that position visible so the warning names the actual footprint.
-    const position = saved ? { x: saved.x, y: saved.y } : clampInsideParent(
-      arranged.get(bed.id) ?? { x: 10, y: 10 }, size, storedUsableArea,
+    const storedPosition = savedLayouts[bed.id] ?? clampInsideParent(
+      arranged.get(bed.id) ?? { x: 10, y: 10 }, storedSizes.get(bed.id)!, storedUsableArea,
     );
-    const rect = rotateRectBetweenSizes({ ...position, ...size }, storedUsableArea, usableArea, rotation);
+    // Convert the old unrotated inner-frame offsets before rotating.
+    const position = { x: storedPosition.x * scaleX, y: storedPosition.y * scaleY };
+    const rect = rotateRect({ ...position, ...size }, unrotated, rotation);
     return [{ ...rect, id: bed.id, name: bed.name, area: Number(bed.area_sqm ?? 0),
-      supportsMetricSpacing: measuredSize(bed, rotation) !== null }];
+      supportsMetricSpacing: measuredSize(bed, rotation) !== null,
+      placementRotation: savedLayouts[bed.id]?.runs_across_parcel ? turnRotation(rotation, 1) : rotation }];
   });
-  return { fieldSize, usableArea, storedUsableArea, fieldMeters, pixelsPerMeter, storedPixelsPerMeter, bedRects };
+  return { usableArea, storedUsableArea, fieldMeters, pixelsPerMeter, storedPixelsPerMeter, bedRects };
 }
 
 type GraphicalBedLayout = ReturnType<typeof getGraphicalBedLayout>;
@@ -103,6 +120,12 @@ export interface GraphicalParcel {
   field: Field;
   rect: RectViewModel;
   layout: GraphicalBedLayout;
+}
+
+export function getBedWorldRect(parcel: GraphicalParcel, bed: BedViewModel): Rect {
+  return { width: bed.width, height: bed.height,
+    x: parcel.rect.x + parcel.layout.usableArea.x + bed.x,
+    y: parcel.rect.y + parcel.layout.usableArea.y + bed.y };
 }
 
 function previewPosition(rect: RectViewModel, preview: GeometryPreview | null, type: GeometryPreview['type']): Point {
@@ -193,7 +216,7 @@ export function getSchematicLocationLayout(
   };
   const rotatedContent = rotateRect({ x: 0, y: 0, ...storedContentSize }, storedContentSize, rotation);
   const metricFieldIds = new Set(sizedFields
-    .filter(rect => fieldUsesWorldScale(rect.field, rect, FIELD_WORLD_PX_PER_METER))
+    .filter(rect => measuredSize(rect.field, 0) !== null)
     .map(rect => rect.field.id));
   const fieldViewModels = storedFieldRects.map(rect => ({
     ...rotateRect(rect, storedContentSize, rotation),
@@ -228,7 +251,7 @@ export function getSavedLocationCoverage(location: Location, fields: readonly Fi
 
 export function getSavedParcelCoverage(field: Field, beds: readonly Bed[], layouts: LocationLayoutsResponse) {
   const bedLayouts = Object.fromEntries(layouts.bed_layouts.map(layout => [layout.bed, layout]));
-  const layout = getGraphicalBedLayout(field, getSchematicFieldSize(field), beds, bedLayouts, 0);
+  const layout = getGraphicalBedLayout(field, beds, bedLayouts, 0);
   const { bounds, footprints } = getParcelMetricGeometry(layout, null);
   return calculateMetricCoverage(bounds, footprints);
 }

@@ -1,12 +1,13 @@
 import { useRef } from 'react';
 import { alpha, useTheme } from '@mui/material/styles';
-import { Circle, Ellipse, Group, Rect, Text } from 'react-konva';
+import { Circle, Group, Rect, Text } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import type { StemCoordinates } from '../api/types';
 import type { BedTaskUrgency } from '../components/tasks/bedTaskUrgency';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
 import type { BedCultivationEntry } from './graphicalCultivation';
 import { graphicalPlantColors } from './graphicalDisplayStyle';
+import { FIELD_WORLD_PX_PER_METER } from './graphicalFieldsGeometry';
 import { canvasToStem, stemToCanvas, type PlacementDimensions } from './individualPlantGeometry';
 import type { GraphicalRotation, Position, Rect as CanvasRect } from './graphicalLayoutUtils';
 
@@ -31,12 +32,11 @@ const setCursor = (event: KonvaEventObject<MouseEvent>, cursor: string) => {
 };
 
 export function GraphicalIndividualPlantsLayer({
-  field, surfaceId, surface, pixelsPerMeter, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
+  field, surfaceId, surface, rotation, stems, zoom, placing, editablePlanId, draggablePlanIds, captureStems, onAdd, onSelect, onMove,
 }: {
   field: PlacementDimensions;
   surfaceId: string;
   surface: CanvasRect;
-  pixelsPerMeter: Position;
   rotation: GraphicalRotation;
   stems: CanvasStem[];
   zoom: number;
@@ -122,8 +122,8 @@ export function GraphicalIndividualPlantsLayer({
             const canceled = !event.evt || ['touchcancel', 'pointercancel'].includes(event.evt.type);
             if (position && !canceled) onMove(stem.key, position);
           }}>
-          {stem.canopy > 0 && <Ellipse listening={false}
-            radiusX={stem.canopy * pixelsPerMeter.x / 2} radiusY={stem.canopy * pixelsPerMeter.y / 2}
+          {stem.canopy > 0 && <Circle listening={false}
+            radius={stem.canopy * FIELD_WORLD_PX_PER_METER / 2}
             data-testid={`individual-canopy-${stem.key}`}
             fill={colors.canopyFill} stroke={colors.canopyOutline}
             strokeWidth={1} strokeScaleEnabled={false} />}
