@@ -372,7 +372,7 @@ test('preserves the mobile bed assignment when creating a plan', async ({ page, 
   await page.getByRole('menuitem', { name: 'Duplizieren' }).click();
   const form = page.getByRole('dialog', { name: 'Anbauplan hinzufügen' });
   await form.getByRole('combobox').filter({ hasText: 'Salat 1' }).click();
-  await page.getByRole('option', { name: /Salat 3/ }).click();
+  await page.getByRole('option', { name: /^Wiesenacker \| Westparzelle \| Salat 3 \(/ }).click();
   await expect(picker(page)).toHaveCount(0);
   const created = page.waitForResponse(response => (
     new URL(response.url()).pathname === '/api/planting-plans/' && response.request().method() === 'POST'
