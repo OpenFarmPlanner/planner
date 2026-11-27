@@ -66,7 +66,9 @@ table-column sizing, #1662) and `33ca2ffd` (season-copy preview layout, #1664).
   copy treatments, young-plant and seed demand editing.
 - PostgreSQL-specific behavior (search ranking, locking); version restore was
   covered separately on 2026-11-24 (archived coverage).
-- Firefox/WebKit (covered by the nightly cross-browser suite only).
+- Firefox and WebKit. The [application PR cross-browser workflow](../.github/workflows/e2e-cross-browser.yml)
+  runs a narrower suite in those browsers. The [nightly full suite](../.github/workflows/release-e2e.yml)
+  runs Chromium.
 
 ## Known patterns that look like bugs but are by design
 
