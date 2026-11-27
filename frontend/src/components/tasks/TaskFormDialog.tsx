@@ -34,7 +34,7 @@ type Props = TaskContext & {
 };
 
 function planLabel(plan: PlantingPlan, locale: string) {
-  return [formatCropDisplayName(plan), plan.bed_name || plan.parcel_name, plan.planting_date
+  return [formatCropDisplayName(plan), plan.bed_name || plan.parcel_name || plan.site_name, plan.planting_date
     ? new Date(`${plan.planting_date}T00:00:00`).toLocaleDateString(locale) : null].filter(Boolean).join(' · ');
 }
 

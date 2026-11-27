@@ -676,9 +676,24 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         opposite_bed.width_m = 4
         opposite_bed.save()
 
+        # A direct parcel bypasses rotation but is still copied into the target season.
+        PlantingPlan.objects.filter(pk=orchard['id']).update(individual_count=4)
+        rejected = self.client.post(api, {
+            'source_season_id': self.origin.pk, 'rotate_parcels': True,
+            'parcel_rotation_fingerprint': preview['fingerprint'],
+        }, format='json')
+        self.assertEqual(rejected.status_code, 409, rejected.data)
+        pairs, _, continuing, _ = build_planting_plan_copies(
+            source_season=self.origin, target_season=self.later,
+        )
+        current = preview_parcel_rotation(
+            self.origin, self.later, pairs, preceding=True, requested=True,
+            continuing_count=continuing,
+        ).summary
+
         copies, _, _, _ = copy_planting_plans(
             source_season=self.origin, target_season=self.later,
-            parcel_rotation_fingerprint=preview['fingerprint'],
+            parcel_rotation_fingerprint=current['fingerprint'],
         )
         by_source = {plan.copied_from_plan_id: plan for plan in copies}
         self.assertEqual(by_source[annual.id].bed_id, opposite_bed.id)
@@ -698,6 +713,7 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         trees = by_source[orchard['id']]
         self.assertEqual(trees.parcel_id, self.field.id)
         self.assertIsNone(trees.bed_id)
+        self.assertEqual(trees.individual_total, 4)
         compared = zip(orchard['individual_positions'], trees.individual_positions, strict=True)
         for before, after in compared:
             self.assertNotEqual(before['id'], after['id'])
