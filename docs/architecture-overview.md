@@ -214,13 +214,15 @@ Pages can register labelled controls through `setTopbarWorkspaceControls` and
 actions when measured content fits; `useResponsiveTopbarControls` moves them
 and the primary action into a shared wrapping row otherwise. Route resets
 clear the slot before the next page's registration. Growing areas uses this
-wrapping in both representations so its view switch stays reachable; the location/edit controls and compact canvas gutter remain
-exclusive to Graphic mode. The same mechanism is available for the remaining
+wrapping in both representations so its view switch stays reachable. Graphic
+shows a location selector when the project has multiple locations. The same mechanism is available for the remaining
 shared-topbar work in #930, including Cultures; other pages keep their action layouts.
-Edit graphic and the Graphic display dropdown use 44 px controls with text
-labels when the topbar has enough width. Spacing is directly available on
-wider layouts and appears in the dropdown on phones. Its keyboard interaction
-shows the Shift hint. The dropdown also selects the four graphic display modes.
+Edit graphic and the Graphic settings gear are directly available on wider
+layouts. The compact workspace menu contains the same editing and settings
+actions. The Path spacing section in Graphic settings shows the Shift hint
+for keyboard interaction. The canvas Layers button opens the four display
+modes and shows the current choice. The crop-date navigator stays in the
+workspace toolbar for modes with crops.
 The location's spacing toggle and Shift bypass also apply to individual stems.
 Plant snapping projects eligible neighbours into the metric layout and uses the
 moving crop's effective within-row distance. Eligibility uses intersecting

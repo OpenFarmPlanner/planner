@@ -2,6 +2,7 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import FieldsBedsPage from '../pages/FieldsBedsPage';
+import { GraphicalLayersControl } from '../pages/GraphicalDisplayControls';
 import { MemoryRouter, Outlet, Route, Routes } from 'react-router';
 import { useContext, useState, type ReactNode } from 'react';
 import { ParcelRotationContext } from '../components/hierarchy/rotation/parcelRotationContext';
@@ -55,9 +56,10 @@ vi.mock('../pages/FieldsBedsHierarchy', () => ({
 }));
 
 vi.mock('../pages/GraphicalFields', () => ({
-  default: ({ interactionMode, selectedLocationId, hierarchyData }: GraphicalFieldsProps) => (
+  default: ({ interactionMode, selectedLocationId, hierarchyData, displayMode, onDisplayModeChange }: GraphicalFieldsProps) => (
     <div><span>{`EditMode-${interactionMode ?? 'location-scoped'}`}</span>
       <span data-testid="selected-graphical-location">{selectedLocationId}</span>
+      {displayMode && onDisplayModeChange && <GraphicalLayersControl mode={displayMode} onMode={onDisplayModeChange} />}
       <button onClick={() => hierarchyData?.setLocations(current => current.filter(item => item.id !== selectedLocationId))}>Remove displayed location</button>
     </div>
   ),
@@ -386,7 +388,7 @@ describe('FieldsBedsPage', () => {
   });
   function WorkspaceShell() {
     const [controls, setControls] = useState<ReactNode>(null);
-    return <>{controls}<Outlet context={{ setTopbarWorkspaceControls: setControls }} /></>;
+    return <><div data-testid="test-workspace-controls">{controls}</div><Outlet context={{ setTopbarWorkspaceControls: setControls }} /></>;
   }
   const workspace = () => <MemoryRouter><Routes><Route element={<WorkspaceShell />}>
     <Route index element={<FieldsBedsPage />} />
@@ -396,16 +398,18 @@ describe('FieldsBedsPage', () => {
     window.localStorage.setItem('fieldsBedsViewMode', 'graphical');
     const user = userEvent.setup();
     const view = render(workspace());
-    await user.click(await screen.findByRole('button', { name: 'Darstellung der Grafik · Kulturen & Aufgaben' }));
+    const layerName = 'Ebenen · Kulturen & Aufgaben';
+    await user.click(await screen.findByRole('button', { name: layerName }));
     await user.click(screen.getByRole('menuitemradio', { name: 'Anbauflächen' }));
     expect(window.localStorage.getItem('growingAreas.graphic.displayMode:user:71')).toBe('areas');
 
     projectRequirementState.userId = 72;
     view.rerender(workspace());
-    expect(await screen.findByRole('button', { name: 'Darstellung der Grafik · Kulturen & Aufgaben' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: layerName })).toBeInTheDocument();
     projectRequirementState.userId = 71;
     view.rerender(workspace());
-    expect(await screen.findByRole('button', { name: 'Darstellung der Grafik · Anbauflächen' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: 'Ebenen · Anbauflächen' })).toBeInTheDocument();
+    expect(within(screen.getByTestId('test-workspace-controls')).queryByRole('button', { name: /^Ebenen/ })).not.toBeInTheDocument();
   });
 
   it('keeps location selection across representations and falls back safely after removal', async () => {
@@ -429,7 +433,8 @@ describe('FieldsBedsPage', () => {
     expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('1');
     expect(screen.getByText('EditMode-view')).toBeInTheDocument();
     expect(screen.queryByRole('combobox', { name: 'Standort' })).not.toBeInTheDocument();
-    expect(await screen.findByText('Standort: Hof Nord')).toBeInTheDocument();
+    expect(within(screen.getByTestId('test-workspace-controls')).queryByText(/Hof Nord/)).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Grafikeinstellungen' })).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Remove displayed location' }));
     expect(screen.queryByRole('button', { name: 'Grafik bearbeiten' })).not.toBeInTheDocument();
     expect(screen.getByText('Standort fehlt')).toBeInTheDocument();
@@ -448,10 +453,10 @@ describe('FieldsBedsPage', () => {
     fieldListMock.mockResolvedValue({ data: { results: [{ id: 77, name: 'Anderes Feld', location: 7 }] } });
     bedListMock.mockResolvedValue({ data: { results: [{ id: 777, name: 'Anderes Beet', field: 77 }] } });
     view.rerender(workspace());
-    await screen.findByText('Standort: Anderer Hof');
+    await waitFor(() => expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('7'));
     expect(screen.getByTestId('selected-graphical-location')).toHaveTextContent('7');
     expect(screen.getByText('EditMode-view')).toBeInTheDocument();
-    expect(screen.queryByText('Standort: Hofstelle')).not.toBeInTheDocument();
+    expect(within(screen.getByTestId('test-workspace-controls')).queryByText(/Anderer Hof|Hofstelle/)).not.toBeInTheDocument();
   });
 
   it('keeps the graphic read-only when there is no active project membership', async () => {
@@ -459,7 +464,8 @@ describe('FieldsBedsPage', () => {
     render(workspace());
     expect(await screen.findByText('EditMode-view')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Grafik bearbeiten' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Abstände' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Grafikeinstellungen' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ebenen · Kulturen & Aufgaben' })).toBeInTheDocument();
   });
 
 });

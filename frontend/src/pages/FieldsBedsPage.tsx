@@ -1,16 +1,16 @@
-import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, TextField, useMediaQuery } from '@mui/material';
+import { Alert, Box, Button, CircularProgress, Dialog, DialogActions, DialogContent, DialogTitle, ListItemIcon, ListItemText, MenuItem, Stack, TextField, useMediaQuery } from '@mui/material';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLocation, useNavigate, useOutletContext } from 'react-router';
 import FieldsBedsHierarchy from './FieldsBedsHierarchy';
 import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
-import { GraphicalSpacingControl, type OpenGraphicalSpacing } from './GraphicalSpacingControl';
+import { GraphicalSettingsControl } from './GraphicalSettingsControl';
 import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
 import { CompactViewSwitch } from '../components/buttons/CompactViewSwitch';
 import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
-import { GraphicalDisplayControls } from './GraphicalDisplayControls';
+import { GraphicalCropDateControl } from './GraphicalDisplayControls';
 import {
-  GRAPHICAL_DISPLAY_MODES, getCropReference, readCropDateSelection, type CropDateSelection, type GraphicalDisplayMode,
+  GRAPHICAL_DISPLAY_MODES, getCropReference, includesCrops, readCropDateSelection, type CropDateSelection, type GraphicalDisplayMode,
 } from './graphicalCultivation';
 import { clearSeasonSwitchState, peekSeasonSwitchState, registerSeasonSwitchState } from '../seasons/seasonSwitchState';
 import { AddBedIcon } from '../components/hierarchy/AddBedIcon';
@@ -38,6 +38,9 @@ import type { RootLayoutOutletContext, TopbarContextAction } from '../navigation
 import { type SxProps, type Theme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import CheckIcon from '@mui/icons-material/Check';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import { GrowingAreaWorkspaceMenu } from '../components/hierarchy/GrowingAreaWorkspaceMenu';
 import { useHierarchyData } from '../components/hierarchy/hooks/useHierarchyData';
 import { useIsMobileHierarchyLayout } from '../components/hierarchy/hooks/useIsMobileHierarchyLayout';
 import { hasPersistedEntityId } from '../components/hierarchy/utils/hierarchyUtils';
@@ -174,11 +177,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   const projectedCropReference = deferredProjection.seasonId === projection.seasonId
     ? deferredProjection.reference : cropReference;
   const [graphicFullscreen, setGraphicFullscreen] = useState(false);
-  const displayControlProps = useMemo(() => ({
-    mode: displayMode, onMode: setDisplayMode, season: activeSeason, reference: cropReference,
-    onDate: setCropDate,
-  }), [activeSeason, cropReference, displayMode, setDisplayMode]);
-  const displayControls = useMemo(() => <GraphicalDisplayControls {...displayControlProps} fullscreen />, [displayControlProps]);
+  const cropDateControl = useMemo(() => activeSeason && cropReference && includesCrops(displayMode)
+    ? { season: activeSeason, reference: cropReference, onDate: setCropDate }
+    : null, [activeSeason, cropReference, displayMode]);
   const reloadActiveSeason = outletContext?.reloadActiveSeason;
   const rotation = useParcelRotationGroups({
     enabled: projectId != null, fields, beds, onChanged: () => { void reloadActiveSeason?.(); },
@@ -260,6 +261,15 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       ? { ...item, ...getLocationPathSpacing(data) }
       : item));
   }, [setLocations]);
+  const fullscreenWorkspaceControls = useMemo(() => selectedLocation && (activeProjectMembership || cropDateControl) ? (
+    <Stack direction="row" spacing={1}>
+      {cropDateControl && <GraphicalCropDateControl {...cropDateControl} fullscreen />}
+      {activeProjectMembership && (
+        <GraphicalSettingsControl key={selectedLocation.id} compact={false}
+          location={selectedLocation} onSave={saveLocationPathSpacing} />
+      )}
+    </Stack>
+  ) : null, [activeProjectMembership, cropDateControl, saveLocationPathSpacing, selectedLocation]);
 
 
   useCommandContextTag('areas');
@@ -488,17 +498,12 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
   useTopbarContextActions(setTopbarContextActions, contextActions);
   useTopbarTitleActions(setTopbarTitleActions, mobileListControls ? NO_TITLE_ACTIONS : viewModeActions);
   const workspaceControls = useMemo(() => {
-    if (shouldShowProjectRequiredState || mobileListControls) return null;
+    if (shouldShowProjectRequiredState || mobileListControls || graphicFullscreen) return null;
     if (effectiveViewMode !== 'graphical' || !selectedLocation) return <></>;
-    const renderDisplayControls = (openSpacing?: OpenGraphicalSpacing) => !graphicFullscreen && (
-      <GraphicalDisplayControls key={compactWorkspace ? 'compact' : 'wide'} {...displayControlProps} compact={compactWorkspace}
-        onOpenSpacing={compactWorkspace ? openSpacing : undefined}
-        editing={activeProjectMembership ? { active: graphicEditing, disabled: !canEditGraphic, toggle: toggleGraphicEditing } : undefined} />
-    );
     const locationLabel = t('fields:graphical.locationSelector');
     const compactLocationSx = { flex: '1 1 6rem', minWidth: 'min(6rem, 100%)', maxWidth: '100%' };
     return <>
-      {graphicalLocations.length > 1 ? (
+      {graphicalLocations.length > 1 && (
         <TextField select label={locationLabel} value={selectedLocation.id}
           onChange={event => selectLocation(Number(event.target.value))}
           size={compactWorkspace ? 'small' : 'medium'}
@@ -517,11 +522,6 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
           ))}
         </TextField>
-      ) : (
-        <Box sx={{ minWidth: 0, maxWidth: 260, typography: 'body2', fontWeight: 600,
-          ...(compactWorkspace ? compactLocationSx : {}) }}>
-          <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
-        </Box>
       )}
       {!compactWorkspace && activeProjectMembership && <ResponsiveToolbarAction
         label={t('fields:graphical.locationEditModeAction')}
@@ -536,15 +536,33 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         aria-pressed={graphicEditing}
         onClick={toggleGraphicEditing}
       />}
-      {activeProjectMembership ? (
-        <GraphicalSpacingControl key={`${selectedLocation.id}:${compactWorkspace}`} location={selectedLocation}
+      {activeProjectMembership && (
+        <GraphicalSettingsControl key={`${selectedLocation.id}:${compactWorkspace}`} location={selectedLocation}
           onSave={saveLocationPathSpacing} compact={compactWorkspace}>
-          {renderDisplayControls}
-        </GraphicalSpacingControl>
-      ) : renderDisplayControls()}
+          {openSettings => compactWorkspace && (
+            <GrowingAreaWorkspaceMenu editing={graphicEditing}
+              description={graphicEditing ? t('fields:graphical.editMode') : undefined}>
+              {select => [
+                <MenuItem key="edit" role="menuitemcheckbox" aria-checked={graphicEditing} selected={graphicEditing}
+                  disabled={!canEditGraphic} onClick={() => select(toggleGraphicEditing)} sx={{ minHeight: 44 }}>
+                  <ListItemIcon><EditOutlinedIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary={t(graphicEditing ? 'fields:graphical.locationEditModeExit' : 'fields:graphical.locationEditModeAction')} />
+                  {graphicEditing && <CheckIcon fontSize="small" aria-hidden />}
+                </MenuItem>,
+                <MenuItem key="settings" aria-haspopup="dialog" sx={{ minHeight: 44 }}
+                  onClick={event => select(openSettings, event.detail === 0)}>
+                  <ListItemIcon><SettingsOutlinedIcon fontSize="small" /></ListItemIcon>
+                  <ListItemText primary={t('fields:graphical.settings')} />
+                </MenuItem>,
+              ]}
+            </GrowingAreaWorkspaceMenu>
+          )}
+        </GraphicalSettingsControl>
+      )}
+      {cropDateControl && <GraphicalCropDateControl {...cropDateControl} compact={compactWorkspace} />}
     </>;
   }, [activeProjectMembership, canEditGraphic, compactWorkspace, effectiveViewMode, graphicEditing, hasSelectedGraphicalFields,
-    displayControlProps, graphicFullscreen, graphicalLocations, mobileListControls, saveLocationPathSpacing, selectLocation,
+    cropDateControl, graphicFullscreen, graphicalLocations, mobileListControls, saveLocationPathSpacing, selectLocation,
     selectedLocation, shouldShowProjectRequiredState, t, toggleGraphicEditing]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
@@ -669,8 +687,9 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             activeSeasonId={activeSeason?.id}
             individualSeason={activeSeason}
             displayMode={displayMode}
+            onDisplayModeChange={setDisplayMode}
             cropReference={projectedCropReference}
-            fullscreenDisplayControls={displayControls}
+            fullscreenWorkspaceControls={fullscreenWorkspaceControls}
             onFullscreenChange={setGraphicFullscreen}
             canEditIndividualPlants={Boolean(activeProjectMembership)}
             requestedIndividualPlan={requestedIndividualPlan}

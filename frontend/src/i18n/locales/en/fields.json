@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Graphic display",
+      "layers": "Layers",
       "mode": {
         "areas": "Growing areas",
         "crops": "Crops",
@@ -131,9 +132,9 @@
       "unknownParcels": "Exact parcel checks are unavailable for {{names}} because their dimensions are missing or their outlines are enlarged.",
       "unknownBeds": "The bed footprint in {{name}} could not be measured for {{names}}. Check the parcel and bed dimensions in List."
     },
+    "settings": "Graphic settings",
     "spacing": {
-      "button": "Spacing",
-      "title": "Spacing",
+      "title": "Path spacing",
       "bed": "Between beds (cm)",
       "parcel": "Between parcels (cm)",
       "snap": "Snap plants and areas to spacing",

@@ -33,6 +33,7 @@ interface CanvasToolsProps {
   onPan: (direction: 'up' | 'down' | 'left' | 'right') => void;
   onTriggerChange: (button: HTMLButtonElement | null) => void;
   warnings: ReactNode;
+  layers?: ReactNode;
   individualPlants?: { active: boolean; toggle: () => void; add?: () => void };
 }
 
@@ -58,12 +59,12 @@ function CanvasToolButton({ label, icon, active, ref, ...buttonProps }: Pick<Too
 
 export function GraphicalCanvasTools({
   width, height, fullscreen, onZoom, onFit, onFullscreen, onRotate, onPan, onTriggerChange,
-  warnings, individualPlants,
+  warnings, layers, individualPlants,
 }: CanvasToolsProps) {
   const { t } = useTranslation('fields');
   const theme = useTheme();
   const compact = width < theme.breakpoints.values.lg;
-  const short = height < compactStripHeight && width >= theme.breakpoints.values.sm;
+  const short = height < compactStripHeight + (layers ? 52 : 0) && width >= theme.breakpoints.values.sm;
   const menuId = useId();
   const [nextAction, setNextAction] = useState<(() => void) | null>(null);
   const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null);
@@ -124,32 +125,35 @@ export function GraphicalCanvasTools({
 
   return (
     <>
-      <Paper elevation={3} data-testid="graphical-canvas-tools" data-graphical-annotation-obstacle role="group" aria-label={t('graphical.canvasTools')}
-        sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, borderRadius: 3, overflow: 'auto',
-          maxHeight: 'calc(100% - 24px)', bgcolor: 'background.paper' }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: short ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
-          {(hasMenu || promoted) && (
-            <CanvasToolButton ref={onTriggerChange} label={promoted?.label ?? title}
-              icon={promoted?.icon ?? <MoreVertIcon fontSize="small" />} active={promoted?.active}
-              aria-haspopup={hasMenu ? 'menu' : undefined} aria-expanded={hasMenu ? menuOpen : undefined}
-              aria-controls={hasMenu && menuOpen ? menuId : undefined}
-              onClick={promoted?.action ?? (event => { setAnchor(event.currentTarget); setMenuOpen(true); })} />
+      <Stack spacing={1} sx={{ position: 'absolute', top: 12, right: 12, zIndex: 2, alignItems: 'flex-end',
+        maxHeight: 'calc(100% - 24px)' }}>
+        {layers}
+        <Paper elevation={3} data-testid="graphical-canvas-tools" data-graphical-annotation-obstacle role="group" aria-label={t('graphical.canvasTools')}
+          sx={{ borderRadius: 3, overflow: 'auto', minHeight: 0, bgcolor: 'background.paper' }}>
+          <Box sx={{ display: 'grid', gridTemplateColumns: short ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
+            {(hasMenu || promoted) && (
+              <CanvasToolButton ref={onTriggerChange} label={promoted?.label ?? title}
+                icon={promoted?.icon ?? <MoreVertIcon fontSize="small" />} active={promoted?.active}
+                aria-haspopup={hasMenu ? 'menu' : undefined} aria-expanded={hasMenu ? menuOpen : undefined}
+                aria-controls={hasMenu && menuOpen ? menuId : undefined}
+                onClick={promoted?.action ?? (event => { setAnchor(event.currentTarget); setMenuOpen(true); })} />
+            )}
+            {warnings}
+          </Box>
+          {!compact && (
+            <Stack sx={{ alignItems: 'center' }}>
+              <Stack direction="row">{rotation.map(toolButton)}</Stack>
+              {toolButton(pan[0])}
+              <Stack direction="row">{pan.slice(1, 3).map(toolButton)}</Stack>
+              {toolButton(pan[3])}
+            </Stack>
           )}
-          {warnings}
-        </Box>
-        {!compact && (
-          <Stack sx={{ alignItems: 'center' }}>
-            <Stack direction="row">{rotation.map(toolButton)}</Stack>
-            {toolButton(pan[0])}
-            <Stack direction="row">{pan.slice(1, 3).map(toolButton)}</Stack>
-            {toolButton(pan[3])}
-          </Stack>
-        )}
-        <Box sx={{ display: 'grid', gridTemplateColumns: short || !compact ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
-          <CanvasToolButton ref={zoomButtonRef} label={core[0].label} icon={core[0].icon} onClick={core[0].action} />
-          {core.slice(1).map(toolButton)}
-        </Box>
-      </Paper>
+          <Box sx={{ display: 'grid', gridTemplateColumns: short || !compact ? 'repeat(2, 44px)' : '44px', justifyContent: 'center' }}>
+            <CanvasToolButton ref={zoomButtonRef} label={core[0].label} icon={core[0].icon} onClick={core[0].action} />
+            {core.slice(1).map(toolButton)}
+          </Box>
+        </Paper>
+      </Stack>
       <Menu open={hasMenu && menuOpen} anchorEl={anchor} onClose={() => setMenuOpen(false)}
         container={getGraphicalPortalContainer()} anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}

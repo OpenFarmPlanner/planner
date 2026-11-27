@@ -1,15 +1,15 @@
 import { useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Alert, Box, Button, Checkbox, FormControlLabel, Popover, Stack, TextField, Typography } from '@mui/material';
-import StraightenIcon from '@mui/icons-material/Straighten';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import type { Location, LocationPathSpacing } from '../api/types';
 import { defaultLocationPathSpacing, getLocationPathSpacing } from '../components/hierarchy/utils/locationPathSpacing';
 import { useTranslation } from '../i18n';
 import { formatLocalizedNumberForInput, getActiveFormattingLocale, parseLocalizedNumber } from '../utils/numberLocalization';
-import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
-import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
+import { ResponsiveToolbarAction } from '../components/buttons/ResponsiveToolbarAction';
 import { useTouchOnly } from '../hooks/useTouchOnly';
+import { getGraphicalPortalContainer } from './useGraphicalStageSize';
 
-export type OpenGraphicalSpacing = (anchor: HTMLButtonElement, keyboard: boolean) => void;
+export type OpenGraphicalSettings = (anchor: HTMLButtonElement, keyboard: boolean) => void;
 
 interface SpacingDraft {
   bed: string;
@@ -26,13 +26,13 @@ const toDraft = (spacing: LocationPathSpacing, locale: string): SpacingDraft => 
 const isValidSpacing = (value: number | null): value is number =>
   value !== null && Number.isFinite(value) && value >= 0;
 
-export function GraphicalSpacingControl({
+export function GraphicalSettingsControl({
   location, onSave, compact, children,
 }: {
   location: Location;
   onSave: (id: number, spacing: LocationPathSpacing) => Promise<void>;
   compact: boolean;
-  children: (openSpacing: OpenGraphicalSpacing) => ReactNode;
+  children?: (openSettings: OpenGraphicalSettings) => ReactNode;
 }) {
   const { t } = useTranslation('fields');
   const locale = getActiveFormattingLocale();
@@ -46,7 +46,7 @@ export function GraphicalSpacingControl({
   const bed = parseLocalizedNumber(draft.bed, locale);
   const parcel = parseLocalizedNumber(draft.parcel, locale);
 
-  const open: OpenGraphicalSpacing = (trigger, keyboard) => {
+  const open: OpenGraphicalSettings = (trigger, keyboard) => {
     setDraft(toDraft(getLocationPathSpacing(location), locale));
     setSaveFailed(false);
     setOpenedByKeyboard(keyboard);
@@ -76,20 +76,20 @@ export function GraphicalSpacingControl({
     <>
       {!compact && <ResponsiveToolbarAction
         variant="outlined"
-        label={t('graphical.spacing.button')}
-        labelQuery={WORKSPACE_TOOLBAR_LABEL_QUERY}
-        labelBreakpoint={ACTION_LABEL_BREAKPOINT}
-        icon={<StraightenIcon fontSize="small" />}
+        label={t('graphical.settings')}
+        iconOnly
+        icon={<SettingsOutlinedIcon fontSize="small" />}
         aria-haspopup="dialog"
         aria-expanded={Boolean(anchor)}
         aria-controls={anchor ? id : undefined}
         onClick={event => open(event.currentTarget, event.detail === 0)}
       />}
-      {children(open)}
+      {children?.(open)}
       <Popover
         open={Boolean(anchor)}
         anchorEl={anchor}
         onClose={() => { if (!saving) setAnchor(null); }}
+        container={getGraphicalPortalContainer()}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
         slotProps={{ paper: {
           id, role: 'dialog', 'aria-modal': true, 'aria-labelledby': `${id}-title`,
@@ -98,8 +98,9 @@ export function GraphicalSpacingControl({
       >
         <Stack component="form" spacing={1.5} sx={{ p: 2 }} onSubmit={event => { void submit(event); }}>
           <Typography id={`${id}-title`} component="h2" variant="subtitle1" sx={{ fontWeight: 600 }}>
-            {t('graphical.spacing.title')}
+            {t('graphical.settings')}
           </Typography>
+          <Typography component="h3" variant="subtitle2">{t('graphical.spacing.title')}</Typography>
           {(['bed', 'parcel'] as const).map(kind => {
             const valid = isValidSpacing(kind === 'bed' ? bed : parcel);
             return (

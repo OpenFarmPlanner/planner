@@ -32,6 +32,7 @@
   "graphical": {
     "display": {
       "title": "Modo de visualização",
+      "layers": "Camadas",
       "mode": {
         "areas": "Áreas de cultivo",
         "crops": "Culturas",
@@ -136,9 +137,9 @@
       "unknownParcels": "Não é possível verificar {{names}} com precisão porque faltam as dimensões ou os contornos estão ampliados.",
       "unknownBeds": "Não é possível medir a área ocupada por {{names}} em {{name}}. Confirma as dimensões da parcela e dos canteiros na lista."
     },
+    "settings": "Definições do gráfico",
     "spacing": {
-      "button": "Espaçamento",
-      "title": "Espaçamento",
+      "title": "Espaçamento dos caminhos",
       "bed": "Entre canteiros (cm)",
       "parcel": "Entre parcelas (cm)",
       "snap": "Ajustar plantas e áreas ao espaçamento",

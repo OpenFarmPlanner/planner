@@ -36,6 +36,8 @@ test.describe('read-only plant and bed previews', () => {
     });
     await page.goto('/app/fields-beds');
     await page.getByRole('button', { name: 'Grafik', exact: true }).tap();
+    await expect(page.getByRole('button', { name: 'Grafikeinstellungen', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Arbeitsbereichsmenü', exact: true })).toHaveCount(0);
     const locations = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
     await locations.tap();
     await page.getByRole('option', { name: 'Hofgarten', exact: true }).tap();
@@ -276,8 +278,10 @@ for (const mobile of [false, true]) {
       const input = mobile ? 'touch' : 'keyboard';
       await display.press('Enter');
       await expect(page.getByRole('menuitemradio')).toHaveCount(4);
-      await expect(page.getByRole('menuitem')).toHaveCount(mobile ? 1 : 0);
+      await expect(page.getByRole('menuitem')).toHaveCount(0);
+      await expect(page.getByRole('menuitemradio', { name: 'Anbauflächen', exact: true, checked: true })).toBeVisible();
       await page.keyboard.press('Escape');
+      await expect(display).toBeFocused();
       const triggerBounds = (await legendButton.boundingBox())!;
       expect(triggerBounds.width).toBeGreaterThanOrEqual(44);
       const areaLegend = await openGraphicLegend(page, input);

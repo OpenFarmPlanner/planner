@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
-import { activateCanvasTool, apiRequest, canvasInteractionPoint, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
+import { activateCanvasTool, apiRequest, canvasInteractionPoint, expectGraphicDisplayMode, graphicDisplayButton, graphicLegendButton, graphicWorkspaceMenu, loginWithDeterministicProject, openGraphicLegend, selectGraphicDisplay, toggleGraphicEdit } from './utils';
 
 // Layout failure/delay fixtures must intercept the browser's requests directly.
 test.use({ serviceWorkers: 'block' });
@@ -672,8 +672,8 @@ test.describe('location spacing in a touch-capable browser', () => {
     await page.getByRole('button', { name: 'Grafik', exact: true }).click();
     await selectLocation(page, 'Hofgarten');
     await expect(page.getByRole('button', { name: /^Layoutprüfung/ })).toHaveCount(0);
-    const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
-    const dialog = page.getByRole('dialog', { name: 'Abstände' });
+    const trigger = page.getByRole('button', { name: 'Grafikeinstellungen', exact: true });
+    const dialog = page.getByRole('dialog', { name: 'Grafikeinstellungen' });
     const bed = dialog.getByRole('textbox', { name: 'Zwischen Beeten (cm)' });
     const parcel = dialog.getByRole('textbox', { name: 'Zwischen Parzellen (cm)' });
     const checkbox = dialog.getByRole('checkbox', { name: 'Pflanzen und Flächen an Abständen einrasten' });
@@ -690,6 +690,11 @@ test.describe('location spacing in a touch-capable browser', () => {
     await expect(trigger).toBeFocused();
 
     await page.keyboard.press('Enter');
+    await bed.fill('44');
+    await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click();
+    await expect(trigger).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(bed).toHaveValue('30');
     await bed.fill('-1');
     await expect(bed).toHaveAttribute('aria-invalid', 'true');
     await expect(apply).toBeDisabled();
@@ -722,36 +727,41 @@ test.describe('location spacing in a touch-capable browser', () => {
 
     // Account language is a persisted preference, so each reload renders the
     // toolbar and the popover in the selected language.
-    for (const [locale, button, edit, shift, details, workspaceLabel, modeLabel] of [
-      ['de', 'Abstände', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Arbeitsbereichsmenü', 'Kulturen & Aufgaben'],
-      ['en', 'Spacing', 'Edit graphic', /Hold Shift/, 'View details', 'Workspace menu', 'Crops & tasks'],
-      ['fr', 'Espacement', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Menu de l’espace de travail', 'Cultures et tâches'],
-      ['es', 'Distancias', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Menú del área de trabajo', 'Cultivos y tareas'],
-      ['it', 'Distanze', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Menu dell’area di lavoro', 'Colture e attività'],
-      ['pt', 'Espaçamento', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Menu da área de trabalho', 'Culturas e tarefas'],
-      ['nl', 'Afstanden', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Werkruimtemenu', 'Gewassen en taken'],
+    for (const [locale, button, layerLabel, edit, shift, details, workspaceLabel, modeLabel] of [
+      ['de', 'Grafikeinstellungen', 'Ebenen', 'Grafik bearbeiten', /Umschalttaste/, 'Details anzeigen', 'Arbeitsbereichsmenü', 'Kulturen & Aufgaben'],
+      ['en', 'Graphic settings', 'Layers', 'Edit graphic', /Hold Shift/, 'View details', 'Workspace menu', 'Crops & tasks'],
+      ['fr', 'Paramètres du graphique', 'Couches', 'Modifier le graphique', /Maintenez Maj/, 'Voir les détails', 'Menu de l’espace de travail', 'Cultures et tâches'],
+      ['es', 'Ajustes del gráfico', 'Capas', 'Editar gráfico', /tecla Mayús/, 'Ver detalles', 'Menú del área de trabajo', 'Cultivos y tareas'],
+      ['it', 'Impostazioni grafiche', 'Livelli', 'Modifica grafica', /premuto Maiusc/, 'Visualizza dettagli', 'Menu dell’area di lavoro', 'Colture e attività'],
+      ['pt', 'Definições do gráfico', 'Camadas', 'Editar gráfico', /tecla Shift/, 'Ver detalhes', 'Menu da área de trabalho', 'Culturas e tarefas'],
+      ['nl', 'Grafiekinstellingen', 'Lagen', 'Grafische weergave bewerken', /Houd Shift/, 'Details bekijken', 'Werkruimtemenu', 'Gewassen en taken'],
     ] as const) {
       await apiRequest(page, 'PUT', '/auth/account/language/', { ui_language: locale });
       await page.setViewportSize({ width: 375, height: 800 });
       await page.reload();
       const spacingButton = page.getByRole('button', { name: button, exact: true });
       const editButton = page.getByRole('button', { name: edit, exact: true });
-      const mode = page.getByRole('button', { name: workspaceLabel, exact: true });
+      const workspace = page.getByRole('button', { name: workspaceLabel, exact: true });
+      const layers = graphicDisplayButton(page);
       const date = page.getByTestId('graphical-crop-date');
       await expect(editButton).toHaveCount(0);
-      await expect(mode).toHaveAccessibleDescription(modeLabel);
+      await expect(layers).toHaveAccessibleName(`${layerLabel} · ${modeLabel}`);
       await expect(spacingButton).toHaveCount(0);
       await expect.poll(async () => {
-        const [dateBox, menuBox] = await Promise.all([date.boundingBox(), mode.boundingBox()]);
+        const [dateBox, menuBox] = await Promise.all([date.boundingBox(), workspace.boundingBox()]);
         return dateBox && menuBox && [dateBox, menuBox].every(box => box.width >= 44 && box.height >= 44)
-          && menuBox.x >= dateBox.x + dateBox.width - 1
-          && Math.abs(menuBox.y - dateBox.y) <= 1 && menuBox.x + menuBox.width <= 375;
+          && dateBox.x >= menuBox.x + menuBox.width - 1
+          && Math.abs(menuBox.y - dateBox.y) <= 1 && dateBox.x + dateBox.width <= 375;
       }).toBe(true);
-      await mode.tap();
-      await expect(page.getByRole('menuitemcheckbox', { name: edit, exact: true })).toHaveAttribute('aria-checked', 'false');
+      await layers.tap();
       await expect(page.getByRole('menuitemradio')).toHaveCount(4);
+      await expect(page.getByRole('menuitemradio', { name: modeLabel, exact: true, checked: true })).toHaveCount(1);
+      await page.keyboard.press('Escape');
+      await expect(layers).toBeFocused();
+      await workspace.tap();
+      await expect(page.getByRole('menuitemcheckbox', { name: edit, exact: true })).toHaveAttribute('aria-checked', 'false');
+      await expect(page.getByRole('menuitemradio')).toHaveCount(0);
       await expect(page.getByRole('menuitem')).toHaveCount(1);
-      await expect(page.getByRole('menuitemradio', { checked: true })).toHaveCount(1);
       const menuBox = (await page.getByRole('menu').boundingBox())!;
       expect(menuBox.x).toBeGreaterThanOrEqual(0);
       expect(menuBox.x + menuBox.width).toBeLessThanOrEqual(375);
@@ -768,14 +778,14 @@ test.describe('location spacing in a touch-capable browser', () => {
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(375);
       await page.screenshot({ path: testInfo.outputPath(`location-spacing-${locale}.png`), animations: 'disabled' });
       await page.keyboard.press('Escape');
-      await expect(mode).toBeFocused();
+      await expect(workspace).toBeFocused();
       if (locale === 'de') {
         expect(await page.evaluate(() => localStorage.getItem('ofp.shortcutHintSeen'))).toBeNull();
-        await mode.press('Enter');
+        await workspace.press('Enter');
         await spacingItem.press('Enter');
         await expect(translated.getByText(shift)).toBeVisible();
         await page.keyboard.press('Escape');
-        await expect(mode).toBeFocused();
+        await expect(workspace).toBeFocused();
         await page.keyboard.press('Alt+k');
         await expect(page.getByRole('textbox', { name: 'Aktionssuche' })).toBeVisible();
         await page.keyboard.press('Escape');
@@ -879,8 +889,8 @@ test('snaps real bed and parcel edges and permits closer placement with Shift or
   const storedAfterShift = await apiRequest<{ field_layouts: { field: number; x: number }[] }>(page, 'GET', layouts);
   expect(storedAfterShift.field_layouts.find(layout => layout.field === fields[1].id)!.x).toBeGreaterThan(fieldTarget + 5);
 
-  await page.getByRole('button', { name: 'Abstände', exact: true }).click();
-  const spacing = page.getByRole('dialog', { name: 'Abstände' });
+  await page.getByRole('button', { name: 'Grafikeinstellungen', exact: true }).click();
+  const spacing = page.getByRole('dialog', { name: 'Grafikeinstellungen' });
   await spacing.getByRole('checkbox', { name: 'Pflanzen und Flächen an Abständen einrasten' }).uncheck();
   await spacing.getByRole('button', { name: 'Übernehmen' }).click();
   await expect(page.locator('[role="dialog"][aria-modal="true"]')).toHaveCount(0);
@@ -902,9 +912,22 @@ test('retains selected location, camera and rotation through representation chan
   await selectLocation(page, 'Hofgarten');
   await expect(page.locator('.konvajs-content')).toHaveCount(1);
   await expect(page.locator('.MuiAccordion-root')).toHaveCount(0);
+  const layers = graphicDisplayButton(page);
+  const canvas = page.locator('.konvajs-content');
+  const layersInset = async () => {
+    const [controlBox, canvasBox] = await Promise.all([layers.boundingBox(), canvas.boundingBox()]);
+    if (!controlBox || !canvasBox) return null;
+    return {
+      top: controlBox.y - canvasBox.y,
+      right: canvasBox.x + canvasBox.width - controlBox.x - controlBox.width,
+    };
+  };
+  const initialInset = await layersInset();
+  expect(initialInset).not.toBeNull();
   await activateCanvasTool(page, 'Ansicht um 90° nach rechts drehen');
   for (let count = 0; count < 5; count++) await page.getByRole('button', { name: 'Hineinzoomen', exact: true }).click();
   await activateCanvasTool(page, 'Ansicht nach links verschieben');
+  await expect.poll(layersInset).toEqual(initialInset);
   const camera = await activeCamera(page);
   await page.getByRole('combobox', { name: 'Standort', exact: true }).focus();
   await page.keyboard.press('ArrowDown');
@@ -991,25 +1014,36 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
   ]) {
     await page.setViewportSize(viewport);
     const edit = page.getByRole('button', { name: 'Grafik bearbeiten', exact: true });
-    const spacing = page.getByRole('button', { name: 'Abstände', exact: true });
+    const spacing = page.getByRole('button', { name: 'Grafikeinstellungen', exact: true });
     const compact = viewport.width < 600 || viewport.height < 500;
     const display = graphicDisplayButton(page);
+    const workspace = graphicWorkspaceMenu(page);
     const date = page.getByTestId('graphical-crop-date');
     const location = page.getByRole('combobox', { name: /^Standort(?: · .+)?$/ });
+    await expect(page.getByTestId('topbar-workspace-controls').getByTestId('graphical-display-mode')).toHaveCount(0);
+    await expect(display).toHaveText('');
+    await expect.poll(async () => {
+      const [layers, tools, canvas] = await Promise.all([display.boundingBox(),
+        page.getByTestId('graphical-canvas-tools').boundingBox(), page.locator('.konvajs-content').boundingBox()]);
+      return Boolean(layers && tools && canvas && layers.width >= 44 && layers.height >= 44
+        && layers.y >= canvas.y - 1 && layers.y + layers.height <= tools.y
+        && layers.x + layers.width <= canvas.x + canvas.width + 1);
+    }).toBe(true);
     if (compact) {
       await expect(edit).toHaveCount(0);
       await expect(spacing).toHaveCount(0);
-      await display.press('Enter');
-      await page.getByRole('menuitem', { name: 'Abstände', exact: true }).press('Enter');
-      await expect(page.getByRole('dialog', { name: 'Abstände' })).toBeVisible();
+      await workspace.press('Enter');
+      await expect(page.getByRole('menuitemradio')).toHaveCount(0);
+      await page.getByRole('menuitem', { name: 'Grafikeinstellungen', exact: true }).press('Enter');
+      await expect(page.getByRole('dialog', { name: 'Grafikeinstellungen' })).toBeVisible();
       await page.keyboard.press('Escape');
-      await expect(display).toBeFocused();
+      await expect(workspace).toBeFocused();
       await expect(location).toHaveAccessibleName(`Standort · ${longLocationName}`);
       await expect(location).toHaveText(longLocationName);
       await expect.poll(async () => {
         const targets = await Promise.all([
           page.getByRole('button', { name: 'Liste', exact: true }),
-          page.getByRole('button', { name: 'Grafik', exact: true }), location, date, display,
+          page.getByRole('button', { name: 'Grafik', exact: true }), location, date, workspace,
         ].map(item => item.boundingBox()));
         return targets.every(box => box && box.width >= 44 && box.height >= 44)
           && targets.every(box => box && targets[0] && Math.abs(box.y - targets[0].y) <= 1);
@@ -1023,10 +1057,13 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       await page.getByRole('button', { name: 'Sidebar ausklappen' }).click();
       await expect(label).toBeHidden();
     }
-    for (const button of compact ? [display] : [edit, spacing]) {
-      const label = button.locator('[data-toolbar-action-label]');
-      if (viewport.width >= 1440) await expect(label).toBeVisible();
-      if (viewport.width < 1200) await expect(label).toBeHidden();
+    if (!compact) {
+      await expect(spacing.locator('[data-toolbar-action-label]')).toBeHidden();
+      const editLabel = edit.locator('[data-toolbar-action-label]');
+      if (viewport.width >= 1440) await expect(editLabel).toBeVisible();
+      if (viewport.width < 1200) await expect(editLabel).toBeHidden();
+    }
+    for (const button of compact ? [workspace] : [edit, spacing]) {
       await expect.poll(async () => {
         const target = await button.boundingBox();
         return Boolean(target && target.width >= 44 && target.height >= 44);
@@ -1037,7 +1074,7 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
         page.getByRole('banner').getByRole('heading', { level: 1 }),
         ...['Liste', 'Grafik'].map(name => page.getByRole('button', { name, exact: true })),
         compact ? date : edit,
-        compact ? display : spacing,
+        compact ? workspace : spacing,
         page.getByRole('button', { name: /^Standort hinzufügen/ }),
         location,
       ].map(locator => locator.boundingBox()));
@@ -1048,12 +1085,9 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
     }).toBe(true);
     await expect.poll(async () => page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1)).toBe(true);
     await expect.poll(async () => (await canvasRects(page, 'field-rect-'))[0]?.stage.height ?? 0).toBeGreaterThan(96);
-    // The mode and date controls can use the wrapped workspace row on a large desktop as well.
     if (viewport.width === 2240) {
       await expect(page.getByTestId('topbar-workspace-row')).toHaveCount(0);
-      await expect(display.locator('[data-display-label]')).toBeVisible();
     }
-    if (viewport.width <= 1024) await expect(page.getByTestId('topbar-workspace-row')).toBeVisible();
     await page.mouse.move(1, viewport.height - 1);
     await expect(page.getByRole('tooltip')).toHaveCount(0);
     if ([1440, 768, 375].includes(viewport.width)) {
@@ -1068,24 +1102,26 @@ test('keeps graphical controls reachable and the canvas inside the viewport as t
       } else {
         await toggleGraphicEdit(page);
       }
-      const editState = compact ? display : edit;
-      if (compact) await expect(display).toHaveAccessibleDescription(/Bearbeitungsmodus/);
+      const editState = compact ? workspace : edit;
+      if (compact) await expect(workspace).toHaveAccessibleDescription(/Bearbeitungsmodus/);
       else await expect(edit).toHaveAttribute('aria-pressed', 'true');
       await expect(editState).toHaveClass(/MuiButton-contained\b/);
       await expect(editState).toHaveClass(/MuiButton-colorSuccess\b/);
       await expect(page.getByRole('tooltip')).toHaveCount(0);
       await expect(page.getByText(/^Grafikbearbeitung aktiv:/)).toHaveCount(0);
       await expect.poll(() => canvas.boundingBox()).toMatchObject({ y: before?.y, height: before?.height });
+      await expect(display).toBeVisible();
       await page.screenshot({ path: testInfo.outputPath(`workspace-edit-${viewport.width}.png`), animations: 'disabled' });
       await toggleGraphicEdit(page);
-      if (compact) await expect(display).not.toHaveAccessibleDescription(/Bearbeitungsmodus/);
+      if (compact) await expect(workspace).not.toHaveAccessibleDescription(/Bearbeitungsmodus/);
       else await expect(edit).toHaveAttribute('aria-pressed', 'false');
     }
     await page.screenshot({ path: testInfo.outputPath(`workspace-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
     await page.getByRole('button', { name: 'Liste', exact: true }).click();
     await expect(page.getByRole('combobox', { name: 'Standort', exact: true })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Grafik bearbeiten', exact: true })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Abstände', exact: true })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Grafikeinstellungen', exact: true })).toHaveCount(0);
+    await expect(display).toHaveCount(0);
     await expect.poll(async () => {
       const rects = await Promise.all([
         page.getByRole('banner').getByRole('heading', { level: 1 }),
@@ -1141,7 +1177,7 @@ test('keeps crop dates directly reachable and shows the selected year on a compa
   const workspace = page.getByTestId('topbar-workspace-controls');
   const controls = [workspace.getByRole('button', { name: 'Liste', exact: true }),
     workspace.getByRole('button', { name: 'Grafik', exact: true }), workspace.getByRole('combobox'),
-    date, graphicDisplayButton(page)];
+    date, graphicWorkspaceMenu(page)];
   await expect.poll(async () => {
     const targets = await Promise.all(controls.map(control => control.boundingBox()));
     return targets.filter(box => !box || box.height < 44 || box.width < 44
@@ -1235,9 +1271,19 @@ test.describe('crop time on a touch-capable phone', () => {
     await activateCanvasTool(page, 'Vollbild öffnen', 'touch');
     await expect.poll(() => page.evaluate(() => Boolean(document.fullscreenElement))).toBe(true);
     await expect.poll(async () => {
-      const [date, modes] = await Promise.all([trigger.boundingBox(), graphicDisplayButton(page).boundingBox()]);
-      return Boolean(date && modes && Math.abs(date.y - modes.y) <= 1);
+      const settings = page.getByRole('button', { name: 'Grafikeinstellungen', exact: true });
+      const [date, gear, layers] = await Promise.all([trigger.boundingBox(), settings.boundingBox(),
+        graphicDisplayButton(page).boundingBox()]);
+      return Boolean(date && gear && layers && Math.abs(date.y - gear.y) <= 1 && Math.abs(date.y - layers.y) <= 1
+        && date.x + date.width <= gear.x && gear.x + gear.width <= layers.x);
     }).toBe(true);
+    const settings = page.getByRole('button', { name: 'Grafikeinstellungen', exact: true });
+    await settings.tap();
+    const settingsDialog = page.getByRole('dialog', { name: 'Grafikeinstellungen', exact: true });
+    await expect(settingsDialog.getByRole('heading', { name: 'Wegeabstände', exact: true })).toBeVisible();
+    expect(await settingsDialog.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
+    await page.keyboard.press('Escape');
+    await expect(settings).toBeFocused();
     await trigger.tap();
     await expect(slider).toBeVisible();
     expect(await dialog.evaluate(element => document.fullscreenElement?.contains(element))).toBe(true);
@@ -1597,18 +1643,26 @@ test('shows the only location with its name and gross area in the list and the g
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await expect(page.getByRole('combobox', { name: 'Standort', exact: true })).toHaveCount(0);
-  await expect(page.getByText(`Standort: ${location.name}`, { exact: true }).first()).toBeVisible();
+  await expect(page.getByTestId('topbar-workspace-controls').getByText(location.name, { exact: false })).toHaveCount(0);
   await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
+  await expect.poll(async () => (await canvasRects(page, `location-boundary-label-${location.id}`))[0]?.text).toContain(location.name);
   await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
   await page.screenshot({ path: testInfo.outputPath('single-location-graphic-1440.png'), animations: 'disabled' });
 });
 
-test('keeps an empty unmeasured location selectable with a single guidance message', async ({ page, request }, testInfo) => {
+test('shows the location selector only while there is a choice of locations', async ({ page, request }, testInfo) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, `empty-graphic-${testInfo.workerIndex}`, { loginAsAdmin: true });
   const { results: [location] } = await apiRequest<{ results: { id: number; name: string }[] }>(page, 'GET', '/locations/');
   await page.goto('/app/fields-beds');
   await expect(page.getByRole('heading', { name: 'Parzelle fehlt', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  const workspace = page.getByTestId('topbar-workspace-controls');
+  const selector = workspace.getByRole('combobox', { name: 'Standort', exact: true });
+  const addLocation = page.getByRole('button', { name: /^Standort hinzufügen(?: \(|$)/ });
+  await expect(selector).toHaveCount(0);
+  await expect(workspace.getByText(location.name, { exact: false })).toHaveCount(0);
+  await expect(addLocation).toBeVisible();
   await expect(page.getByText(/Dieser Standort hat noch keine Parzellen/)).toHaveCount(1);
   await expect(page.getByRole('heading', { name: 'Parzelle fehlt', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: `Standort · ${location.name}`, exact: true }).click();
@@ -1617,6 +1671,33 @@ test('keeps an empty unmeasured location selectable with a single guidance messa
   await expect(preview).not.toContainText('m²');
   await preview.getByRole('button', { name: 'Details anzeigen' }).click();
   await expect(page).toHaveURL(new RegExp(`/fields-beds/locations/${location.id}$`));
+  await page.getByRole('button', { name: 'Zurück zur Grafik', exact: true }).click();
+  await expect(selector).toHaveCount(0);
+
+  await addLocation.click();
+  const dialog = page.getByRole('dialog', { name: 'Weiteren Standort hinzufügen', exact: true });
+  await dialog.getByRole('textbox', { name: 'Name des Standorts', exact: true }).fill('Zweiter Hof');
+  const created = page.waitForResponse(response => response.url().endsWith('/locations/') && response.request().method() === 'POST');
+  await dialog.getByRole('button', { name: 'Standort anlegen', exact: true }).click();
+  const { id: addedId } = await (await created).json() as { id: number };
+  await expect(selector).toHaveText(location.name);
+  await selectLocation(page, 'Zweiter Hof');
+  await selectLocation(page, location.name);
+  await selectLocation(page, 'Zweiter Hof');
+  await expect(addLocation).toBeVisible();
+
+  await page.getByRole('button', { name: 'Liste', exact: true }).click();
+  const addedRow = page.locator(`[role="row"][data-id="location-${addedId}"]`);
+  await addedRow.click({ button: 'right' });
+  const deleted = page.waitForResponse(response => response.url().endsWith(`/locations/${addedId}/`)
+    && response.request().method() === 'DELETE');
+  await page.getByRole('menuitem', { name: 'Löschen', exact: true }).click();
+  expect((await deleted).ok()).toBe(true);
+  await expect(addedRow).toHaveCount(0);
+  await page.getByRole('button', { name: 'Grafik', exact: true }).click();
+  await expect(page.getByRole('region', { name: `Standort: ${location.name}`, exact: true })).toBeVisible();
+  await expect(selector).toHaveCount(0);
+  await expect(addLocation).toBeVisible();
 });
 
 test('projects demo crops by date, preserves real task urgency and remembers the display mode', async ({ page, request }, testInfo) => {

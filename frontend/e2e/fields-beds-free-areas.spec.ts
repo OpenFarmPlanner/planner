@@ -48,10 +48,10 @@ test('shows free shapes and the matching area figures without changing bed fills
   await expect.poll(async () => (await rectangles(page, 'bed-rect-')).some(bed => bed.taskUrgency)).toBe(true);
   const beds = await rectangles(page, 'bed-rect-');
   await expect(page.getByRole('button', { name: /^Freiflächen/ })).toHaveCount(0);
-  const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
+  const trigger = page.getByRole('button', { name: 'Grafikeinstellungen', exact: true });
   await trigger.focus();
   await page.keyboard.press('Enter');
-  const spacing = page.getByRole('dialog', { name: 'Abstände' });
+  const spacing = page.getByRole('dialog', { name: 'Grafikeinstellungen' });
   await expect(spacing.getByRole('checkbox', { name: /einrasten/i })).toBeVisible();
   await expect(spacing.getByRole('checkbox', { name: /Freiflächen/ })).toHaveCount(0);
   await closePopover(page);
