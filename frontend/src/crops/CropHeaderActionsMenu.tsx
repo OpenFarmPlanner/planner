@@ -3,6 +3,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import FileDownloadOutlinedIcon from '@mui/icons-material/FileDownloadOutlined';
 import DeleteIcon from '@mui/icons-material/Delete';
 import LinkOffIcon from '@mui/icons-material/LinkOff';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import type { TFunction } from 'i18next';
 
 interface CropHeaderActionsMenuProps {
@@ -11,6 +12,8 @@ interface CropHeaderActionsMenuProps {
   onOpenHistory: () => void;
   onExport: () => void;
   onDelete: () => void;
+  showEmptyRanges: boolean;
+  onToggleEmptyRanges: () => void;
   /** Set only when the crop's library link may be removed (see `canUnlinkPublicCrop`). */
   onUnlinkPublicCrop?: () => void;
   t: TFunction<'crops'>;
@@ -28,6 +31,8 @@ export function CropHeaderActionsMenu({
   onOpenHistory,
   onExport,
   onDelete,
+  showEmptyRanges,
+  onToggleEmptyRanges,
   onUnlinkPublicCrop,
   t,
 }: CropHeaderActionsMenuProps) {
@@ -40,6 +45,11 @@ export function CropHeaderActionsMenu({
       <MenuItem onClick={() => { onClose(); onOpenHistory(); }}>
         <HistoryIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
         {t('buttons.versions')}
+      </MenuItem>
+      <MenuItem role="menuitemcheckbox" aria-checked={showEmptyRanges} selected={showEmptyRanges}
+        onClick={() => { onClose(); onToggleEmptyRanges(); }}>
+        <FactCheckOutlinedIcon sx={{ fontSize: 18, mr: 1, color: 'text.secondary' }} />
+        {t('detail.ranges.showAll')}
       </MenuItem>
       <Divider sx={{ my: 0.5 }} />
       <MenuItem onClick={() => { onClose(); onExport(); }}>

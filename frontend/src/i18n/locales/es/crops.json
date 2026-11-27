@@ -80,6 +80,14 @@
     "supplier_id": "Proveedor"
   },
   "detail": {
+    "ranges": {
+      "showAll": "Mostrar todos los campos de intervalo",
+      "atLeast": "desde {{value}}",
+      "upTo": "hasta {{value}}",
+      "dayUnit_one": "día",
+      "dayUnit_other": "días",
+      "dayUnit_many": "días"
+    },
     "sections": {
       "general": "Información general",
       "notes": "Notas"
@@ -2100,6 +2108,13 @@
     "computedHarvest": "Cosecha (calculada)"
   },
   "germination": {
+    "detail": {
+      "optimalTemperature": "Temperatura óptima de germinación",
+      "minimumTemperature": "Temperatura mínima de germinación",
+      "days": "Duración de la germinación",
+      "stratificationDays": "Duración de estratificación",
+      "stratificationTemperature": "Temperatura de estratificación"
+    },
     "title": "Germinación",
     "optimalTemperature": "Temperatura óptima de germinación (°C)",
     "days": "Tiempo de germinación (días)",

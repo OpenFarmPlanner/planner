@@ -95,9 +95,15 @@ error feedback remain inline.
 
 ## Empty values
 
-Both views show only filled-in values, so the populated ones are easy to
-scan. There is no "show all" option: a missing value is visible in the edit
-form.
+Both views show filled-in values by default. The detail actions include
+**Show all range fields** to reveal empty germination, applicable stratification
+and sowing-depth ranges as a single dash per field. Other missing values are
+visible in the edit form.
+
+Read-only ranges use a single localized label and unit. Equal bounds display one
+value and a single bound indicates the direction of the limit. Minimum
+germination temperature keeps its own row. The edit form keeps separate inputs
+for each range endpoint.
 
 - A value is missing when it is `null`, `undefined`, a blank string, or an
   empty list/object; `0` and `false` are values and are shown

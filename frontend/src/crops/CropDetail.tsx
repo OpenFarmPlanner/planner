@@ -5,7 +5,8 @@ import { CropTaskTemplatesSection } from './CropTaskTemplatesSection';
  * Crop Detail component with searchable dropdown and detailed crop information view.
  */
 
-import { germinationDetailFields, formatGerminationValue } from './germination';
+import { CropGerminationDetails } from './CropGerminationDetails';
+import { getGerminationDetailRows } from './germination';
 import { SITE_HEALTH_FIELDS, formatSiteHealthValue, lifeCycleDetailFields } from './siteHealth';
 import { PlantHealthChips } from './PlantHealthChips';
 import { matchesPlantHealthFilter, normalizePlantHealthSelections } from './plantHealth';
@@ -122,7 +123,7 @@ interface CropDetailProps {
 
 import {
   formatDistance,
-  formatSowingDepth,
+  formatCropDetailRange,
   formatNumber,
 } from './cropDetailFormatters';
 import { usePersistedCropFilters } from './usePersistedCropFilters';
@@ -220,6 +221,7 @@ export function CropDetail({
   const searchFieldId = useId();
   const [filterAnchorEl, setFilterAnchorEl] = useState<HTMLElement | null>(null);
   const [headerMenuAnchorEl, setHeaderMenuAnchorEl] = useState<HTMLElement | null>(null);
+  const [showEmptyRanges, setShowEmptyRanges] = useState(false);
   const [mobileSelectorOpen, setMobileSelectorOpen] = useState(false);
   const [selectedSpeciesViewKey, setSelectedSpeciesViewKey] = useState<string | null>(null);
   const {
@@ -613,6 +615,12 @@ const detailSectionGridSx = {
   const lifeCycleRows = selectedCrop ? lifeCycleDetailFields(lifeCycle)
     .map(field => ({ field, value: getCropValue(field, selectedCrop[field]) }))
     .filter(row => hasDetailValue(row.value)) : [];
+  const sowingDepth = getCropValue('sowing_depth_cm', selectedCrop?.sowing_depth_cm);
+  const sowingDepthMax = getCropValue('sowing_depth_max_cm', selectedCrop?.sowing_depth_max_cm);
+  const showSowingDepth = showEmptyRanges || hasAnyDetailValue(sowingDepth, sowingDepthMax);
+  const germinationRows = selectedCrop ? getGerminationDetailRows(
+    field => getCropValue(field, selectedCrop[field]), showEmptyRanges,
+  ) : [];
   const getLibraryPin = (field: LibraryPinFormField) => (
     selectedCrop?.source_public_crop && isLibraryFieldPinned(selectedCrop, field)
       ? (
@@ -1066,6 +1074,8 @@ const detailSectionGridSx = {
                 onOpenHistory={() => onOpenHistory?.()}
                 onExport={() => onExportCrop?.()}
                 onDelete={() => onDeleteCrop?.(selectedCrop)}
+                showEmptyRanges={showEmptyRanges}
+                onToggleEmptyRanges={() => setShowEmptyRanges(value => !value)}
                 onUnlinkPublicCrop={onUnlinkPublicCrop && canUnlinkPublicCrop(selectedCrop)
                   ? () => onUnlinkPublicCrop(selectedCrop)
                   : undefined}
@@ -1248,11 +1258,9 @@ const detailSectionGridSx = {
             ) : null}
 
             {/* Spacing Section */}
-            {hasAnyDetailValue(
+            {showSowingDepth || hasAnyDetailValue(
               getCropValue('distance_within_row_cm', selectedCrop.distance_within_row_cm),
               getCropValue('row_spacing_cm', selectedCrop.row_spacing_cm),
-              getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
-              getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
             ) ? (
             <Box sx={{ mb: 3 }}>
               <Typography variant="h6" gutterBottom>
@@ -1276,22 +1284,14 @@ const detailSectionGridSx = {
                     </Box>
                   ) : null
                 ))}
-                {hasAnyDetailValue(
-                  getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
-                  getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
-                ) && (
+                {showSowingDepth && (
                   <Box>
                     <Typography variant="body2" color="text.secondary">
                       {t('detail.fields.sowingDepth')}
                     </Typography>
-                    <ValueWithLibraryPin pin={getLibraryPin('sowing_depth_cm')}>
-                      <Typography variant="body1" sx={getOwnValueSx('sowing_depth_cm')}>
-                        {`${formatSowingDepth(
-                          getCropValue('sowing_depth_cm', selectedCrop.sowing_depth_cm),
-                          getCropValue('sowing_depth_max_cm', selectedCrop.sowing_depth_max_cm),
-                          t,
-                          locale,
-                        )} ${t('detail.units.centimeters')}`}
+                    <ValueWithLibraryPin pin={getLibraryPin('sowing_depth_cm')} secondPin={getLibraryPin('sowing_depth_max_cm')}>
+                      <Typography variant="body1" sx={getOwnValueSx('sowing_depth_cm', 'sowing_depth_max_cm')}>
+                        {formatCropDetailRange(sowingDepth, sowingDepthMax, 'centimeters', t, locale)}
                       </Typography>
                     </ValueWithLibraryPin>
                   </Box>
@@ -1407,22 +1407,9 @@ const detailSectionGridSx = {
 
             <CropTimingWindowsDetail crop={selectedCrop} isVarietyView={!isSpeciesView && Boolean(selectedCrop.variety)} />
 
-            {hasAnyDetailValue(...germinationDetailFields(getCropValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement)).map((field) => getCropValue(field, selectedCrop[field]))) ? (
-            <Box sx={{ mb: 3 }}>
-              <Typography variant="h6" gutterBottom>{t('germination.title')}</Typography>
-              <Box sx={detailSectionGridSx}>
-                {germinationDetailFields(getCropValue('germination_temperature_requirement', selectedCrop.germination_temperature_requirement)).filter((field) => hasDetailValue(getCropValue(field, selectedCrop[field]))).map((field) => (
-                  <Box key={field} sx={{ minWidth: 0 }}>
-                    <Typography variant="body2" color="text.secondary">{t(`germination.fields.${field}`)}</Typography>
-                    <ValueWithLibraryPin pin={getLibraryPin(field)}>
-                      <Typography sx={[getOwnValueSx(field) ?? {}, { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' }]}>
-                        {formatGerminationValue(field, getCropValue(field, selectedCrop[field]), t, locale)}
-                      </Typography>
-                    </ValueWithLibraryPin>
-                  </Box>
-                ))}
-              </Box>
-            </Box>
+            {germinationRows.length > 0 ? (
+              <CropGerminationDetails rows={germinationRows} source={getCropValueSource}
+                pin={getLibraryPin} gridSx={detailSectionGridSx} t={t} locale={locale} />
             ) : null}
 
             {hasAnyDetailValue(getCropValue('plant_health', selectedCrop.plant_health)?.entries,

@@ -3,7 +3,7 @@
  * crop detail view. Extracted verbatim from crops/CropDetail.tsx.
  */
 
-import { getActiveFormattingLocale } from '../utils/numberLocalization';
+import { formatLocalizedNumber, getActiveFormattingLocale } from '../utils/numberLocalization';
 import type { PlantHealthSelection } from '../api/types';
 
 export const CROP_FILTERS_STORAGE_KEY = 'cropsDetailFiltersV1';
@@ -89,19 +89,30 @@ export function formatDistance(
   }).format(rounded);
 }
 
-/** A sowing depth range in centimetres: "2" for one depth, "2–3" for a range. */
-export function formatSowingDepth(
-  lower: number | null | undefined,
-  upper: number | null | undefined,
-  t: (key: string) => string,
-  locale = getActiveFormattingLocale(),
+type RangeUnit = 'celsius' | 'centimeters' | 'days';
+type RangeTranslation = (key: string, options?: { value?: string; count?: number }) => string;
+
+/** The inputs are the effective bounds after any variety inheritance. */
+export function formatCropDetailRange(
+  lower: unknown,
+  upper: unknown,
+  unit: RangeUnit,
+  t: RangeTranslation,
+  locale: string,
 ): string {
-  const from = lower ?? upper;
-  const to = upper ?? lower;
-  if (from === null || from === undefined || to === null || to === undefined || from === to) {
-    return formatDistance(from, t, locale, 1);
-  }
-  return `${formatDistance(from, t, locale, 1)}–${formatDistance(to, t, locale, 1)}`;
+  const from = typeof lower === 'number' && Number.isFinite(lower) ? lower : null;
+  const to = typeof upper === 'number' && Number.isFinite(upper) ? upper : null;
+  const number = from ?? to;
+  if (number === null) return '—';
+
+  const different = from !== null && to !== null && from !== to;
+  const format = (value: number) => formatLocalizedNumber(value, locale, { maximumFractionDigits: 6 });
+  const unitLabel = unit === 'celsius' ? '°C' : unit === 'centimeters' ? t('detail.units.centimeters')
+    : t('detail.ranges.dayUnit', { count: different ? 2 : number });
+  const value = `${different ? `${format(from)}–${format(to)}` : format(number)} ${unitLabel}`;
+  if (from === null) return t('detail.ranges.upTo', { value });
+  if (to === null) return t('detail.ranges.atLeast', { value });
+  return value;
 }
 
 export function formatSeedUnitLabel(unit: string | null | undefined, t: (key: string) => string): string {

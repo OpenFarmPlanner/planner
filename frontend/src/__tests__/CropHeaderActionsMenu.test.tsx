@@ -26,6 +26,8 @@ const renderMenu = (
       onOpenHistory={vi.fn()}
       onExport={props.onExport ?? vi.fn()}
       onDelete={props.onDelete ?? vi.fn()}
+      showEmptyRanges={false}
+      onToggleEmptyRanges={vi.fn()}
       onUnlinkPublicCrop={props.onUnlinkPublicCrop}
       t={t}
     />,

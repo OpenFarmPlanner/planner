@@ -111,6 +111,7 @@ export const DetailPageActions = memo(function DetailPageActions({
           disableHoverListener={suppressTooltips} disableFocusListener={suppressTooltips} disableTouchListener={suppressTooltips}>
           <Button
             aria-label={overflowLabel}
+            aria-haspopup="menu"
             onClick={onOpenOverflow}
             variant="outlined"
             size="medium"
