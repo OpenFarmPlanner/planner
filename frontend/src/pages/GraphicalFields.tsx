@@ -44,10 +44,11 @@ import { individualCropSpacings, individualPlacementPeriod, intersectsPlantingPe
 import { snapIndividualStem, type PlantDistanceGuide, type PlantSnapResult } from './individualPlantSnapping';
 import { usePlacementCrops } from './usePlacementCrops';
 import { GraphicalIndividualPlantsLayer, type CanvasStem } from "./GraphicalIndividualPlantsLayer";
-import { getIndividualPlantLabels, individualPlantObjectKey, placeIndividualPlantObjects, projectIndividualPlants,
+import { getIndividualPlantLabels, groupPlantsByPlan, individualPlantObjectKey, placeIndividualPlantObjects, projectIndividualPlants,
   type GraphicalIndividualPlant } from "./graphicalIndividualPlants";
 import { GraphicalIndividualPlantsPanel } from "./GraphicalIndividualPlantsPanel";
 import { IndividualPlantRemovalDialog } from "./IndividualPlantRemovalDialog";
+import { GraphicalPlantSelectionBar } from "./GraphicalPlantSelectionBar";
 import { GraphicalFreePlantPlacement } from "./GraphicalFreePlantPlacement";
 import { GraphicalAreaAnnotations } from './GraphicalAreaAnnotations';
 import { useGraphicalAnnotationOverlays } from './useGraphicalAnnotationOverlays';
@@ -168,7 +169,7 @@ export default function GraphicalFields({
   );
   const activeDraft = individualPlants.editor.draft;
   const cropOptions = usePlacementCrops(activeDraft && !activeDraft.planId ? 'all' : activeDraft?.crop ?? null);
-  const [removingPlant, setRemovingPlant] = useState<GraphicalIndividualPlant | null>(null);
+  const [removingPlants, setRemovingPlants] = useState<readonly GraphicalIndividualPlant[]>([]);
   const [placementCursor, setPlacementCursor] = useState<{ location: number; point: Point } | null>(null);
   const [draggedStem, setDraggedStem] = useState<{ location: number; key: string; point: Point } | null>(null);
   const [plantDistanceGuide, setPlantDistanceGuide] = useState<{ location: number; guide: PlantDistanceGuide } | null>(null);
@@ -228,7 +229,23 @@ export default function GraphicalFields({
     && !individualPlants.editor.placing);
   const objectInteractionEnabled = areaInteractionEnabled && !areaZoomOnly;
   const browseIndividualPlants = objectInteractionEnabled && !individualPlants.editor.draft;
-  const objects = useGraphicalObjectInteraction(areaInteractionEnabled, activeLocationId, displayMode, areaZoomOnly);
+  // Multi-selection of individual plants (#1727): Shift+click, or taps while its mode is on.
+  const selectionScope = `${activeLocationId ?? ''}:${activeSeasonId ?? ''}`;
+  const [plantSelection, setPlantSelection] = useState({ scope: selectionScope, keys: [] as string[], mode: false });
+  const currentPlantSelection = plantSelection.scope === selectionScope && browseIndividualPlants
+    ? plantSelection : { scope: selectionScope, keys: [] as string[], mode: false };
+  const togglePlantSelection = (key: string, previewed: string | null = null) => setPlantSelection(value => {
+    const base = value.scope === selectionScope ? value : { scope: selectionScope, keys: [], mode: false };
+    const start = !base.keys.length && previewed?.startsWith('plant:') && previewed !== key ? [previewed] : base.keys;
+    return { ...base, keys: start.includes(key) ? start.filter(item => item !== key) : [...start, key] };
+  });
+  const clearPlantSelection = () => setPlantSelection({ scope: selectionScope, keys: [], mode: false });
+  const objects = useGraphicalObjectInteraction(areaInteractionEnabled, activeLocationId, displayMode, areaZoomOnly,
+    (key, additive, previewed) => {
+      if (!browseIndividualPlants || !key.startsWith('plant:') || !(additive || currentPlantSelection.mode)) return false;
+      togglePlantSelection(key, previewed);
+      return true;
+    });
   const selectedBedId = objects.selection?.startsWith('bed:') ? Number(objects.selection.slice(4)) : null;
   const selectedPlantKey = objects.selection?.startsWith('plant:') ? objects.selection : null;
   const showTasks = includesTasks(displayMode);
@@ -601,6 +618,22 @@ export default function GraphicalFields({
   const objectModel = useMemo(() => new Map<string, GraphicalObject>([
     ...areaObjects, ...(browseIndividualPlants ? [...plantObjects] : []),
   ]), [areaObjects, browseIndividualPlants, plantObjects]);
+  // Selected plants that are no longer shown (other date, location or display mode) drop out.
+  const selectedPlantKeys = useMemo(() => new Set(currentPlantSelection.keys.filter(key => plantObjects.has(key))),
+    [currentPlantSelection.keys, plantObjects]);
+  const requestPlantRemoval = (plant?: GraphicalIndividualPlant) => {
+    const selected = [...selectedPlantKeys].flatMap(key => plantObjects.get(key) ?? []);
+    setRemovingPlants(selected.length ? selected : plant ? [plant] : []);
+  };
+  useEffect(() => {
+    if (!currentPlantSelection.keys.length && !currentPlantSelection.mode) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || removingPlants.length) return;
+      setPlantSelection({ scope: selectionScope, keys: [], mode: false });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [currentPlantSelection.keys.length, currentPlantSelection.mode, removingPlants.length, selectionScope]);
   const closeObjectOverlays = objects.close;
   const activePlantKey = objects.menu?.key.startsWith('plant:') ? objects.menu.key : selectedPlantKey;
   useEffect(() => {
@@ -1426,7 +1459,8 @@ export default function GraphicalFields({
                 return { ...stem, key: stem.id, planId: plan.id, phase, phaseColor, urgency, neutralCrop,
                   objectKey: browseIndividualPlants ? object?.key : undefined, canopy: Number(plan.estimated_canopy_diameter_m ?? 0),
                   label: label && object ? { ...label, name: object.name } : undefined,
-                  selected: key === overlayKey || Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey };
+                  selected: key === overlayKey || selectedPlantKeys.has(key)
+                    || Boolean(showIndividualPanel) && stem.id === individualPlants.editor.selectedKey };
               });
             });
             const added = stemDraft?.stems.filter(stem => matchesPlacementParent(stem.graphic?.parent ?? stemDraft.parent, parent)) ?? [];
@@ -1795,12 +1829,21 @@ export default function GraphicalFields({
                       </Typography>
                     )}
                   />
+                  {browseIndividualPlants && (currentPlantSelection.mode || selectedPlantKeys.size > 0) && (
+                    <GraphicalPlantSelectionBar count={selectedPlantKeys.size} onClear={clearPlantSelection}
+                      onRemove={individualPlants.canEdit ? () => requestPlantRemoval() : undefined} />
+                  )}
                   {areaInteractionEnabled && <GraphicalObjectOverlays interaction={objects} objects={objectModel}
                     viewport={viewport} stageWidth={stageWidth} stageHeight={stageHeight} root={activeCanvasRef}
                     openDetails={details} onOpenCrop={onOpenIndividualCrop} onFocusObject={focusArea} onZoomObject={zoomToArea}
                     zoomOnly={areaZoomOnly}
                     canEditPlant={canEditPlant} onEditPlant={editPlant}
-                    onRemovePlant={individualPlants.canEdit ? plant => setRemovingPlant(plant) : undefined} bedTasks={previewTasks} plantTasks={bedTasks} cropPreview={cropPreview}
+                    onRemovePlant={individualPlants.canEdit ? requestPlantRemoval : undefined}
+                    plantMultiSelect={browseIndividualPlants ? {
+                      active: currentPlantSelection.mode, selected: selectedPlantKeys,
+                      toggle: key => togglePlantSelection(key),
+                      start: key => setPlantSelection({ scope: selectionScope, keys: [key], mode: true }),
+                    } : undefined} bedTasks={previewTasks} plantTasks={bedTasks} cropPreview={cropPreview}
                     onStartIndividualPlan={individualSeason && individualPlants.canEdit && !individualPlants.editor.draft ? object => {
                       const parent = { kind: object.type, id: object.id };
                       if (fullscreenLocationId === locationId) {
@@ -1818,13 +1861,17 @@ export default function GraphicalFields({
                     } : undefined}
                     seasonId={activeSeasonId} canComplete={canCompleteTasks} showLocationLabel={showFallbackLocationLabel} />}
                 </Box>
-                {removingPlant && (
-                  <IndividualPlantRemovalDialog plant={removingPlant} onCancel={() => setRemovingPlant(null)}
+                {removingPlants.length > 0 && (
+                  <IndividualPlantRemovalDialog plants={removingPlants} onCancel={() => setRemovingPlants([])}
                     onConfirm={mode => {
-                      const plant = removingPlant;
-                      setRemovingPlant(null);
-                      void individualPlants.removeSavedStems(plant.id, [plant.stemId], mode).then(removed => {
-                        if (removed) objects.close();
+                      const selection = groupPlantsByPlan(removingPlants).map(group => ({
+                        planId: group.plan.id!, stemIds: group.plants.map(plant => plant.stemId),
+                      }));
+                      setRemovingPlants([]);
+                      void individualPlants.removeSavedStems(selection, mode).then(removed => {
+                        if (!removed) return;
+                        objects.close();
+                        clearPlantSelection();
                       });
                     }} />
                 )}

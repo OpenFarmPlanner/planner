@@ -62,5 +62,12 @@ describe('individual plant removal', () => {
     expect(individualRemovalBlock({ ...plan, crop_loss_count: 1 }, 1, 'plant')).toBe('actualRecords');
     expect(individualRemovalBlock({ ...plan, actual_harvest: { quantity_kg: 2 } as never }, 1, 'plant')).toBe('actualRecords');
     expect(individualRemovalBlock({ ...plan, crop_loss_count: 1 }, 1, 'position')).toBeNull();
+    const planned = { year: 2026, planned_start_date: '2026-06-01', planned_end_date: '2026-06-20' };
+    expect(individualRemovalBlock({ ...plan, harvest_actual_occurrences: [
+      { ...planned, actual_start_date: null, actual_end_date: null },
+    ] }, 1, 'plant')).toBeNull();
+    expect(individualRemovalBlock({ ...plan, harvest_actual_occurrences: [
+      { ...planned, actual_start_date: '2026-06-03', actual_end_date: null },
+    ] }, 1, 'plant')).toBe('actualRecords');
   });
 });

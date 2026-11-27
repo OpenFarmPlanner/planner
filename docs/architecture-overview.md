@@ -277,14 +277,25 @@ positions" and a trash action. Deep links to a plan open that inspector, or
 the position editor when no plant is positioned yet. The editor keeps the
 per-plant list ("Plant 1") behind a collapsed disclosure.
 
-Removing a selected plant (trash, the last context-menu action, or Delete
-on the focused marker or inspector) opens one confirmation with two
-explicit outcomes, saved through the plan's validated
-`individual-placement` endpoint: "Remove plant" lowers the exact total by
-one, and "Remove position only" keeps the plant planned and pending. A plan
-keeps at least one plant, and a plan with recorded harvests or losses keeps
-its planned total; the dialog then points to the plan details for recording
-a loss instead.
+Shift+click adds or removes a plant from a multi-selection; "Select
+several" in the inspector starts the same selection for touch and keyboard,
+where taps and Enter then toggle plants. Selected markers stay highlighted,
+a compact on-canvas bar shows the count with remove and clear actions, and
+Escape clears it. The selection never broadens through the hierarchy and
+drops plants that are no longer shown. Shift keeps its snapping-bypass
+meaning while placing or dragging, where no selection is possible.
+
+Removing the selected plant or plants (trash, the last context-menu action,
+the bar, or Delete) opens one confirmation that groups them by plan with
+the resulting totals and two explicit outcomes: "Remove plant(s)" lowers
+each exact total, and "Remove position(s) only" keeps the plants planned
+and pending. `POST /planting-plans/individual-removal/` validates every
+plan first (version, stems, at least one remaining plant, and no recorded
+harvests or losses for a total correction) and saves all of them as one
+`individual_removal` batch operation, reversible in the version history, or
+saves nothing. Request IDs make retries idempotent. The client checks the
+same rules for the active season; the server also sees losses and harvests
+from other seasons and rejects the batch with a clear message.
 
 The schematic camera caps measured geometry at 500 CSS pixels per metre and
 allows zooming back to the fitted overview of a large site. The lower canvas

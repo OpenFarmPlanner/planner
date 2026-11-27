@@ -551,6 +551,12 @@ export const plantingPlanAPI = {
     http.post<PlantingPlan>('/planting-plans/', data),
   saveIndividualPlacement: (id: number, placement_updated_at: string, data: import('./types').IndividualPlacementInput) =>
     http.patch<PlantingPlan>(`/planting-plans/${id}/individual-placement/`, { ...data, placement_updated_at }),
+  /** Removes saved plants, or only their positions, across plans as one validated batch (#1727). */
+  removeIndividualStems: (data: {
+    request_id: string;
+    mode: 'plant' | 'position';
+    plans: { plan: number; placement_updated_at: string; stems: string[] }[];
+  }) => http.post<{ plans: PlantingPlan[] }>('/planting-plans/individual-removal/', data),
   saveGraphicPlacement: (data: import('./types').GraphicPlacementInput) =>
     http.post<{ plans: PlantingPlan[] }>('/planting-plans/graphic-placement/', data),
   moveGraphicStem: (id: number, stem: string, placement_updated_at: string,

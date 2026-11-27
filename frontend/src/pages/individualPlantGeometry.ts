@@ -13,7 +13,8 @@ export type IndividualRemovalBlock = 'finalPlant' | 'actualRecords';
 
 /** Whether a plan has recorded actual outcomes that a planned-quantity correction must not rewrite. */
 export function hasActualIndividualRecords(plan: Pick<PlantingPlan, 'actual_harvest' | 'crop_loss_count' | 'harvest_actual_occurrences'>) {
-  return Boolean(plan.actual_harvest) || (plan.crop_loss_count ?? 0) > 0 || (plan.harvest_actual_occurrences?.length ?? 0) > 0;
+  return Boolean(plan.actual_harvest) || (plan.crop_loss_count ?? 0) > 0
+    || Boolean(plan.harvest_actual_occurrences?.some(item => item.actual_start_date || item.actual_end_date));
 }
 
 /**

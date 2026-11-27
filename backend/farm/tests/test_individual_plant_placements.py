@@ -3,7 +3,17 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from crops.models import CropSpecies
-from farm.models import Bed, Crop, EntityRevision, Field, Location, PlantingPlan, Project, Season
+from farm.models import (
+    BatchOperation,
+    Bed,
+    Crop,
+    EntityRevision,
+    Field,
+    Location,
+    PlantingPlan,
+    Project,
+    Season,
+)
 from farm.services.bed_capacity import calculate_bed_capacity
 from farm.services.harvests import eligible_harvest_plans
 from farm.services.parcel_rotation_copy import preview_parcel_rotation
@@ -93,6 +103,99 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual({plan['id'] for plan in again.json()['plans']},
                          {plan['id'] for plan in members.values()})
         self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 3)
+
+    def removal(self, plans, mode='plant', request_id=None):
+        return self.client.post(f'{URL}individual-removal/', {
+            'request_id': request_id or str(uuid4()), 'mode': mode,
+            'plans': [
+                {'plan': plan['id'], 'placement_updated_at': plan['updated_at'], 'stems': stems}
+                for plan, stems in plans
+            ],
+        }, format='json')
+
+    def test_removal_saves_several_plans_as_one_reversible_batch_and_replays(self):
+        exact = self.create_plan(individual_count=5).json()
+        derived = self.create_plan(individual_positions=[
+            {'x_m': 5, 'y_m': 1}, {'x_m': 6, 'y_m': 2}, {'x_m': 7, 'y_m': 3},
+        ]).json()
+        request_id = str(uuid4())
+        selection = [(exact, [exact['individual_positions'][0]['id']]),
+                     (derived, [stem['id'] for stem in derived['individual_positions'][:2]])]
+        response = self.removal(selection, request_id=request_id)
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = {plan['id']: plan for plan in response.json()['plans']}
+        first, second = saved[exact['id']], saved[derived['id']]
+        self.assertEqual(
+            (first['individual_count'], first['plants_count'], len(first['individual_positions'])),
+            (4, 4, 1),
+        )
+        self.assertEqual((second['individual_count'], second['plants_count']), (None, 1))
+        self.assertEqual(second['individual_positions'], derived['individual_positions'][2:])
+        batch = BatchOperation.objects.get(operation_type=BatchOperation.TYPE_INDIVIDUAL_REMOVAL)
+        self.assertEqual(batch.context['removed_count'], 3)
+        self.assertEqual(EntityRevision.objects.filter(batch_operation=batch).count(), 2)
+        again = self.removal(selection, request_id=request_id)
+        self.assertEqual(again.status_code, 200, again.data)
+        self.assertEqual(PlantingPlan.objects.get(pk=exact['id']).individual_count, 4)
+        self.assertEqual(BatchOperation.objects.filter(request_id=request_id).count(), 1)
+
+    def test_removing_only_positions_keeps_the_planned_plants_pending(self):
+        plan = self.create_plan().json()
+        stems = [stem['id'] for stem in plan['individual_positions']]
+        response = self.removal([(plan, stems)], mode='position')
+        self.assertEqual(response.status_code, 200, response.data)
+        saved = response.json()['plans'][0]
+        self.assertEqual(
+            (saved['individual_positions'], saved['plants_count'], saved['pending_plants_count']),
+            ([], 2, 2),
+        )
+
+    def test_removal_blocks_the_whole_batch_when_any_plan_is_unsafe(self):
+        valid = self.create_plan().json()
+        single = self.create_plan(individual_positions=[{'x_m': 6, 'y_m': 6}]).json()
+        protected = self.create_plan(
+            individual_positions=[{'x_m': 8, 'y_m': 8}, {'x_m': 9, 'y_m': 9}],
+        ).json()
+        loss = self.client.post('/openfarmplanner/api/crop-losses/', {
+            'planting_plan': protected['id'], 'date': '2026-06-01',
+            'loss_type': 'partial', 'cause': 'frost',
+        }, format='json')
+        self.assertEqual(loss.status_code, 201, loss.data)
+        protected = self.client.get(f'{URL}{protected["id"]}/').json()
+        protected_stem = protected['individual_positions'][0]['id']
+        first = [(valid, [valid['individual_positions'][0]['id']])]
+        for other, code in [
+            ((single, [single['individual_positions'][0]['id']]), 'individual_removal_last_plant'),
+            ((protected, [protected_stem]), 'individual_removal_protected'),
+            (({**protected, 'updated_at': '2020-01-01T00:00:00Z'}, [protected_stem]),
+             'individual_placement_changed'),
+            ((protected, [str(uuid4())]), 'individual_placement_changed'),
+        ]:
+            response = self.removal([*first, other])
+            self.assertEqual(response.status_code, 409, response.data)
+            self.assertEqual(response.json()['code'], code)
+        self.assertEqual(
+            PlantingPlan.objects.get(pk=valid['id']).individual_positions,
+            valid['individual_positions'],
+        )
+        self.assertFalse(BatchOperation.objects.filter(
+            operation_type=BatchOperation.TYPE_INDIVIDUAL_REMOVAL,
+        ).exists())
+        # A recorded loss still allows clearing only the position of the plant.
+        cleared = self.removal([(protected, [protected_stem])], mode='position')
+        self.assertEqual(cleared.status_code, 200, cleared.data)
+        self.assertEqual(cleared.json()['plans'][0]['plants_count'], 2)
+
+    def test_removal_rejects_duplicates_and_plans_of_another_project(self):
+        plan = self.create_plan().json()
+        stem = plan['individual_positions'][0]['id']
+        duplicate = self.removal([(plan, [stem]), (plan, [stem])])
+        self.assertEqual(duplicate.status_code, 400)
+        other_project = Project.objects.create(name='Other farm')
+        foreign = PlantingPlan.objects.filter(pk=plan['id'])
+        foreign.update(project=other_project)
+        self.assertEqual(self.removal([(plan, [stem])]).status_code, 409)
+        foreign.update(project=self.project)
 
     def test_location_plan_revision_display_name_uses_the_location(self):
         plan = self.create_plan(

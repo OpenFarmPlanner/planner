@@ -6,7 +6,7 @@ import type {
 } from '../api/types';
 import { formatDateToAPI } from '../utils/isoDate';
 import {
-  canRemoveIndividualStem, individualCountAfterRemoval, individualRemovalBlock, placementParentFields, planPlacementParent,
+  canRemoveIndividualStem, individualRemovalBlock, placementParentFields, planPlacementParent,
   type IndividualRemovalMode, type PlacementParent,
 } from './individualPlantGeometry';
 import { individualPositionLimit } from './individualPlantGeneration';
@@ -14,6 +14,7 @@ import { individualPositionLimit } from './individualPlantGeneration';
 type PointToAdd = StemCoordinates & { graphic?: GraphicStemPoint };
 export type DraftStem = PointToAdd & { id?: string; key: string };
 export type IndividualPlacementAction = 'edit' | 'add' | 'remove';
+export type IndividualStemSelection = readonly { planId: number; stemIds: readonly string[] }[];
 
 interface Draft {
   planId?: number;
@@ -33,6 +34,7 @@ const collisionErrors = {
   individual_geometry_changed: 'geometryChanged', individual_geometry_unknown: 'geometryUnknown',
   individual_parent_ambiguous: 'parentAmbiguous', individual_outside_location: 'outsideLocation',
   individual_split_protected: 'splitProtected', individual_count_exhausted: 'countExhausted',
+  individual_removal_last_plant: 'removalLastPlant', individual_removal_protected: 'removalProtected',
   individual_request_changed: 'changedElsewhere', individual_placement_changed: 'changedElsewhere',
 } as const;
 type PlacementError = (typeof collisionErrors)[keyof typeof collisionErrors] | 'saveFailed';
@@ -287,25 +289,29 @@ export function useIndividualPlants(
     }
   };
 
-  // Removes saved positions of one plan in a single validated save (#1727): either the plants
-  // themselves (lower planned total) or only their positions (plants stay pending).
-  const removeSavedStems = async (planId: number, stemIds: readonly string[], mode: IndividualRemovalMode) => {
-    const plan = plans.find(item => item.id === planId);
-    if (!canEdit || !plan?.updated_at || movingPlans.has(planId) || saving.current || editor.draft) return false;
-    const before = plan.individual_positions ?? [];
-    const positions = before.filter(stem => !stemIds.includes(stem.id));
-    const removed = before.length - positions.length;
-    if (!removed || individualRemovalBlock(plan, removed, mode)) return false;
+  // Removes selected saved plants, or only their positions, across plans in one validated
+  // batch (#1727): every plan is checked first, and a single blocked plan saves nothing.
+  const removeSavedStems = async (selection: IndividualStemSelection, mode: IndividualRemovalMode) => {
+    const targets = selection.flatMap(({ planId, stemIds }) => {
+      const plan = plans.find(item => item.id === planId);
+      return plan ? [{ plan, stemIds }] : [];
+    });
+    if (!canEdit || saving.current || editor.draft || !targets.length || targets.length !== selection.length) return false;
+    if (targets.some(({ plan, stemIds }) => !plan.updated_at || movingPlans.has(plan.id!)
+      || individualRemovalBlock(plan, stemIds.length, mode))) return false;
+    const ids = targets.map(({ plan }) => plan.id!);
     const generation = loadGeneration.current;
     setMoveFailure(null);
-    setMovingPlans(value => new Set(value).add(planId));
+    setMovingPlans(value => new Set([...value, ...ids]));
     try {
-      const { data } = await plantingPlanAPI.saveIndividualPlacement(planId, plan.updated_at, {
-        individual_positions: positions.map(({ id, x_m, y_m }) => ({ id, x_m, y_m })),
-        individual_count: individualCountAfterRemoval(plan, removed, mode),
+      const { data } = await plantingPlanAPI.removeIndividualStems({
+        request_id: crypto.randomUUID(), mode,
+        plans: targets.map(({ plan, stemIds }) => ({
+          plan: plan.id!, placement_updated_at: plan.updated_at!, stems: [...stemIds],
+        })),
       });
       setResult(value => value?.key === key && loadGeneration.current === generation ? {
-        ...value, plans: value.plans.map(item => item.id === planId ? data : item),
+        ...value, plans: value.plans.map(item => data.plans.find(saved => saved.id === item.id) ?? item),
       } : value);
       return true;
     } catch (error) {
@@ -316,7 +322,7 @@ export function useIndividualPlants(
     } finally {
       setMovingPlans(value => {
         const next = new Set(value);
-        next.delete(planId);
+        for (const id of ids) next.delete(id);
         return next;
       });
     }

@@ -611,6 +611,7 @@
     },
     "batch": {
       "individualPlacement": "Individuele planten geplaatst",
+      "individualRemoval": "Individuele planten verwijderd",
       "seasonCreate": "Seizoen {{season}} gemaakt",
       "seasonDelete": "Seizoen {{season}} verwijderd",
       "seasonUndelete": "Seizoen {{season}} hersteld",
@@ -628,7 +629,7 @@
       "undo": "Deze actie ongedaan maken"
     },
     "import": {
-    "colorInheritRequiresVariety": "Alleen rassen accepteren de waarde inherit in de kleurkolom.",
+      "colorInheritRequiresVariety": "Alleen rassen accepteren de waarde inherit in de kleurkolom.",
       "summary_one": "{{count}} gewas geïmporteerd",
       "summary_other": "{{count}} gewassen geïmporteerd",
       "actions": "Importacties",
