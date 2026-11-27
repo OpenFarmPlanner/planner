@@ -2030,12 +2030,14 @@ class FirstSeasonApiTest(ProjectApiTestCase):
         self.assertEqual(pattern.start_month, 1)
         self.assertEqual(Season.objects.filter(project=self.project).count(), 1)
 
-    def test_legacy_pattern_is_used_for_default_until_explicit_first_season_configuration(self):
+    def test_first_season_defaults_to_the_month_start_without_editing_a_saved_legacy_pattern(self):
         pattern = SeasonPattern.objects.create(project=self.project, start_day=15, start_month=10)
         with patch('farm.services.seasons.date', wraps=date) as simulated_date:
-            simulated_date.today.return_value = date(2026, 11, 27)
+            simulated_date.today.return_value = date(2026, 10, 10)
             options = self.client.get(f'{self.root_url}creation-options/')
-        self.assertEqual(options.data['due_period']['start_date'], '2026-10-15')
+            suggestion = self.client.get(f'{self.root_url}due-suggestion/')
+        self.assertEqual(options.data['due_period']['start_date'], '2026-10-01')
+        self.assertEqual(suggestion.data['start_date'], '2026-10-01')
         self.assertEqual(options.data['start_day'], 15)
         pattern.refresh_from_db()
         self.assertEqual(pattern.start_day, 15)

@@ -238,6 +238,8 @@ def find_due_but_missing_season(
     pattern = pattern if pattern is not None else season_pattern_for_planning(project)
     latest_season = latest_existing_season(project)
     if latest_season is None:
+        if pattern.start_day != 1 and first_season_available(project):
+            pattern = SeasonPattern(start_month=pattern.start_month)
         return compute_period_containing(pattern, today or date.today())
 
     next_period = compute_first_future_pattern_period(pattern, latest_season)

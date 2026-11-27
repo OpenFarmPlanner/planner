@@ -624,9 +624,11 @@ DJANGO_ENV=development OFP_LOCAL_TEST_DATA=1 pdm run python manage.py seed_seaso
 
 In a new project, choose **Create season** from Planting Plans, the Crop Calendar,
 or the season menu. Choose the year in which the season starts and its annual
-start month. The dialog previews the inclusive period and computed label. For
-example, October 2026 runs from 1 October 2026 through 30 September 2027 and is
-labelled **26/27**. Confirmation creates and activates the selected season.
+start month. The default year is the period containing today when the saved
+month starts on its first day. The dialog previews the inclusive period and
+computed label. October 2026, for example, runs from 1 October 2026 through
+30 September 2027 and is labelled **26/27**. Confirmation creates and activates
+the selected season.
 
 `GET /seasons/creation-options/` advertises this workflow when there is no
 season history and no planting plan to migrate. Preview reads keep the saved
