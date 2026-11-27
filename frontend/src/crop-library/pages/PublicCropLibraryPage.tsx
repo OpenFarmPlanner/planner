@@ -56,6 +56,7 @@ import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import SpaOutlinedIcon from '@mui/icons-material/SpaOutlined';
 import SyncOutlinedIcon from '@mui/icons-material/SyncOutlined';
 import { cropSpeciesAPI, publicCropAPI, publicLibraryModeratorRequestAPI } from '../../api/api';
+import { formatYieldPerAreaValue } from '../../harvests/harvestDisplay';
 import type {
   CultivationType,
   Crop,
@@ -558,6 +559,10 @@ export default function PublicCropLibraryPage() {
     .filter(row => hasDetailValue(row.value)) : [];
   const sowingDepth = getPublicFieldValue('sowing_depth_m', selectedCrop?.sowing_depth_m);
   const sowingDepthMax = getPublicFieldValue('sowing_depth_max_m', selectedCrop?.sowing_depth_max_m);
+  const harvestMethod = getPublicFieldValue('harvest_method', selectedCrop?.harvest_method);
+  const expectedYield = getPublicFieldValue('expected_yield', selectedCrop?.expected_yield);
+  const expectedYieldUnit = harvestMethod === 'per_plant' ? t('detail.units.kgPerPlant')
+    : harvestMethod === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms');
   const showSowingDepth = showEmptyRanges || hasAnyDetailValue(sowingDepth, sowingDepthMax);
   const germinationRows = selectedCrop ? getGerminationDetailRows(
     field => getPublicFieldValue(field, selectedCrop[field]), showEmptyRanges,
@@ -2055,18 +2060,23 @@ export default function PublicCropLibraryPage() {
                             </DetailSection>
                           ) : null,
                           hasAnyDetailValue(
-                            getPublicFieldValue('harvest_method', selectedCrop.harvest_method),
-                            getPublicFieldValue('expected_yield', selectedCrop.expected_yield),
+                            harvestMethod,
+                            expectedYield,
                             getPublicFieldValue('average_harvest_piece_weight_g', selectedCrop.average_harvest_piece_weight_g),
                             getPublicFieldValue('average_harvest_bunch_weight_g', selectedCrop.average_harvest_bunch_weight_g),
                           ) ? (
                             <DetailSection key="yield" title={t('form.sectionYield')}>
                               <DetailGrid>
-                                {hasDetailValue(getPublicFieldValue('harvest_method', selectedCrop.harvest_method)) ? (
-                                  <DetailRow label={t('library.page.fields.harvestMethod')} value={getHarvestMethodLabel(getPublicFieldValue('harvest_method', selectedCrop.harvest_method), t, t('library.page.notSpecified'))} source={getPublicFieldSource('harvest_method')} />
+                                {hasDetailValue(harvestMethod) ? (
+                                  <DetailRow label={t('library.page.fields.harvestMethod')}
+                                    value={getHarvestMethodLabel(harvestMethod, t, t('library.page.notSpecified'))}
+                                    source={getPublicFieldSource('harvest_method')} />
                                 ) : null}
-                                {hasDetailValue(getPublicFieldValue('expected_yield', selectedCrop.expected_yield)) ? (
-                                  <DetailRow label={t('library.page.fields.expectedYield')} value={`${formatLocalizedNumber(getPublicFieldValue('expected_yield', selectedCrop.expected_yield), locale, t('library.page.notSpecified'), { maximumFractionDigits: 2 })} ${getPublicFieldValue('harvest_method', selectedCrop.harvest_method) === 'per_plant' ? t('detail.units.kgPerPlant') : getPublicFieldValue('harvest_method', selectedCrop.harvest_method) === 'per_sqm' ? t('detail.units.kgPerSqm') : t('detail.units.kilograms')}`} source={getPublicFieldSource('expected_yield')} />
+                                {expectedYield != null && hasDetailValue(expectedYield) ? (
+                                  <DetailRow label={t('library.page.fields.expectedYield')}
+                                    value={`${harvestMethod === 'per_sqm' ? formatYieldPerAreaValue(expectedYield, locale)
+                                      : formatLocalizedNumber(expectedYield, locale, t('library.page.notSpecified'), { maximumFractionDigits: 2 })} ${expectedYieldUnit}`}
+                                    source={getPublicFieldSource('expected_yield')} />
                                 ) : null}
                                 {([
                                   ['average_harvest_piece_weight_g', 'form.averageHarvestPieceWeight'],

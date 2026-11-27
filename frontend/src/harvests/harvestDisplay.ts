@@ -4,6 +4,18 @@ import { formatLocalizedNumber } from '../utils/numberLocalization';
 
 export const HARVEST_UNITS: readonly HarvestUnit[] = ['kg', 'g', 'piece', 'bunch'];
 
+export function formatYieldPerAreaValue(
+  value: number | string, locale: string, belowResolution = false,
+): string {
+  const rate = Number(value);
+  const smallestDisplayedRate = 0.01;
+  const digits = { maximumFractionDigits: 2 };
+  if (belowResolution || (rate > 0 && rate < smallestDisplayedRate / 2)) {
+    return `< ${formatLocalizedNumber(smallestDisplayedRate, locale, digits)}`;
+  }
+  return formatLocalizedNumber(rate, locale, digits);
+}
+
 export function formatHarvestQuantity(
   quantity: number | string, unit: HarvestUnit, locale: string, t: TFunction,
 ): string {

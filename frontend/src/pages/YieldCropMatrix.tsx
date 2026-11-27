@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from 'react';
 import { Box, Button, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableSortLabel, Typography } from '@mui/material';
 import { visuallyHidden } from '@mui/utils';
 import type { YieldComparisonCropRate, YieldComparisonCropYield, YieldComparisonSeason } from '../api/types';
+import { formatYieldPerAreaValue } from '../harvests/harvestDisplay';
 import { useTranslation } from '../i18n';
 import { formatSeasonPeriod } from '../seasons/formatSeasonDate';
 import { formatLocalizedNumber } from '../utils/numberLocalization';
@@ -12,7 +13,6 @@ type SortOrder = 'asc' | 'desc';
 interface CropRow extends YieldComparisonCropYield { label: string; }
 
 const cropColumn = { position: 'sticky', left: 0, zIndex: 1, bgcolor: 'background.paper' };
-const rateOptions = { maximumFractionDigits: 6 };
 
 function sortValue(row: CropRow, key: 'trend' | number): number | null {
   const value = key === 'trend' ? row.trend?.change : row.rates.find(rate => rate.season_id === key)?.value;
@@ -40,8 +40,7 @@ function RateCell({ rate, locale }: { rate: YieldComparisonCropRate; locale: str
       <Typography component="span" variant="caption" color="text.secondary"
         sx={rate.status === 'missing' ? visuallyHidden : { display: 'block' }}>{label}</Typography></>;
   }
-  const quantity = formatLocalizedNumber(rate.below_resolution ? 0.000001 : Number(rate.value), locale, rateOptions);
-  const text = `${rate.below_resolution ? '< ' : ''}${quantity} kg/m²`;
+  const text = `${formatYieldPerAreaValue(rate.value, locale, rate.below_resolution)} kg/m²`;
   return <>
     {rate.status === 'estimated' ? t('comparison.estimated', { value: text }) : text}
     {rate.partial && <Typography component="div" variant="caption" color="text.secondary">

@@ -119,6 +119,16 @@ describe('getComparisonCellValue', () => {
     { id: 2, name: 'Carrot', variety: 'Bolero', row_spacing_cm: 40 },
   ], cropCrop);
 
+  it('formats an expected yield using the inherited per-area unit', () => {
+    const parent: Crop = { ...cropCrop, harvest_method: 'per_sqm', expected_yield: 11.3691 };
+    const inherited: Crop = { id: 1, name: 'Carrot', variety: 'Nantes' };
+    const small: Crop = { id: 2, name: 'Carrot', variety: 'Bolero', expected_yield: 0.004 };
+    const [yieldField] = getVaryingComparisonFields([inherited, small], parent);
+    expect(yieldField.id).toBe('expectedYield');
+    expect(getComparisonCellValue(inherited, parent, yieldField, t, 'de-DE')).toBe('11,37 detail.units.kgPerSqm');
+    expect(getComparisonCellValue(small, parent, yieldField, t, 'en-US')).toBe('< 0.01 detail.units.kgPerSqm');
+  });
+
   it('renders an em-dash when the field is empty for that variety and the crop has no value either', () => {
     const variety: Crop = { id: 3, name: 'Carrot', variety: 'Rodelika' };
     expect(getComparisonCellValue(variety, cropCrop, rowSpacingField, t, 'de-DE')).toBe('—');
