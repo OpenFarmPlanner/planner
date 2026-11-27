@@ -6,6 +6,7 @@ import type { StemCoordinates } from '../api/types';
 import type { BedTaskUrgency } from '../components/tasks/bedTaskUrgency';
 import { bedTaskColors, BED_TASK_SYMBOLS } from './graphicalBedTaskStyle';
 import type { BedCultivationEntry } from './graphicalCultivation';
+import { graphicalPlantColors } from './graphicalDisplayStyle';
 import { canvasToStem, stemToCanvas, type PlacementDimensions } from './individualPlantGeometry';
 import type { GraphicalRotation, Position, Rect as CanvasRect } from './graphicalLayoutUtils';
 
@@ -97,11 +98,7 @@ export function GraphicalIndividualPlantsLayer({
         const canDrag = (editablePlanId !== undefined && editablePlanId === stem.planId)
           || (stem.planId !== null && Boolean(draggablePlanIds?.has(stem.planId)));
         const taskColors = stem.urgency ? bedTaskColors(theme, stem.urgency) : null;
-        const phaseInk = taskColors?.glyph ?? stem.phaseColor;
-        const ink = phaseInk ?? theme.palette.text.primary;
-        const neutralCanopy = theme.palette.success.main;
-        const canopyFill = taskColors?.fill ?? alpha(stem.phaseColor ?? neutralCanopy, 0.15);
-        const canopyOutline = alpha(phaseInk ?? theme.palette.success.dark, phaseInk ? 0.65 : 0.36);
+        const colors = graphicalPlantColors(theme, stem.phaseColor, taskColors);
         const radius = stem.urgency || stem.selected ? 6 : 4.5;
         const label = stem.label;
         return <Group key={stem.key} {...point} draggable={canDrag} dragDistance={8}
@@ -127,9 +124,9 @@ export function GraphicalIndividualPlantsLayer({
           {stem.canopy > 0 && <Ellipse listening={false}
             radiusX={stem.canopy * pixelsPerMeter.x / 2} radiusY={stem.canopy * pixelsPerMeter.y / 2}
             data-testid={`individual-canopy-${stem.key}`}
-            fill={canopyFill} stroke={canopyOutline}
+            fill={colors.canopyFill} stroke={colors.canopyOutline}
             strokeWidth={1} strokeScaleEnabled={false} />}
-          <Circle radius={radius / zoom} fill={ink}
+          <Circle radius={radius / zoom} fill={colors.stem}
             stroke={stem.selected ? theme.palette.primary.dark : theme.palette.common.white}
             strokeWidth={2} strokeScaleEnabled={false}
             listening={Boolean(stem.objectKey || onSelect || canDrag || captureStems)} hitStrokeWidth={canDrag ? 26 / zoom : 10 / zoom}

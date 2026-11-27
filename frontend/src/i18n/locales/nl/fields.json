@@ -43,9 +43,19 @@
       "previousDay": "Vorige dag",
       "nextDay": "Volgende dag",
       "taskDateNote": "De vervaldatum en urgentie van taken worden vanaf vandaag berekend.",
-      "legend": "Legenda van de grafiek",
-      "cropLegend": "De kleuren tonen de verwachte groei of oogst. Meerjarige gewassen bezetten het bed ook buiten de oogst. Een neutrale kleur wijst op gemengde of onzekere plannen.",
-      "combinedCropLegend": "Gewasnamen en groeifasen staan als tekst op het bed.",
+      "legend": "Legenda",
+      "legendBoundary": "Locatiegrens",
+      "legendGeometry": {
+        "outside": "Buiten de grens",
+        "overlap": "Overlappende oppervlakken",
+        "shortGap": "Onvoldoende ruimte voor paden"
+      },
+      "legendStem": "De stip markeert de stengel.",
+      "legendStemTasks": "Bij afzonderlijke planten toont het symbool hoe dringend de taak van het plan is.",
+      "legendCropGrowth": "Verwachte groei of bezetting",
+      "legendCropMixed": "Gemengde of onzekere plannen",
+      "cropLegend": "De tinten verschillen per gewas. Meerjarige gewassen bezetten het bed ook buiten de oogst.",
+      "combinedCropLegend": "Gewasnamen en gewasfasen staan als tekst in beeld als er ruimte is.",
       "taskLegend": "De kleur en het symbool tonen de dringendste openstaande taak. Bedden zonder openstaande taken behouden hun gebruikelijke kleur.",
       "cropLoadError": "De teeltplannen konden niet worden geladen.",
       "phase": {

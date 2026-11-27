@@ -43,9 +43,19 @@
       "previousDay": "Día anterior",
       "nextDay": "Día siguiente",
       "taskDateNote": "Los vencimientos y la urgencia de las tareas se calculan desde hoy.",
-      "legend": "Leyenda del gráfico",
-      "cropLegend": "Los colores indican el crecimiento o la cosecha prevista. Los cultivos perennes ocupan el bancal fuera de la cosecha. Un color neutro indica planes mixtos o inciertos.",
-      "combinedCropLegend": "Los nombres y las fases de los cultivos se muestran como texto en el bancal.",
+      "legend": "Leyenda",
+      "legendBoundary": "Límite de la ubicación",
+      "legendGeometry": {
+        "outside": "Fuera del límite",
+        "overlap": "Zonas superpuestas",
+        "shortGap": "Espacio insuficiente para caminos"
+      },
+      "legendStem": "El punto marca el tallo.",
+      "legendStemTasks": "En las plantas individuales, el símbolo indica la urgencia de la tarea del plan.",
+      "legendCropGrowth": "Crecimiento u ocupación previstos",
+      "legendCropMixed": "Planes mixtos o inciertos",
+      "cropLegend": "Los tonos varían según el cultivo. Los cultivos perennes ocupan el bancal fuera de la cosecha.",
+      "combinedCropLegend": "Los nombres y las fases de los cultivos se muestran cuando hay espacio.",
       "taskLegend": "El color y el símbolo indican la tarea abierta más urgente. Los bancales sin tareas abiertas conservan su color habitual.",
       "cropLoadError": "No se pudieron cargar los planes de cultivo.",
       "phase": {

@@ -26,7 +26,6 @@ interface DisplayControlsProps {
   season?: Season;
   reference?: CropReference;
   onDate: (date: CropDateSelection) => void;
-  onOpenLegend: (anchor: HTMLButtonElement) => void;
   compact?: boolean;
   fullscreen?: boolean;
   onOpenSpacing?: OpenGraphicalSpacing;
@@ -35,7 +34,7 @@ interface DisplayControlsProps {
 const touchTarget = { minHeight: 44, minWidth: 44 };
 
 export function GraphicalDisplayControls({
-  mode, onMode, season, reference, onDate, onOpenLegend, compact = false, fullscreen = false, onOpenSpacing,
+  mode, onMode, season, reference, onDate, compact = false, fullscreen = false, onOpenSpacing,
 }: DisplayControlsProps) {
   const { t, i18n } = useTranslation(['fields', 'common']);
   const menuId = useId();
@@ -101,10 +100,6 @@ export function GraphicalDisplayControls({
           <ListItemText primary={t(`graphical.display.mode.${value}`)} />
           {mode === value && <CheckIcon fontSize="small" aria-hidden />}
         </MenuItem>)}
-        <MenuItem sx={{ minHeight: 44 }} onClick={() => {
-          if (menuAnchor) afterMenuClose.current = () => onOpenLegend(menuAnchor);
-          setMenuAnchor(null);
-        }}>{t('graphical.display.legend')}</MenuItem>
         {onOpenSpacing && <Divider />}
         {onOpenSpacing && <MenuItem aria-haspopup="dialog" sx={{ minHeight: 44 }} onClick={event => {
           if (menuAnchor) {

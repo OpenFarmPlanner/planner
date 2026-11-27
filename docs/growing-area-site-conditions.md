@@ -129,11 +129,17 @@ logic stays separate: `components/hierarchy/utils/growingAreaSearch.ts` here,
 ## Graphic workspace toolbar
 
 On narrow widths, the workspace row keeps the view switch, location and edit
-action beside the graphic menu. The menu keeps the four display choices and the
-legend, and also opens the existing Spacing dialog for project members. A crop
+action beside the graphic menu. The menu keeps the four display choices and
+also opens the existing Spacing dialog for project members. A crop
 reference date stays directly available in crop modes and wraps when needed.
 Wider workspaces put Spacing back beside Edit graphic. In-canvas tools use their
 own menu in every layout.
+
+The Legend button stays in the bottom-left corner of the canvas during pan,
+zoom and fullscreen. It opens a scrollable popover with the current display
+mode's symbols and the bed details selector. In graphic edit mode it describes
+the schematic layout. The narrow layout uses a labeled icon button. Escape or
+clicking outside closes the popover.
 
 ## Default bed dimensions
 

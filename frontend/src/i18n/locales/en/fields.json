@@ -43,9 +43,19 @@
       "previousDay": "Previous day",
       "nextDay": "Next day",
       "taskDateNote": "Task due dates and urgency use today.",
-      "legend": "Graphic legend",
-      "cropLegend": "Crop colors show projected growth or harvest. Perennials remain on the bed outside harvest. A neutral fill shows mixed or uncertain plans.",
-      "combinedCropLegend": "Crop names and phases appear as text on the bed.",
+      "legend": "Legend",
+      "legendBoundary": "Location boundary",
+      "legendGeometry": {
+        "outside": "Outside the boundary",
+        "overlap": "Overlapping areas",
+        "shortGap": "Insufficient path space"
+      },
+      "legendStem": "The dot marks the stem.",
+      "legendStemTasks": "On individual plants, the symbol shows the urgency of the plan’s task.",
+      "legendCropGrowth": "Projected growth or occupancy",
+      "legendCropMixed": "Mixed or uncertain plans",
+      "cropLegend": "Shades vary by crop. Perennials still occupy the bed outside harvest.",
+      "combinedCropLegend": "Crop names and phases appear as text where space allows.",
       "taskLegend": "The fill and symbol show the most urgent open task. Beds without open tasks keep their usual color.",
       "cropLoadError": "Cultivation plans could not be loaded.",
       "phase": {

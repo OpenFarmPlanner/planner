@@ -9,6 +9,7 @@ const e2eApiBase = process.env.PLAYWRIGHT_E2E_API_BASE ?? `http://127.0.0.1:${de
 const e2eToken = process.env.E2E_TEST_TOKEN || 'openfarmplanner-e2e-token';
 
 export const graphicDisplayButton = (page: Page) => page.getByRole('button', { name: /^Darstellung der Grafik · / });
+export const graphicLegendButton = (page: Page) => page.getByRole('button', { name: 'Legende', exact: true });
 
 export async function selectGraphicDisplay(page: Page, mode: string) {
   await graphicDisplayButton(page).press('Enter');
@@ -17,10 +18,11 @@ export async function selectGraphicDisplay(page: Page, mode: string) {
   await expect(graphicDisplayButton(page)).toHaveAccessibleName(`Darstellung der Grafik · ${mode}`);
 }
 
-export async function openGraphicLegend(page: Page) {
-  await graphicDisplayButton(page).press('Enter');
-  await page.getByRole('menuitem', { name: 'Legende der Grafik', exact: true }).press('Enter');
-  const legend = page.getByRole('dialog', { name: 'Legende der Grafik' });
+export async function openGraphicLegend(page: Page, input: 'keyboard' | 'touch' = 'keyboard') {
+  const button = graphicLegendButton(page);
+  if (input === 'touch') await button.tap();
+  else await button.press('Enter');
+  const legend = page.getByRole('dialog', { name: 'Legende', exact: true });
   await expect(legend).toBeVisible();
   return legend;
 }

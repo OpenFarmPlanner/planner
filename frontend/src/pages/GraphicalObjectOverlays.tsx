@@ -445,16 +445,15 @@ export function GraphicalObjectOverlays({
   );
 }
 
-export function GraphicalObjectHint({ device, onClose, hasWarning }: {
+export function GraphicalObjectHint({ device, onClose }: {
   device: 'touch' | 'desktop';
   onClose: () => void;
-  hasWarning: boolean;
 }) {
   const { t } = useTranslation('fields');
   return <ContextMenuHint compact variant={device} ignorePointerAndViewport
     message={t(device === 'touch' ? 'graphical.objects.touchHint' : 'graphical.objects.desktopHint')}
     onClose={onClose} sx={{
-      position: 'absolute', zIndex: 2, bottom: hasWarning ? 60 : 12, left: 12,
+      position: 'absolute', bottom: 52, left: 0, pointerEvents: 'auto',
       maxWidth: 'min(680px, calc(100% - 112px))',
     }} />;
 }

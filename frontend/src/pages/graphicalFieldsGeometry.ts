@@ -62,8 +62,6 @@ export interface GraphicalFieldsProps {
   cropReference?: CropReference;
   fullscreenDisplayControls?: ReactNode;
   onFullscreenChange?: (fullscreen: boolean) => void;
-  displayLegendAnchor?: HTMLButtonElement | null;
-  closeDisplayLegend?: () => void;
   individualSeason?: Season;
   canEditIndividualPlants?: boolean;
   requestedIndividualPlan?: number;
