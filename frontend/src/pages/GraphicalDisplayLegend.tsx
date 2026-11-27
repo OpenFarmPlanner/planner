@@ -82,7 +82,7 @@ export function GraphicalDisplayLegend({
 
   return (
     <ClickAwayListener mouseEvent="onMouseDown" touchEvent="onTouchStart" onClickAway={close}>
-      <Box sx={{ position: 'absolute', inset: 8, zIndex: 3, pointerEvents: 'none' }}
+      <Box data-graphical-annotation-hints sx={{ position: 'absolute', inset: 8, zIndex: 3, pointerEvents: 'none' }}
         onKeyDown={event => {
           if (open && event.key === 'Escape' && !event.defaultPrevented) {
             event.preventDefault();
@@ -92,7 +92,7 @@ export function GraphicalDisplayLegend({
         }}>
         {!open && canvasHint}
         <Stack direction="row" spacing={1} sx={{ position: 'absolute', insetInline: 0, bottom: 0, alignItems: 'end' }}>
-          <Paper elevation={3} sx={{ borderRadius: 3, pointerEvents: 'auto', flexShrink: 0 }}>
+          <Paper elevation={3} data-graphical-annotation-obstacle sx={{ borderRadius: 3, pointerEvents: 'auto', flexShrink: 0 }}>
             <AppTooltip title={compact && !open ? title : ''} placement="top" disableInteractive
               slotProps={{ popper: { container: getGraphicalPortalContainer } }}>
               <Button ref={trigger} aria-label={title} aria-haspopup="dialog" aria-expanded={open}
@@ -105,7 +105,7 @@ export function GraphicalDisplayLegend({
           </Paper>
           {boundaryWarning}
         </Stack>
-        {open && <Paper ref={panel} id={id} role="dialog" aria-labelledby={`${id}-title`} tabIndex={-1} elevation={4}
+        {open && <Paper ref={panel} id={id} role="dialog" aria-labelledby={`${id}-title`} tabIndex={-1} elevation={4} data-graphical-annotation-obstacle
           sx={{ position: 'absolute', left: 0, bottom: 52, width: 340, maxWidth: 'calc(100% - 56px)',
             maxHeight: 'calc(100% - 52px)', overflow: 'auto', overscrollBehavior: 'contain', touchAction: 'pan-y',
             pointerEvents: 'auto', borderRadius: 2, outline: 'none' }}>

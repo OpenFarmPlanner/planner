@@ -203,8 +203,9 @@ empty-response fixture without changing that backend contract.
 existing drag/layout APIs and geometry/orientation rules remain in place. The
 canvas waits for its saved layout before displaying a remembered camera; failed
 layout reads show a retry action rather than editable fallback geometry.
-A location with both outer dimensions also gets a non-interactive boundary
-rect with a persisted origin that plot drags are clamped to
+A location with both outer dimensions gets a dashed boundary with a persisted
+origin. Plot drags clamp to that boundary, and the outline and free site area
+provide pointer targets for the location preview in view mode
 (`getLocationBoundaryRect` / `clampInsideBoundary` / `isRectOutsideBoundary` in
 `graphicalLayoutUtils.ts`), see [`data-model.md`](./data-model.md).
 
@@ -247,6 +248,19 @@ It supplies the same calculation to the location and parcel details, which
 read saved layouts and show measured coverage and the remaining percentage.
 An exact location total requires reliable parcel positions. Measured empty
 areas have zero coverage. The Graphic page help explains the two colors.
+
+`GraphicalAreaAnnotations` renders location and parcel names in a separate,
+non-listening Konva layer at a constant screen font size. The layout projects
+the live footprints and measured free rectangles into the viewport. It uses
+bounded, deterministic candidate positions in clear interiors, measured gaps
+and just outside boundaries with short leaders. Bed footprints reserve their
+crop labels and task indicators. Plant markers, stem labels and measured
+workspace controls also reserve screen space. The layer follows camera
+changes and drag previews without saving positions or changing the geometry.
+When a full name cannot fit, the canvas hides that annotation. The existing
+hover, selection, keyboard focus and detail routes expose the full name.
+The location also keeps a fixed preview button when its boundary is unmeasured
+or outside the viewport.
 
 `useGraphicalStageSize` measures the selected canvas width and its actual top
 edge below the rendered header, leaving the main content's bottom gutter.

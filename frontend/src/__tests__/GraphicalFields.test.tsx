@@ -106,6 +106,7 @@ vi.mock("react-konva", async () => {
     ({ children, ...props }, ref) => {
       const {
         cornerRadius,
+        hitStrokeWidth,
         listening,
         scaleX,
         scaleY,
@@ -120,6 +121,7 @@ vi.mock("react-konva", async () => {
         ...domProps
       } = props;
       void cornerRadius;
+      void hitStrokeWidth;
       void listening;
       void scaleX;
       void scaleY;
@@ -265,6 +267,7 @@ vi.mock("react-konva", async () => {
     Layer: MockNode,
     Group: MockNode,
     Rect: MockNode,
+    Line: MockNode,
     Text: ({
       text,
       listening,
@@ -474,7 +477,7 @@ describe("GraphicalFields", async () => {
     expect(usable).toHaveAttribute("fill", paper);
   });
 
-  it('keeps a parcel name beside the site label when their screen bounds do not overlap', async () => {
+  it('finds separate screen positions for the site and both parcel names', async () => {
     const data = mockUseHierarchyData();
     const field = { ...data.fields[0], length_m: 10, width_m: 10 };
     mockUseHierarchyData.mockReturnValue({ ...data, beds: [],
@@ -486,8 +489,20 @@ describe("GraphicalFields", async () => {
       field_layouts: [{ field: 10, location: 1, x: 120, y: 1200 }, { field: 11, location: 1, x: 120, y: 650 }],
     } });
     await renderGraphic(<GraphicalFields interactionMode="edit" />);
-    expect(await screen.findByTestId('field-label-11')).toBeInTheDocument();
-    expect(screen.queryByTestId('field-label-10')).not.toBeInTheDocument();
+    const first = await screen.findByTestId('field-label-10');
+    const second = screen.getByTestId('field-label-11');
+    const site = screen.getByTestId('location-boundary-label-1');
+    expect(first).toHaveTextContent('Parzelle A');
+    expect(second).toHaveTextContent('Parzelle B');
+    for (const parcel of [first, second]) {
+      const separated = ([['x', 'width'], ['y', 'height']] as const).some(([axis, size]) => {
+        const parcelStart = Number(parcel.getAttribute(axis));
+        const siteStart = Number(site.getAttribute(axis));
+        return parcelStart + Number(parcel.getAttribute(size)) <= siteStart
+          || siteStart + Number(site.getAttribute(size)) <= parcelStart;
+      });
+      expect(separated).toBe(true);
+    }
   });
 
   it("moves the usable area along with a dragged field", async () => {
