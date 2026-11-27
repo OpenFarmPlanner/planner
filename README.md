@@ -229,6 +229,10 @@ gh auth status
 
 ### 1) Backend setup
 
+The commands below use your supported Python 3.12+ interpreter. For production
+parity, install Python 3.13.18 and run `pdm use 3.13.18` from `backend/` before
+installing dependencies.
+
 ```bash
 cd backend
 cp .env.example .env
