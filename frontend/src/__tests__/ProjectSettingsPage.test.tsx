@@ -682,7 +682,7 @@ describe('ProjectSettingsPage', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.mouseDown(await screen.findByLabelText('Monat'));
+    fireEvent.mouseDown(await screen.findByLabelText('Jährlicher Saisonbeginn'));
     fireEvent.click(await screen.findByRole('option', { name: 'März' }));
     fireEvent.click(screen.getByRole('button', { name: 'Saison-Muster speichern' }));
 
