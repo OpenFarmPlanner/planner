@@ -1,7 +1,7 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { Crop, Field, IndividualPlantPosition, PaginatedResponse, PlantingPlan, Task } from '../src/api/types';
-import { apiRequest, loginWithDeterministicProject, selectGraphicDisplay } from './utils';
+import { apiRequest, canvasInteractionPoint, loginWithDeterministicProject, selectGraphicDisplay } from './utils';
 
 test.use({ serviceWorkers: 'block' });
 
@@ -87,9 +87,7 @@ async function shape(page: Page, key: string) {
 const stem = (page: Page, id: string) => shape(page, `individual-stem-${id}`);
 
 async function point(page: Page, id: string) {
-  await expect.poll(() => stem(page, id)).not.toBeNull();
-  const { x, y } = (await stem(page, id))!;
-  return { x, y };
+  return canvasInteractionPoint(page, `individual-stem-${id}`);
 }
 
 async function clickStem(page: Page, id: string, button: 'left' | 'right' = 'left') {
@@ -148,7 +146,6 @@ test('shows phases and shared plan tasks on orchard and mixed-bed markers in all
   await setCropDate(page, date);
   await expect.poll(() => stem(page, first.id)).toMatchObject({ phase: 'growth', urgency: 'overdue', fill: overdueFill });
   const position = await point(page, first.id);
-  await expect.poll(() => page.evaluate(({ x, y }) => document.elementFromPoint(x, y)?.tagName, position)).toBe('CANVAS');
   await page.mouse.move(position.x, position.y);
   const tooltip = page.getByRole('tooltip');
   await expect(tooltip).toContainText('Pflanze 1 von 2');
@@ -255,15 +252,15 @@ test.describe('on a touch phone', () => {
     const { orchard } = await fixture(page, request, 'individual-display-touch');
     await openGraphic(page);
     const [apple] = orchard.individual_positions;
-    const { x, y } = await point(page, apple.id);
-    await page.touchscreen.tap(x, y);
+    const tap = await point(page, apple.id);
+    await page.touchscreen.tap(tap.x, tap.y);
     await expect(preview(page)).toContainText('Pflanze 1 von 3');
     await expect(preview(page)).toHaveAccessibleName(/Apfel.*Topaz/);
     await expect(preview(page)).toContainText('Keine offenen Aufgaben für diesen Anbauplan.');
     await page.screenshot({ path: info.outputPath('individual-orchard-preview-phone.png') });
     await preview(page).getByRole('button', { name: 'Schließen', exact: true }).tap();
     const touch = await page.context().newCDPSession(page);
-    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+    await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [await point(page, apple.id)] });
     const menu = page.getByRole('menu');
     await expect(menu.getByRole('menuitem', { name: 'Einzelpflanzen bearbeiten', exact: true })).toBeVisible();
     await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });

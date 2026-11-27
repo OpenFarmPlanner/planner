@@ -390,7 +390,7 @@ for (const input of ['mouse', 'touch'] as const) {
     test('warns about specific conflicts during drag and after saving the same geometry', async ({ page, request }, testInfo) => {
       await page.setViewportSize(input === 'touch' ? { width: 390, height: 844 } : { width: 1440, height: 900 });
       await loginWithDeterministicProject(page, request, `geometry-warnings-${input}`, { loginAsAdmin: true });
-      const { bedId, fieldId, fullFieldId, path } = await seedGeometry(page);
+      const { bedId, fieldId, fullBedId, fullFieldId, path } = await seedGeometry(page);
       const activate = async (name: string) => {
         const button = page.getByRole('button', { name, exact: true });
         if (input === 'touch') await button.tap();
@@ -459,8 +459,11 @@ for (const input of ['mouse', 'touch'] as const) {
       if (input === 'mouse') {
         await toggleGraphicEdit(page, input);
         await activate('Alles einpassen');
-        const full = (await findShape(page, `field-rect-${fullFieldId}`))!;
-        await page.mouse.click(full.screen.x + full.screen.width / 2, full.screen.y + 8);
+        const full = (await findShape(page, `bed-rect-${fullBedId}`))!;
+        await page.mouse.click(full.screen.x + full.screen.width / 2, full.screen.y + full.screen.height / 2);
+        await expect(page.getByTestId('graphical-object-preview')).toHaveAccessibleName('Vollbeet');
+        await page.keyboard.press('Escape');
+        await page.getByRole('button', { name: 'Parzelle · Volle Parzelle', exact: true }).press('Enter');
         const details = page.getByRole('region', { name: 'Volle Parzelle', exact: true });
         await expect(details).toBeVisible();
         await expect(details).toContainText('100 m²');

@@ -1,4 +1,39 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
+import type Konva from 'konva';
+
+export async function canvasInteractionPoint(page: Page, testId: string) {
+  await page.locator('.konvajs-content').scrollIntoViewIfNeeded();
+  let point = { x: 0, y: 0 };
+  await expect.poll(async () => {
+    const target = await page.evaluate(async id => {
+      const getPoint = () => {
+        const stage = (window as unknown as { Konva?: { stages: Konva.Stage[] } }).Konva?.stages
+          .find(item => item.container()?.isConnected);
+        const shape = stage?.find('Circle, Rect').find(item => item.getAttr('data-testid') === id);
+        if (!stage || !shape) return 'canvas shape has not rendered';
+        const canvas = stage.getContent().getBoundingClientRect();
+        const bounds = shape.getClientRect();
+        const x = Math.round(canvas.x + bounds.x + bounds.width / 2);
+        const y = Math.round(canvas.y + bounds.y + bounds.height / 2);
+        const element = document.elementFromPoint(x, y);
+        if (element?.tagName !== 'CANVAS') return `canvas point is covered by ${element?.tagName ?? 'the viewport edge'}`;
+        const hit = stage.getIntersection({ x: x - canvas.x, y: y - canvas.y });
+        if (hit !== shape) return `canvas point hits ${hit?.getAttr('data-testid') ?? 'no target'}`;
+        return { x, y };
+      };
+      const first = getPoint();
+      if (typeof first === 'string') return first;
+      await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+      const next = getPoint();
+      if (typeof next === 'string') return next;
+      return first.x === next.x && first.y === next.y ? next : 'canvas target is moving';
+    }, testId);
+    if (typeof target === 'string') return target;
+    point = target;
+    return 'ready';
+  }, { message: `Pointer target ${testId} is ready` }).toBe('ready');
+  return point;
+}
 
 // Must default to the same BACKEND_PORT used to configure the backend webServer in
 // playwright.config.ts, or fixture setup silently hits whatever else happens to be
