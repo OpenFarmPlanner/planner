@@ -9,10 +9,11 @@ canonical files, not copied bodies or a user-scope installation.
 
 The ten skills are `django-migration`, `public-page`, `qa-sweep`, `qa-refresh`,
 `release-deploy`, `security-review-protocol`, `test-coverage-campaign`,
-`ui-text-i18n`, `visual-review` and `issue-and-queue`. `qa-refresh` builds new
-local QA dashboard cards for recently closed, merged queue work; `issue-and-queue`
-captures explicitly requested issue/queue operations and its `sync` mode removes
-the dashboard's Accepted rows from the queue. The execution order and worker
+`ui-text-i18n`, `visual-review` and `issue-and-queue`. `qa-refresh` first removes
+the local QA dashboard's verified Accepted rows from the queue (sync), then builds
+new cards for recently closed, merged queue work; `issue-and-queue` captures
+explicitly requested issue/queue operations and removes rows the owner checked
+in the queue. The execution order and worker
 handoff remain in [work-execution-queue.md](work-execution-queue.md).
 
 ## Discovery versus execution
