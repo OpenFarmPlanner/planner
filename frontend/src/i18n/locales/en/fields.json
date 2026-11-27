@@ -22,6 +22,7 @@
   "cancel": "Cancel",
   "submit": "Create",
   "selectLocation": "Select location",
+  "workspaceActions": "Workspace menu",
   "representation": {
     "label": "Representation",
     "ariaLabel": "Select representation",
@@ -148,6 +149,7 @@
     "locationEditModeHelp": "Move parcels and beds in edit mode.",
     "editModeShortcut": "Shortcut: Alt+E",
     "locationEditModeAction": "Edit graphic",
+    "locationEditModeExit": "Finish editing graphic",
     "locationEditModeActive": "Graphic editing active",
     "enableLocationEditMode": "Edit graphic",
     "disableLocationEditMode": "Stop graphic editing for location \"{{name}}\"",

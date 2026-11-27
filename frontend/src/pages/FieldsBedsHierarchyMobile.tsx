@@ -8,12 +8,13 @@
  * instead.
  */
 
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
 import { Box, CircularProgress, ListItemIcon, Menu, MenuItem, Stack } from "@mui/material";
 import { useTranslation } from "../i18n";
 import { ParcelRotationContext } from "../components/hierarchy/rotation/parcelRotationContext";
-import { ParcelRotationManageButton } from "../components/hierarchy/rotation/ParcelRotationManageButton";
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import { GrowingAreaWorkspaceMenu } from '../components/hierarchy/GrowingAreaWorkspaceMenu';
 import { useHierarchyData, type HierarchyDataState } from "../components/hierarchy/hooks/useHierarchyData";
 import { useExpandedState } from "../components/hierarchy/hooks/useExpandedState";
 import { usePersistentSortModel } from "../hooks/usePersistentSortModel";
@@ -55,6 +56,7 @@ interface FieldsBedsHierarchyMobileProps {
   graphicalRotations?: Readonly<Record<number, GraphicalRotation>>;
   onAddIndividualPlants?: (target: IndividualCreationTarget) => void;
   individualHierarchy?: ReturnType<typeof indexIndividualHierarchy>;
+  viewSwitch?: ReactNode;
 }
 
 type SheetState =
@@ -72,6 +74,7 @@ function FieldsBedsHierarchyMobile({
   graphicalRotations,
   onAddIndividualPlants,
   individualHierarchy = EMPTY_INDIVIDUAL_HIERARCHY,
+  viewSwitch,
 }: FieldsBedsHierarchyMobileProps) {
   const { manage: manageRotationGroups } = useContext(ParcelRotationContext);
   const { t } = useTranslation(["hierarchy", "common"]);
@@ -346,7 +349,14 @@ function FieldsBedsHierarchyMobile({
         filterButtonRef={filterButtonRef}
         isFilterPanelOpen={isFilterPanelOpen}
         onFilterPanelOpenChange={setIsFilterPanelOpen}
-        viewControls={manageRotationGroups ? <ParcelRotationManageButton onClick={manageRotationGroups} /> : undefined}
+        compact
+        leadingControls={viewSwitch}
+        viewControls={manageRotationGroups && <GrowingAreaWorkspaceMenu>{select => (
+          <MenuItem aria-haspopup="dialog" onClick={() => select(manageRotationGroups)} sx={{ minHeight: 44 }}>
+            <ListItemIcon><AutorenewIcon fontSize="small" /></ListItemIcon>
+            {t('hierarchy:parcelRotation.manage')}
+          </MenuItem>
+        )}</GrowingAreaWorkspaceMenu>}
       />
       {!loading && isSearchActive && rows.length === 0 ? (
         <GrowingAreaSearchEmptyState search={growingAreaSearch} />

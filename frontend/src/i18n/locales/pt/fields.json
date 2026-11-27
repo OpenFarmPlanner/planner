@@ -22,6 +22,7 @@
   "cancel": "Cancelar",
   "submit": "Criar",
   "selectLocation": "Selecionar exploração",
+  "workspaceActions": "Menu da área de trabalho",
   "representation": {
     "label": "Representação",
     "ariaLabel": "Selecionar representação",
@@ -153,6 +154,7 @@
     "locationEditModeHelp": "No modo de edição podes mover parcelas e canteiros.",
     "editModeShortcut": "Atalho: Alt+E",
     "locationEditModeAction": "Editar gráfico",
+    "locationEditModeExit": "Terminar a edição do gráfico",
     "locationEditModeActive": "Edição gráfica ativa",
     "enableLocationEditMode": "Editar gráfico",
     "disableLocationEditMode": "Terminar edição gráfica da exploração «{{name}}»",

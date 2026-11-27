@@ -22,6 +22,7 @@
   "cancel": "Annuler",
   "submit": "Créer",
   "selectLocation": "Choisir un site",
+  "workspaceActions": "Menu de l’espace de travail",
   "representation": {
     "label": "Affichage",
     "ariaLabel": "Choisir l'affichage",
@@ -153,6 +154,7 @@
     "locationEditModeHelp": "En mode édition, déplacez les parcelles et les planches.",
     "editModeShortcut": "Raccourci : Alt+E",
     "locationEditModeAction": "Modifier le graphique",
+    "locationEditModeExit": "Terminer la modification du graphique",
     "locationEditModeActive": "Édition graphique active",
     "enableLocationEditMode": "Modifier le graphique",
     "disableLocationEditMode": "Terminer l'édition graphique du site « {{name}} »",

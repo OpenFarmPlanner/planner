@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import type Konva from 'konva';
 import type { LocationLayoutsResponse, PaginatedResponse, YoungPlantDemand } from '../src/api/types';
-import { apiRequest, loginWithDeterministicProject } from './utils';
+import { apiRequest, loginWithDeterministicProject, toggleGraphicEdit } from './utils';
 
 type Stem = { id: string; x_m: number; y_m: number };
 type Plan = {
@@ -613,7 +613,7 @@ test.describe('individual plants on a phone', () => {
     const [stem] = orchard.individual_positions;
     await page.goto(`/app/fields-beds?individualPlan=${orchard.id}&locationId=${site.id}`);
     await page.getByRole('region', { name: 'Einzelpflanzen', exact: true }).getByRole('button', { name: 'Schließen' }).tap();
-    await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).tap();
+    await toggleGraphicEdit(page, 'touch');
     const touch = await page.context().newCDPSession(page);
     const dragStart = async () => {
       const before = await expectCanopyCentered(page, stem.id);

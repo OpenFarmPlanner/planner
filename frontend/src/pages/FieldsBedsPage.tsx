@@ -6,6 +6,7 @@ import FieldsBedsHierarchyMobile from './FieldsBedsHierarchyMobile';
 import GraphicalFields from './GraphicalFields';
 import { GraphicalSpacingControl, type OpenGraphicalSpacing } from './GraphicalSpacingControl';
 import { ResponsiveToolbarAction, WORKSPACE_TOOLBAR_LABEL_QUERY } from '../components/buttons/ResponsiveToolbarAction';
+import { CompactViewSwitch } from '../components/buttons/CompactViewSwitch';
 import { ACTION_LABEL_BREAKPOINT } from '../components/buttons/segmentedControlStyles';
 import { GraphicalDisplayControls } from './GraphicalDisplayControls';
 import {
@@ -49,6 +50,7 @@ import { indexIndividualHierarchy } from '../components/hierarchy/utils/individu
 
 const VIEW_MODE_STORAGE_KEY = 'fieldsBedsViewMode';
 const ADD_PARCEL_ACTION = 'add-parcel';
+const NO_TITLE_ACTIONS: TopbarContextAction[] = [];
 
 function savedDisplayMode(key: string): GraphicalDisplayMode {
   try {
@@ -133,7 +135,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     beds,
   } = hierarchyData;
   const outletContext = useOutletContext<RootLayoutOutletContext | null>();
-  const compactWorkspace = outletContext?.topbarWorkspaceNarrow ?? false;
+  const compactWorkspace = isMobileHierarchyLayout || Boolean(outletContext?.topbarWorkspaceNarrow);
   const activeSeason = outletContext?.activeSeason ?? undefined;
   const individualList = useGrowingAreaIndividualPlans(effectiveViewMode === 'table' ? projectId : null, activeSeason?.id);
   const individualHierarchy = useMemo(() => indexIndividualHierarchy(individualList.plans, fields, beds, locations.length > 0),
@@ -392,6 +394,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
     : pendingHierarchyDeletionCount;
   const shouldShowAreasEmptyState = hasAreaDataLoaded && !isAreaDataLoading && !areaDataError && !hasLocations;
   const hasSelectedGraphicalFields = fields.some(field => field.location === selectedLocation?.id && hasPersistedEntityId(field.id));
+  const canEditGraphic = Boolean(activeProjectMembership && hasSelectedGraphicalFields);
+  const graphicEditing = isEditingGraphic && canEditGraphic;
+  const toggleGraphicEditing = useCallback(() => {
+    if (canEditGraphic) setIsEditingGraphic(value => !value);
+  }, [canEditGraphic]);
   const shouldShowMissingFieldsState = hasLocations
     && (effectiveViewMode === 'graphical' ? !hasSelectedGraphicalFields : !hasFields)
     && !hasUnsavedFields && createFieldRequest <= 0;
@@ -449,15 +456,17 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
       ]
   ), [openAddLocationDialog, shouldShowProjectRequiredState, t]);
 
+  const mobileListControls = isMobileHierarchyLayout && effectiveViewMode === 'table'
+    && !shouldShowProjectRequiredState && !isAreaDataLoading && shouldRenderHierarchy;
   useTopbarContextActions(setTopbarContextActions, contextActions);
-  useTopbarTitleActions(setTopbarTitleActions, viewModeActions);
+  useTopbarTitleActions(setTopbarTitleActions, mobileListControls ? NO_TITLE_ACTIONS : viewModeActions);
   const workspaceControls = useMemo(() => {
-    if (shouldShowProjectRequiredState) return null;
-    // The list uses the shared workspace row for its view switch.
+    if (shouldShowProjectRequiredState || mobileListControls) return null;
     if (effectiveViewMode !== 'graphical' || !selectedLocation) return <></>;
     const renderDisplayControls = (openSpacing?: OpenGraphicalSpacing) => !graphicFullscreen && (
-      <GraphicalDisplayControls {...displayControlProps} compact={compactWorkspace}
-        onOpenSpacing={compactWorkspace ? openSpacing : undefined} />
+      <GraphicalDisplayControls key={compactWorkspace ? 'compact' : 'wide'} {...displayControlProps} compact={compactWorkspace}
+        onOpenSpacing={compactWorkspace ? openSpacing : undefined}
+        editing={activeProjectMembership ? { active: graphicEditing, disabled: !canEditGraphic, toggle: toggleGraphicEditing } : undefined} />
     );
     const locationLabel = t('fields:graphical.locationSelector');
     const compactLocationSx = { flex: '1 1 6rem', minWidth: 'min(6rem, 100%)', maxWidth: '100%' };
@@ -474,10 +483,11 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           } }}
           sx={compactWorkspace ? {
             ...compactLocationSx,
-            '& .MuiSelect-select': { minHeight: 44, boxSizing: 'border-box', alignContent: 'center' },
+            '& .MuiSelect-select.MuiSelect-select': { minHeight: 44, boxSizing: 'border-box', alignContent: 'center' },
           } : { width: { xs: 220, sm: 180, md: 220 }, maxWidth: '100%', flexShrink: 0 }}>
           {graphicalLocations.map(item => (
-            <MenuItem key={item.id} value={item.id} sx={{ whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
+            <MenuItem key={item.id} value={item.id} sx={{ minHeight: compactWorkspace ? 44 : undefined,
+              whiteSpace: 'normal', overflowWrap: 'anywhere' }}>{item.name}</MenuItem>
           ))}
         </TextField>
       ) : (
@@ -486,7 +496,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
           <TruncatedTextWithTooltip text={t('fields:graphical.locationTitle', { name: selectedLocation.name })} focusable />
         </Box>
       )}
-      <ResponsiveToolbarAction
+      {!compactWorkspace && activeProjectMembership && <ResponsiveToolbarAction
         label={t('fields:graphical.locationEditModeAction')}
         labelQuery={WORKSPACE_TOOLBAR_LABEL_QUERY}
         labelBreakpoint={ACTION_LABEL_BREAKPOINT}
@@ -494,21 +504,21 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
         help={t('fields:graphical.locationEditModeHelp')}
         disabled={!hasSelectedGraphicalFields}
         disabledReason={t('fields:graphical.noFields')}
-        variant={isEditingGraphic ? 'contained' : 'outlined'}
+        variant={graphicEditing ? 'contained' : 'outlined'}
         color="success"
-        aria-pressed={isEditingGraphic}
-        onClick={() => setIsEditingGraphic(value => !value)}
-      />
+        aria-pressed={graphicEditing}
+        onClick={toggleGraphicEditing}
+      />}
       {activeProjectMembership ? (
-        <GraphicalSpacingControl key={selectedLocation.id} location={selectedLocation}
+        <GraphicalSpacingControl key={`${selectedLocation.id}:${compactWorkspace}`} location={selectedLocation}
           onSave={saveLocationPathSpacing} compact={compactWorkspace}>
           {renderDisplayControls}
         </GraphicalSpacingControl>
       ) : renderDisplayControls()}
     </>;
-  }, [activeProjectMembership, compactWorkspace, effectiveViewMode, isEditingGraphic, hasSelectedGraphicalFields,
-    displayControlProps, graphicFullscreen, graphicalLocations, saveLocationPathSpacing, selectLocation,
-    selectedLocation, shouldShowProjectRequiredState, t]);
+  }, [activeProjectMembership, canEditGraphic, compactWorkspace, effectiveViewMode, graphicEditing, hasSelectedGraphicalFields,
+    displayControlProps, graphicFullscreen, graphicalLocations, mobileListControls, saveLocationPathSpacing, selectLocation,
+    selectedLocation, shouldShowProjectRequiredState, t, toggleGraphicEditing]);
   useTopbarWorkspaceControls(outletContext?.setTopbarWorkspaceControls, workspaceControls);
 
 
@@ -625,8 +635,8 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
             selectedLocationId={selectedLocation?.id}
             cameraState={cameraState}
             onCameraStateChange={setCameraState}
-            interactionMode={isEditingGraphic ? 'edit' : 'view'}
-            onInteractionModeChange={mode => setIsEditingGraphic(mode === 'edit')}
+            interactionMode={graphicEditing ? 'edit' : 'view'}
+            onInteractionModeChange={mode => setIsEditingGraphic(canEditGraphic && mode === 'edit')}
             showTitle={false}
             showModeToggle={false}
             activeSeasonId={activeSeason?.id}
@@ -661,6 +671,7 @@ function FieldsBedsWorkspace({ projectId }: { projectId: number | null }) {
               graphicalRotations={cameraState.rotations}
               onAddIndividualPlants={onAddIndividualPlants}
               individualHierarchy={individualHierarchy}
+              viewSwitch={<CompactViewSwitch actions={viewModeActions} label={t('fields:representation.ariaLabel')} />}
             />
           ) : (
             <FieldsBedsHierarchy

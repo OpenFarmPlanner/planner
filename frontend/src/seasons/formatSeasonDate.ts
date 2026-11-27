@@ -9,19 +9,21 @@ export function resolveSeasonDateLocale(i18nInstance: I18nInstance): string {
 }
 
 const dateFormatters = new Map<string | undefined, Intl.DateTimeFormat>();
+const compactDateFormatters = new Map<string | undefined, Intl.DateTimeFormat>();
 
-export function formatCalendarDate(date: Date, locale?: string): string {
+export function formatCalendarDate(date: Date, locale?: string, compact = false): string {
   if (Number.isNaN(date.getTime())) return date.toLocaleDateString(locale);
-  let formatter = dateFormatters.get(locale);
+  const cache = compact ? compactDateFormatters : dateFormatters;
+  let formatter = cache.get(locale);
   if (!formatter) {
-    formatter = new Intl.DateTimeFormat(locale);
-    dateFormatters.set(locale, formatter);
+    formatter = new Intl.DateTimeFormat(locale, compact ? { day: '2-digit', month: '2-digit', year: '2-digit' } : undefined);
+    cache.set(locale, formatter);
   }
   return formatter.format(date);
 }
 
-export function formatSeasonDate(isoDate: string, locale: string): string {
-  return formatCalendarDate(new Date(`${isoDate}T00:00:00`), locale);
+export function formatSeasonDate(isoDate: string, locale: string, compact = false): string {
+  return formatCalendarDate(new Date(`${isoDate}T00:00:00`), locale, compact);
 }
 
 export function formatSeasonPeriod(startDate: string, endDate: string, locale: string): string {
