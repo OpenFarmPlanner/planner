@@ -427,6 +427,17 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             self.project.id, self.apple.id, date(2027, 8, 29),
         ).exists())
 
+    def test_crop_cannot_become_annual_while_used_by_a_location_plan(self):
+        self.create_plan(
+            parcel=None, site=self.location.pk,
+            individual_positions=[], individual_count=2,
+        )
+        response = self.client.patch(
+            f'{CROP_URL}{self.apple.pk}/', {'life_cycle': 'annual'}, format='json',
+        )
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data['code'], 'individual_plant_lifecycle_conflict')
+
     def variety_inheriting_from_apple(self):
         species = CropSpecies.objects.create(name='Orchard apple')
         self.apple.crop_species = species
