@@ -108,7 +108,6 @@
       },
       "noFill": "Beete ohne Markierung haben keine Aufgaben in dieser Saison.",
       "none": "In dieser Saison gibt es für dieses Beet keine Aufgaben.",
-      "chooseBed": "Beet auswählen",
       "loadError": "Die Beetaufgaben konnten nicht geladen werden.",
       "saveError": "Der Aufgabenstatus konnte nicht gespeichert werden.",
       "outstanding_one": "{{count}} offene Aufgabe",

@@ -36,6 +36,7 @@ function useScopedRead<T>(
   const current = result?.query === query ? result : null;
   return {
     rows: current?.rows ?? null,
+    previousRows: current === null && query && result?.query.scope === query.scope ? result.rows : null,
     loading: query !== null && current === null,
     failed: current?.rows === null,
     refresh,
@@ -65,9 +66,13 @@ export function useBedTasks(
     [includeCancelled, plans.rows, rows]);
   const tasksByPlan = useMemo(() => rows ? linkTasksToPlans(rows, includeCancelled) : NO_BED_TASKS,
     [includeCancelled, rows]);
+  const previousRows = taskRequest.previousRows;
+  const taskTargetPlans = useMemo(() => previousRows ? linkTasksToPlans(previousRows, includeCancelled) : tasksByPlan,
+    [includeCancelled, previousRows, tasksByPlan]);
   return {
     tasksByBed,
     tasksByPlan,
+    taskTargetPlans,
     planTasksLoading: taskRequest.loading,
     planTasksFailed: taskRequest.failed,
     loading: scope !== null && (plans.loading || taskRequest.loading),

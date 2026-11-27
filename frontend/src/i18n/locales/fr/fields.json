@@ -68,7 +68,7 @@
       "legendCropGrowth": "Croissance ou occupation prévue",
       "legendCropMixed": "Plans mixtes ou incertains",
       "cropLegend": "Les teintes varient selon la culture. Les cultures pérennes occupent la planche en dehors de la récolte.",
-      "combinedCropLegend": "Les noms et les phases des cultures s’affichent si l’espace le permet.",
+      "combinedCropLegend": "Les noms et les phases des cultures s’affichent en texte si l’espace le permet.",
       "taskLegend": "La couleur et le symbole indiquent la tâche ouverte la plus urgente. Les planches sans tâche ouverte gardent leur couleur habituelle.",
       "cropLoadError": "Impossible de charger les plans de culture.",
       "phase": {
@@ -111,7 +111,6 @@
       },
       "noFill": "Les planches sans indicateur n’ont aucune tâche pour cette saison.",
       "none": "Cette planche n’a aucune tâche pour cette saison.",
-      "chooseBed": "Sélectionner une planche",
       "loadError": "Impossible de charger les tâches des planches.",
       "saveError": "Impossible d’enregistrer le statut de la tâche.",
       "outstanding_one": "{{count}} tâche ouverte",

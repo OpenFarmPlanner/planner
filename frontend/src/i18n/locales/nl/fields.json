@@ -108,7 +108,6 @@
       },
       "noFill": "Bedden zonder aanduiding hebben dit seizoen geen taken.",
       "none": "Dit bed heeft dit seizoen geen taken.",
-      "chooseBed": "Bed kiezen",
       "loadError": "De bedtaken konden niet worden geladen.",
       "saveError": "De taakstatus kon niet worden opgeslagen.",
       "outstanding_one": "{{count}} open taak",

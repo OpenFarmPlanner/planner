@@ -239,7 +239,9 @@ the already loaded location plans, including individual placements.
 Tasks and Crops & tasks share urgency fills and symbols for outstanding tasks
 using the actual date. Task-bearing individual markers stay reachable
 throughout the crop period changes. The combined mode keeps crop names and
-phases as text. Selecting a bed opens its existing actionable preview.
+phases as text. The bottom-left legend explains the active mode's colors,
+symbols and free areas. Select a bed or individual plant for its task list,
+completion actions and details.
 
 The floating canvas tools use the measured canvas width, including in
 fullscreen and when the individual-plants panel narrows the canvas. Zoom, fit,
