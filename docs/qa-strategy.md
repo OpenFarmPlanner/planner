@@ -40,7 +40,7 @@ Nicht bei jedem QA-Lauf alles testen — stattdessen:
 - Headless-only: `useResizeContainer` Warning = kein echter Bug
 - Befüllte Projekte: Action `setup_demo` statt `setup` (leeres Projekt mit einem Standort)
 - UI-Sprache gehört zum Konto (`UserProjectSettings.ui_language`); `i18nextLng` im Browser reicht für eingeloggte Seiten nicht
-- Vor Prüfungen von Backend-Meldungen aus dem Repository-Stamm `cd backend && pdm run compilemessages` ausführen und den Server neu starten. So stehen dieselben Übersetzungskataloge wie in Produktion zur Verfügung.
+- Vor Prüfungen von Backend-Meldungen aus dem Repository-Stamm `cd backend && pdm run compilemessages` ausführen und den Server neu starten. Der Test verwendet dann frisch aus dem Checkout kompilierte Übersetzungskataloge.
 
 ## Dokumentation nach einem Lauf
 

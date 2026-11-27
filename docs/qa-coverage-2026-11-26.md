@@ -17,15 +17,16 @@ core user flows, with the limits listed under
 git log bae8f26c5e82d6dcc0e398f07ea3c25acaeb9d08..HEAD --stat
 ```
 
-Commits that landed on main during the sweep and are **not** covered:
-`df1a5057a` (qa-refresh skill, docs only) and `e0732c535` (crop phases and plan
-tasks on individual plant markers, #1655).
+Use the range above to identify all changes that landed after the tested
+baseline. They include `df1a5057a` (qa-refresh skill), `e0732c535` (crop phases
+and plan tasks on individual plant markers, #1655), `66260c3d` (shared
+table-column sizing, #1662) and `33ca2ffd` (season-copy preview layout, #1664).
 
 ## Scope and environment
 
 - Isolated worktree build (production bundle via `vite preview`, daphne,
-  fresh SQLite). Gettext catalogs were compiled partway through to match
-  production. Synthetic E2E fixtures only. The owner's servers were not touched.
+  fresh SQLite). Gettext catalogs were compiled from the checkout partway
+  through. Synthetic E2E fixtures only. The owner's servers were not touched.
 - Chrome via Playwright. German at 1440×900, 768×900, 375×800 (touch) and
   800×375 (touch). English, French, Spanish, Italian, Portuguese and Dutch at
   1440×900 and 375×800 for the route crawl and German-leak check.
