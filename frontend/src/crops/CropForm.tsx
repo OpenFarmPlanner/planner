@@ -71,6 +71,7 @@ import { YieldSection } from './sections/YieldSection';
 import { SpacingSection } from './sections/SpacingSection';
 import { SeedingSection } from './sections/SeedingSection';
 import { ColorSection } from './sections/ColorSection';
+import { getCropDisplayColor } from './displayColor';
 import { NotesSection } from './sections/NotesSection';
 import { CompanionsSection } from './sections/CompanionsSection';
 import { CropCompanionsSection } from './CropCompanionsSection';
@@ -1595,7 +1596,7 @@ export function CropForm({
                 defaultColor={DEFAULT_DISPLAY_COLOR}
                 isVariety={formKind === 'variety'}
                 parentColor={isSpeciesLinkedVariety && selectedSpeciesCrop?.crop_species === formData.crop_species
-                  ? selectedSpeciesCrop?.display_color : undefined}
+                  ? getCropDisplayColor(selectedSpeciesCrop) : undefined}
               />
             ) : null}
             {isProjectForm ? (

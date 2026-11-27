@@ -20,6 +20,7 @@ import { CropFiltersPopover } from './CropFiltersPopover';
 import { CropMobileSelectorDialog } from './CropMobileSelectorDialog';
 import { CropBulkSelectionActions, CropBulkSelectionRow } from './CropBulkSelectionControls';
 import { CropColorSwatch } from './CropColorSwatch';
+import { getCropDisplayColor } from './displayColor';
 import { CropSelectionButton } from './CropSelectionButton';
 import { CropSearchFilterButton, CropSearchToolbar } from './CropSearchToolbar';
 import type { ProjectCropSelection } from './useProjectCropSelection';
@@ -447,6 +448,7 @@ const detailSectionGridSx = {
   // confirmed yet — visible as a chip, and the library sync waits for it
   // (the badge-row action button disables itself in that case).
   const isPublishedUnderPendingSpecies = Boolean(selectedCrop?.public_crop_species_pending);
+  const selectedCropColor = getCropDisplayColor(selectedCrop);
   const selectedCropSpeciesKey = selectedCrop ? getCropSpeciesKey(selectedCrop) : null;
   const isSelectedSpeciesEntry = Boolean(selectedCrop && !(selectedCrop.variety || '').trim());
   const isSpeciesView = Boolean(
@@ -904,7 +906,7 @@ const detailSectionGridSx = {
                       primary={node.label}
                       isPrimaryEmphasized={node.kind === 'species'}
                       secondary={undefined}
-                      colorAdornment={crop?.display_color ? <CropColorSwatch crop={crop} /> : undefined}
+                      colorAdornment={crop ? <CropColorSwatch crop={crop} /> : undefined}
                       varietyCount={node.kind === 'species' ? node.varietyCount : undefined}
                       showZeroVarietyCount={node.kind === 'species'}
                       highlightQuery={normalizedSearchQuery}
@@ -994,20 +996,20 @@ const detailSectionGridSx = {
               >
                 <Box sx={[{ flexGrow: 1, minWidth: 0 }, !useUnifiedMobileLayout && detailHeaderTitleColumnSx]}>
                   <Box sx={{ minWidth: 0, display: 'flex', alignItems: 'stretch', gap: 1.75 }}>
-                    {selectedCrop.display_color ? (
+                    {selectedCropColor ? (
                       <Box
                         sx={{
                           width: 4,
                           borderRadius: 1,
-                          backgroundColor: selectedCrop.display_color,
+                          backgroundColor: selectedCropColor,
                           opacity: 0.75,
                           my: 0.5,
                           alignSelf: 'stretch',
                           flexShrink: 0,
                         }}
                         role="img"
-                        aria-label={`${t('form.displayColorAria')} ${selectedCrop.display_color}`}
-                        title={selectedCrop.display_color}
+                        aria-label={`${t('form.displayColorAria')} ${selectedCropColor}`}
+                        title={selectedCropColor}
                       />
                     ) : null}
                     <Box sx={{ minWidth: 0, display: 'flex', flexDirection: 'column', py: 0.25 }}>
@@ -1030,10 +1032,10 @@ const detailSectionGridSx = {
                           <Typography variant="body2" color="text.primary" sx={{ fontWeight: 600 }}>
                             {selectedCrop.variety}
                           </Typography>
-                          {selectedCrop.display_color_override !== undefined && selectedCrop.display_color ? (
+                          {selectedCrop.display_color_override !== undefined && selectedCropColor ? (
                             <Typography variant="caption" color="text.secondary">
                               {t(selectedCrop.display_color_override === null ? 'form.colorInherited' : 'form.colorOwn')}
-                              {' · '}{selectedCrop.display_color.toUpperCase()}
+                              {' · '}{selectedCropColor.toUpperCase()}
                             </Typography>
                           ) : null}
                         </Stack>

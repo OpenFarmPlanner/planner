@@ -270,11 +270,11 @@ erDiagram
   The stored `display_color` is a base color on general crops and an optional
   project-local override on varieties. An unset variety color resolves through
   its same-project general crop. The project API returns the resolved color as
-  `display_color` and the stored variety override as `display_color_override`.
-  Clients can write a hex color through either field on a variety. Write
-  `display_color_override: null` to restore inheritance and omit it to leave
-  the setting alone unless supplying a legacy `display_color` write. A
-  variety without a canonical parent uses the default planning color.
+  `effective_display_color`. The existing `display_color` field still reads
+  and writes the stored base or override, including the empty string for an
+  inherited variety. Clients can also write a hex color or `null` using
+  `display_color_override` on a variety. An explicit `null` restores
+  inheritance. A variety without a canonical parent uses the default planning color.
   Past revisions contain the stored value, with no provenance distinguishing
   automatically generated colors from manually chosen ones. Existing values
   are preserved, including values that match the general crop color.

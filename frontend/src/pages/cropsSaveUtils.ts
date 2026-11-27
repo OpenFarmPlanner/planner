@@ -184,6 +184,7 @@ export function buildCropSavePayload(crop: Crop): CropSavePayload {
   delete (payload as unknown as Record<string, unknown>).general_crop;
   delete (payload as unknown as Record<string, unknown>).inherited_fields;
   delete (payload as unknown as Record<string, unknown>).effective_values;
+  delete payload.effective_display_color;
 
   return payload;
 }

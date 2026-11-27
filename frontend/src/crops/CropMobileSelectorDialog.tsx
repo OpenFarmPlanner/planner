@@ -184,7 +184,7 @@ export function CropMobileSelectorDialog({
                     sx={mobileCropChevronButtonSx}
                     placeholderWidth={MOBILE_TOUCH_TARGET_SIZE}
                   />
-                  {crop?.display_color ? <CropColorSwatch crop={crop} /> : null}
+                  {crop ? <CropColorSwatch crop={crop} /> : null}
                   <ListItemText
                     primary={highlightQuery
                       ? <HighlightedText text={rowLabel} query={highlightQuery} />

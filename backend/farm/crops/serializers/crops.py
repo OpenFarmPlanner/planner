@@ -221,6 +221,7 @@ class CropSerializer(serializers.ModelSerializer):
         required=False, allow_null=True, max_length=7,
         help_text='Project-local variety color. Null restores the general crop color.',
     )
+    effective_display_color = serializers.SerializerMethodField()
     crop_family = PlantFamilyField()
     light_requirement = CropLightField(required=False)
     crop_family_display_name = serializers.SerializerMethodField(
@@ -669,6 +670,9 @@ class CropSerializer(serializers.ModelSerializer):
         general_crop = self._resolve_general_crop(obj)
         return general_crop.pk if general_crop else None
 
+    def get_effective_display_color(self, obj: Crop) -> str:
+        return resolve_crop_display_color(obj, self._general_crop_index(obj))
+
     def get_inherited_fields(self, obj: Crop) -> list[str]:
         return [
             INHERITABLE_API_FIELD_NAMES.get(model_field, model_field)
@@ -946,7 +950,6 @@ class CropSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         general_crops = self._general_crop_index(instance)
-        data['display_color'] = resolve_crop_display_color(instance, general_crops)
         data['display_color_override'] = (
             instance.display_color or None if is_variety_crop(instance) else None
         )

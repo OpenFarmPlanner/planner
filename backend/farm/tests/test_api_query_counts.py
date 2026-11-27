@@ -533,7 +533,9 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
         self.assertEqual(len(rows), ROW_COUNT * 3)
-        shown_colors = {row['id']: row['display_color'] for row in rows if row['id'] in colors}
+        shown_colors = {
+            row['id']: row['effective_display_color'] for row in rows if row['id'] in colors
+        }
         self.assertEqual(shown_colors, colors)
 
     def test_crops_list_query_count_stays_flat_after_import_batches(self) -> None:

@@ -282,6 +282,8 @@ export interface Crop {
   display_color?: string;
   /** Saved project-local variety color. Null means the variety uses its general crop color. */
   display_color_override?: string | null;
+  /** Resolved base or override color, for display only. */
+  effective_display_color?: string;
   
   // Computed, read-only.
   plants_per_m2?: number | null;

@@ -3786,7 +3786,9 @@ class PublicCropLibraryApiTest(DRFAPITestCase):
             project=self.project, crop_species=self.species, variety_normalized__isnull=True,
         )
         self.assertEqual(imported.display_color, '')
-        self.assertEqual(import_response.data['crop']['display_color'], parent.display_color)
+        self.assertEqual(
+            import_response.data['crop']['effective_display_color'], parent.display_color,
+        )
         self.assertNotEqual(parent.display_color, '#227744')
         imported.display_color = '#445566'
         imported.save()

@@ -114,9 +114,9 @@ class CropApiTest(ProjectApiTestCase):
         response = self.client.post('/openfarmplanner/api/crops/', data)
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(Crop.objects.count(), 2)
-        # Check that display color was auto-generated
-        self.assertIn('display_color', response.data)
-        self.assertTrue(response.data['display_color'].startswith('#'))
+        # A free-text variety without a canonical parent still has a usable display color.
+        self.assertEqual(response.data['display_color'], '')
+        self.assertEqual(response.data['effective_display_color'], '#3b82f6')
 
     def test_legacy_duplicate_general_group_cannot_rename_or_delete(self):
         species = CropSpecies.objects.create(name='Legacy synthetic tomato')
@@ -1703,10 +1703,19 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         }, format='json') for number in range(10)]
         for response in varieties:
             self.assertEqual(response.status_code, 201, response.data)
-            self.assertEqual(response.data['display_color'], self.general.display_color)
+            self.assertEqual(response.data['display_color'], '')
+            self.assertEqual(response.data['effective_display_color'], self.general.display_color)
             self.assertIsNone(response.data['display_color_override'])
         explicit_id = varieties[0].data['id']
         explicit_url = f'{url}{explicit_id}/'
+        legacy_url = f"{url}{varieties[1].data['id']}/"
+        legacy = self.client.get(legacy_url).data
+        response = self.client.put(legacy_url, {
+            **{key: legacy[key] for key in ('name', 'variety', 'crop_species', 'display_color')},
+            'notes': 'Edited by an older client',
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+        self.assertIsNone(response.data['display_color_override'])
         # Legacy writes treat a hex value as explicit, even if it matches the parent.
         original_color = self.general.display_color
         response = self.client.patch(explicit_url, {'display_color': original_color}, format='json')
@@ -1718,8 +1727,10 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data['display_color'], '#486721')
         rows = {row['id']: row for row in self.client.get(url).data['results']}
-        self.assertEqual(rows[explicit_id]['display_color'], original_color)
-        inherited_colors = {rows[row.data['id']]['display_color'] for row in varieties[1:]}
+        self.assertEqual(rows[explicit_id]['effective_display_color'], original_color)
+        inherited_colors = {
+            rows[row.data['id']]['effective_display_color'] for row in varieties[1:]
+        }
         self.assertEqual(inherited_colors, {'#486721'})
 
         response = self.client.patch(explicit_url, {
@@ -1730,7 +1741,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         response = self.client.patch(explicit_url, {
             'display_color': original_color, 'display_color_override': None,
         }, format='json')
-        self.assertEqual(response.data['display_color'], '#486721')
+        self.assertEqual(response.data['effective_display_color'], '#486721')
         self.assertIsNone(response.data['display_color_override'])
 
         species = CropSpecies.objects.create(name='Reparented color species')
@@ -1741,16 +1752,16 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         response = self.client.patch(explicit_url, {'crop_species': species.id}, format='json')
         self.assertEqual(response.status_code, 200, response.data)
         self.assertEqual(response.data['general_crop'], general.id)
-        self.assertEqual(response.data['display_color'], '#aaccee')
+        self.assertEqual(response.data['effective_display_color'], '#aaccee')
         # Legacy missing-parent rows remain readable and resume inheritance when restored.
         other = Project.objects.create(name='Unaffiliated project', slug='isolated-color-project')
         Crop.objects.create(
             project=other, crop_species=species, name=general.name, display_color='#111111',
         )
         Crop.objects.filter(pk=general.pk).update(deleted_at=general.updated_at)
-        self.assertEqual(self.client.get(explicit_url).data['display_color'], '#3b82f6')
+        self.assertEqual(self.client.get(explicit_url).data['effective_display_color'], '#3b82f6')
         Crop.all_objects.filter(pk=general.pk).update(deleted_at=None)
-        self.assertEqual(self.client.get(explicit_url).data['display_color'], '#aaccee')
+        self.assertEqual(self.client.get(explicit_url).data['effective_display_color'], '#aaccee')
 
     def test_bulk_color_reset_is_scoped_atomic_and_restorable(self):
         self.sorte.display_color = self.general.display_color
@@ -1797,7 +1808,7 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         }, format='json')
         self.assertEqual(restored.status_code, 200, restored.data)
         self.assertIsNone(restored.data['display_color_override'])
-        self.assertEqual(restored.data['display_color'], self.general.display_color)
+        self.assertEqual(restored.data['effective_display_color'], self.general.display_color)
 
     def test_bulk_color_reset_rejects_stale_confirmation_for_the_whole_selection(self):
         self.sorte.display_color = '#445566'

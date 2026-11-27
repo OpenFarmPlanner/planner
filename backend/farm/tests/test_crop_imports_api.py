@@ -444,7 +444,8 @@ class CropImportAPITest(DRFAPITestCase):
         variety = rows.get(variety='Green')
         self.assertRegex(general.display_color, r'^#[0-9a-f]{6}$')
         self.assertEqual(variety.display_color, '')
-        self.assertEqual(CropSerializer(variety).data['display_color'], general.display_color)
+        result = CropSerializer(variety).data
+        self.assertEqual(result['effective_display_color'], general.display_color)
 
     def test_import_preview_creates_no_supplier(self):
         """A preview only reports; cancelling it must leave no new supplier behind."""
