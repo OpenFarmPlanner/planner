@@ -2,7 +2,8 @@
 
 React + TypeScript frontend for OpenFarmPlanner.
 
-This README covers frontend-specific development details. For the full project overview, start at the root [`README.md`](../README.md).
+This README covers frontend-specific development details. For setup with the
+backend, see the [repository quick start](../README.md#quick-start-local-development).
 
 ## Stack
 
@@ -32,7 +33,11 @@ For phone/tablet testing in the same LAN, use the repository-level script:
 ../scripts/dev-lan.sh
 ```
 
-It starts Vite with `--host 0.0.0.0` and prints the LAN URL. Leave `VITE_API_BASE_URL` unset unless you intentionally need a direct backend URL; `/api` is proxied by Vite and works from LAN clients.
+It detects the LAN IP, starts Django on `0.0.0.0:8000` and Vite on
+`0.0.0.0:5173`, and prints both URLs. Leave `VITE_API_BASE_URL` unset to send
+requests through Vite's `/api` proxy. If you set it to
+`http://localhost:8000/api` in development, the app rewrites the localhost
+hostname to the LAN host when another device opens it.
 
 ## Available Scripts
 

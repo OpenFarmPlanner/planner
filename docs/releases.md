@@ -6,6 +6,33 @@ python-semantic-release 10.5.3 configuration in `pyproject.toml` still calculate
 the next version; `release:*` labels remain the existing classification hints.
 No deployment to staging or production is part of this workflow.
 
+## Version and PR classification
+
+The application version is declared in `backend/config/version.py`. The
+protected release workflow also updates the package version in
+`backend/pyproject.toml` when it prepares a version PR.
+
+For a local version bump, `make bump-version TYPE=fix` uses
+`scripts/bump_version.py`. `feat` increments the minor version and resets the
+patch to zero, `fix` increments the patch, and `breaking` increments the major
+version and resets minor and patch to zero. The script validates the semantic
+version and its single `VERSION` definition before replacing the version file
+atomically. The merge-based release flow below handles repository releases.
+
+The [automatic label workflow](../.github/workflows/auto-release-label.yml)
+runs when a PR is opened, edited, or updated with commits. It leaves existing
+`release:*` labels in place. Otherwise it ensures the labels exist and assigns
+one using the PR title and body, in this order.
+
+1. `release:major` for `breaking` or `BREAKING CHANGE`.
+2. `release:minor` for `add`, `feature`, `implement`, or `new`.
+3. `release:patch` for `fix`, `bug`, `refactor`, `docs`, `localize`,
+   `translation`, or `ui`. `release:patch` is also the fallback.
+
+The squash commit's Conventional Commit type controls whether semantic release
+creates a version. A `docs:` commit can carry a label and leave the version
+unchanged. [Commit conventions](../CONTRIBUTING.md#conventional-commits)
+
 ## Flow and credentials
 
 Each push to main, or manual dispatch on main, serializes through one workflow

@@ -46,6 +46,34 @@ and open screenshots with the available image viewer.
 | Release/deploy | An authorized ops checkout and deployment access. The ops repository is an execution prerequisite, never a discovery dependency. Queue work alone does not authorize production deployment. |
 | Independent signed review | A configured constrained review service (no author shell/key/checkout access), base-matching launcher, subscription CLI, protected signing key and GitHub access, per `security-automation.md`. The key is not made available to Cloud by these links. |
 
+## GitHub CLI setup
+
+For local Copilot and Codex work, install Git and the GitHub CLI (`gh`) in the
+environment where the agent runs. Use the Python/PDM and Node.js/npm versions in
+the [local quick start](../README.md#quick-start-local-development).
+
+On Ubuntu or Debian:
+
+```bash
+sudo apt update
+sudo apt install gh
+```
+
+For other platforms or a newer version, use the [official installation guide](https://github.com/cli/cli#installation).
+From a terminal, check the installation and authenticate with the GitHub
+account that has the repository permissions required by your task.
+
+```bash
+command -v gh
+gh --version
+gh auth login
+gh auth status
+```
+
+Agents use `gh` to inspect PRs and reviews, read Actions runs and logs, create or
+update authorized PRs, and reproduce CI failures with the relevant repository
+access. Connected GitHub tools are another supported route when available.
+
 ## Validation without live writes
 
 In a fresh checkout, inspect `git ls-files -s .agents/skills`: every entry must

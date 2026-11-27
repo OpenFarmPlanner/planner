@@ -26,7 +26,7 @@ You can contribute without repository write access. Please use a **fork and pull
    cd frontend && npm run lint
    ```
 
-   Run these from the repository root (or return there between commands). For changes affecting browser flows, see the [E2E instructions](README.md#frontend-end-to-end-tests). For documentation-only PRs, explain that no runtime tests were needed.
+   Run these from the repository root (or return there between commands). For changes affecting browser flows, see the [E2E instructions](frontend/e2e/README.md). For documentation-only PRs, explain that no runtime tests were needed.
 5. **Open a PR.** Commit your changes with the [Conventional Commit](#conventional-commits) format below, push your branch to your fork, and use GitHub's **Compare & pull request** action. Target `OpenFarmPlanner/planner:main`. Use a Conventional Commit-style PR title and explain the change, link related issues (if any), list tests run, and add screenshots for visible UI changes.
 6. **Respond to reviews and checks.** GitHub Actions runs checks for PRs, though a maintainer may need to approve the initial workflow run from a fork. The repository's automated Claude review **does not run on fork PRs**; maintainers handle any required independent code/security review before merging. Please do not merge or deploy a change yourself.
 

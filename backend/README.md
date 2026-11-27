@@ -2,7 +2,8 @@
 
 Django REST backend for OpenFarmPlanner.
 
-This README covers backend-specific development details. For the full project overview, start at the root [`README.md`](../README.md).
+This README covers backend-specific development details. For complete local
+setup with the frontend, see the [repository quick start](../README.md#quick-start-local-development).
 
 ## Stack
 
@@ -16,6 +17,14 @@ This README covers backend-specific development details. For the full project ov
 ```bash
 cd backend
 cp .env.example .env
+```
+
+Set `DEBUG=True`, `SESSION_COOKIE_SECURE=False`, `CSRF_COOKIE_SECURE=False`,
+and `URL_PREFIX=` in this local `.env` to serve `/api/` and `/admin/` over HTTP.
+Django prints activation and password-reset emails to the backend terminal by
+default.
+
+```bash
 pdm install
 pdm run migrate
 pdm run runserver
@@ -195,6 +204,12 @@ Auth endpoints are available under `/api/auth/`:
 ### DNS recommendations for deliverability
 ## Authentication and API Notes
 
+- The frontend sends credentialed requests to `/api/` with CSRF headers for
+  writes. The backend supports project scoping with `X-Project-Id`.
+- Account flows include email registration and activation, login and logout,
+  password reset, invitation acceptance, and account deletion with a grace
+  period for restoration. Google and Microsoft sign-in can be configured.
+  [Social login](../docs/social-login.md) · [Account trust and registration](../docs/account-trust-levels.md)
 - Auth endpoints: `/api/auth/*`
 - API endpoints: `/api/*`
 - Legacy prefixed auth/API endpoints: `/openfarmplanner/api/*`
@@ -207,6 +222,30 @@ Auth endpoints are available under `/api/auth/`:
   restore crops when created with the dedicated delete scope. Administrative
   endpoints remain unreachable. Machine-readable schema:
   `/api/agent/openapi.json`. Full documentation: [`docs/agent-api.md`](../docs/agent-api.md).
+
+### New user registration notifications
+
+The backend sends an informational email when it creates a regular Django user.
+Short-lived guest demo users are excluded. `ADMIN_NOTIFICATION_EMAIL` defaults
+to `info@openfarmplanner.org`. Set it to an empty value to disable the notices.
+The configured Django email backend sends the mail. If delivery fails, the
+backend logs the error and registration proceeds.
+
+## Deployment checks
+
+The separate [ops repository](https://github.com/OpenFarmPlanner/ops) contains
+environment-specific deployment and infrastructure instructions. Check these
+application settings for each deployment.
+
+- **Cloudflare Turnstile.** Add every registration hostname to the widget's
+  Hostname Management list, including `staging.openfarmplanner.org` for the
+  staging widget. Configure the matching `TURNSTILE_SITE_KEY` and
+  `TURNSTILE_SECRET_KEY` in the backend environment and set the same site key
+  as `VITE_TURNSTILE_SITE_KEY` in the frontend build. [Turnstile configuration](../docs/account-trust-levels.md#cloudflare-turnstile)
+- **Failure alerts.** Set `REGISTRATION_ALERT_EMAILS` for registration failures
+  and `ADMINS` for other HTTP 500 errors. Run
+  `pdm run python manage.py send_test_registration_alert` and confirm that the
+  test message arrives. [Registration failure alerts](../docs/account-trust-levels.md#registration-failure-alerts)
 
 ## Environment Notes
 
