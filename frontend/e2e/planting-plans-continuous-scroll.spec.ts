@@ -90,9 +90,9 @@ async function getDesktopGridLayoutMetrics(page: Page): Promise<{
   gridLeft: number;
   gridWidth: number;
   hasVisibleMuiHorizontalScrollbar: boolean;
-  notesHeaderWidth: number;
   outerScrollClientWidth: number;
   outerScrollWidth: number;
+  workspaceCenter: number;
   viewportWidth: number;
 }> {
   const grid = page.locator('.MuiDataGrid-root').first();
@@ -100,8 +100,6 @@ async function getDesktopGridLayoutMetrics(page: Page): Promise<{
 
   return grid.evaluate((element) => {
     const gridRect = element.getBoundingClientRect();
-    const notesHeader = Array.from(element.querySelectorAll<HTMLElement>('[role="columnheader"]'))
-      .find((header) => header.textContent?.includes('Notizen'));
     const horizontalScrollbars = Array.from(element.querySelectorAll<HTMLElement>('.MuiDataGrid-scrollbar--horizontal'));
     const hasVisibleMuiHorizontalScrollbar = horizontalScrollbars.some((scrollbar) => {
       const styles = window.getComputedStyle(scrollbar);
@@ -109,6 +107,7 @@ async function getDesktopGridLayoutMetrics(page: Page): Promise<{
       return styles.display !== 'none' && styles.visibility !== 'hidden' && rect.width > 0 && rect.height > 0;
     });
     let outerScrollContainer: HTMLElement = element;
+    const workspace = element.closest('main')!.getBoundingClientRect();
     let ancestor = element.parentElement;
     while (ancestor) {
       const overflowX = window.getComputedStyle(ancestor).overflowX;
@@ -123,9 +122,9 @@ async function getDesktopGridLayoutMetrics(page: Page): Promise<{
       gridLeft: gridRect.left,
       gridWidth: gridRect.width,
       hasVisibleMuiHorizontalScrollbar,
-      notesHeaderWidth: notesHeader?.getBoundingClientRect().width ?? 0,
       outerScrollClientWidth: outerScrollContainer.clientWidth,
       outerScrollWidth: outerScrollContainer.scrollWidth,
+      workspaceCenter: workspace.left + workspace.width / 2,
       viewportWidth: window.innerWidth,
     };
   });
@@ -158,22 +157,31 @@ test.describe('planting plans continuous scroll', () => {
 
     const beforeScroll = await getVirtualScrollerMetrics(page);
     await expect(page.getByTestId('continuous-scrollbar-thumb')).toBeVisible();
-    // On slower CI runners the DataGrid columns are not measured yet at this
-    // point, so the notes column header briefly reports a width of 0. Wait for
-    // the layout to settle before reading the metrics used by the assertions.
-    await expect
-      .poll(async () => (await getDesktopGridLayoutMetrics(page)).notesHeaderWidth)
-      .toBeGreaterThan(0);
+    await expect(page.locator('.MuiDataGrid-root').first()).toHaveAttribute('aria-busy', 'false');
+    const notes = page.locator('[role="columnheader"][data-field="notes"]');
+    await notes.press('Enter');
+    await expect(notes).toHaveAttribute('aria-sort', /ascending|descending/);
+    await notes.hover();
+    await expect(notes.getByRole('button', { name: 'Notizen Spaltenmenü' })).toBeVisible();
+    const label = notes.locator('.MuiDataGrid-columnHeaderTitleContainerContent > span');
+    await expect(label).toHaveText('Notizen');
+    await expect.poll(() => label.evaluate(node => {
+      const header = node.closest('[role="columnheader"]')!.getBoundingClientRect();
+      const text = document.createRange();
+      text.selectNodeContents(node);
+      // Allow the normal heading padding, sort and menu space, and font rounding.
+      const headingAllowance = 22 + 30 + 24 + 6;
+      return node.scrollWidth <= node.clientWidth + 1 && header.width >= 56
+        && header.width <= Math.ceil(text.getBoundingClientRect().width) + headingAllowance;
+    })).toBe(true);
     const layout = await getDesktopGridLayoutMetrics(page);
     expect(layout.footerContainerCount).toBe(0);
     expect(layout.hasVisibleMuiHorizontalScrollbar).toBe(false);
-    expect(layout.notesHeaderWidth).toBeGreaterThanOrEqual(56);
-    expect(layout.notesHeaderWidth).toBeLessThanOrEqual(90);
     // The localized columns should fit without stretching the grid to fill
     // the workspace or introducing a horizontal scrollbar at this width.
     expect(layout.gridLeft + layout.gridWidth).toBeLessThan(layout.viewportWidth - 20);
     expect(layout.outerScrollWidth).toBeLessThanOrEqual(layout.outerScrollClientWidth + 1);
-    expect(layout.gridLeft).toBeGreaterThan(350);
+    expect(Math.abs(layout.gridLeft + layout.gridWidth / 2 - layout.workspaceCenter)).toBeLessThanOrEqual(2);
 
     // On a wide screen the table is narrower than its (centered) container,
     // so the scrollbar track must hug the table's own right edge — not the

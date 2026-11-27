@@ -9,6 +9,7 @@ async function rectangles(page: Page, prefix: string) {
     if (!stage) return [];
     return stage.find('Rect').filter(node => String(node.getAttr('data-testid')).startsWith(prefix)).map(node => ({
       ...node.getAbsolutePosition(stage), width: node.width(), height: node.height(), fill: String(node.getAttr('fill')),
+      taskUrgency: node.getAttr('data-task-urgency') as string | undefined,
     }));
   }, prefix);
 }
@@ -43,7 +44,8 @@ test('shows free shapes and the matching area figures without changing bed fills
   await page.goto('/app/fields-beds');
   await page.getByRole('button', { name: 'Grafik', exact: true }).click();
   await selectLocation(page, 'Hofgarten');
-  await expect.poll(async () => (await rectangles(page, 'bed-rect-')).length).toBeGreaterThan(0);
+  // The default combined view starts with plain beds until its demo tasks arrive.
+  await expect.poll(async () => (await rectangles(page, 'bed-rect-')).some(bed => bed.taskUrgency)).toBe(true);
   const beds = await rectangles(page, 'bed-rect-');
   await expect(page.getByRole('button', { name: /^Freiflächen/ })).toHaveCount(0);
   const trigger = page.getByRole('button', { name: 'Abstände', exact: true });
