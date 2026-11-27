@@ -25,11 +25,9 @@ Nicht bei jedem QA-Lauf alles testen — stattdessen:
 
 ## Was beim nächsten Lauf noch offen ist
 
-- Invite-Flow vollständig: Eingeladener User nimmt Einladung an → ist im Projekt sichtbar
-- Ertragsübersicht mit echten Planungsdaten (bisher nur leerer Zustand gesehen)
 - Anbaukalender: Drag & Drop von Planungszeiträumen (schwer in Playwright headless)
-- Password / E-Mail ändern in Kontoeinstellungen
-- Projekt löschen + aus Papierkorb wiederherstellen
+- E-Mail-Adresse ändern (Bestätigungslink) und Konto löschen in Kontoeinstellungen
+- Weitere offene Bereiche: Abschnitt „Not covered in this sweep“ der aktuellen `qa-coverage-*.md`
 
 ## Playwright-Hinweise
 
@@ -40,6 +38,9 @@ Nicht bei jedem QA-Lauf alles testen — stattdessen:
 - Seitenhilfe auf Desktop ist ein `Popover`, kein `Dialog` — `getByRole('dialog')` findet es nicht
 - Account-/Projekt-Einstellungen: Felder erscheinen erst nach Klick auf Edit-Button (Collapse-Pattern)
 - Headless-only: `useResizeContainer` Warning = kein echter Bug
+- Befüllte Projekte: Action `setup_demo` statt `setup` (leeres Projekt mit einem Standort)
+- UI-Sprache gehört zum Konto (`UserProjectSettings.ui_language`); `i18nextLng` im Browser reicht für eingeloggte Seiten nicht
+- Vor Prüfungen von Backend-Meldungen aus dem Repository-Stamm `cd backend && pdm run compilemessages` ausführen und den Server neu starten. Der Test verwendet dann frisch aus dem Checkout kompilierte Übersetzungskataloge.
 
 ## Dokumentation nach einem Lauf
 
