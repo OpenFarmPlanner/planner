@@ -91,7 +91,8 @@ confuse this with `issue-and-queue`'s cleanup, which removes rows the owner
 4. Reconcile existing cards listed in the manifest with the live queue and
    GitHub state. Recheck implementation evidence when requested and refresh a
    card's tests and screenshots if its verified implementation changed. For a
-   metadata-only update, update the queue row, position and manual test hint.
+   metadata-only update, update the queue row and position. Apply any changed
+   manual hint to the verified local walkthrough in section 4.
    Archive a card that is now absent, checked, reopened or otherwise ineligible
    only after verifying the current state. Without a manifest, compare existing
    cards against those same states when inspecting the live queue.
@@ -169,7 +170,7 @@ the checked-out tree as arguments.
 
 ## 4. Write the card
 
-Match the existing schema in `.qa-review/results.json` exactly (read a
+Match the existing schema in `.qa-review/results.json` exactly (read an
 existing card first): `number`, `title`, `description`, `area`, `position`,
 `pr`, `commit`, `changedFiles`, `parent`, `priority`, `queueRow`,
 `criteria[]` (`text`/`status`/`evidence`), `tests[]`
@@ -178,6 +179,14 @@ existing card first): `number`, `title`, `description`, `area`, `position`,
 verify every acceptance criterion and each one passes. Use `Partial` when any
 criterion fails, is blocked or remains unchecked. Record the affected criteria
 and their reasons in `problems`.
+
+For cards with a manual app check, keep the original queue hint in `queueRow`.
+Write `manual` for someone starting at the dashboard. Use the project name
+shown in the QA app, the visible names of the fixture objects and controls,
+and a starting state the reviewer can recognize. Include each scenario in the
+hint. Set `app` to the most specific supported route for the persistent QA
+fixture. Use the dashboard's project link to select the intended project by ID
+and season when applicable. This matters when two projects share a name.
 
 Before writing:
 - Re-fetch the trusted live queue and recheck GitHub eligibility and verified
@@ -201,6 +210,12 @@ After writing:
   (import `.qa-review/dashboard/server.py` as a module and call `build()` —
   do not hand-roll the report).
 - Regenerate project links: `python3 .qa-review/test-data/project-links.py`.
+- For each new or changed manual walkthrough, open the rendered card's project
+  link in a fresh browser context as the local reviewer. Follow the published
+  steps to the named object and first testable control. Check any additional
+  starting fixtures the card calls for. If a target cannot be reached, correct
+  its mapping, route or instructions and retry. If it remains unavailable,
+  record the blocked manual check in `problems` and mark the card `Partial`.
 - Verify `curl http://127.0.0.1:4174/api` shows the new cards with the
   expected statuses, and that re-running `build()` does not duplicate rows.
 - `.qa-review/dashboard/app.js`'s "Discuss with ChatGPT" links point to the
