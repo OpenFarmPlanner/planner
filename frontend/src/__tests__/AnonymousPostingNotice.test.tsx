@@ -63,7 +63,7 @@ describe('AnonymousPostingNotice', () => {
   it('shows a backend validation error at the field', async () => {
     mocks.updatePublicDisplayName.mockRejectedValue(new AuthApiError('x', {
       status: 400,
-      payload: { field_errors: { public_display_name: ['public_display_name_reserved'] } },
+      payload: { field_errors: { public_display_name: [{ code: 'public_display_name_reserved' }] } },
     }));
     const { onSaved, user } = setup();
 

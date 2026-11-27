@@ -64,8 +64,13 @@ export function parsePositiveSeconds(value: unknown): number | undefined {
   return Math.ceil(parsed);
 }
 
-function parseRetrySecondsFromDetail(detail: string): number | undefined {
-  const match = /available in (\d+(?:\.\d+)?) seconds/i.exec(detail);
+export function getGuestDemoRetryAfterSeconds(error: AuthApiError): number | undefined {
+  const structuredWait = parsePositiveSeconds(error.retryAfterSeconds) ?? parsePositiveSeconds(error.payload?.retry_after);
+  if (structuredWait !== undefined) return structuredWait;
+
+  // Older demo servers only include the wait duration in the DRF response text.
+  const detail = error.payload?.detail;
+  const match = typeof detail === 'string' ? /available in (\d+(?:\.\d+)?) seconds/i.exec(detail) : null;
   return match ? parsePositiveSeconds(match[1]) : undefined;
 }
 
@@ -73,45 +78,38 @@ function resolveRetryAfterSeconds(
   response: Response,
   payload?: Record<string, unknown>,
 ): number | undefined {
-  const headerSeconds = parsePositiveSeconds(response.headers.get('Retry-After'));
-  if (headerSeconds !== undefined) {
-    return headerSeconds;
-  }
-
-  const payloadSeconds = parsePositiveSeconds(payload?.retry_after);
-  if (payloadSeconds !== undefined) {
-    return payloadSeconds;
-  }
-
-  return typeof payload?.detail === 'string' ? parseRetrySecondsFromDetail(payload.detail) : undefined;
+  return parsePositiveSeconds(response.headers.get('Retry-After')) ?? parsePositiveSeconds(payload?.retry_after);
 }
 
-function serverUnavailableMessage(): string {
-  return translateOrFallback('auth:error.serverUnavailable', 'Der Server ist gerade nicht erreichbar. Bitte versuche es in einem Moment noch einmal.');
+function statusErrorMessage(status: number, retryAfterSeconds?: number): string {
+  if (status === 429) {
+    return retryAfterSeconds === undefined
+      ? i18n.t('auth:error.rateLimited')
+      : i18n.t('auth:error.rateLimitedWithWait', { seconds: retryAfterSeconds });
+  }
+  return i18n.t(status >= 500 ? 'auth:error.serverUnavailable' : 'auth:error.requestFailed');
 }
 
 function extractError(response: Response, raw: string): AuthApiError {
-  const fallbackMessage = response.status >= 500
-    ? serverUnavailableMessage()
-    : translateOrFallback('auth:error.requestFailed', 'Anfrage fehlgeschlagen.');
+  let payload: Record<string, unknown>;
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const code = typeof parsed.code === 'string' ? parsed.code : undefined;
-    const messageKey = code ? authErrorMessageKeys.get(code) : undefined;
-    const message = messageKey
-      ? translateOrFallback(messageKey, fallbackMessage)
-      : formatFieldErrors(parsed.field_errors) || fallbackMessage;
-    const scheduledDeletionAt = typeof parsed.scheduled_deletion_at === 'string' ? parsed.scheduled_deletion_at : undefined;
-    return new AuthApiError(message, {
-      code,
-      scheduledDeletionAt,
-      status: response.status,
-      retryAfterSeconds: resolveRetryAfterSeconds(response, parsed),
-      payload: parsed,
-    });
+    payload = asRecord(JSON.parse(raw));
   } catch {
-    return new AuthApiError(fallbackMessage, { status: response.status });
+    payload = {};
   }
+  const code = typeof payload.code === 'string' ? payload.code : undefined;
+  const messageKey = code ? authErrorMessageKeys.get(code) : undefined;
+  const retryAfterSeconds = resolveRetryAfterSeconds(response, payload);
+  const message = messageKey
+    ? i18n.t(messageKey)
+    : formatFieldErrors(payload.field_errors) || statusErrorMessage(response.status, retryAfterSeconds);
+  return new AuthApiError(message, {
+    code,
+    scheduledDeletionAt: typeof payload.scheduled_deletion_at === 'string' ? payload.scheduled_deletion_at : undefined,
+    status: response.status,
+    retryAfterSeconds,
+    payload,
+  });
 }
 
 const authErrorMessageKeys = new Map([
@@ -152,23 +150,25 @@ const validationMessageKeys = new Map([
   ['public_display_name_reserved', 'auth:error.messages.publicDisplayNameReserved'],
 ]);
 
-function translateOrFallback(key: string, fallback: string): string {
-  return i18n.t(key, { defaultValue: fallback });
-}
-
-function getFieldErrors(value: unknown): Record<string, unknown> {
+function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : {};
 }
 
 function localizeFieldErrors(field: string, value: unknown): string[] {
-  const codes: unknown[] = Array.isArray(value) ? value : [value];
-  return codes.filter((code): code is string => typeof code === 'string').map((code) => {
+  const entries: unknown[] = Array.isArray(value) ? value : [];
+  return entries.flatMap((entry) => {
+    const { code, limit } = asRecord(entry);
+    if (typeof code !== 'string') return [];
+    if (typeof limit === 'number' && Number.isInteger(limit) && limit >= 0) {
+      if (code === 'min_length') return [i18n.t('auth:error.messages.minLength', { count: limit })];
+      if (code === 'max_length') return [i18n.t('auth:error.messages.maxLength', { count: limit })];
+    }
     const key = code === 'invalid' && (field === 'email' || field === 'new_email')
       ? 'auth:error.messages.invalidEmail'
       : validationMessageKeys.get(code) ?? 'auth:error.messages.invalid';
-    return i18n.t(key);
+    return [i18n.t(key)];
   });
 }
 
@@ -177,14 +177,14 @@ export function getLocalizedFieldError(error: unknown, field: string): string | 
   if (!(error instanceof AuthApiError)) {
     return null;
   }
-  const errors = getFieldErrors(error.payload?.field_errors);
+  const errors = asRecord(error.payload?.field_errors);
   return localizeFieldErrors(field, errors[field]).join(' ') || null;
 }
 
 function formatFieldErrors(value: unknown): string {
-  return Object.entries(getFieldErrors(value)).flatMap(([field, codes]) => {
+  return Object.entries(asRecord(value)).flatMap(([field, entries]) => {
     const label = field === 'non_field_errors' ? '' : i18n.t(`auth:error.fields.${field}`, { defaultValue: '' });
-    return localizeFieldErrors(field, codes).map((message) => label ? `${label}: ${message}` : message);
+    return localizeFieldErrors(field, entries).map((message) => label ? `${label}: ${message}` : message);
   }).join('\n');
 }
 
@@ -217,8 +217,8 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
   } catch (error) {
     throw new AuthApiError(
       error instanceof DOMException && error.name === 'TimeoutError'
-        ? serverUnavailableMessage()
-        : translateOrFallback('auth:error.network', 'Die Anfrage konnte nicht gesendet werden.'),
+        ? i18n.t('auth:error.serverUnavailable')
+        : i18n.t('auth:error.network'),
       { isNetworkError: true },
     );
   }
@@ -235,7 +235,7 @@ export async function request<T>(path: string, options: RequestInit = {}): Promi
     return await response.json() as T;
   } catch {
     throw new AuthApiError(
-      translateOrFallback('auth:error.unexpectedResponse', 'Die Antwort des Servers konnte nicht gelesen werden.'),
+      i18n.t('auth:error.unexpectedResponse'),
       { status: response.status, code: 'unexpected_response' },
     );
   }
@@ -346,7 +346,14 @@ export async function login(email: string, password: string): Promise<AuthUser> 
 
 export async function startGuestDemo(): Promise<AuthUser> {
   await ensureCsrfCookie();
-  return request<AuthUser>('/auth/guest-demo/start/', { method: 'POST', headers: csrfHeader(), body: JSON.stringify({}) });
+  try {
+    return await request<AuthUser>('/auth/guest-demo/start/', { method: 'POST', headers: csrfHeader(), body: JSON.stringify({}) });
+  } catch (error) {
+    if (error instanceof AuthApiError && error.status === 429) {
+      error.retryAfterSeconds = getGuestDemoRetryAfterSeconds(error);
+    }
+    throw error;
+  }
 }
 
 export async function endGuestDemo(): Promise<void> {

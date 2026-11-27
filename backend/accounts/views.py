@@ -126,11 +126,43 @@ TURNSTILE_UNAVAILABLE_MESSAGE = (
 )
 
 
+class AccountSerializerValidationError(serializers.ValidationError):
+    def __init__(self, error: serializers.ValidationError, serializer: serializers.Serializer) -> None:
+        super().__init__(error.detail)
+        self.fields = serializer.fields
+
+
+def _field_error_entries(codes: object, field: serializers.Field | None) -> list[dict[str, str | int]]:
+    entries = []
+    for code in codes if isinstance(codes, list) else [codes]:
+        if not isinstance(code, str):
+            continue
+        entry: dict[str, str | int] = {'code': code}
+        if code in ('min_length', 'max_length'):
+            limit = getattr(field, code, None)
+            if limit is not None:
+                entry['limit'] = limit
+        entries.append(entry)
+    return entries
+
+
 class AccountAPIView(APIView):
+    def validate_serializer(self, serializer: serializers.Serializer) -> None:
+        try:
+            _validate_serializer_in_german(serializer)
+        except serializers.ValidationError as exc:
+            raise AccountSerializerValidationError(exc, serializer) from exc
+
     def handle_exception(self, exc: Exception) -> Response:
         response = super().handle_exception(exc)
         if isinstance(exc, serializers.ValidationError) and isinstance(response.data, dict):
-            response.data = {**response.data, 'field_errors': exc.get_codes()}
+            fields = exc.fields if isinstance(exc, AccountSerializerValidationError) else {}
+            codes = exc.get_codes()
+            if isinstance(codes, dict):
+                response.data = {
+                    **response.data,
+                    'field_errors': {field: _field_error_entries(errors, fields.get(field)) for field, errors in codes.items()},
+                }
         return response
 
 
@@ -215,7 +247,7 @@ class RegisterView(RegistrationAlertMixin, AccountAPIView):
             return turnstile_error
 
         serializer = RegisterSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         # The guest's resolved UI language becomes the new account's
         # preference, like a guest choice is promoted on sign-in.
         user = serializer.save(ui_language=normalize_language_tag(request.query_params.get('language')))
@@ -252,7 +284,7 @@ class ActivateView(RegistrationAlertMixin, AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = ActivateSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
             return api_error_response(
@@ -331,7 +363,7 @@ class LoginView(AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = LoginSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         email = _normalize_email(serializer.validated_data['email'])
         password = serializer.validated_data['password']
@@ -392,7 +424,7 @@ class ConsentAcceptView(AccountAPIView):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = ConsentAcceptSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         record_acceptance(request.user, serializer.validated_data['document'])
         return Response(UserSerializer(request.user).data)
 
@@ -400,7 +432,7 @@ class ConsentAcceptView(AccountAPIView):
 class AccountProfileView(AccountAPIView):
     def patch(self, request: Request) -> Response:
         serializer = AccountProfileSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         display_name = serializer.validated_data['display_name'].strip()
         request.user.first_name = display_name
         request.user.save(update_fields=['first_name'])
@@ -412,7 +444,7 @@ class AccountPublicProfileView(AccountAPIView):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountPublicProfileSerializer(data=request.data, context={'request': request})
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         public_display_name = serializer.validated_data['public_display_name'].strip()
         try:
             PublicProfile.objects.update_or_create(user=request.user, defaults={'public_display_name': public_display_name})
@@ -443,7 +475,7 @@ class AccountLanguageView(AccountAPIView):
 
     def put(self, request: Request) -> Response:
         serializer = AccountLanguageSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         ui_language = serializer.validated_data['ui_language']
         UserProjectSettings.objects.update_or_create(
             user=request.user,
@@ -479,7 +511,7 @@ class AccountEmailChangeRequestView(AccountAPIView):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountEmailChangeRequestSerializer(data=request.data, context={'request': request})
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         if not _password_confirmation_is_valid(request.user, serializer.validated_data.get('current_password', '')):
             return api_error_response(
@@ -521,7 +553,7 @@ class AccountEmailChangeConfirmView(AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = AccountEmailChangeConfirmSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
@@ -581,7 +613,7 @@ class AccountPasswordChangeView(AccountAPIView):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountPasswordChangeSerializer(data=request.data, context={'request': request})
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         if not request.user.check_password(serializer.validated_data['current_password']):
             return api_error_response(
@@ -603,7 +635,7 @@ class AccountDeleteRequestView(AccountAPIView):
         if is_active_guest_demo_user(request.user):
             return guest_demo_forbidden_response()
         serializer = AccountDeleteRequestSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
 
         user = request.user
         if not _password_confirmation_is_valid(user, serializer.validated_data.get('password', '')):
@@ -655,7 +687,7 @@ class AccountRestoreView(AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = AccountRestoreSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         email = _normalize_email(serializer.validated_data['email'])
         password = serializer.validated_data['password']
 
@@ -734,7 +766,7 @@ class ResendActivationView(RegistrationAlertMixin, AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = ResendActivationSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         email = _normalize_email(serializer.validated_data['email'])
 
         # Checked before the account lookup so unknown, active and pending
@@ -796,7 +828,7 @@ class PasswordResetRequestView(AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = PasswordResetRequestSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         email = _normalize_email(serializer.validated_data['email'])
 
         user = User.objects.filter(email__iexact=email, is_active=True).first()
@@ -822,7 +854,7 @@ class PasswordResetConfirmView(AccountAPIView):
 
     def post(self, request: Request) -> Response:
         serializer = PasswordResetConfirmSerializer(data=request.data)
-        _validate_serializer_in_german(serializer)
+        self.validate_serializer(serializer)
         uid = _decode_uid(serializer.validated_data['uid'])
         if uid is None:
             return api_error_response(

@@ -143,8 +143,8 @@ class AuthApiTest(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('email', response.data)
         self.assertIn('password', response.data)
-        self.assertEqual(response.data['field_errors']['email'], ['invalid'])
-        self.assertEqual(response.data['field_errors']['password'], ['min_length'])
+        self.assertEqual(response.data['field_errors']['email'], [{'code': 'invalid'}])
+        self.assertEqual(response.data['field_errors']['password'], [{'code': 'min_length', 'limit': 8}])
         email_error = ' '.join(response.data['email'])
         password_error = ' '.join(response.data['password'])
         self.assertNotIn('Enter a valid email address', email_error)
@@ -849,7 +849,7 @@ class AuthApiTest(APITestCase):
             )
             self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST, name)
             self.assertIn('Dieser Name ist reserviert.', str(response.data['public_display_name']))
-            self.assertEqual(response.data['field_errors']['public_display_name'], ['public_display_name_reserved'])
+            self.assertEqual(response.data['field_errors']['public_display_name'], [{'code': 'public_display_name_reserved'}])
         self.assertFalse(PublicProfile.objects.filter(user=self.user).exists())
 
         response = self.client.patch(

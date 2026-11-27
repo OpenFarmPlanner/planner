@@ -57,7 +57,7 @@
     "newPassword": "Nova palavra-passe",
     "repeatNewPassword": "Repetir nova palavra-passe",
     "noPasswordHint": "Esta conta inicia sessão com o Google ou a Microsoft e não tem palavra-passe. É possível definir uma através de «Esqueceu-se da palavra-passe?» na página de início de sessão.",
-    "emailConfirmationSent": "Enviámos uma ligação de confirmação para o novo endereço de e-mail. Continue a iniciar sessão com o endereço atual até confirmares a alteração.",
+    "emailConfirmationSent": "Enviámos uma ligação de confirmação para o novo endereço de e-mail. Continue a iniciar sessão com o endereço atual até confirmar a alteração.",
     "passwordChanged": "A palavra-passe foi alterada."
   },
   "loginMethods": {

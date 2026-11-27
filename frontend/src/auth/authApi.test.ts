@@ -167,9 +167,9 @@ describe('authApi error mapping', () => {
           password: ['This password is too common.', 'This password is too short.'],
           non_field_errors: ['Untranslated detail.'],
           field_errors: {
-            email: ['invalid'],
-            password: ['password_too_common', 'password_too_short'],
-            non_field_errors: ['unknown_validation_code'],
+            email: [{ code: 'invalid' }],
+            password: [{ code: 'password_too_common' }, { code: 'password_too_short' }],
+            non_field_errors: [{ code: 'unknown_validation_code' }],
           },
         },
       },
@@ -187,6 +187,23 @@ describe('authApi error mapping', () => {
       expect(authError.message).toContain('Überprüfe diese Eingabe.');
       expect(authError.message).not.toMatch(/non_field_errors|Untranslated detail/);
     }
+  });
+
+  it('includes both validation limits in the French field errors', async () => {
+    await i18n.changeLanguage('fr');
+    installFetchMock([{
+      ok: false,
+      status: 400,
+      body: {
+        field_errors: {
+          password: [{ code: 'min_length', limit: 8 }],
+          display_name: [{ code: 'max_length', limit: 255 }],
+        },
+      },
+    }]);
+    await expect(request('/auth/register/')).rejects.toMatchObject({
+      message: expect.stringMatching(/au moins 8 caractères\.[\s\S]*au plus 255 caractères\./),
+    });
   });
 
   it('translates email failures by code', async () => {
@@ -231,7 +248,7 @@ describe('authApi error mapping', () => {
       payload: expect.objectContaining({ sender_email: 'info@example.org' }),
     });
     await expect(resendActivation('pending@example.com')).rejects.toMatchObject({
-      message: i18n.t('auth:error.requestFailed'),
+      message: i18n.t('auth:error.rateLimitedWithWait', { seconds: 42 }),
       retryAfterSeconds: 42,
     });
   });
@@ -451,8 +468,12 @@ describe('request — retry-after resolution', () => {
   };
 
   it('prefers the Retry-After header over anything in the body', async () => {
+    await i18n.changeLanguage('fr');
     throttled(new Headers({ 'Retry-After': '12' }), { retry_after: 99, detail: 'available in 77 seconds' });
-    await expect(getMe()).rejects.toMatchObject({ retryAfterSeconds: 12 });
+    await expect(getMe()).rejects.toMatchObject({
+      retryAfterSeconds: 12,
+      message: 'Trop de tentatives. Attendez 12 s avant de réessayer.',
+    });
   });
 
   it('falls back to the payload field when the header is absent', async () => {
@@ -460,9 +481,13 @@ describe('request — retry-after resolution', () => {
     await expect(getMe()).rejects.toMatchObject({ retryAfterSeconds: 99 });
   });
 
-  it('last of all, digs the seconds out of the detail sentence', async () => {
+  it('uses a localized retry message when the response only has prose', async () => {
+    await i18n.changeLanguage('fr');
     throttled(new Headers(), { detail: 'Request was throttled. Expected available in 77.3 seconds.' });
-    await expect(getMe()).rejects.toMatchObject({ retryAfterSeconds: 78 });
+    await expect(getMe()).rejects.toMatchObject({
+      retryAfterSeconds: undefined,
+      message: 'Trop de tentatives. Réessayez plus tard.',
+    });
   });
 
   it('reports no wait at all when the detail names no seconds', async () => {
