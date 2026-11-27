@@ -27,7 +27,7 @@ export function CropBulkSelectionActions({ selection, visibleIds, onOpenPreview,
         {t(allVisible ? 'library.batchImport.clearVisible' : 'library.batchImport.selectVisible', { count: selectableIds.length })}
       </Button>
       <Button size="small" onClick={selection.cancel}>{t('library.batchImport.cancelSelection')}</Button>
-      {onResetColors && selection.selectedVarietyColorIds.length > 0 ? (
+      {onResetColors && selection.colorResetSelection.length > 0 ? (
         <Button size="small" onClick={() => {
           onOpenPreview?.();
           onResetColors();

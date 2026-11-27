@@ -176,11 +176,22 @@ _CROP_WRITE_ERROR_RESPONSES = {
 }
 
 
+class CropColorResetEntrySerializer(serializers.Serializer):
+    id = serializers.IntegerField(min_value=1)
+    updated_at = serializers.DateTimeField()
+
+
 class CropColorResetSerializer(serializers.Serializer):
     expected_project_id = serializers.IntegerField(min_value=1)
-    crop_ids = serializers.ListField(
-        child=serializers.IntegerField(min_value=1), allow_empty=False, max_length=MAX_BULK_CROPS,
+    crops = CropColorResetEntrySerializer(
+        many=True, allow_empty=False, max_length=MAX_BULK_CROPS,
     )
+
+    def validate_crops(self, crops):
+        expected_versions = {crop['id']: crop['updated_at'] for crop in crops}
+        if len(expected_versions) != len(crops):
+            raise serializers.ValidationError('Each variety must appear only once.')
+        return expected_versions
 
 
 class CropColorUndoSerializer(serializers.Serializer):
@@ -654,7 +665,7 @@ class CropViewSet(ProjectScopedMixin, viewsets.ModelViewSet):
         if data['expected_project_id'] != project_id:
             return _crop_color_reset_conflict()
         try:
-            return Response(reset_variety_colors(project_id, set(data['crop_ids']), request.user))
+            return Response(reset_variety_colors(project_id, data['crops'], request.user))
         except CropColorResetConflict:
             return _crop_color_reset_conflict()
 

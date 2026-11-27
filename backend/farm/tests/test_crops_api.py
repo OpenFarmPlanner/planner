@@ -1760,10 +1760,13 @@ class CropInheritanceApiTest(ProjectApiTestCase):
             project=other, name='Carrot', variety='Other', display_color='#123456',
         )
         url = '/openfarmplanner/api/crops/'
-        target = {'expected_project_id': self.project.id, 'crop_ids': [self.sorte.id]}
-        for bad_id in (foreign.id, self.general.id):
+        selected = {'id': self.sorte.id, 'updated_at': self.sorte.updated_at.isoformat()}
+        target = {'expected_project_id': self.project.id, 'crops': [selected]}
+        for invalid in (foreign, self.general):
             response = self.client.post(f'{url}reset-colors/', {
-                **target, 'crop_ids': [self.sorte.id, bad_id],
+                **target, 'crops': [selected, {
+                    'id': invalid.id, 'updated_at': invalid.updated_at.isoformat(),
+                }],
             }, format='json')
             self.assertEqual(response.status_code, 409, response.data)
         self.sorte.refresh_from_db()
@@ -1795,6 +1798,32 @@ class CropInheritanceApiTest(ProjectApiTestCase):
         self.assertEqual(restored.status_code, 200, restored.data)
         self.assertIsNone(restored.data['display_color_override'])
         self.assertEqual(restored.data['display_color'], self.general.display_color)
+
+    def test_bulk_color_reset_rejects_stale_confirmation_for_the_whole_selection(self):
+        self.sorte.display_color = '#445566'
+        self.sorte.save()
+        other = Crop.objects.create(
+            project=self.project, name=self.sorte.name, crop_species=self.species,
+            variety='Second choice', display_color='#112233',
+        )
+        url = '/openfarmplanner/api/crops/'
+        selected = [self.client.get(f'{url}{crop.pk}/').data for crop in (self.sorte, other)]
+        response = self.client.patch(f'{url}{other.pk}/', {
+            'display_color_override': '#772211',
+        }, format='json')
+        self.assertEqual(response.status_code, 200, response.data)
+
+        response = self.client.post(f'{url}reset-colors/', {
+            'expected_project_id': self.project.pk,
+            'crops': [{'id': crop['id'], 'updated_at': crop['updated_at']} for crop in selected],
+        }, format='json')
+
+        self.assertEqual(response.status_code, 409, response.data)
+        self.assertEqual(response.data['code'], 'crop_color_reset_conflict')
+        self.sorte.refresh_from_db()
+        other.refresh_from_db()
+        self.assertEqual(self.sorte.display_color, '#445566')
+        self.assertEqual(other.display_color, '#772211')
 
     def test_seed_type_is_set_on_a_sorte_and_defaults_to_blank(self):
         url = f'/openfarmplanner/api/crops/{self.sorte.id}/'

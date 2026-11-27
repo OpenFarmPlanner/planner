@@ -312,6 +312,8 @@ export interface Crop {
   updated_at?: string;
 }
 
+export type CropColorResetEntry = { id: number; updated_at: string };
+
 /** The four kinds of crop timing windows, in display order. */
 /** No harvest kind: the harvest follows from planting date and growth duration. */
 export type TimingWindowKind = 'pre_cultivation' | 'direct_sowing' | 'planting';

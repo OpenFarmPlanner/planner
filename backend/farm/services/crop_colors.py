@@ -1,6 +1,6 @@
 """Project-scoped variety color reset and recovery."""
 
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from django.core import signing
 from django.db import transaction
@@ -26,9 +26,11 @@ def _selected_varieties(project_id: int, crop_ids: set[int]) -> list[Crop]:
 
 
 @transaction.atomic
-def reset_variety_colors(project_id: int, crop_ids: set[int], user) -> dict:
+def reset_variety_colors(project_id: int, expected_versions: dict[int, datetime], user) -> dict:
     lock_crop_project(project_id)
-    varieties = _selected_varieties(project_id, crop_ids)
+    varieties = _selected_varieties(project_id, set(expected_versions))
+    if any(crop.updated_at != expected_versions[crop.pk] for crop in varieties):
+        raise CropColorResetConflict
     changes = []
     with revision_actor(user):
         for crop in varieties:

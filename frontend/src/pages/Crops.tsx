@@ -18,7 +18,7 @@ import { useTranslation } from '../i18n';
 import { FALLBACK_LANGUAGE, normalizeLanguageTag } from '../i18n/languages';
 import PageContainer from '../components/layout/PageContainer';
 import { bedAPI, cropAPI, fieldAPI, type Crop } from '../api/api';
-import type { CropBulkDeleteResult, CropHistoryEntry } from '../api/types';
+import type { CropBulkDeleteResult, CropColorResetEntry, CropHistoryEntry } from '../api/types';
 import { CropDetail } from '../crops/CropDetail';
 import { CropBulkDeletionDialog } from '../crops/CropBulkDeletionDialog';
 import { useProjectCropSelection } from '../crops/useProjectCropSelection';
@@ -91,7 +91,9 @@ function Crops() {
   const { shouldShowProjectRequiredState, missingProjectReason, activeProjectId, activeProjectMembership } = useProjectRequirement();
   const [bulkUndo, setBulkUndo] = useState<{ projectId: number; result: CropBulkDeleteResult } | null>(null);
   const recoveringBulk = useRef(false);
-  const [colorResetTarget, setColorResetTarget] = useState<{ projectId: number; cropIds: number[] } | null>(null);
+  const [colorResetTarget, setColorResetTarget] = useState<{
+    projectId: number; varieties: CropColorResetEntry[];
+  } | null>(null);
   const [colorResetUndo, setColorResetUndo] = useState<{ projectId: number; token: string; count: number } | null>(null);
   const [savingColorReset, setSavingColorReset] = useState(false);
   const { selectedCropId, updateSelectedCropId } = useSelectedCropSync();
@@ -274,10 +276,10 @@ function Crops() {
 
   const resetSelectedColors = async () => {
     if (!colorResetTarget || colorResetTarget.projectId !== activeProjectId || savingColorReset) return;
-    const { projectId, cropIds } = colorResetTarget;
+    const { projectId, varieties } = colorResetTarget;
     setSavingColorReset(true);
     try {
-      const { data } = await cropAPI.resetVarietyColors(projectId, cropIds);
+      const { data } = await cropAPI.resetVarietyColors(projectId, varieties);
       if (Number(window.localStorage.getItem('activeProjectId')) !== projectId) return;
       setColorResetTarget(null);
       bulkSelection.cancel();
@@ -285,7 +287,9 @@ function Crops() {
       await loadCrops(undefined, projectId);
     } catch {
       if (Number(window.localStorage.getItem('activeProjectId')) === projectId) {
+        setColorResetTarget(null);
         showSnackbar(t('colorReset.failed'), 'error');
+        await loadCrops(undefined, projectId);
       }
     } finally {
       setSavingColorReset(false);
@@ -963,8 +967,8 @@ function Crops() {
           onDeleteCrop={handleDelete}
           bulkSelection={bulkSelection}
           onResetColors={() => {
-            if (activeProjectId && bulkSelection.selectedVarietyColorIds.length) {
-              setColorResetTarget({ projectId: activeProjectId, cropIds: bulkSelection.selectedVarietyColorIds });
+            if (activeProjectId && bulkSelection.colorResetSelection.length) {
+              setColorResetTarget({ projectId: activeProjectId, varieties: bulkSelection.colorResetSelection });
             }
           }}
           onUnlinkPublicCrop={handleRequestUnlinkPublicCrop}
@@ -1131,7 +1135,7 @@ function Crops() {
         open={colorResetTarget != null && colorResetTarget.projectId === activeProjectId}
         title={t('colorReset.action')}
         message={t('colorReset.confirm', {
-          count: colorResetTarget?.cropIds.length ?? 0,
+          count: colorResetTarget?.varieties.length ?? 0,
           project: activeProjectMembership?.project_name ?? '',
         })}
         cancelLabel={t('common:actions.cancel')}

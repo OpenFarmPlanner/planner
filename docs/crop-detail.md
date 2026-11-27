@@ -84,7 +84,8 @@ and library metadata remain in their own contexts. Project crop details and
 forms show the effective display colour. Varieties start with the colour of
 their general crop and can save or reset an individual colour. Crop selection
 also offers a confirmed reset for the selected variety overrides, with Undo
-and a revision in each variety's history.
+and a revision in each variety's history. If any selected variety changes
+before confirmation is saved, the selection is reloaded for a new confirmation.
 
 The assignment label and documented-host dialog title have contextual info
 buttons. Existing help text opens on hover or keyboard focus; click/tap keeps it
