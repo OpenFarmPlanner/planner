@@ -652,6 +652,8 @@ export const seasonAPI = {
       },
     }),
   dueSuggestion: () => http.get<SeasonDueSuggestion>('/seasons/due-suggestion/'),
+  createFirst: (data: { start_year: number; start_month: number }) =>
+    http.post<Season>('/seasons/create-first/', data),
   creationOptions: (params?: {
     manual_start_date?: string;
     use_actual_dates?: boolean;

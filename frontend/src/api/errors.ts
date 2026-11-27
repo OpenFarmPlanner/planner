@@ -96,6 +96,7 @@ const backendMessageMap: Record<string, string> = {
   'parcel_contains_individual_positions': 'fields:individualPlants.dimensionsConflict',
   'season_copy_no_preceding_source': 'navigation:seasonSwitcher.copyDialog.noPrecedingSource',
   'season_copy_source_not_preceding': 'navigation:seasonSwitcher.copyDialog.sourceChanged',
+  'first_season_unavailable': 'navigation:firstSeason.unavailable',
   'this crop species already exists or has already been proposed.': 'library.publishWizard.speciesAlreadyExists',
   'please enter a valid numeric value, e.g. 3.9.': 'validation.invalidNumberExample',
   // Namespaced explicitly: callers resolve `t` in their page namespace, which

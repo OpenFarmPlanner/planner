@@ -243,11 +243,19 @@
     "description_many": "Antes de trabalhar com épocas, definiremos o padrão de épocas e atribuiremos as {{count}} séries existentes deste projeto a uma época.",
     "summary_many": "→ Todas as {{count}} séries existentes serão atribuídas à época «{{label}}» ({{period}})."
   },
+  "firstSeason": {
+    "title": "Criar a primeira época",
+    "year": "Ano de início",
+    "yearRange": "Introduz um ano entre 1 e 9998.",
+    "recurs": "As próximas épocas regulares também começarão no primeiro dia deste mês.",
+    "unavailable": "Já não é possível criar aqui a primeira época. Recarrega o projeto para ver as épocas e opções disponíveis."
+  },
   "seasonPattern": {
+    "legacyDay": "O início guardado é o dia {{day}} de {{month}}. Ao alterar a configuração, passa a valer o primeiro dia do mês.",
+    "useFirstDay": "Usar o primeiro dia",
     "title": "Padrão de épocas",
-    "dayLabel": "Dia",
-    "monthLabel": "Mês",
-    "helper": "Cada época tem exatamente 12 meses a partir desta data.",
+    "monthLabel": "Início anual da época",
+    "helper": "As épocas regulares começam no primeiro dia do mês e duram doze meses.",
     "previewTitle": "Pré-visualização das épocas calculadas",
     "previewColumnLabel": "Ano",
     "previewColumnPeriod": "Período",

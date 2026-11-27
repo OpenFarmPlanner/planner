@@ -1625,14 +1625,14 @@ class ImportOperationHistoryTests(TestCase):
 
         self.client.patch(
             "/openfarmplanner/api/season-pattern/",
-            {"start_month": 2},
+            {"start_day": 15, "start_month": 2},
             content_type="application/json",
         )
         target = EntityRevision.objects.filter(project=self.project).latest("id")
         self.assertEqual(target.entity_type, "season_pattern")
         self.client.patch(
             "/openfarmplanner/api/season-pattern/",
-            {"start_month": 9},
+            {"start_day": 1, "start_month": 9},
             content_type="application/json",
         )
         response = self.client.post(
@@ -1641,7 +1641,8 @@ class ImportOperationHistoryTests(TestCase):
             content_type="application/json",
         )
         self.assertEqual(response.status_code, 200, response.content)
-        self.assertEqual(SeasonPattern.objects.get(project=self.project).start_month, 2)
+        pattern = SeasonPattern.objects.get(project=self.project)
+        self.assertEqual((pattern.start_day, pattern.start_month), (15, 2))
 
     def test_lazy_season_pattern_reads_do_not_advertise_project_versions(self) -> None:
         from farm.history.project_restore import CHECKPOINT_KEY

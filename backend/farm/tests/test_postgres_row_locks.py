@@ -19,6 +19,54 @@ pytestmark = pytest.mark.postgres
 
 
 @pytest.mark.django_db(transaction=True)
+def test_concurrent_first_season_requests_create_one_period_and_its_pattern():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import close_old_connections, connection
+    from rest_framework.test import APIClient
+
+    from farm.models import Project, ProjectMembership, Season, SeasonPattern
+    from farm.tests.api_base import User
+
+    if connection.vendor != 'postgresql':
+        pytest.skip('PostgreSQL row-lock regression')
+    user = User.objects.create_user(username='concurrent-first-season')
+    project = Project.objects.create(name='Concurrent first season', slug='concurrent-first-season')
+    ProjectMembership.objects.create(project=project, user=user, role='admin')
+    barrier = Barrier(2)
+
+    def create_season(year, month):
+        close_old_connections()
+        try:
+            client = APIClient()
+            client.force_authenticate(user)
+            barrier.wait(timeout=10)
+            return client.post(
+                '/openfarmplanner/api/seasons/create-first/',
+                {'start_year': year, 'start_month': month}, format='json',
+                HTTP_X_PROJECT_ID=str(project.pk),
+            )
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        first = executor.submit(create_season, 2027, 1)
+        second = executor.submit(create_season, 2028, 10)
+        accepted, rejected = sorted(
+            (first.result(timeout=30), second.result(timeout=30)),
+            key=lambda response: response.status_code,
+        )
+    assert accepted.status_code == 201, accepted.data
+    assert rejected.status_code == 409, rejected.data
+    assert rejected.data['code'] == 'first_season_unavailable'
+    season = Season.objects.get(project=project)
+    pattern = SeasonPattern.objects.get(project=project)
+    assert season.pk == accepted.data['id']
+    assert (pattern.start_day, pattern.start_month) == (1, season.start_date.month)
+
+
+@pytest.mark.django_db(transaction=True)
 def test_two_projects_cannot_claim_the_same_import_uuid_concurrently():
     from concurrent.futures import ThreadPoolExecutor
     from threading import Barrier

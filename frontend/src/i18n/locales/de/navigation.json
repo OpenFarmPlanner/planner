@@ -224,11 +224,19 @@
     "submit": "Einrichten",
     "error": "Einrichtung fehlgeschlagen."
   },
+  "firstSeason": {
+    "title": "Erste Saison anlegen",
+    "year": "Startjahr",
+    "yearRange": "Gib ein Jahr zwischen 1 und 9998 ein.",
+    "recurs": "Auch zukünftige reguläre Saisonen beginnen am ersten Tag dieses Monats.",
+    "unavailable": "Die erste Saison kann hier nicht mehr angelegt werden. Lade das Projekt neu, um die verfügbaren Saisonen und Optionen zu sehen."
+  },
   "seasonPattern": {
+    "legacyDay": "Der gespeicherte Saisonbeginn ist Tag {{day}} im {{month}}. Bei einer Änderung gilt der Monatserste.",
+    "useFirstDay": "Monatsersten verwenden",
     "title": "Saison-Muster",
-    "dayLabel": "Tag",
-    "monthLabel": "Monat",
-    "helper": "Jede Saison läuft ab diesem Datum genau 12 Monate.",
+    "monthLabel": "Jährlicher Saisonbeginn",
+    "helper": "Reguläre Saisonen beginnen am Monatsersten und dauern zwölf Monate.",
     "previewTitle": "Vorschau berechneter Saisonen",
     "previewColumnLabel": "Jahr",
     "previewColumnPeriod": "Zeitraum",

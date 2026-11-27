@@ -224,11 +224,19 @@
     "submit": "Set up",
     "error": "Setup failed."
   },
+  "firstSeason": {
+    "title": "Create first season",
+    "year": "Start year",
+    "yearRange": "Enter a year from 1 to 9998.",
+    "recurs": "Future regular seasons also start on the first day of this month.",
+    "unavailable": "The first season is no longer available here. Reload the project to see the available seasons and options."
+  },
   "seasonPattern": {
+    "legacyDay": "The saved pattern starts on day {{day}} of {{month}}. Changing it sets the start to the first of the month.",
+    "useFirstDay": "Use the first day",
     "title": "Season pattern",
-    "dayLabel": "Day",
-    "monthLabel": "Month",
-    "helper": "Every season runs for exactly 12 months from this date.",
+    "monthLabel": "Annual season start",
+    "helper": "Regular seasons start on the first day of the month and run for twelve months.",
     "previewTitle": "Preview of computed seasons",
     "previewColumnLabel": "Year",
     "previewColumnPeriod": "Period",

@@ -52,7 +52,7 @@ describe('SeasonSetupDialog', () => {
     // Before any change, the dialog shows the period it was opened with.
     expect(screen.getByText(/1\.1\.2026 – 31\.12\.2026/)).toBeInTheDocument();
 
-    const monthField = screen.getByLabelText('Monat');
+    const monthField = screen.getByLabelText('Jährlicher Saisonbeginn');
     await user.click(monthField);
     await user.click(screen.getByRole('option', { name: 'September' }));
 
@@ -70,5 +70,20 @@ describe('SeasonSetupDialog', () => {
 
     await waitFor(() => expect(applyMock).toHaveBeenCalledWith({ start_day: 1, start_month: 1 }));
     await waitFor(() => expect(onApplied).toHaveBeenCalledWith(7));
+  });
+
+  it('keeps a legacy day for assignment until the new month-only pattern is chosen', async () => {
+    const legacy = { ...baseStatus, start_day: 19, start_month: 10 };
+    applyMock.mockResolvedValue({ data: { season: { id: 7 } } });
+    const user = userEvent.setup();
+    render(<SeasonSetupDialog open status={legacy} onApplied={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByText(/gespeicherte Saisonbeginn ist Tag 19 im Oktober/)).toBeVisible();
+    await user.click(screen.getByRole('button', { name: 'Einrichten' }));
+    expect(applyMock).toHaveBeenLastCalledWith({ start_day: 19, start_month: 10 });
+
+    await user.click(screen.getByRole('button', { name: 'Monatsersten verwenden' }));
+    await waitFor(() => expect(statusMock).toHaveBeenLastCalledWith({ start_day: 1, start_month: 10 }));
+    await user.click(screen.getByRole('button', { name: 'Einrichten' }));
+    expect(applyMock).toHaveBeenLastCalledWith({ start_day: 1, start_month: 10 });
   });
 });

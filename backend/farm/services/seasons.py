@@ -85,6 +85,14 @@ def season_pattern_for_planning(project: Project) -> SeasonPattern:
     return SeasonPattern.objects.filter(project=project).first() or SeasonPattern(project=project)
 
 
+def first_season_available(project: Project) -> bool:
+    """The first-season flow must never replace historical seasons or migrate plans."""
+    return not (
+        Season.all_objects.filter(project=project).exists()
+        or PlantingPlan.objects.filter(project=project).exists()
+    )
+
+
 def add_months(reference_date: date, months: int) -> date:
     """Add a number of months to a date, clamping the day to the target month's length."""
     month_index = reference_date.month - 1 + months
@@ -226,7 +234,7 @@ def find_due_but_missing_season(
     latest season rather than the period containing today's date. Projects
     without a season retain the initial suggestion for the current period.
     """
-    pattern = pattern if pattern is not None else get_or_create_season_pattern(project)
+    pattern = pattern if pattern is not None else season_pattern_for_planning(project)
     latest_season = latest_existing_season(project)
     if latest_season is None:
         return compute_period_containing(pattern, today or date.today())
@@ -1006,6 +1014,7 @@ def build_season_creation_options(
     payload: dict[str, Any] = {
         'start_day': pattern.start_day,
         'start_month': pattern.start_month,
+        'first_season': latest_season is None and first_season_available(project),
         'last_season': None,
         'due_period': None,
         'transition': None,

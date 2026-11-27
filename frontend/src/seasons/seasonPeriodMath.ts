@@ -9,7 +9,7 @@
  * actually persisted; `seasonPeriodMath.test.ts` locks the parity.
  */
 
-import type { SeasonPeriodTransition } from '../api/types';
+import type { SeasonPeriodRange, SeasonPeriodTransition } from '../api/types';
 
 function toIsoDate(value: Date): string {
   const year = String(value.getFullYear()).padStart(4, '0');
@@ -84,6 +84,12 @@ export function addDaysIso(isoDate: string, days: number): string {
   const date = parseIsoDate(isoDate);
   date.setDate(date.getDate() + days);
   return toIsoDate(date);
+}
+
+/** A regular first season lasts through the day before the next anniversary. */
+export function computeFirstSeasonPeriod(year: number, month: number): SeasonPeriodRange {
+  const firstDay = (startYear: number) => `${String(startYear).padStart(4, '0')}-${String(month).padStart(2, '0')}-01`;
+  return { start_date: firstDay(year), end_date: addDaysIso(firstDay(year + 1), -1) };
 }
 
 /**

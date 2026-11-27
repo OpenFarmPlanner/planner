@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography } from '@mui/material';
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, Stack, Typography } from '@mui/material';
 import { seasonSetupAPI } from '../api/api';
 import type { SeasonSetupStatus } from '../api/types';
 import { useTranslation } from '../i18n';
 import { DisabledActionTooltip } from '../components/DisabledActionTooltip';
 import { extractApiErrorMessage } from '../api/errors';
 import { computeSeasonLabel, formatSeasonPeriod, resolveSeasonDateLocale } from './formatSeasonDate';
-import { SeasonStartDateFields } from './SeasonStartDateFields';
+import { LegacySeasonPatternNote, SeasonStartMonthField } from './SeasonStartMonthField';
 
 interface SeasonSetupDialogProps {
   open: boolean;
@@ -67,13 +67,12 @@ export function SeasonSetupDialog({ open, status, onApplied, onCancel }: SeasonS
           {t('navigation:seasonSetup.description', { count: status.unassigned_planting_plan_count })}
         </Typography>
 
-        <Typography variant="subtitle2" sx={{ mb: 1 }}>{t('navigation:seasonSetup.startLabel')}</Typography>
-        <SeasonStartDateFields
-          idPrefix="season-setup"
-          startDay={startDay}
-          startMonth={startMonth}
-          onChange={(day, month) => { setStartDay(day); setStartMonth(month); }}
-        />
+        <Stack spacing={1} sx={{ maxWidth: 360 }}>
+          <SeasonStartMonthField month={startMonth} disabled={submitting}
+            onChange={month => { setStartDay(1); setStartMonth(month); }} />
+          <LegacySeasonPatternNote day={startDay} month={startMonth} disabled={submitting}
+            onUseFirstDay={() => setStartDay(1)} />
+        </Stack>
 
         <Alert severity="info" sx={{ mt: 2.5, mb: 2 }}>
           {t('navigation:seasonSetup.infoBox', { label })}
