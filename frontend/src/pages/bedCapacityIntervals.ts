@@ -82,7 +82,8 @@ export function buildBedCapacityTimelines(
   for (const plan of plans) {
     const events = plan.bed === null ? undefined : eventsByBed.get(plan.bed);
     if (!events || (plan.id !== undefined && seenPlans.has(plan.id))) continue;
-    if (plan.placement_mode === 'individual_bed' && plan.individual_positions?.length === 0) continue;
+    const individualBed = plan.placement_mode === 'individual_bed';
+    if (individualBed && (plan.individual_count ?? plan.plants_count ?? plan.individual_positions?.length) === 0) continue;
     const planted = calendarDay(plan.seasonal_harvest?.occupancy_start_date ?? plan.planting_date);
     // Same inclusive last-day contract as PlantingPlan.occupancy_end_date.
     const occupiedUntil = calendarDay(
@@ -94,7 +95,7 @@ export function buildBedCapacityTimelines(
     if (end <= start) continue;
     if (plan.id !== undefined) seenPlans.add(plan.id);
 
-    const area = areaInHundredths(plan.area_usage_sqm);
+    const area = individualBed ? null : areaInHundredths(plan.area_usage_sqm);
     for (const [day, direction] of [[start, 1], [end, -1]]) {
       const change = events.get(day) ?? { area: 0, unknown: 0 };
       change.area += (area ?? 0) * direction;

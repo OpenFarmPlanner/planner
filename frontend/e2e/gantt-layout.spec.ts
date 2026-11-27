@@ -6,6 +6,30 @@ const backendPort = process.env.BACKEND_PORT ?? '8000';
 const e2eToken = process.env.E2E_TEST_TOKEN || 'openfarmplanner-e2e-token';
 const apiBase = `http://127.0.0.1:${backendPort}/api`;
 
+test('shows a location-direct plan in the calendar before any parcels or beds exist', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.setFixedTime(new Date(2026, 4, 15, 12));
+  await loginWithDeterministicProject(page, request, 'calendar-individual-location', { loginAsAdmin: true });
+  const { results: [site] } = await apiRequest<{ results: { id: number }[] }>(page, 'GET', '/locations/');
+  expect(await apiRequest(page, 'GET', '/fields/')).toMatchObject({ results: [] });
+  expect(await apiRequest(page, 'GET', '/beds/')).toMatchObject({ results: [] });
+  const season = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+    start_date: '2026-01-01', end_date: '2026-12-31',
+  });
+  const crop = await apiRequest<{ id: number }>(page, 'POST', '/crops/', {
+    name: 'Johannisbeere am Standort', life_cycle: 'perennial', standing_time_years: 4,
+    cultivation_types: ['pre_cultivation'],
+  });
+  const plan = await apiRequest<{ id: number }>(page, 'POST', '/planting-plans/', {
+    season: season.id, crop: crop.id, site: site.id, planting_date: '2026-04-01',
+    clearing_date: '2030-04-01', cultivation_type: 'purchased_transplant', individual_count: 2,
+  });
+  await page.goto('/app/gantt-chart');
+  const row = page.getByTestId(`task-group-individual-location-${site.id}`);
+  await expect(row).toContainText('Einzelpflanzen');
+  await expect(page.getByTestId(`task-plan-${plan.id}-occupancy`)).toBeVisible();
+});
+
 type LayoutMetrics = {
   bodyOverflowX: number;
   documentOverflowX: number;

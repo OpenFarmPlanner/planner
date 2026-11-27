@@ -338,7 +338,7 @@ function GanttChartPage() {
   const projectionRequest = useMemo(() => {
     if (calendarMode !== 'occupancy' || !activeProjectId || !activeSeasonId || !seasonStartText || !seasonEndText
       || (axisStartText >= seasonStartText && axisEndText <= seasonEndText)
-      || !plantingPlans.some(plan => plan.seasonal_harvest && (plan.bed || plan.parcel))) {
+      || !plantingPlans.some(plan => plan.seasonal_harvest && (plan.bed || plan.parcel || plan.site))) {
       return null;
     }
     return { axisStartText, axisEndText };
@@ -412,7 +412,7 @@ function GanttChartPage() {
   ), [showFreeAreas, t, toggleFreeAreas]);
 
   const calendarDateAxis = showBedCapacity || (calendarMode === 'occupancy' && plantingPlans.some(
-    plan => (plan.bed || plan.parcel) && plan.planting_date && (plan.clearing_date || plan.seasonal_harvest),
+    plan => (plan.bed || plan.parcel || plan.site) && plan.planting_date && (plan.clearing_date || plan.seasonal_harvest),
   ));
   // The scroll helpers use local column dates while tasks retain their UTC dates.
   const startDate = useMemo(() => calendarDateAxis ? toLocalCalendarDate(taskRangeStart) : taskRangeStart,
@@ -1164,7 +1164,8 @@ function GanttChartPage() {
   const hasCrops = crops.length > 0;
   const hasBeds = beds.length > 0;
   const hasPlantingPlans = plantingPlans.length > 0;
-  const firstMissingPrerequisite = getFirstMissingCultivationPlanRequirement({
+  const hasDirectPlans = plantingPlans.some(plan => plan.site != null || plan.parcel != null);
+  const firstMissingPrerequisite = hasDirectPlans && hasCrops ? null : getFirstMissingCultivationPlanRequirement({
     hasFields,
     hasBeds,
     hasCrops,
