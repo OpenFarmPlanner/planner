@@ -65,4 +65,16 @@ describe('individual plants in Graphic', () => {
       }
     }
   });
+
+  it('can place a label beside a marker even when the label and marker share a search cell', () => {
+    const [stem] = placeIndividualPlantObjects(growth(), dimensions, surface, 0, 'Beetroot', null);
+    stem.rect = { x: 69, y: 60, width: 0, height: 0 };
+    const beds = [{ x: 85, y: 45, width: 90, height: 50 }];
+    const viewport = { x: 0, y: 0, scale: 1 };
+    const size = { width: 500, height: 400 };
+    const measure = () => 10;
+    expect(getIndividualPlantLabels([stem], beds, viewport, size, measure).get(stem.stemId)).toMatchObject({ x: -38 });
+    const nearby = { ...stem, stemId: 'nearby', rect: { ...stem.rect, x: 56 } };
+    expect(getIndividualPlantLabels([stem, nearby], beds, viewport, size, measure).has(stem.stemId)).toBe(false);
+  });
 });

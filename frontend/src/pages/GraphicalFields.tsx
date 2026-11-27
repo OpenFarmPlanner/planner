@@ -52,6 +52,7 @@ import {
   clampInsideBoundary,
   clampInsideParent,
   isRectOutsideBoundary,
+  rectsOverlap,
   DEFAULT_GRAPHICAL_ROTATION,
   rotateRect,
   rotateRectBetweenSizes,
@@ -143,10 +144,13 @@ export default function GraphicalFields({
   const showCrops = includesCrops(displayMode);
   const plantCropReference = showCrops ? cropReference : undefined;
   const focusedPlanId = individualPlants.editor.open ? individualPlants.editor.planId : null;
-  const measurePlantText = useMemo(() => {
+  const measureCanvasText = useMemo(() => {
     const context = typeof OffscreenCanvas === 'undefined' ? null : new OffscreenCanvas(1, 1).getContext('2d');
-    if (context) context.font = '11px Arial, sans-serif';
-    return (value: string) => context?.measureText(value).width ?? Array.from(value).length * 6.5;
+    return (value: string, font = '11px Arial, sans-serif') => {
+      if (!context) return Array.from(value).length * 6.5;
+      context.font = font;
+      return context.measureText(value).width;
+    };
   }, []);
   const [layoutsByBed, setLayoutsByBed] = useState<
     Record<number, BedLayoutEntry>
@@ -1121,10 +1125,20 @@ export default function GraphicalFields({
           const plantLabels = showCrops && plantObjects.size
             ? getIndividualPlantLabels([...plantObjects.values()], [...areaObjects.values()].flatMap(object =>
               object.type === 'bed' && object.rect ? [object.rect] : []), viewport,
-              { width: stageWidth, height: stageHeight }, measurePlantText) : null;
+              { width: stageWidth, height: stageHeight }, measureCanvasText) : null;
           const showFallbackLocationLabel = !boundary || viewport.x + (boundary.x + boundary.width) * viewport.scale < 0
             || viewport.x + boundary.x * viewport.scale > stageWidth - 100
             || viewport.y + boundary.y * viewport.scale < 60 || viewport.y + boundary.y * viewport.scale > stageHeight;
+          const locationLabel = boundary ? t("fields:graphical.locationBoundaryLabel", {
+            name: location.name,
+            width: formatLocalizedNumber(location.width_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
+            length: formatLocalizedNumber(location.length_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
+          }) : '';
+          const locationLabelVisible = Boolean(boundary && (!showFallbackLocationLabel || !objectInteractionEnabled));
+          const locationLabelBounds = boundary && locationLabelVisible ? {
+            x: boundary.x * viewport.scale, y: boundary.y * viewport.scale,
+            width: measureCanvasText(locationLabel, '12px Arial, sans-serif'), height: 14,
+          } : null;
           const snapping = { enabled: pathSpacing.snap_to_path_spacing, zoom: viewport.scale };
           const focusArea = (rect: PlacementRect): void => {
             setViewportByLocation(previous => ({ ...previous, [locationId]: {
@@ -1354,16 +1368,12 @@ export default function GraphicalFields({
                           <Text
                             x={boundary.x}
                             y={boundary.y - (FIELD_LABEL_SCREEN_PADDING + 14) / viewport.scale}
-                            text={t("fields:graphical.locationBoundaryLabel", {
-                              name: location.name,
-                              width: formatLocalizedNumber(location.width_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
-                              length: formatLocalizedNumber(location.length_m ?? 0, getActiveFormattingLocale(), { maximumFractionDigits: 2 }),
-                            })}
+                            text={locationLabel}
                             fill={theme.palette.text.secondary}
                             wrap="none"
                             scaleX={1 / viewport.scale}
                             scaleY={1 / viewport.scale}
-                            visible={!showFallbackLocationLabel || !objectInteractionEnabled}
+                            visible={locationLabelVisible}
                             listening={objectInteractionEnabled && !showFallbackLocationLabel}
                             data-graphical-object-key={locationKey}
                             data-testid={`location-boundary-label-${locationId}`}
@@ -1378,8 +1388,14 @@ export default function GraphicalFields({
                           ? { centimeters: pathSpacing.bed_path_spacing_cm, pixelsPerMeter }
                           : undefined;
                         const fieldWarning = parcelWarnings.get(fieldId);
-                        const sharesLocationLabelRow = boundary && (!showFallbackLocationLabel || !objectInteractionEnabled)
-                          && Math.abs(currentFieldRect.y - boundary.y) * viewport.scale < 14;
+                        const showFieldLabel = shouldShowFieldLabel(currentFieldRect, viewport.scale);
+                        const labelWidth = getFieldLabelScreenWidth(currentFieldRect, viewport.scale);
+                        const overlapsLocationLabel = showFieldLabel && locationLabelBounds && rectsOverlap(locationLabelBounds, {
+                          x: currentFieldRect.x * viewport.scale + FIELD_LABEL_SCREEN_PADDING,
+                          y: currentFieldRect.y * viewport.scale,
+                          width: Math.min(labelWidth, measureCanvasText(field.name, 'bold 12px Arial, sans-serif')),
+                          height: 14,
+                        });
                         const fieldDragProps = getFieldInteractionProps(
                           fieldId, currentFieldRect,
                           { width: contentWidth, height: contentHeight },
@@ -1404,7 +1420,7 @@ export default function GraphicalFields({
                               width={fieldUsableArea.width}
                               height={fieldUsableArea.height}
                               fill={theme.palette.background.paper}
-                              listening={objectInteractionEnabled}
+                              listening={objectInteractionEnabled || locationIsEditable}
                               data-graphical-object-key={graphicalObjectKey('field', fieldId)}
                               data-testid={`field-usable-area-${fieldId}`}
                             />
@@ -1420,12 +1436,12 @@ export default function GraphicalFields({
                               data-outside-location={fieldsOutsideBoundary.has(fieldId) || undefined}
                               data-graphical-object-key={graphicalObjectKey('field', fieldId)}
                             />
-                            {!sharesLocationLabelRow && shouldShowFieldLabel(currentFieldRect, viewport.scale) ? (
+                            {showFieldLabel && !overlapsLocationLabel ? (
                               <Text
                                 x={FIELD_LABEL_SCREEN_PADDING / viewport.scale}
                                 y={-(FIELD_LABEL_SCREEN_PADDING + 14) / viewport.scale}
                                 text={field.name}
-                                width={getFieldLabelScreenWidth(currentFieldRect, viewport.scale)}
+                                width={labelWidth}
                                 fill={theme.palette.text.primary}
                                 wrap="none"
                                 ellipsis
@@ -1433,6 +1449,7 @@ export default function GraphicalFields({
                                 listening={false}
                                 scaleX={1 / viewport.scale}
                                 scaleY={1 / viewport.scale}
+                                data-testid={`field-label-${fieldId}`}
                               />
                             ) : null}
                             {bedRects.filter(bedVm => visibility.showBeds

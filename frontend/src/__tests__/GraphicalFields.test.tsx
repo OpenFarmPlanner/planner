@@ -474,6 +474,22 @@ describe("GraphicalFields", async () => {
     expect(usable).toHaveAttribute("fill", paper);
   });
 
+  it('keeps a parcel name beside the site label when their screen bounds do not overlap', async () => {
+    const data = mockUseHierarchyData();
+    const field = { ...data.fields[0], length_m: 10, width_m: 10 };
+    mockUseHierarchyData.mockReturnValue({ ...data, beds: [],
+      locations: [{ ...data.locations[0], length_m: 70, width_m: 40 }],
+      fields: [field, { ...field, id: 11, name: 'Parzelle B' }],
+    });
+    listByLocationMock.mockResolvedValueOnce({ data: {
+      location_boundary: { x: 120, y: 120 }, bed_layouts: [],
+      field_layouts: [{ field: 10, location: 1, x: 120, y: 1200 }, { field: 11, location: 1, x: 120, y: 650 }],
+    } });
+    await renderGraphic(<GraphicalFields interactionMode="edit" />);
+    expect(await screen.findByTestId('field-label-11')).toBeInTheDocument();
+    expect(screen.queryByTestId('field-label-10')).not.toBeInTheDocument();
+  });
+
   it("moves the usable area along with a dragged field", async () => {
     await renderGraphic(<GraphicalFields />);
     act(() => {

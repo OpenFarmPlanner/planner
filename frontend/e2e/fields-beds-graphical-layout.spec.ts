@@ -1260,7 +1260,9 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     const start = { x: plot.container.x + plot.bounds.x + plot.bounds.width / 2, y: plot.container.y + plot.bounds.y + plot.bounds.height / 2 };
     await page.mouse.move(start.x, start.y);
     await page.mouse.down();
-    await page.mouse.move(start.x + dx, start.y + dy, { steps: 12 });
+    const viewport = page.viewportSize()!;
+    await page.mouse.move(Math.max(1, Math.min(viewport.width - 2, start.x + dx)),
+      Math.max(1, Math.min(viewport.height - 2, start.y + dy)), { steps: 12 });
     const saved = page.waitForResponse(response => response.url().endsWith(`/locations/${location.id}/layouts/`)
       && response.request().method() === 'PUT'
       && (response.request().postDataJSON() as { field_layouts: unknown[] }).field_layouts.length > 0);
@@ -1274,7 +1276,7 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     await page.getByRole('button', { name: 'Grafik', exact: true }).click();
     await selectLocation(page, 'Klemmhof');
     await expect.poll(async () => (await canvasRects(page, `location-boundary-${location.id}`)).length).toBe(1);
-    await page.getByRole('button', { name: 'Grafik bearbeiten', exact: true }).click();
+    await toggleGraphicEdit(page);
     for (const zoomClicks of [0, 2]) {
       for (let i = 0; i < zoomClicks; i += 1) {
         await page.getByRole('button', { name: 'Herauszoomen', exact: true }).first().click();
@@ -1287,6 +1289,7 @@ test('keeps a dragged plot inside the location boundary at any zoom and viewport
     }
     await expect(page.getByTestId('location-boundary-overflow-hint')).toHaveCount(0);
     await page.screenshot({ path: testInfo.outputPath(`boundary-drag-${viewport.width}x${viewport.height}.png`), animations: 'disabled' });
+    if (viewport.width > 375) await page.getByRole('button', { name: 'Grafikbearbeitung beenden', exact: true }).click();
     await page.waitForLoadState('networkidle');
   }
 
@@ -1353,8 +1356,8 @@ for (const input of ['mouse', 'touch'] as const) {
       const offsets = await bedOffsets();
       const touch = input === 'touch' ? await page.context().newCDPSession(page) : null;
       const start = {
-        x: Math.round(before.container.x + before.bounds.x + before.bounds.width / 2),
-        y: Math.round(before.container.y + before.bounds.y + before.bounds.height * 0.12),
+        x: Math.round(before.container.x + before.bounds.x + before.bounds.width * 0.22),
+        y: Math.round(before.container.y + before.bounds.y + before.bounds.height * 0.21),
       };
       const beginDrag = async () => {
         if (touch) {
@@ -1363,7 +1366,7 @@ for (const input of ['mouse', 'touch'] as const) {
           await page.mouse.move(start.x, start.y);
           await page.mouse.down();
         }
-        for (const distance of [9, 20]) {
+        for (const distance of [18, 36]) {
           const point = { x: start.x + distance, y: start.y + distance };
           if (touch) {
             await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [point] });
