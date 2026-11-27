@@ -3,7 +3,7 @@ from decimal import Decimal
 from uuid import UUID, uuid4
 
 from crops.models import CropSpecies
-from farm.models import Bed, Crop, Field, Location, PlantingPlan, Project, Season
+from farm.models import Bed, Crop, EntityRevision, Field, Location, PlantingPlan, Project, Season
 from farm.services.bed_capacity import calculate_bed_capacity
 from farm.services.harvests import eligible_harvest_plans
 from farm.services.parcel_rotation_copy import preview_parcel_rotation
@@ -95,12 +95,14 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         self.assertEqual(PlantingPlan.objects.filter(project=self.project).count(), 3)
 
     def test_location_plan_revision_display_name_uses_the_location(self):
-        from farm.history.records import _entity_display_name
-
-        plan = PlantingPlan.objects.get(pk=self.create_plan(
+        plan = self.create_plan(
             parcel=None, site=self.location.pk, individual_positions=[], individual_count=2,
-        ).json()['id'])
-        self.assertIn(self.location.name, _entity_display_name(plan))
+        ).json()
+        revision = EntityRevision.objects.get(
+            project=self.project, entity_type='planting_plan', object_id=plan['id'],
+            action=EntityRevision.ACTION_CREATED,
+        )
+        self.assertEqual(revision.display_name, f'{self.apple.name} / {self.location.name}')
 
     def test_count_only_location_keeps_pending_and_moves_the_split_count_with_a_stem(self):
         scene = self.graphic_scene()
