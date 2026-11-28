@@ -4,13 +4,16 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { PlantingPlan, Season } from '../api/types';
 import { getDirectlyDraggableStemPlans, useIndividualPlants } from '../pages/useIndividualPlants';
 
-const { listMock, saveMock } = vi.hoisted(() => ({ listMock: vi.fn(), saveMock: vi.fn() }));
+const { listMock, saveMock, removeMock } = vi.hoisted(() => ({ listMock: vi.fn(), saveMock: vi.fn(), removeMock: vi.fn() }));
 
 vi.mock('../api/api', async () => {
   const actual = await vi.importActual<typeof import('../api/api')>('../api/api');
   return {
     ...actual,
-    plantingPlanAPI: { ...actual.plantingPlanAPI, listIndividualAtLocation: listMock, saveIndividualPlacement: saveMock },
+    plantingPlanAPI: {
+      ...actual.plantingPlanAPI, listIndividualAtLocation: listMock, saveIndividualPlacement: saveMock,
+      removeIndividualStems: removeMock,
+    },
   };
 });
 
@@ -149,54 +152,62 @@ describe('useIndividualPlants direct stem moves (#1579)', () => {
 describe('useIndividualPlants plant removal (#1727)', () => {
   beforeEach(() => {
     listMock.mockReset();
-    saveMock.mockReset();
+    removeMock.mockReset();
   });
 
-  it('removes a plant with its exact total, or only its position while the plant stays planned', async () => {
-    listMock.mockResolvedValue({ results: [plan({ individual_count: 5 })] });
-    saveMock.mockImplementation((_id, _version, data) => Promise.resolve({
-      data: plan({ individual_count: data.individual_count, individual_positions: data.individual_positions }),
+  it('removes plants across plans in one batch with each plan version, or only their positions', async () => {
+    listMock.mockResolvedValue({ results: [plan({ individual_count: 5 }), plan({ id: 8, updated_at: '2026-05-02T10:00:00Z' })] });
+    removeMock.mockImplementation(data => Promise.resolve({ data: { plans: data.plans.map(
+      (entry: { plan: number }) => plan({ id: entry.plan, individual_count: entry.plan === 7 ? 4 : null,
+        individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }] })) } }));
+    const { result } = renderHook(() => useIndividualPlants(5, season, true));
+    await waitFor(() => expect(result.current.plans).toHaveLength(2));
+
+    let removed = false;
+    await act(async () => {
+      removed = await result.current.removeSavedStems([{ planId: 7, stemIds: ['b'] }, { planId: 8, stemIds: ['b'] }], 'plant');
+    });
+    expect(removed).toBe(true);
+    expect(removeMock).toHaveBeenLastCalledWith({
+      request_id: expect.any(String), mode: 'plant',
+      plans: [
+        { plan: 7, placement_updated_at: '2026-05-01T10:00:00Z', stems: ['b'] },
+        { plan: 8, placement_updated_at: '2026-05-02T10:00:00Z', stems: ['b'] },
+      ],
+    });
+    expect(result.current.plans.find(item => item.id === 7)).toMatchObject({ individual_count: 4 });
+
+    await act(async () => { await result.current.removeSavedStems([{ planId: 7, stemIds: ['a'] }], 'position'); });
+    expect(removeMock).toHaveBeenLastCalledWith(expect.objectContaining({ mode: 'position' }));
+  });
+
+  it('saves nothing when any selected plan would lose its last plant or rewrite recorded losses', async () => {
+    listMock.mockResolvedValue({ results: [
+      plan({ individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }] }),
+      plan({ id: 8, individual_count: 3, crop_loss_count: 1 }),
+      plan({ id: 9 }),
+    ] });
+    const { result } = renderHook(() => useIndividualPlants(5, season, true));
+    await waitFor(() => expect(result.current.plans).toHaveLength(3));
+
+    await act(async () => {
+      expect(await result.current.removeSavedStems([{ planId: 9, stemIds: ['a'] }, { planId: 7, stemIds: ['a'] }], 'plant')).toBe(false);
+      expect(await result.current.removeSavedStems([{ planId: 9, stemIds: ['a'] }, { planId: 8, stemIds: ['a'] }], 'plant')).toBe(false);
+    });
+    expect(removeMock).not.toHaveBeenCalled();
+  });
+
+  it('reports a server conflict and reloads instead of keeping stale plans', async () => {
+    listMock.mockResolvedValue({ results: [plan()] });
+    removeMock.mockRejectedValue(new AxiosError('conflict', '409', undefined, undefined, {
+      status: 409, statusText: 'Conflict', data: { code: 'individual_removal_protected' }, headers: {},
+      config: { headers: new AxiosHeaders() },
     }));
     const { result } = renderHook(() => useIndividualPlants(5, season, true));
     await waitFor(() => expect(result.current.plans).toHaveLength(1));
 
-    let removed = false;
-    await act(async () => { removed = await result.current.removeSavedStems(7, ['b'], 'plant'); });
-    expect(removed).toBe(true);
-    expect(saveMock).toHaveBeenLastCalledWith(7, '2026-05-01T10:00:00Z', {
-      individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }], individual_count: 4,
-    });
-    expect(result.current.plans[0]).toMatchObject({ individual_count: 4 });
-
-    await act(async () => { await result.current.removeSavedStems(7, ['a'], 'position'); });
-    expect(saveMock).toHaveBeenLastCalledWith(7, '2026-05-01T10:00:00Z', {
-      individual_positions: [], individual_count: 4,
-    });
-  });
-
-  it('refuses to remove the last plant or rewrite a total with recorded losses, without saving', async () => {
-    listMock.mockResolvedValue({ results: [
-      plan({ individual_positions: [{ id: 'a', x_m: 1, y_m: 1 }] }),
-      plan({ id: 8, individual_count: 3, crop_loss_count: 1 }),
-    ] });
-    const { result } = renderHook(() => useIndividualPlants(5, season, true));
-    await waitFor(() => expect(result.current.plans).toHaveLength(2));
-
-    await act(async () => {
-      expect(await result.current.removeSavedStems(7, ['a'], 'plant')).toBe(false);
-      expect(await result.current.removeSavedStems(8, ['a'], 'plant')).toBe(false);
-    });
-    expect(saveMock).not.toHaveBeenCalled();
-  });
-
-  it('reports a conflict and reloads instead of keeping a stale plan', async () => {
-    listMock.mockResolvedValue({ results: [plan()] });
-    saveMock.mockRejectedValue(conflict());
-    const { result } = renderHook(() => useIndividualPlants(5, season, true));
-    await waitFor(() => expect(result.current.plans).toHaveLength(1));
-
-    await act(async () => { await result.current.removeSavedStems(7, ['b'], 'position'); });
-    expect(result.current.moveError).toBe('changedElsewhere');
+    await act(async () => { await result.current.removeSavedStems([{ planId: 7, stemIds: ['b'] }], 'plant'); });
+    expect(result.current.moveError).toBe('removalProtected');
     await waitFor(() => expect(listMock).toHaveBeenCalledTimes(2));
   });
 });

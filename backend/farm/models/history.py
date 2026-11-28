@@ -61,6 +61,7 @@ class BatchOperation(models.Model):
     TYPE_CROP_BULK_DELETE = 'crop_bulk_delete'
     TYPE_CROP_BULK_UNDELETE = 'crop_bulk_undelete'
     TYPE_INDIVIDUAL_PLACEMENT = 'individual_placement'
+    TYPE_INDIVIDUAL_REMOVAL = 'individual_removal'
     TYPE_CHOICES = [
         (TYPE_SEASON_CREATE, 'Season created'),
         (TYPE_SEASON_DELETE, 'Season deleted'),
@@ -71,6 +72,7 @@ class BatchOperation(models.Model):
         (TYPE_CROP_BULK_DELETE, 'Crops archived'),
         (TYPE_CROP_BULK_UNDELETE, 'Archived crops restored'),
         (TYPE_INDIVIDUAL_PLACEMENT, 'Individual plants placed'),
+        (TYPE_INDIVIDUAL_REMOVAL, 'Individual plants removed'),
     ]
 
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='batch_operations')

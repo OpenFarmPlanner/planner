@@ -219,10 +219,8 @@ test('opens exact plan actions by keyboard and removes the selected plant direct
   await stemTarget(page, second.id).focus();
   await page.keyboard.press('Delete');
   const removal = page.getByRole('dialog', { name: 'Pflanze entfernen' });
-  // The demo plan has recorded outcomes: its planned total stays, only the position can be cleared.
-  await expect(removal.getByRole('radio', { name: /^Pflanze entfernen/ })).toBeDisabled();
-  await expect(removal.getByRole('radio', { name: /^Nur Position entfernen/ })).toBeChecked();
-  await expect(removal).toContainText('Ernten oder Ausfälle erfasst');
+  await expect(removal.getByRole('radio', { name: /^Pflanze entfernen/ })).toBeChecked();
+  await expect(removal).toContainText('Die geplante Anzahl sinkt von 2 auf 1.');
   await removal.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect(removal).toBeHidden();
   expect((await read()).individual_positions).toEqual(plan.individual_positions);
@@ -231,10 +229,9 @@ test('opens exact plan actions by keyboard and removes the selected plant direct
   const inspector = page.getByTestId('graphical-object-preview');
   await expect(inspector.getByTestId('individual-plant-counts')).toHaveText('2 von 2 positioniert');
   await inspector.getByRole('button', { name: 'Pflanze entfernen', exact: true }).click();
-  const before = await read();
-  await removal.getByRole('button', { name: 'Nur Position entfernen', exact: true }).click();
+  await removal.getByRole('button', { name: 'Pflanze entfernen', exact: true }).click();
   await expect.poll(async () => (await read()).individual_positions).toEqual([first]);
-  expect(await read()).toMatchObject({ plants_count: before.plants_count, pending_plants_count: 1 });
+  expect(await read()).toMatchObject({ plants_count: 1, pending_plants_count: 0 });
   await expect(stemTarget(page, second.id)).toHaveCount(0);
 
   // The last plant of a plan cannot be removed; clearing its position keeps it planned.
@@ -242,6 +239,7 @@ test('opens exact plan actions by keyboard and removes the selected plant direct
   await menu.getByRole('menuitem', { name: 'Pflanze entfernen' }).click();
   await expect(removal.getByRole('radio', { name: /^Pflanze entfernen/ })).toBeDisabled();
   await expect(removal.getByRole('radio', { name: /^Nur Position entfernen/ })).toBeChecked();
+  await expect(removal).toContainText('Ein Anbauplan behält mindestens eine Pflanze.');
   await removal.getByRole('button', { name: 'Abbrechen', exact: true }).click();
   await expect(removal).toBeHidden();
   await clickStem(page, first.id, 'right');
@@ -255,11 +253,100 @@ test('opens exact plan actions by keyboard and removes the selected plant direct
   await expect(stemTarget(page, second.id)).toHaveCount(0);
   await clickStem(page, first.id);
   await expect(page.getByTestId('graphical-object-preview').getByTestId('individual-plant-counts'))
-    .toHaveText(`1 von ${before.plants_count} positioniert · 1 noch nicht positioniert`);
+    .toHaveText('1 von 1 positioniert');
   await page.keyboard.press('Escape');
   await stemTarget(page, first.id).press('Shift+F10');
   await menu.getByRole('menuitem', { name: 'Anbauplan-Details' }).click();
   await expect(page).toHaveURL(new RegExp(`/app/planting-plans/${plan.id}$`));
+});
+
+test('selects plants across plans with Shift and removes them in one validated batch', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const { plan, orchard } = await fixture(page, request, 'individual-multi-select');
+  const [first, second] = plan.individual_positions;
+  const [tree] = orchard.individual_positions;
+  await openGraphic(page);
+  const bar = page.getByTestId('individual-plant-selection');
+  const read = (id: number) => apiRequest<SavedPlantPlan>(page, 'GET', `/planting-plans/${id}/`);
+  await apiRequest(page, 'POST', '/crop-losses/', {
+    planting_plan: orchard.id, date: '2026-05-10', loss_type: 'partial', cause: 'frost',
+  });
+  const orchardBefore = await read(orchard.id);
+  const removals: string[] = [];
+  page.on('request', item => { if (item.url().endsWith('/individual-removal/')) removals.push(item.method()); });
+
+  await page.keyboard.down('Shift');
+  await clickStem(page, first.id);
+  await clickStem(page, tree.id);
+  await page.keyboard.up('Shift');
+  await expect(bar.getByRole('status')).toHaveText('2 Pflanzen ausgewählt');
+  await expect(page.getByTestId('graphical-object-preview')).toHaveCount(0);
+  await expect(stemTarget(page, first.id)).toHaveAttribute('aria-pressed', 'true');
+  await bar.getByRole('button', { name: 'Pflanzen entfernen' }).click();
+  const removal = page.getByRole('dialog', { name: '2 Pflanzen entfernen' });
+  await expect(removal.getByRole('listitem')).toHaveCount(2);
+  // The orchard's loss lies outside the active season, so only the server's check sees it:
+  // it rejects the whole batch, and neither plan changes.
+  await removal.getByRole('button', { name: 'Pflanzen entfernen' }).click();
+  await expect(page.getByText('Für einen der Anbaupläne sind Ernten oder Ausfälle erfasst. Es wurde nichts entfernt.')).toBeVisible();
+  expect((await read(plan.id)).individual_positions).toEqual(plan.individual_positions);
+  expect((await read(orchard.id)).individual_positions).toEqual(orchardBefore.individual_positions);
+  await expect(bar.getByRole('status')).toHaveText('2 Pflanzen ausgewählt');
+  await bar.getByRole('button', { name: 'Pflanzen entfernen' }).click();
+  await removal.getByRole('radio', { name: /^Nur Positionen entfernen/ }).check();
+  await removal.getByRole('button', { name: 'Nur Positionen entfernen' }).click();
+  await expect.poll(async () => (await read(plan.id)).individual_positions).toEqual([second]);
+  expect(await read(orchard.id)).toMatchObject({
+    plants_count: orchardBefore.plants_count,
+    individual_positions: orchardBefore.individual_positions.filter(item => item.id !== tree.id),
+  });
+  expect(removals).toEqual(['POST', 'POST']);
+  await expect(bar).toHaveCount(0);
+
+  // Delete inside the selection removes the selected plant itself; Escape clears a selection.
+  await page.keyboard.down('Shift');
+  await clickStem(page, second.id);
+  await page.keyboard.up('Shift');
+  await expect(bar.getByRole('status')).toHaveText('1 Pflanze ausgewählt');
+  await bar.getByRole('button', { name: 'Auswahl aufheben' }).focus();
+  await page.keyboard.press('Delete');
+  const single = page.getByRole('dialog', { name: 'Pflanze entfernen' });
+  await expect(single).toContainText('Die geplante Anzahl sinkt von 2 auf 1.');
+  await single.getByRole('button', { name: 'Pflanze entfernen' }).click();
+  await expect.poll(async () => (await read(plan.id)).plants_count).toBe(1);
+  expect(await read(plan.id)).toMatchObject({ individual_positions: [], pending_plants_count: 1 });
+
+  const [other] = (await read(orchard.id)).individual_positions;
+  await page.keyboard.down('Shift');
+  await clickStem(page, other.id);
+  await page.keyboard.up('Shift');
+  await expect(bar).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(bar).toHaveCount(0);
+});
+
+test.describe('plant multi-selection by touch', () => {
+  test.use({ hasTouch: true });
+
+  test('starts a selection from the inspector and toggles plants by tapping', async ({ page, request }) => {
+    await page.setViewportSize({ width: 768, height: 900 });
+    const { plan } = await fixture(page, request, 'individual-multi-select-touch');
+    const [first, second] = plan.individual_positions;
+    await openGraphic(page);
+    await stemTarget(page, first.id).press('Enter');
+    const inspector = page.getByTestId('graphical-object-preview');
+    await inspector.getByRole('button', { name: 'Mehrere auswählen' }).tap();
+    const bar = page.getByTestId('individual-plant-selection');
+    await expect(bar.getByRole('status')).toHaveText('1 Pflanze ausgewählt');
+    const target = await point(page, second.id);
+    await page.touchscreen.tap(target.x, target.y);
+    await expect(bar.getByRole('status')).toHaveText('2 Pflanzen ausgewählt');
+    await page.touchscreen.tap(target.x, target.y);
+    await expect(bar.getByRole('status')).toHaveText('1 Pflanze ausgewählt');
+    await expect(inspector).toHaveCount(0);
+    await bar.getByRole('button', { name: 'Auswahl aufheben' }).tap();
+    await expect(bar).toHaveCount(0);
+  });
 });
 
 test('labels the orchard marker and accessible preview in all seven languages', async ({ page, request }) => {

@@ -53,6 +53,10 @@ from farm.planning.individual_planting import (
     check_placement_on_current_parent,
     lock_and_check_individual_crop,
 )
+from farm.planning.individual_removal import (
+    IndividualRemovalRequestSerializer,
+    remove_individual_stems,
+)
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.actual_harvest import (
     HARVEST_DATE_FIELDS,
@@ -475,7 +479,9 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         .order_by('-planting_date')
     )
     serializer_class = PlantingPlanSerializer
-    graphical_placement_actions = {'individual_placement', 'graphic_placement', 'graphic_move'}
+    graphical_placement_actions = {
+        'individual_placement', 'graphic_placement', 'graphic_move', 'individual_removal',
+    }
 
     def _is_individual_hierarchy_read(self) -> bool:
         return self.action == 'list' and self.request.query_params.get('individual_only') == 'true'
@@ -702,6 +708,17 @@ class PlantingPlanViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.Mod
         payload.is_valid(raise_exception=True)
         self._lock_plan()
         plans = move_graphic_stem(self, self.get_object(), payload.validated_data)
+        return Response({'plans': self.get_serializer(plans, many=True).data})
+
+    @extend_schema(request=IndividualRemovalRequestSerializer)
+    @action(detail=False, methods=['post'], url_path='individual-removal')
+    @transaction.atomic
+    def individual_removal(self, request) -> Response:
+        """Remove selected saved plants, or only their positions, across plans as one batch."""
+        payload = IndividualRemovalRequestSerializer(data=request.data)
+        payload.is_valid(raise_exception=True)
+        ids = remove_individual_stems(self, payload.validated_data, self.get_queryset())
+        plans = self.get_queryset().filter(pk__in=ids).order_by('pk')
         return Response({'plans': self.get_serializer(plans, many=True).data})
 
     def _lock_plan(self, plan_id=None) -> PlantingPlan:

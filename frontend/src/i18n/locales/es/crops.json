@@ -622,6 +622,7 @@
     },
     "batch": {
       "individualPlacement": "Plantas individuales colocadas",
+      "individualRemoval": "Plantas individuales eliminadas",
       "seasonCreate": "Temporada {{season}} creada",
       "seasonDelete": "Temporada {{season}} eliminada",
       "seasonUndelete": "Temporada {{season}} restaurada",
@@ -643,7 +644,7 @@
       "undo": "Deshacer esta acción"
     },
     "import": {
-    "colorInheritRequiresVariety": "Solo las variedades admiten el valor inherit en la columna de color.",
+      "colorInheritRequiresVariety": "Solo las variedades admiten el valor inherit en la columna de color.",
       "summary_one": "{{count}} cultivo importado",
       "summary_other": "{{count}} cultivos importados",
       "actions": "Acciones de importación",

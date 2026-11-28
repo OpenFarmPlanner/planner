@@ -611,6 +611,7 @@
     },
     "batch": {
       "individualPlacement": "Individual plants placed",
+      "individualRemoval": "Individual plants removed",
       "seasonCreate": "Season {{season}} created",
       "seasonDelete": "Season {{season}} deleted",
       "seasonUndelete": "Season {{season}} restored",
@@ -628,7 +629,7 @@
       "undo": "Undo this action"
     },
     "import": {
-    "colorInheritRequiresVariety": "Only varieties can use inherit in the color column.",
+      "colorInheritRequiresVariety": "Only varieties can use inherit in the color column.",
       "summary_one": "{{count}} crop imported",
       "summary_other": "{{count}} crops imported",
       "actions": "Import actions",

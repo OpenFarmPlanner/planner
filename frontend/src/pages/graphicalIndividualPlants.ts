@@ -133,3 +133,20 @@ export function getIndividualPlantLabels(
   }
   return labels;
 }
+
+export interface IndividualPlantGroup {
+  plan: GraphicalIndividualPlant['plan'];
+  name: string;
+  plants: GraphicalIndividualPlant[];
+}
+
+/** Groups the selected plants by their planting plan, in selection order. */
+export function groupPlantsByPlan(plants: readonly GraphicalIndividualPlant[]): IndividualPlantGroup[] {
+  const groups = new Map<number, IndividualPlantGroup>();
+  for (const plant of plants) {
+    const group = groups.get(plant.id);
+    if (group) group.plants.push(plant);
+    else groups.set(plant.id, { plan: plant.plan, name: plant.name, plants: [plant] });
+  }
+  return [...groups.values()];
+}

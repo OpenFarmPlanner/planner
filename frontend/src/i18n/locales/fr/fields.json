@@ -316,7 +316,31 @@
       "position": "Supprimer seulement la position",
       "positionHint": "Le plant reste prévu et compte comme pas encore positionné.",
       "finalPlant": "Une série conserve au moins un plant. Supprimez la série entière si nécessaire.",
-      "actualRecords": "Des récoltes ou des pertes sont enregistrées pour cette série. Enregistrez une perte dans les détails de la série au lieu de modifier le nombre prévu."
+      "actualRecords": "Des récoltes ou des pertes sont enregistrées pour cette série. Enregistrez une perte dans les détails de la série au lieu de modifier le nombre prévu.",
+      "titleMany_one": "Supprimer {{formatted}} plant",
+      "titleMany_other": "Supprimer {{formatted}} plants",
+      "titleMany_many": "Supprimer {{formatted}} plants",
+      "plants": "Supprimer les plants",
+      "plantsHint": "Le nombre prévu de chaque série diminue des plants sélectionnés.",
+      "positions": "Supprimer seulement les positions",
+      "positionsHint": "Les plants restent prévus et comptent comme pas encore positionnés.",
+      "affectedPlans": "Séries concernées",
+      "groupLine_one": "{{name}} : {{formatted}} plant, prévu {{from}} → {{to}}",
+      "groupLine_other": "{{name}} : {{formatted}} plants, prévu {{from}} → {{to}}",
+      "groupLine_many": "{{name}} : {{formatted}} plants, prévu {{from}} → {{to}}",
+      "blockedPlans": "Concerné : {{names}}."
+    },
+    "removalLastPlant": "Une série conserve au moins un plant. Rien n’a été supprimé.",
+    "removalProtected": "Des récoltes ou des pertes sont enregistrées pour l’une des séries. Rien n’a été supprimé.",
+    "selection": {
+      "label": "Sélection de plantes individuelles",
+      "count_one": "{{formatted}} plant sélectionné",
+      "count_other": "{{formatted}} plants sélectionnés",
+      "count_many": "{{formatted}} plants sélectionnés",
+      "hint": "Touchez ou cliquez sur des plants pour les sélectionner",
+      "remove": "Supprimer les plants",
+      "clear": "Effacer la sélection",
+      "start": "En sélectionner plusieurs"
     }
   }
 }

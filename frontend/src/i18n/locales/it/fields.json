@@ -316,7 +316,31 @@
       "position": "Rimuovi solo la posizione",
       "positionHint": "La pianta resta prevista e conta come non ancora posizionata.",
       "finalPlant": "Una serie mantiene almeno una pianta. Se necessario, elimina l’intera serie.",
-      "actualRecords": "Per questa serie sono registrati raccolti o perdite. Registra una perdita nei dettagli della serie invece di modificare il numero previsto."
+      "actualRecords": "Per questa serie sono registrati raccolti o perdite. Registra una perdita nei dettagli della serie invece di modificare il numero previsto.",
+      "titleMany_one": "Rimuovi {{formatted}} pianta",
+      "titleMany_other": "Rimuovi {{formatted}} piante",
+      "titleMany_many": "Rimuovi {{formatted}} piante",
+      "plants": "Rimuovi piante",
+      "plantsHint": "Il numero previsto di ogni serie scende delle piante selezionate.",
+      "positions": "Rimuovi solo le posizioni",
+      "positionsHint": "Le piante restano previste e contano come non ancora posizionate.",
+      "affectedPlans": "Serie interessate",
+      "groupLine_one": "{{name}}: {{formatted}} pianta, prevista {{from}} → {{to}}",
+      "groupLine_other": "{{name}}: {{formatted}} piante, previste {{from}} → {{to}}",
+      "groupLine_many": "{{name}}: {{formatted}} piante, previste {{from}} → {{to}}",
+      "blockedPlans": "Interessata: {{names}}."
+    },
+    "removalLastPlant": "Una serie mantiene almeno una pianta. Non è stato rimosso nulla.",
+    "removalProtected": "Per una delle serie sono registrati raccolti o perdite. Non è stato rimosso nulla.",
+    "selection": {
+      "label": "Selezione di piante singole",
+      "count_one": "{{formatted}} pianta selezionata",
+      "count_other": "{{formatted}} piante selezionate",
+      "count_many": "{{formatted}} piante selezionate",
+      "hint": "Tocca o fai clic sulle piante per selezionarle",
+      "remove": "Rimuovi piante",
+      "clear": "Annulla selezione",
+      "start": "Seleziona più piante"
     }
   }
 }

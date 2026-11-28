@@ -309,7 +309,28 @@
       "position": "Alleen positie verwijderen",
       "positionHint": "De plant blijft gepland en telt als nog niet geplaatst.",
       "finalPlant": "Een teelt houdt minstens één plant. Verwijder zo nodig de hele teelt.",
-      "actualRecords": "Voor deze teelt zijn oogsten of uitval vastgelegd. Leg uitval vast in de teeltgegevens in plaats van het geplande aantal te wijzigen."
+      "actualRecords": "Voor deze teelt zijn oogsten of uitval vastgelegd. Leg uitval vast in de teeltgegevens in plaats van het geplande aantal te wijzigen.",
+      "titleMany_one": "{{formatted}} plant verwijderen",
+      "titleMany_other": "{{formatted}} planten verwijderen",
+      "plants": "Planten verwijderen",
+      "plantsHint": "Het geplande aantal van elke teelt daalt met de geselecteerde planten.",
+      "positions": "Alleen posities verwijderen",
+      "positionsHint": "De planten blijven gepland en tellen als nog niet geplaatst.",
+      "affectedPlans": "Betrokken teelten",
+      "groupLine_one": "{{name}}: {{formatted}} plant, gepland {{from}} → {{to}}",
+      "groupLine_other": "{{name}}: {{formatted}} planten, gepland {{from}} → {{to}}",
+      "blockedPlans": "Betrokken: {{names}}."
+    },
+    "removalLastPlant": "Een teelt houdt minstens één plant. Er is niets verwijderd.",
+    "removalProtected": "Voor een van de teelten zijn oogsten of uitval vastgelegd. Er is niets verwijderd.",
+    "selection": {
+      "label": "Selectie van individuele planten",
+      "count_one": "{{formatted}} plant geselecteerd",
+      "count_other": "{{formatted}} planten geselecteerd",
+      "hint": "Tik of klik op planten om ze te selecteren",
+      "remove": "Planten verwijderen",
+      "clear": "Selectie opheffen",
+      "start": "Meerdere selecteren"
     }
   }
 }

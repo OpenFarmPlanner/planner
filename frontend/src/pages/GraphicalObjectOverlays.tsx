@@ -100,6 +100,13 @@ interface OverlayProps {
   onEditPlant: (plant: GraphicalIndividualPlant, action: IndividualPlacementAction) => void;
   /** Starts the validated removal of the selected plant; absent for read-only access. */
   onRemovePlant?: (plant: GraphicalIndividualPlant) => void;
+  /** Multi-selection of individual plants: Shift+Enter or, while active, Enter toggles a plant. */
+  plantMultiSelect?: {
+    active: boolean;
+    selected: ReadonlySet<string>;
+    toggle: (key: string) => void;
+    start: (key: string) => void;
+  };
   onFocusObject: (rect: Rect) => void;
   onZoomObject: (rect: Rect) => void;
   zoomOnly?: boolean;
@@ -148,7 +155,7 @@ const objectTargetsSx = {
 
 export function GraphicalObjectOverlays({
   interaction, objects, viewport, stageWidth, stageHeight, root, openDetails, onOpenCrop, onStartIndividualPlan,
-  canEditPlant, onEditPlant, onRemovePlant, onFocusObject, onZoomObject, zoomOnly, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
+  canEditPlant, onEditPlant, onRemovePlant, plantMultiSelect, onFocusObject, onZoomObject, zoomOnly, bedTasks, plantTasks, cropPreview, cropReference, hoverLayerData, seasonId,
   canComplete, showLocationLabel,
 }: OverlayProps) {
   const { t, i18n } = useTranslation(['fields', 'hierarchy', 'common', 'dashboard', 'plantingPlans']);
@@ -340,7 +347,8 @@ export function GraphicalObjectOverlays({
         if (zoomOnly && (object.type === 'location' || object.type === 'plant' || !object.rect)) return null;
         const rect = object.rect ? projectViewportRect(object.rect, viewport) : null;
         const visibleLabel = object.type === 'location' && showLocationLabel;
-        const active = selection?.key === object.key || menuObject?.key === object.key;
+        const active = selection?.key === object.key || menuObject?.key === object.key
+          || Boolean(object.type === 'plant' && plantMultiSelect?.selected.has(object.key));
         const x = visibleLabel ? 12 : Math.max(0, Math.min(stageWidth - 36, rect?.x ?? 12));
         const y = visibleLabel ? 50 : Math.max(36, Math.min(stageHeight - 36, rect?.y ?? 50));
         return (
@@ -371,6 +379,11 @@ export function GraphicalObjectOverlays({
                 return;
               }
               if (event.detail !== 0 && visibleLabel) return;
+              if (object.type === 'plant' && plantMultiSelect
+                && (plantMultiSelect.active || event.shiftKey || plantMultiSelect.selected.size > 0)) {
+                plantMultiSelect.toggle(object.key);
+                return;
+              }
               keyboardPreview.current = event.currentTarget;
               if (selectedKey === object.key) preview.current?.focus({ preventScroll: true });
               interaction.select(object.key);
@@ -490,6 +503,10 @@ export function GraphicalObjectOverlays({
               <Stack direction="row" sx={{ flexWrap: 'wrap', alignItems: 'center', gap: 0.5 }}>
                 <Button size="small" variant="outlined" onClick={() => onEditPlant(selection, 'edit')}
                   sx={{ minHeight: 44 }}>{t('individualPlants.edit')}</Button>
+                {plantMultiSelect && (
+                  <Button size="small" onClick={() => { plantMultiSelect.start(selection.key); close(); }}
+                    sx={{ minHeight: 44 }}>{t('individualPlants.selection.start')}</Button>
+                )}
                 {(selection.plan.pending_plants_count ?? 0) > 0 && (
                   <Button size="small" onClick={() => onEditPlant(selection, 'add')} sx={{ minHeight: 44 }}>
                     {t('individualPlants.placePending')}</Button>

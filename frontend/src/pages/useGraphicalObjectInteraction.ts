@@ -27,8 +27,16 @@ function eventPoint(event: MouseEvent | TouchEvent): Point | undefined {
   return pointer && { x: pointer.clientX, y: pointer.clientY };
 }
 
+/**
+ * Adds an object to a multi-selection instead of opening its preview. Receives the object
+ * that is currently previewed, so the first additive click can include it; returns whether
+ * the click was handled as a toggle.
+ */
+export type GraphicalObjectToggle = (key: string, additive: boolean, previewed: string | null) => boolean;
+
 export function useGraphicalObjectInteraction(
   enabled: boolean, scope: number | null, mode: GraphicalDisplayMode, menuOnly = false,
+  toggle?: GraphicalObjectToggle,
 ) {
   const [selection, setSelection] = useState<{ key: string; scope: number | null } | null>(null);
   const [hover, setHover] = useState<{ key: string; point: Point; mode: GraphicalDisplayMode; menuSequence: number } | null>(null);
@@ -95,12 +103,17 @@ export function useGraphicalObjectInteraction(
     return true;
   };
 
-  const release = (key: string | null, point: Point) => {
+  const release = (key: string | null, point: Point, additive = false) => {
     clear();
     if (moved(point) || !press.current) return;
     const from = press.current;
     press.current = null;
     if (menuOnly || from.key !== key) return;
+    if (key && toggle?.(key, additive, selection?.scope === scope ? selection.key : null)) {
+      cancelTap();
+      setSelection(null);
+      return;
+    }
     // Konva delivers the first click before it knows whether a second click
     // will zoom the stage. Wait through its double-click window before selecting.
     const previousTap = pendingTap.current;
@@ -171,7 +184,7 @@ export function useGraphicalObjectInteraction(
     releaseStage: (event: StagePressEvent) => {
       if (!enabled) return;
       const point = eventPoint(event.evt);
-      if (point) release(objectAt(event), point);
+      if (point) release(objectAt(event), point, 'shiftKey' in event.evt && event.evt.shiftKey);
     },
     contextStage: (event: KonvaEventObject<MouseEvent>) => {
       if (!enabled) return;

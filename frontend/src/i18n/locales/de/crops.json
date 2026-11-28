@@ -611,6 +611,7 @@
     },
     "batch": {
       "individualPlacement": "Einzelpflanzen platziert",
+      "individualRemoval": "Einzelpflanzen entfernt",
       "seasonCreate": "Saison {{season}} erstellt",
       "seasonDelete": "Saison {{season}} gelöscht",
       "seasonUndelete": "Saison {{season}} wiederhergestellt",
@@ -628,7 +629,7 @@
       "undo": "Diese Aktion rückgängig machen"
     },
     "import": {
-    "colorInheritRequiresVariety": "Nur Sorten können in der Farbspalte den Wert inherit verwenden.",
+      "colorInheritRequiresVariety": "Nur Sorten können in der Farbspalte den Wert inherit verwenden.",
       "summary_one": "{{count}} Kultur importiert",
       "summary_other": "{{count}} Kulturen importiert",
       "actions": "Importaktionen",

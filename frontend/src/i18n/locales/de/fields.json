@@ -309,7 +309,28 @@
       "position": "Nur Position entfernen",
       "positionHint": "Die Pflanze bleibt geplant und zählt als noch nicht positioniert.",
       "finalPlant": "Ein Anbauplan behält mindestens eine Pflanze. Lösche bei Bedarf den ganzen Anbauplan.",
-      "actualRecords": "Für diesen Anbauplan sind Ernten oder Ausfälle erfasst. Erfasse einen Ausfall in den Plandetails, statt die geplante Anzahl zu ändern."
+      "actualRecords": "Für diesen Anbauplan sind Ernten oder Ausfälle erfasst. Erfasse einen Ausfall in den Plandetails, statt die geplante Anzahl zu ändern.",
+      "titleMany_one": "{{formatted}} Pflanze entfernen",
+      "titleMany_other": "{{formatted}} Pflanzen entfernen",
+      "plants": "Pflanzen entfernen",
+      "plantsHint": "Die geplante Anzahl jedes Anbauplans sinkt um die ausgewählten Pflanzen.",
+      "positions": "Nur Positionen entfernen",
+      "positionsHint": "Die Pflanzen bleiben geplant und zählen als noch nicht positioniert.",
+      "affectedPlans": "Betroffene Anbaupläne",
+      "groupLine_one": "{{name}}: {{formatted}} Pflanze, geplant {{from}} → {{to}}",
+      "groupLine_other": "{{name}}: {{formatted}} Pflanzen, geplant {{from}} → {{to}}",
+      "blockedPlans": "Betroffen: {{names}}."
+    },
+    "removalLastPlant": "Ein Anbauplan behält mindestens eine Pflanze. Es wurde nichts entfernt.",
+    "removalProtected": "Für einen der Anbaupläne sind Ernten oder Ausfälle erfasst. Es wurde nichts entfernt.",
+    "selection": {
+      "label": "Auswahl von Einzelpflanzen",
+      "count_one": "{{formatted}} Pflanze ausgewählt",
+      "count_other": "{{formatted}} Pflanzen ausgewählt",
+      "hint": "Pflanzen antippen oder anklicken, um sie auszuwählen",
+      "remove": "Pflanzen entfernen",
+      "clear": "Auswahl aufheben",
+      "start": "Mehrere auswählen"
     }
   }
 }

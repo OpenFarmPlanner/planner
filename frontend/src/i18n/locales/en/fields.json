@@ -309,7 +309,28 @@
       "position": "Remove position only",
       "positionHint": "The plant stays planned and counts as not yet positioned.",
       "finalPlant": "A planting plan keeps at least one plant. Delete the whole planting plan if needed.",
-      "actualRecords": "Harvests or losses are recorded for this planting plan. Record a loss in the plan details instead of changing the planned number."
+      "actualRecords": "Harvests or losses are recorded for this planting plan. Record a loss in the plan details instead of changing the planned number.",
+      "titleMany_one": "Remove {{formatted}} plant",
+      "titleMany_other": "Remove {{formatted}} plants",
+      "plants": "Remove plants",
+      "plantsHint": "Each planting plan's planned number drops by its selected plants.",
+      "positions": "Remove positions only",
+      "positionsHint": "The plants stay planned and count as not yet positioned.",
+      "affectedPlans": "Affected planting plans",
+      "groupLine_one": "{{name}}: {{formatted}} plant, planned {{from}} → {{to}}",
+      "groupLine_other": "{{name}}: {{formatted}} plants, planned {{from}} → {{to}}",
+      "blockedPlans": "Affected: {{names}}."
+    },
+    "removalLastPlant": "A planting plan keeps at least one plant. Nothing was removed.",
+    "removalProtected": "Harvests or losses are recorded for one of the planting plans. Nothing was removed.",
+    "selection": {
+      "label": "Individual plant selection",
+      "count_one": "{{formatted}} plant selected",
+      "count_other": "{{formatted}} plants selected",
+      "hint": "Tap or click plants to select them",
+      "remove": "Remove plants",
+      "clear": "Clear selection",
+      "start": "Select several"
     }
   }
 }
