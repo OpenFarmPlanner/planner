@@ -35,7 +35,7 @@ async function box(locator: Locator) {
   return result!;
 }
 
-test('keeps parcel names clear of the row actions and moves rotation into a column, toolbar and details', async ({ page, request }, testInfo) => {
+test('keeps parcel names in place under the row actions and moves rotation into a column, toolbar and details', async ({ page, request }, testInfo) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await loginWithDeterministicProject(page, request, 'growing-area-rotation-list', { loginAsAdmin: true });
   const { north } = await seedRotation(page);
@@ -54,8 +54,13 @@ test('keeps parcel names clear of the row actions and moves rotation into a colu
   await expect(actions).toHaveCSS('opacity', '1');
   const after = await box(name);
   const actionsBox = await box(actions);
+  // Row actions overlay the trailing end of the name inside its cell (#1729).
+  const nameCell = row.locator('[data-field="name"]');
+  const cellBox = await box(nameCell);
   expect(after).toEqual(before);
-  expect(actionsBox.x).toBeGreaterThanOrEqual(after.x + after.width);
+  await expect(actions).toHaveCSS('position', 'absolute');
+  expect(actionsBox.x).toBeGreaterThan(after.x);
+  expect(actionsBox.x + actionsBox.width).toBeLessThanOrEqual(cellBox.x + cellBox.width);
   // The quick actions are identified by their icons; no tooltip appears over them.
   for (const label of ['Beet für diese Parzelle hinzufügen', 'Löschen', 'Aktionen']) {
     await actions.getByRole('button', { name: label }).hover();
