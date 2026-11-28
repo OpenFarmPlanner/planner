@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any
 
 from django.core.exceptions import ValidationError
-from django.db import models
+from django.db import models, transaction
 
 from .base import TimestampedModel
 from .projects import Project
@@ -70,8 +70,54 @@ class SiteConditionsMixin(models.Model):
         abstract = True
 
 
-class Location(SiteConditionsMixin, TimestampedModel):
+class GeometryTimelineMixin(models.Model):
+    """Keep the dated geometry timeline in step with saves of the present row.
+
+    Only a change of the recorded measurements or the parent reaches the
+    geometry service; names, notes, conditions and other edits write no
+    version. See farm/services/growing_area_geometry.py (#1634).
+    """
+
+    GEOMETRY_ATTNAMES: tuple[str, ...] = ()
+
+    class Meta:
+        abstract = True
+
+    @classmethod
+    def from_db(cls, db: str | None, field_names: list[str], values: list[Any]) -> Any:
+        """Remember the loaded geometry so an unchanged save costs no query."""
+        instance = super().from_db(db, field_names, values)
+        loaded = set(cls.GEOMETRY_ATTNAMES).issubset(field_names)
+        instance._geometry_loaded = instance._geometry_signature() if loaded else None
+        return instance
+
+    def _geometry_signature(self) -> tuple[Any, ...]:
+        return tuple(getattr(self, attname) for attname in self.GEOMETRY_ATTNAMES)
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        """Save the row and, when its geometry changed, the matching version."""
+        created = self._state.adding
+        update_fields = kwargs.get('update_fields')
+        touches_geometry = update_fields is None or bool(
+            {name.removesuffix('_id') for name in self.GEOMETRY_ATTNAMES}
+            & {name.removesuffix('_id') for name in update_fields}
+        )
+        signature = self._geometry_signature()
+        changed = created or signature != getattr(self, '_geometry_loaded', None)
+        if not (touches_geometry and changed) or getattr(self, '_skip_geometry_sync', False):
+            super().save(*args, **kwargs)
+            return
+        from farm.services.growing_area_geometry import sync_saved_area
+
+        with transaction.atomic(savepoint=False):
+            super().save(*args, **kwargs)
+            sync_saved_area(self, created=created)
+        self._geometry_loaded = signature
+
+
+class Location(GeometryTimelineMixin, SiteConditionsMixin, TimestampedModel):
     """A physical farm location that can contain multiple fields."""
+    GEOMETRY_ATTNAMES = ('length_m', 'width_m')
     DEFAULT_BED_PATH_SPACING_M = 0.30
     DEFAULT_PARCEL_PATH_SPACING_M = 0.75
 
@@ -156,8 +202,9 @@ class Location(SiteConditionsMixin, TimestampedModel):
         ordering = ['name']
 
 
-class Field(SiteConditionsMixin, TimestampedModel):
+class Field(GeometryTimelineMixin, SiteConditionsMixin, TimestampedModel):
     """A field within a location that can contain multiple beds."""
+    GEOMETRY_ATTNAMES = ('length_m', 'width_m', 'area_sqm', 'location_id')
     # Validation constants.
     MIN_AREA_SQM = Decimal('0.01')  # Minimum 0.01 sqm (10cm x 10cm)
     MAX_AREA_SQM = Decimal('1000000.00')  # Maximum 100 hectares (safe value within
@@ -220,8 +267,9 @@ class Field(SiteConditionsMixin, TimestampedModel):
         ]
 
 
-class Bed(SiteConditionsMixin, TimestampedModel):
+class Bed(GeometryTimelineMixin, SiteConditionsMixin, TimestampedModel):
     """A bed within a field that stores optional area in square meters."""
+    GEOMETRY_ATTNAMES = ('length_m', 'width_m', 'area_sqm', 'field_id')
     # Validation constants.
     MIN_AREA_SQM = Decimal('0.01')  # Minimum 0.01 sqm (10cm x 10cm)
     MAX_AREA_SQM = Decimal('10000.00')  # Maximum 10,000 sqm (~1 hectare, reasonable for a bed)

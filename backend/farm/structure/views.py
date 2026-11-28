@@ -24,7 +24,7 @@ from farm.planning.individual_planting import (
     validate_individual_parcel_dimensions,
     validate_individual_site_dimensions,
 )
-from farm.project_context import get_active_project_or_400
+from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
 from farm.services.bed_layouts import (
     create_bed_layout,
     extract_layout_payloads,
@@ -42,6 +42,11 @@ from farm.services.field_duplication import (
     InvalidBedNameError,
     duplicate_field,
 )
+from farm.services.growing_area_geometry import (
+    batched_initial_versions,
+    geometry_creation_season,
+    project_season,
+)
 
 from .serializers import (
     BED_NAME_DUPLICATE_MESSAGE,
@@ -56,6 +61,15 @@ from .serializers import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def creation_season(request):
+    """New areas start in the season the user has selected (X-Season-Id)."""
+    return geometry_creation_season(
+        project_season(request.active_project, resolve_season_id_from_request(request)),
+    )
+
+
 BULK_BED_UNDO_SALT = 'farm.bulk_bed_create.undo'
 BULK_BED_UNDO_HEADER = 'X-Bulk-Bed-Undo'
 
@@ -150,7 +164,8 @@ class LocationViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
     ensure_default_location = True
 
     def perform_create(self, serializer):
-        instance = serializer.save(project=self.request.active_project)
+        with creation_season(self.request):
+            instance = serializer.save(project=self.request.active_project)
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
 
     @transaction.atomic
@@ -187,7 +202,8 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
 
     def perform_create(self, serializer):
         try:
-            instance = serializer.save(project=self.request.active_project)
+            with creation_season(self.request):
+                instance = serializer.save(project=self.request.active_project)
         except IntegrityError as exc:
             raise DRFValidationError({'name': [FIELD_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
@@ -222,7 +238,7 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
         try:
-            with transaction.atomic():
+            with transaction.atomic(), creation_season(request), batched_initial_versions():
                 result = duplicate_field(
                     source,
                     name=data['name'],
@@ -285,7 +301,8 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
 
     def perform_create(self, serializer):
         try:
-            instance = serializer.save(project=self.request.active_project)
+            with creation_season(self.request):
+                instance = serializer.save(project=self.request.active_project)
         except IntegrityError as exc:
             raise DRFValidationError({'name': [BED_NAME_DUPLICATE_MESSAGE]}) from exc
         self.record_revision(instance, EntityRevision.ACTION_CREATED)
@@ -342,7 +359,7 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
         undo_snapshot: dict[int, list[str | None]] = {}
         user_name = _current_actor_label(request)
         try:
-            with transaction.atomic():
+            with transaction.atomic(), creation_season(request), batched_initial_versions():
                 field = lock_individual_parcel(field)
                 for entry in serializer.validated_data['beds']:
                     bed = Bed.objects.create(

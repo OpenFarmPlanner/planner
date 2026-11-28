@@ -7,11 +7,12 @@ from typing import Any
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models.deletion import Collector, ProtectedError
+from django.db.models.deletion import Collector, ProtectedError, RestrictedError
 from django.utils import timezone
 
 from farm.models import BatchOperation, Crop, EntityRevision, Project
 from farm.services.crop_inheritance import GeneralCropIdentityConflict, lock_crop_project
+from farm.services.growing_area_geometry import removable_with_area
 
 from .project_restore import (
     PROJECT_STATE_MODELS,
@@ -317,7 +318,7 @@ def _dependency_conflicts(
         collector = Collector(using="default")
         try:
             collector.collect([instance])
-        except ProtectedError:
+        except (ProtectedError, RestrictedError):
             conflicts.append({"code": "dependent_data", "object_type": label, "object_id": pk})
             continue
         collected = list(collector.data.items()) + [
@@ -325,6 +326,8 @@ def _dependency_conflicts(
         ]
         for dependent, objects in collected:
             if dependent._meta.model_name == "croptimingwindow":
+                continue
+            if removable_with_area(dependent, objects, project.pk):
                 continue
             if any((dependent, obj.pk) not in reverting for obj in objects):
                 conflicts.append(

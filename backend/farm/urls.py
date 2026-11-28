@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
+from farm.structure.geometry_views import GrowingAreaGeometryTimelineView, GrowingAreaGeometryView
 from farm.structure.parcel_rotation import ParcelRotationGroupViewSet
 
 from .agent_api.views import (
@@ -163,6 +164,14 @@ urlpatterns = [
     path('season-setup/status/', SeasonSetupStatusView.as_view(), name='season-setup-status'),
     path('season-setup/apply/', SeasonSetupApplyView.as_view(), name='season-setup-apply'),
     path('locations/<int:location_id>/layouts/', BedLayoutByLocationView.as_view(), name='location-layouts'),
+    path(
+        'growing-area-geometry/', GrowingAreaGeometryView.as_view(),
+        name='growing-area-geometry',
+    ),
+    path(
+        'growing-area-geometry/timeline/', GrowingAreaGeometryTimelineView.as_view(),
+        name='growing-area-geometry-timeline',
+    ),
     path('projects-bootstrap/', MyProjectsView.as_view(), name='projects-bootstrap'),
     path('projects-switch/', ProjectSwitchView.as_view(), name='projects-switch'),
     path('projects/<int:project_id>/members/', ProjectMembersView.as_view(), name='project-members'),

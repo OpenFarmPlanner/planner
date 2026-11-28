@@ -98,6 +98,29 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(len(response.data['bed_layouts']), ROW_COUNT + 1)
 
+    def test_dated_growing_area_geometry_loads_with_constant_queries(self):
+        def create_area(index):
+            parcel = Field.objects.create(
+                project=self.project, location=self.location, name=f'Geometry parcel {index}',
+                length_m=10, width_m=5,
+            )
+            Bed.objects.create(
+                project=self.project, field=parcel, name=f'Geometry bed {index}',
+                length_m=10, width_m=1,
+            )
+
+        create_area(0)
+        url = '/openfarmplanner/api/growing-area-geometry/?include_reference=true&date=2000-01-01'
+        with CaptureQueriesContext(connection) as baseline:
+            first = self.client.get(url)
+        self.assertEqual(first.status_code, 200)
+        for index in range(1, ROW_COUNT + 1):
+            create_area(index)
+        with self.assertNumQueries(len(baseline)):
+            response = self.client.get(url)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['count'], first.data['count'] + 2 * ROW_COUNT)
+
     def test_parcel_rotation_orders_load_with_constant_queries(self):
         def create_group(index):
             group = ParcelRotationGroup.objects.create(

@@ -103,6 +103,9 @@ erDiagram
     Field ||--o{ Bed : "has (Beet)"
     Bed ||--o| BedLayout : "1:1 map position"
     Field ||--o| FieldLayout : "1:1 map position"
+    Location ||--o{ GrowingAreaGeometryVersion : "dated geometry"
+    Field ||--o{ GrowingAreaGeometryVersion : "dated geometry"
+    Bed ||--o{ GrowingAreaGeometryVersion : "dated geometry"
 ```
 
 - `Location` → `Field` → `Bed` is a strict three-level physical hierarchy
@@ -110,6 +113,13 @@ erDiagram
   (`length_m`, `width_m`), without polygon geometry — see
   [`archive/FIELD_BED_AREA_IMPLEMENTATION.md`](./archive/FIELD_BED_AREA_IMPLEMENTATION.md)
   for the historical rationale and the intended future geometry extension
+- `GrowingAreaGeometryVersion` is the dated physical timeline of a location,
+  parcel or bed (#1634): one sparse row per identity and `effective_from`, with
+  the interval's parent, recorded measurements, measurement basis, state and
+  origin. The present measurement fields on `Location`/`Field`/`Bed` stay a
+  compatibility mirror. Dated reads go through `resolve_geometry` and
+  `/api/growing-area-geometry/`. Contract, migration and enabled operations:
+  [growing-area-geometry-history.md](./growing-area-geometry-history.md#implementation-status)
   path.
 - Locations, fields and beds carry optional site conditions (#1075): light,
   soil moisture, irrigation availability and soil type are inherited
