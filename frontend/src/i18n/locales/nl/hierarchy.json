@@ -485,7 +485,7 @@
     "title": "‘{{name}}’ buiten gebruik stellen?",
     "explanation": "‘{{name}}’ wordt door teelten gebruikt en wordt daarom niet verwijderd. Een oppervlak dat buiten gebruik is, houdt zijn eerdere teelten maar krijgt geen nieuwe meer.",
     "fromSeason": "Buiten gebruik stellen vanaf seizoen {{season}} ({{date}}).",
-    "descendants_one": "Het oppervlak erbinnen wordt ook buiten gebruik gesteld.",
+    "descendants_one": "{{formatted}} oppervlak erbinnen wordt ook buiten gebruik gesteld.",
     "descendants_other": "De {{formatted}} oppervlakken erbinnen worden ook buiten gebruik gesteld.",
     "confirm": "Buiten gebruik stellen",
     "saved": "‘{{name}}’ is vanaf {{date}} buiten gebruik.",

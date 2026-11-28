@@ -511,7 +511,7 @@
     "title": "¿Retirar «{{name}}»?",
     "explanation": "«{{name}}» se usa en series, por eso no se elimina. Una superficie retirada conserva sus series anteriores, pero no admite nuevas.",
     "fromSeason": "Retirar a partir de la temporada {{season}} ({{date}}).",
-    "descendants_one": "La superficie que contiene también se retira.",
+    "descendants_one": "{{formatted}} superficie que contiene también se retira.",
     "descendants_many": "Las {{formatted}} superficies que contiene también se retiran.",
     "descendants_other": "Las {{formatted}} superficies que contiene también se retiran.",
     "confirm": "Retirar",

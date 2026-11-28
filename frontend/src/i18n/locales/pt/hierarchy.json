@@ -511,7 +511,7 @@
     "title": "Desativar «{{name}}»?",
     "explanation": "«{{name}}» é usada por séries e por isso não é eliminada. Uma área desativada mantém as séries anteriores, mas já não recebe novas.",
     "fromSeason": "Desativar a partir da época {{season}} ({{date}}).",
-    "descendants_one": "A área que contém também é desativada.",
+    "descendants_one": "{{formatted}} área que contém também é desativada.",
     "descendants_many": "As {{formatted}} áreas que contém também são desativadas.",
     "descendants_other": "As {{formatted}} áreas que contém também são desativadas.",
     "confirm": "Desativar",

@@ -485,7 +485,7 @@
     "title": "„{{name}}“ stilllegen?",
     "explanation": "„{{name}}“ wird von Anbauplänen genutzt und wird deshalb nicht gelöscht. Stillgelegt bleibt die Fläche mit ihren bisherigen Anbauplänen erhalten, nimmt aber keine neuen mehr auf.",
     "fromSeason": "Stilllegen ab Saison {{season}} ({{date}}).",
-    "descendants_one": "Die enthaltene Fläche wird ebenfalls stillgelegt.",
+    "descendants_one": "{{formatted}} enthaltene Fläche wird ebenfalls stillgelegt.",
     "descendants_other": "Die {{formatted}} enthaltenen Flächen werden ebenfalls stillgelegt.",
     "confirm": "Stilllegen",
     "saved": "„{{name}}“ ist ab {{date}} stillgelegt.",

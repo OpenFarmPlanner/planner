@@ -511,7 +511,7 @@
     "title": "Désaffecter « {{name}} » ?",
     "explanation": "« {{name}} » est utilisée par des séries et n’est donc pas supprimée. Désaffectée, la surface conserve ses séries précédentes mais n’en accueille plus de nouvelles.",
     "fromSeason": "Désaffecter à partir de la saison {{season}} ({{date}}).",
-    "descendants_one": "La surface qu’elle contient est également désaffectée.",
+    "descendants_one": "{{formatted}} surface qu’elle contient est également désaffectée.",
     "descendants_many": "Les {{formatted}} surfaces qu’elle contient sont également désaffectées.",
     "descendants_other": "Les {{formatted}} surfaces qu’elle contient sont également désaffectées.",
     "confirm": "Désaffecter",

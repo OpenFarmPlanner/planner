@@ -511,7 +511,7 @@
     "title": "Dismettere «{{name}}»?",
     "explanation": "«{{name}}» è usata da delle serie e quindi non viene eliminata. Una superficie dismessa conserva le serie precedenti ma non ne accoglie di nuove.",
     "fromSeason": "Dismettere dalla stagione {{season}} ({{date}}).",
-    "descendants_one": "Anche la superficie che contiene viene dismessa.",
+    "descendants_one": "Anche {{formatted}} superficie che contiene viene dismessa.",
     "descendants_many": "Anche le {{formatted}} superfici che contiene vengono dismesse.",
     "descendants_other": "Anche le {{formatted}} superfici che contiene vengono dismesse.",
     "confirm": "Dismetti",
