@@ -84,7 +84,16 @@ def _positions_fit(positions, width, length):
 
 
 def positions_fit_parent(parent: Bed | Field | Location, positions: list[dict]) -> bool:
-    return _positions_fit(positions, parent.width_m, parent.length_m)
+    """Stems must fit the present size and every scheduled later size (#1634)."""
+    if not _positions_fit(positions, parent.width_m, parent.length_m):
+        return False
+    if not positions:
+        return True
+    from farm.services.growing_area_geometry import scheduled_dimensions
+
+    return all(
+        _positions_fit(positions, width, length) for width, length in scheduled_dimensions(parent)
+    )
 
 
 def _check_position_bounds(parent, positions):

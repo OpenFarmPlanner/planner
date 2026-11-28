@@ -42,6 +42,10 @@ from farm.services.crop_inheritance import (
     validate_crop_identity,
 )
 from farm.services.crop_media import reconcile_media_orphans
+from farm.services.growing_area_geometry import (
+    GeometryHistoryConflict,
+    reconcile_project_geometry,
+)
 
 from .records import (
     _ENTITY_TYPE_LABELS,
@@ -803,6 +807,11 @@ def revert_batch_operation(project: Project, batch, *, user_name: str = '') -> N
             )
 
         reconcile_media_orphans(project.pk)
+        # Reverted rows bypass save(); keep the dated geometry timeline in step.
+        try:
+            reconcile_project_geometry(project)
+        except GeometryHistoryConflict as exc:
+            raise BatchRevertError('dated geometry history') from exc
         batch.reverted_at = timezone.now()
         batch.save(update_fields=['reverted_at'])
         result = capture_project_state(project)

@@ -433,5 +433,51 @@
       "title": "Entry not found",
       "description": "This location, field or bed does not exist (any more) in the active project."
     }
+  },
+  "geometryChange": {
+    "title": "Change the measurements of “{{name}}”",
+    "summary": "Before: {{previous}}. New: {{proposed}}.",
+    "area": "{{area}} m²",
+    "unknownArea": "Area unknown",
+    "dimensions": "{{length}} × {{width}} m ({{area}})",
+    "physicalChange": "Physical change from season {{season}}",
+    "physicalChangeHint": "The new measurements apply from {{date}}. Earlier seasons keep {{previous}}.",
+    "physicalChangeUnavailable": "Choose a later season to record a physical change.",
+    "correction": "Correct measurements",
+    "correctionHint": "The measurements recorded from {{date}} are replaced. Planting plans in this period are checked against the new measurements.",
+    "checking": "Checking the change …",
+    "affectedPlans_one": "{{formatted}} planting plan in this period",
+    "affectedPlans_other": "{{formatted}} planting plans in this period",
+    "confirm": "Save measurements",
+    "savedFromSeason": "From {{date}}: {{proposed}}.",
+    "savedCorrection": "Measurements corrected.",
+    "notSaved": "The measurements were not changed.",
+    "findings": {
+      "geometry_capacity_exceeded": "The planting plans here use up to {{used}} m², but the area would only have {{area}} m².",
+      "geometry_positions_outside": "Individual plants would lie outside the new measurements.",
+      "geometry_children_exceed_area": "The areas inside it add up to {{children}} m², but it would only have {{area}} m².",
+      "geometry_relocation_unsupported": "Moving it to another growing area is not possible yet.",
+      "geometry_parent_invalid": "The selected parent area no longer exists.",
+      "geometry_unchanged": "The measurements are unchanged.",
+      "geometry_capacity_unknown": "Without an area, the occupancy in this period cannot be checked.",
+      "geometry_later_version_kept": "From {{date}}, the measurements recorded for then still apply.",
+      "fallback": "This change is not possible as entered."
+    },
+    "errors": {
+      "generic": "The change could not be checked. Please try again.",
+      "refreshed": "The area or its planting plans have changed in the meantime. The check was updated.",
+      "geometry_version_exists_on_date": "Measurements are already recorded from this season start. Correct them instead.",
+      "geometry_not_recorded_at_date": "No measurements are recorded for this season start yet. Correct the existing measurements.",
+      "geometry_area_retired": "The area is retired at this season start.",
+      "geometry_version_changed": "The measurements have changed in the meantime. Reload the page and try again.",
+      "geometry_preview_stale": "The check has expired. Check the change again.",
+      "geometry_change_blocked": "The change does not fit the existing planting plans.",
+      "geometry_request_changed": "This change was already saved differently. Reload the page.",
+      "geometry_season_required": "Choose a season for the physical change.",
+      "geometry_undo_done": "This change has already been undone.",
+      "geometry_undo_changed": "The measurements were changed again afterwards and can no longer be reset.",
+      "geometry_undo_blocked": "Existing planting plans no longer fit the earlier measurements.",
+      "not_found": "This area no longer exists."
+    }
   }
 }

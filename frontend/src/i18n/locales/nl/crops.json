@@ -626,7 +626,8 @@
       "countUpdated_one": "{{count}} teelt bijgewerkt",
       "countUpdated_other": "{{count}} teelten bijgewerkt",
       "reverted": "Hersteld: {{what}}",
-      "undo": "Deze actie ongedaan maken"
+      "undo": "Deze actie ongedaan maken",
+      "geometryChange": "Maten van {{name}} gewijzigd"
     },
     "import": {
       "colorInheritRequiresVariety": "Alleen rassen accepteren de waarde inherit in de kleurkolom.",

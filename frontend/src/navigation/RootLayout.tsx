@@ -57,6 +57,7 @@ import { MobileProjectSwitcherDialog } from './MobileProjectSwitcherDialog';
 import { RestoreVersionDialog } from './RestoreVersionDialog';
 import { ImportUndoDialog } from './ImportUndoDialog';
 import { ProjectHistoryDialog } from './ProjectHistoryDialog';
+import { GeometryChangeDialogHost } from '../components/hierarchy/geometryChange/GeometryChangeDialogHost';
 import { useCollapsibleSidebar } from './useCollapsibleSidebar';
 import { useDeletedProjectsCount } from './useDeletedProjectsCount';
 import { useProjectHistory } from './useProjectHistory';
@@ -2026,6 +2027,7 @@ function RootLayout() {
         />
       )}
 
+      <GeometryChangeDialogHost />
       <ProjectHistoryDialog
         open={projectHistory.open}
         items={projectHistory.items}

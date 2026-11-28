@@ -6,18 +6,34 @@ not on the API-token allowlist: publishing them to agents is a separate,
 deliberate surface decision (farm/agent_api/schema.py).
 """
 
+import json
+import math
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
-from rest_framework import status
+from django.core.serializers.json import DjangoJSONEncoder
+from rest_framework import serializers, status
 from rest_framework.request import Request
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from config.pagination import OpenFarmPlannerPageNumberPagination
 from config.responses import api_error_response
-from farm.models import GrowingAreaGeometryVersion
+from farm.history import _current_actor_label
+from farm.history.project_restore import ensure_project_checkpoint
+from farm.models import Bed, Field, GrowingAreaGeometryVersion
 from farm.project_context import get_active_project_or_400, resolve_season_id_from_request
+from farm.services.geometry_changes import (
+    ACTION_CORRECTION,
+    ACTION_PHYSICAL_CHANGE,
+    ACTIONS,
+    GeometryChangeConflict,
+    GeometryChangeRequest,
+    confirm_geometry_change,
+    preview_geometry_change,
+    proposed_base,
+)
 from farm.services.growing_area_geometry import (
     AREA_KINDS,
     AREA_MODELS,
@@ -26,9 +42,11 @@ from farm.services.growing_area_geometry import (
     GeometryFacts,
     area_timeline,
     geometry_view_date,
+    merge_facts,
     project_season,
     resolve_geometry,
 )
+from farm.structure.serializers import MAX_LOCATION_DIMENSION_M
 
 MAX_REQUESTED_IDS = 1000
 MAX_TIMELINE_VERSIONS = 500
@@ -210,3 +228,127 @@ class GrowingAreaGeometryTimelineView(APIView):
             ],
             'truncated': len(versions) > MAX_TIMELINE_VERSIONS,
         })
+
+
+_AREA_LIMITS = {'field': (Field.MIN_AREA_SQM, Field.MAX_AREA_SQM),
+                'bed': (Bed.MIN_AREA_SQM, Bed.MAX_AREA_SQM)}
+
+
+def validate_measurements(kind: str, attrs: dict[str, Any]) -> None:
+    """The same positive, finite and bounded values the area forms accept."""
+    errors: dict[str, str] = {}
+    for name in ('length_m', 'width_m'):
+        value = attrs.get(name)
+        if value is None:
+            continue
+        if not math.isfinite(value) or value <= 0:
+            errors[name] = 'Must be a finite number greater than 0.'
+        elif kind == 'location' and value > MAX_LOCATION_DIMENSION_M:
+            errors[name] = f'Must not exceed {MAX_LOCATION_DIMENSION_M:g} m.'
+    if kind == 'location' and attrs.get('area_sqm') is not None:
+        errors['area_sqm'] = 'A location area follows from its dimensions.'
+    limits = _AREA_LIMITS.get(kind)
+    length, width = attrs.get('length_m'), attrs.get('width_m')
+    area = attrs.get('area_sqm')
+    if limits and not errors and length and width:
+        area = Decimal(str(length * width)).quantize(Decimal('0.1'))
+    if limits and area is not None and not limits[0] <= area <= limits[1]:
+        errors['area_sqm'] = f'Area must be between {limits[0]} and {limits[1]} sqm.'
+    if errors:
+        raise serializers.ValidationError(errors)
+
+
+class GeometryChangeSerializer(serializers.Serializer):
+    """Input of a geometry change preview; limits match the area serializers."""
+
+    kind = serializers.ChoiceField(choices=AREA_KINDS)
+    id = serializers.IntegerField(min_value=1)
+    action = serializers.ChoiceField(choices=ACTIONS)
+    season = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    version_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    revision = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+    length_m = serializers.FloatField(required=False, allow_null=True)
+    width_m = serializers.FloatField(required=False, allow_null=True)
+    area_sqm = serializers.DecimalField(
+        max_digits=10, decimal_places=1, required=False, allow_null=True,
+    )
+    parent_id = serializers.IntegerField(min_value=1, required=False, allow_null=True)
+
+    def validate(self, attrs: dict[str, Any]) -> dict[str, Any]:
+        attrs = super().validate(attrs)
+        if attrs['action'] == ACTION_CORRECTION and not attrs.get('version_id'):
+            raise serializers.ValidationError({'version_id': 'A correction names its version.'})
+        if attrs['action'] == ACTION_PHYSICAL_CHANGE and not attrs.get('season'):
+            raise serializers.ValidationError({'season': 'A physical change needs a season.'})
+        validate_measurements(attrs['kind'], attrs)
+        return attrs
+
+
+def change_request(project, data: dict[str, Any]) -> GeometryChangeRequest:
+    """Build a change request; unspecified facts keep the target version's values."""
+    season = None
+    if data.get('season'):
+        season = project_season(project, data['season'])
+        if season is None:
+            raise GeometryChangeConflict('invalid_geometry_season', 'The season does not exist.')
+    kind = data['kind']
+    current = proposed_base(project, kind, data['id'], data.get('version_id'), season)
+    values = {
+        key: data[key] for key in ('length_m', 'width_m', 'area_sqm', 'parent_id') if key in data
+    }
+    return GeometryChangeRequest(
+        kind=kind, area_id=data['id'], action=data['action'], season=season,
+        version_id=data.get('version_id'), revision=data.get('revision'),
+        facts=merge_facts(kind, current, values),
+    )
+
+
+def _conflict_response(error: GeometryChangeConflict) -> Response:
+    status_code = (
+        status.HTTP_404_NOT_FOUND if error.code == 'not_found' else status.HTTP_409_CONFLICT
+    )
+    return api_error_response(
+        code=error.code, detail=error.detail, status_code=status_code,
+        **json.loads(json.dumps(error.context, cls=DjangoJSONEncoder)),
+    )
+
+
+class GrowingAreaGeometryPreviewView(APIView):
+    """POST a proposed correction or physical change; nothing is written."""
+
+    def post(self, request: Request) -> Response:
+        project = get_active_project_or_400(request)
+        serializer = GeometryChangeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        try:
+            preview = preview_geometry_change(
+                project, change_request(project, serializer.validated_data),
+                user_id=request.user.pk,
+            )
+        except GeometryChangeConflict as error:
+            return _conflict_response(error)
+        return Response(preview)
+
+
+class GeometryConfirmSerializer(serializers.Serializer):
+    token = serializers.CharField(max_length=4096)
+    request_id = serializers.UUIDField()
+
+
+class GrowingAreaGeometryConfirmView(APIView):
+    """POST a preview token and request ID to apply exactly the previewed change."""
+
+    def post(self, request: Request) -> Response:
+        project = get_active_project_or_400(request)
+        serializer = GeometryConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        ensure_project_checkpoint(project, user_name=_current_actor_label(request))
+        try:
+            result = confirm_geometry_change(
+                project, serializer.validated_data['token'],
+                serializer.validated_data['request_id'],
+                user_id=request.user.pk, actor_label=_current_actor_label(request),
+            )
+        except GeometryChangeConflict as error:
+            return _conflict_response(error)
+        return Response(result)

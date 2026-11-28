@@ -36,6 +36,7 @@ from django.db.models import Q, QuerySet
 
 from farm.models import Bed, Crop, PlantingPlan, Project
 from farm.services.crop_inheritance import GeneralCropIndex, build_general_crop_index
+from farm.services.growing_area_geometry import AreaTimeline, bed_area_timelines
 from farm.services.seasonal_harvest import (
     early_recorded_planting_candidates,
     recurring_harvest_schedule,
@@ -247,6 +248,23 @@ def _occupancy_start(plan: PlantingPlan, crop_indexes: dict[int, GeneralCropInde
     return schedule.occupied_from if schedule is not None else planted
 
 
+def _binding_slice(
+    timeline: AreaTimeline, occupancies: list[BedOccupancy], start: date, end: date,
+) -> tuple[Decimal | None, Decimal]:
+    """The recorded area and firm peak of the slice with the least free room.
+
+    A period crossing a dated size change is checked against each size on
+    its own dates; slices without a recorded size do not constrain the plan.
+    """
+    candidates = [
+        (item.area_sqm, _peak_area(occupancies, item.start, item.end, BedOccupancy.firmly_covers))
+        for item in timeline.between(start, end) if item.area_sqm is not None
+    ]
+    if not candidates:
+        return None, _peak_area(occupancies, start, end, BedOccupancy.firmly_covers)
+    return min(candidates, key=lambda candidate: candidate[0] - candidate[1])
+
+
 def calculate_bed_capacities(
     beds: Sequence[Bed],
     *,
@@ -296,14 +314,17 @@ def calculate_bed_capacities(
                     unmeasured_beds.add(plan.bed_id)
             else:
                 occupying[plan.bed_id].append(occupancy)
+    timelines = bed_area_timelines(beds)
+    binding = {
+        bed.pk: _binding_slice(timelines[bed.pk], occupying[bed.pk], start, firm_end)
+        for bed in beds
+    }
     return {
         bed.pk: BedCapacity(
             bed_id=bed.pk,
-            bed_area_sqm=bed.area_sqm,
+            bed_area_sqm=binding[bed.pk][0],
             has_unmeasured_placement=bed.pk in unmeasured_beds,
-            used_area_sqm=_peak_area(
-                occupying[bed.pk], start, firm_end, BedOccupancy.firmly_covers,
-            ),
+            used_area_sqm=binding[bed.pk][1],
             occupying_plans=tuple(
                 OccupyingPlan(
                     plan_id=item.plan_id,
@@ -364,17 +385,20 @@ class HarvestOverlap:
 def _overflows_bed(
     arrival: BedOccupancy,
     occupancies: Sequence[BedOccupancy],
-    bed_area_sqm: Decimal,
+    bed_area: AreaTimeline,
 ) -> bool:
     """Whether the bed is over-full on the day ``arrival`` takes it over."""
+    area = bed_area.at(arrival.start)
+    if area is None:
+        return False
     used = sum((item.area_sqm for item in occupancies if item.covers(arrival.start)), ZERO_AREA)
-    return used > bed_area_sqm
+    return used > area
 
 
 def find_harvest_overlaps(
     candidate: BedOccupancy,
     others: Sequence[BedOccupancy],
-    bed_area_sqm: Decimal | None,
+    bed_area_sqm: Decimal | None | AreaTimeline,
 ) -> list[HarvestOverlap]:
     """The harvest overlaps of ``candidate`` with the other plans on its bed.
 
@@ -385,11 +409,15 @@ def find_harvest_overlaps(
     """
     if bed_area_sqm is None:
         return []
+    bed_area = (
+        bed_area_sqm if isinstance(bed_area_sqm, AreaTimeline)
+        else AreaTimeline.constant(bed_area_sqm)
+    )
     everyone = [candidate, *others]
     overlaps: list[HarvestOverlap] = []
     for other in others:
         if candidate.is_soft_on(other.start):
-            if _overflows_bed(other, everyone, bed_area_sqm):
+            if _overflows_bed(other, everyone, bed_area):
                 overlaps.append(HarvestOverlap(
                     role=ROLE_PREDECESSOR,
                     other_plan_id=other.plan_id,
@@ -397,7 +425,7 @@ def find_harvest_overlaps(
                     date=other.start,
                 ))
         elif other.is_soft_on(candidate.start):
-            if _overflows_bed(candidate, everyone, bed_area_sqm):
+            if _overflows_bed(candidate, everyone, bed_area):
                 overlaps.append(HarvestOverlap(
                     role=ROLE_SUCCESSOR,
                     other_plan_id=other.plan_id,
@@ -433,7 +461,7 @@ class HarvestOverlapIndex:
         self._rule = rule
         self._bed_ids = list(bed_ids) if bed_ids is not None else None
         self._by_bed: dict[int, list[BedOccupancy]] | None = None
-        self._bed_areas: dict[int, Decimal | None] = {}
+        self._bed_areas: dict[int, AreaTimeline] = {}
 
     @property
     def rule(self) -> SuccessionRule:
@@ -453,8 +481,9 @@ class HarvestOverlapIndex:
                 plans = plans.filter(bed_id__in=self._bed_ids)
             by_bed: dict[int, list[BedOccupancy]] = defaultdict(list)
             crop_indexes: dict[int, GeneralCropIndex] = {}
+            plans = list(plans)
+            self._bed_areas = bed_area_timelines({plan.bed_id: plan.bed for plan in plans}.values())
             for plan in plans:
-                self._bed_areas[plan.bed_id] = plan.bed.area_sqm
                 by_bed[plan.bed_id].append(build_occupancy(
                     rule=self.rule,
                     start=_occupancy_start(plan, crop_indexes),
@@ -502,4 +531,6 @@ class HarvestOverlapIndex:
             item for item in self._load().get(bed.pk, [])
             if exclude_plan_id is None or item.plan_id != exclude_plan_id
         ]
-        return find_harvest_overlaps(candidate, others, bed.area_sqm)
+        self._load()
+        timeline = self._bed_areas.get(bed.pk) or bed_area_timelines([bed])[bed.pk]
+        return find_harvest_overlaps(candidate, others, timeline)

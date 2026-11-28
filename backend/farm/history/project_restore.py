@@ -35,7 +35,11 @@ from farm.models import (
 )
 from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_media import reconcile_media_orphans
-from farm.services.growing_area_geometry import reconcile_project_geometry, removable_with_area
+from farm.services.growing_area_geometry import (
+    GeometryHistoryConflict,
+    reconcile_project_geometry,
+    removable_with_area,
+)
 from farm.services.timing_windows import (
     TimingWindow,
     load_timing_window_index,
@@ -519,7 +523,10 @@ def apply_project_state(
             ParcelRotationGroup.objects.filter(project=project, pk=pk).update(name=f"{prefix}{pk}")
     _write_target_rows(project, target, state, current)
     # Restored rows bypass save(); keep the dated geometry timeline in step.
-    reconcile_project_geometry(project)
+    try:
+        reconcile_project_geometry(project)
+    except GeometryHistoryConflict as exc:
+        raise ProjectRestoreConflict("restore would rewrite dated geometry history") from exc
     reconcile_media_orphans(project.pk)
 
 

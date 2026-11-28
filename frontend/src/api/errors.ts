@@ -94,6 +94,10 @@ const backendMessageMap: Record<string, string> = {
   'individual_plant_lifecycle_conflict': 'crops:siteHealth.individualPlantLifecycleConflict',
   'bed_contains_individual_positions': 'fields:individualPlants.bedDimensionsConflict',
   'parcel_contains_individual_positions': 'fields:individualPlants.dimensionsConflict',
+  'geometry_preview_required': 'hierarchy:geometryChange.notSaved',
+  'geometry_undo_done': 'hierarchy:geometryChange.errors.geometry_undo_done',
+  'geometry_undo_changed': 'hierarchy:geometryChange.errors.geometry_undo_changed',
+  'geometry_undo_blocked': 'hierarchy:geometryChange.errors.geometry_undo_blocked',
   'season_copy_no_preceding_source': 'navigation:seasonSwitcher.copyDialog.noPrecedingSource',
   'season_copy_source_not_preceding': 'navigation:seasonSwitcher.copyDialog.sourceChanged',
   'first_season_unavailable': 'navigation:firstSeason.unavailable',
@@ -376,4 +380,12 @@ export function isMissingProjectHeaderError(error: unknown): boolean {
   }
   const data = axiosError.response.data as { project?: unknown } | undefined;
   return typeof data?.project === 'string' && data.project.includes('X-Project-Id header');
+}
+
+
+/** Whether a history Undo of a geometry change was refused by its checks (#1634). */
+export function isGeometryUndoConflict(error: unknown): boolean {
+  if (!axios.isAxiosError(error) || error.response?.status !== 409) return false;
+  const code: unknown = (error.response.data as { code?: unknown } | undefined)?.code;
+  return typeof code === 'string' && code.startsWith('geometry_undo_');
 }

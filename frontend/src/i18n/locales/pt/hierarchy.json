@@ -458,5 +458,52 @@
       "title": "Entrada não encontrada",
       "description": "Esta exploração, parcela ou canteiro não existe (ou já não existe) no projeto ativo."
     }
+  },
+  "geometryChange": {
+    "title": "Alterar as medidas de «{{name}}»",
+    "summary": "Antes: {{previous}}. Novo: {{proposed}}.",
+    "area": "{{area}} m²",
+    "unknownArea": "Área desconhecida",
+    "dimensions": "{{length}} × {{width}} m ({{area}})",
+    "physicalChange": "Alteração física a partir da época {{season}}",
+    "physicalChangeHint": "As novas medidas aplicam-se a partir de {{date}}. As épocas anteriores mantêm {{previous}}.",
+    "physicalChangeUnavailable": "Escolha uma época posterior para registar uma alteração física.",
+    "correction": "Corrigir as medidas",
+    "correctionHint": "As medidas registadas a partir de {{date}} são substituídas. As séries deste período são verificadas com as novas medidas.",
+    "checking": "A verificar a alteração …",
+    "affectedPlans_one": "{{formatted}} série neste período",
+    "affectedPlans_many": "{{formatted}} séries neste período",
+    "affectedPlans_other": "{{formatted}} séries neste período",
+    "confirm": "Guardar medidas",
+    "savedFromSeason": "A partir de {{date}}: {{proposed}}.",
+    "savedCorrection": "Medidas corrigidas.",
+    "notSaved": "As medidas não foram alteradas.",
+    "findings": {
+      "geometry_capacity_exceeded": "As séries ocupam aqui até {{used}} m², mas a área teria apenas {{area}} m².",
+      "geometry_positions_outside": "Algumas plantas individuais ficariam fora das novas medidas.",
+      "geometry_children_exceed_area": "As áreas que contém somam {{children}} m², mas teria apenas {{area}} m².",
+      "geometry_relocation_unsupported": "Ainda não é possível mudar para outra área de cultivo.",
+      "geometry_parent_invalid": "A área superior escolhida já não existe.",
+      "geometry_unchanged": "As medidas não mudaram.",
+      "geometry_capacity_unknown": "Sem área não é possível verificar a ocupação neste período.",
+      "geometry_later_version_kept": "A partir de {{date}} continuam a valer as medidas registadas para essa data.",
+      "fallback": "Esta alteração não é possível assim."
+    },
+    "errors": {
+      "generic": "Não foi possível verificar a alteração. Tente novamente.",
+      "refreshed": "A área ou as suas séries mudaram entretanto. A verificação foi atualizada.",
+      "geometry_version_exists_on_date": "Já existem medidas registadas a partir deste início de época. Corrija-as em vez disso.",
+      "geometry_not_recorded_at_date": "Ainda não existem medidas registadas para este início de época. Corrija as medidas existentes.",
+      "geometry_area_retired": "A área está desativada neste início de época.",
+      "geometry_version_changed": "As medidas mudaram entretanto. Recarregue a página e tente novamente.",
+      "geometry_preview_stale": "A verificação expirou. Verifique novamente a alteração.",
+      "geometry_change_blocked": "A alteração não é compatível com as séries existentes.",
+      "geometry_request_changed": "Esta alteração já foi guardada de outra forma. Recarregue a página.",
+      "geometry_season_required": "Escolha uma época para a alteração física.",
+      "geometry_undo_done": "Esta alteração já foi anulada.",
+      "geometry_undo_changed": "As medidas foram alteradas novamente depois e já não podem ser repostas.",
+      "geometry_undo_blocked": "As séries existentes já não são compatíveis com as medidas anteriores.",
+      "not_found": "Esta área já não existe."
+    }
   }
 }

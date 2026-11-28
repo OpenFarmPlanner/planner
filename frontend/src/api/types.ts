@@ -1241,7 +1241,92 @@ export interface LocationPathSpacing {
   snap_to_path_spacing: boolean;
 }
 
+/** Recorded geometry of a growing area at the selected season's view date (#1634). */
+export type GrowingAreaGeometryStatus = 'active' | 'retired' | 'not_yet_available' | 'unknown';
+export type GrowingAreaKind = 'location' | 'field' | 'bed';
+
+export interface GrowingAreaGeometry {
+  as_of: string;
+  status: GrowingAreaGeometryStatus;
+  assignable: boolean;
+  version_id: number | null;
+  revision: number | null;
+  effective_from: string | null;
+  next_effective_from: string | null;
+  measurement_basis: 'dimensions' | 'declared_area' | 'unknown';
+  origin: string | null;
+  /** True when no geometry is recorded for the date and the present values are shown. */
+  reference: boolean;
+}
+
+export interface GeometryFactsPayload {
+  length_m: number | null;
+  width_m: number | null;
+  area_sqm: number | null;
+  measurement_basis: GrowingAreaGeometry['measurement_basis'];
+  parent_id: number | null;
+}
+
+/** The 409 body of a structure write that needs the preview/confirm workflow. */
+export interface GeometryPreviewRequired {
+  code: 'geometry_preview_required';
+  kind: GrowingAreaKind;
+  id: number;
+  name?: string;
+  version_id: number | null;
+  revision: number | null;
+  version_effective_from: string | null;
+  season: number | null;
+  season_start: string | null;
+  season_label?: string | null;
+  previous: GeometryFactsPayload;
+  proposed: GeometryFactsPayload;
+}
+
+export type GeometryChangeAction = 'physical_change' | 'correction';
+
+export interface GeometryChangeRequest {
+  kind: GrowingAreaKind;
+  id: number;
+  action: GeometryChangeAction;
+  season?: number | null;
+  version_id?: number | null;
+  revision?: number | null;
+  length_m?: number | null;
+  width_m?: number | null;
+  area_sqm?: number | null;
+  parent_id?: number | null;
+}
+
+export interface GeometryFinding {
+  code: string;
+  [detail: string]: unknown;
+}
+
+export interface GeometryChangePreview {
+  kind: GrowingAreaKind;
+  id: number;
+  name: string;
+  action: GeometryChangeAction;
+  effective_from: string;
+  interval_end: string | null;
+  target_version: { id: number; revision: number; effective_from: string; origin: string };
+  continues_after: { id: number; effective_from: string; state: string; area_sqm: number | null } | null;
+  previous: GeometryFactsPayload;
+  proposed: GeometryFactsPayload;
+  affected_plans: {
+    count: number;
+    results: Array<{ id: number; label: string; start: string; end: string | null }>;
+  };
+  descendant_count: number;
+  conflicts: GeometryFinding[];
+  warnings: GeometryFinding[];
+  can_confirm: boolean;
+  token: string | null;
+}
+
 export interface Location extends SiteConditionFields, Partial<LocationPathSpacing> {
+  geometry?: GrowingAreaGeometry;
   id?: number;
   name: string;
   address?: string;
@@ -1259,6 +1344,7 @@ export interface Location extends SiteConditionFields, Partial<LocationPathSpaci
 }
 
 export interface Field extends SiteConditionFields {
+  geometry?: GrowingAreaGeometry;
   id?: number;
   name: string;
   location: number;
@@ -1273,6 +1359,7 @@ export interface Field extends SiteConditionFields {
 }
 
 export interface Bed extends SiteConditionFields {
+  geometry?: GrowingAreaGeometry;
   id?: number;
   name: string;
   field: number;

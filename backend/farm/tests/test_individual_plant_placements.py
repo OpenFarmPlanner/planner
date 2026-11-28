@@ -22,6 +22,8 @@ from farm.services.seed_demand import compute_plan_requirement
 from farm.tests.api_base import ProjectApiTestCase
 
 URL = '/openfarmplanner/api/planting-plans/'
+GEOMETRY_PREVIEW_URL = '/openfarmplanner/api/growing-area-geometry/preview/'
+GEOMETRY_CONFIRM_URL = '/openfarmplanner/api/growing-area-geometry/confirm/'
 CROP_URL = '/openfarmplanner/api/crops/'
 BOUGHT_IN = PlantingPlan.CULTIVATION_TYPE_PURCHASED_TRANSPLANT
 
@@ -52,6 +54,20 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             'individual_positions': [{'x_m': 2, 'y_m': 4}, {'x_m': 2, 'y_m': 9}],
             **changes,
         }
+
+    def correct_geometry(self, kind, area, **facts):
+        """Preview a correction of the area's present version; a used area needs one."""
+        version = area.geometry_versions.order_by('-effective_from').first()
+        return self.client.post(GEOMETRY_PREVIEW_URL, {
+            'kind': kind, 'id': area.pk, 'action': 'correction',
+            'version_id': version.pk, 'revision': version.revision, **facts,
+        }, format='json')
+
+    def confirm_geometry(self, preview):
+        self.assertTrue(preview.data['can_confirm'], preview.data)
+        return self.client.post(GEOMETRY_CONFIRM_URL, {
+            'token': preview.data['token'], 'request_id': str(uuid4()),
+        }, format='json')
 
     def create_plan(self, **changes):
         response = self.client.post(URL, self.payload(**changes), format='json')
@@ -536,7 +552,14 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
         dimensions = f'/openfarmplanner/api/beds/{self.bed.pk}/'
         changed = self.client.patch(dimensions, {'length_m': 8.9}, format='json')
         self.assertEqual(changed.status_code, 409, changed.data)
-        self.assertEqual(changed.data['code'], 'bed_contains_individual_positions')
+        self.assertEqual(changed.data['code'], 'geometry_preview_required')
+        preview = self.correct_geometry('bed', self.bed, length_m=8.9)
+        self.assertEqual(preview.status_code, 200, preview.data)
+        self.assertFalse(preview.data['can_confirm'])
+        self.assertEqual(
+            [conflict['code'] for conflict in preview.data['conflicts']],
+            ['geometry_positions_outside'],
+        )
         self.bed.refresh_from_db()
         self.assertEqual(self.bed.length_m, 10)
         after = PlantingPlan.objects.get(pk=placed['id'])
@@ -550,12 +573,21 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             with self.subTest(dimensions=dimensions):
                 result = self.client.patch(parcel_url, dimensions, format='json')
                 self.assertEqual(result.status_code, 409, result.data)
-                self.assertEqual(result.data['code'], 'parcel_contains_individual_positions')
+                self.assertEqual(result.data['code'], 'geometry_preview_required')
+                preview = self.correct_geometry('field', self.field, **dimensions)
+                self.assertIn(
+                    'geometry_positions_outside',
+                    [conflict['code'] for conflict in preview.data['conflicts']],
+                )
         self.field.refresh_from_db()
         self.assertEqual((self.field.width_m, self.field.length_m), (12, 20))
 
-        exact_fit = self.client.patch(parcel_url, {'width_m': 2, 'length_m': 9}, format='json')
+        exact_fit = self.confirm_geometry(
+            self.correct_geometry('field', self.field, width_m=2, length_m=9),
+        )
         self.assertEqual(exact_fit.status_code, 200, exact_fit.data)
+        self.field.refresh_from_db()
+        self.assertEqual((self.field.width_m, self.field.length_m), (2, 9))
         plan_url = f"{URL}{created['id']}/individual-placement/"
         unchanged = self.client.patch(plan_url, {
             'placement_updated_at': created['updated_at'],
@@ -568,7 +600,9 @@ class IndividualPlantPlacementTests(ProjectApiTestCase):
             'placement_updated_at': unchanged.data['updated_at'], 'individual_positions': [],
         }, format='json')
         self.assertEqual(removed.status_code, 200, removed.data)
-        now_unmeasured = self.client.patch(parcel_url, {'width_m': None}, format='json')
+        now_unmeasured = self.confirm_geometry(
+            self.correct_geometry('field', self.field, width_m=None),
+        )
         self.assertEqual(now_unmeasured.status_code, 200, now_unmeasured.data)
 
     def test_plot_filter_keeps_bed_plans_and_canopy_does_not_reserve_the_bed(self):

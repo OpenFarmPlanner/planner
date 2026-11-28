@@ -641,7 +641,8 @@
       "countUpdated_other": "{{count}} séries mises à jour",
       "countUpdated_many": "{{count}} séries mises à jour",
       "reverted": "Restauré : {{what}}",
-      "undo": "Annuler cette action"
+      "undo": "Annuler cette action",
+      "geometryChange": "Dimensions de {{name}} modifiées"
     },
     "import": {
       "colorInheritRequiresVariety": "Seules les variétés acceptent la valeur inherit dans la colonne de couleur.",

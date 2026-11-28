@@ -1,5 +1,6 @@
 from datetime import date, timedelta
 from unittest.mock import patch
+from uuid import uuid4
 
 from django.contrib.auth import get_user_model
 from django.core.files.base import ContentFile
@@ -1933,7 +1934,20 @@ class ImportOperationHistoryTests(TestCase):
             {"location": later.json()["id"]},
             content_type="application/json",
         )
-        self.assertEqual(moved.status_code, 200)
+        # A used parcel moves through the geometry preview/confirm workflow (#1634).
+        self.assertEqual(moved.status_code, 409)
+        preview = self.client.post(
+            "/openfarmplanner/api/growing-area-geometry/preview/",
+            {"kind": "field", "id": field.pk, "action": "correction",
+             "version_id": moved.json()["version_id"], "parent_id": later.json()["id"]},
+            content_type="application/json",
+        )
+        confirmed = self.client.post(
+            "/openfarmplanner/api/growing-area-geometry/confirm/",
+            {"token": preview.json()["token"], "request_id": str(uuid4())},
+            content_type="application/json",
+        )
+        self.assertEqual(confirmed.status_code, 200, confirmed.content)
         response = self.client.post(
             "/openfarmplanner/api/history/project/restore/",
             data={"history_id": target.pk},

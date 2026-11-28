@@ -18,6 +18,7 @@ from farm.history import (
 from farm.models import EntityRevision, Location
 from farm.project_context import get_active_project_or_400
 from farm.services.default_location import initial_location_name
+from farm.services.growing_area_geometry import refresh_present_mirrors
 from farm.services.usage_capture import observe_cascaded_deletions
 
 
@@ -105,6 +106,9 @@ class ProjectScopedMixin:
 
             ensure_project_checkpoint(
                 request.active_project, user_name=_current_actor_label(request)
+            )
+            refresh_present_mirrors(
+                request.active_project, actor_label=_current_actor_label(request),
             )
         if self.ensure_default_location:
             self.ensure_active_project_location()
