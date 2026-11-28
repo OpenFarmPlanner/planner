@@ -21,6 +21,7 @@ from farm.services.crop_inheritance import (
     plan_cultivation_type,
     resolve_crop_field,
 )
+from farm.services.growing_area_geometry import AvailabilityIndex
 from farm.services.parcel_rotation_copy import (
     apply_confirmed_parcel_rotation,
     preview_parcel_rotation,
@@ -381,6 +382,13 @@ def build_planting_plan_copies(
     continuing_count = 0
     unconfigured_count = 0
     crop_index = build_general_crop_index(source_season.project_id)
+    source_plans = list(source_plans)
+    availability = AvailabilityIndex(
+        target_season.project,
+        beds={plan.bed_id for plan in source_plans if plan.bed_id},
+        fields={plan.parcel_id for plan in source_plans if plan.parcel_id},
+        locations={plan.site_id for plan in source_plans if plan.site_id},
+    )
     for plan in source_plans:
         if plan_continues_into_period(
             plan.growing_area_assigned, plan.planting_date, plan.occupancy_end_date,
@@ -401,6 +409,9 @@ def build_planting_plan_copies(
         copy = PlantingPlan(project=target_season.project, season=target_season, **fields)
         copy.crop = plan.crop
         copy.bed = plan.bed
+        if not _keep_available_area(copy, availability, target_season):
+            skipped_count += 1
+            continue
         if not _prepare_perennial_copy(copy, crop_index):
             unconfigured_count += 1
             continue
@@ -408,6 +419,27 @@ def build_planting_plan_copies(
             _keep_equivalent_dates_computed(plan, copy, crop_index)
         pairs.append((plan, copy))
     return pairs, skipped_count, continuing_count, unconfigured_count
+
+
+def _keep_available_area(
+    copy: PlantingPlan, availability: AvailabilityIndex, target_season: Season,
+) -> bool:
+    """A copy never lands on an area retired or not yet available on its date (#1634).
+
+    An area plan is copied as a draft without that bed; individual placements
+    need their parent and are not copied.
+    """
+    day = copy.planting_date or target_season.start_date
+    assigned = (
+        ('bed', copy.bed_id), ('field', copy.parcel_id), ('location', copy.site_id),
+    )
+    for kind, area_id in assigned:
+        if area_id is None or availability.available(kind, area_id, day):
+            continue
+        if copy.individual_bed or kind != 'bed':
+            return False
+        copy.bed = None
+    return True
 
 
 def _has_perennial_copy_defaults(plan: PlantingPlan, crop_index: GeneralCropIndex) -> bool:

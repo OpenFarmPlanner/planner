@@ -11,6 +11,7 @@ import { showGlobalSnackbar } from '../../../utils/globalSnackbar';
 import type { HierarchyRow } from '../utils/types';
 import { matchesHierarchyRowPrefill } from '../utils/hierarchyRowDraft';
 import { BULK_BEDS_UNDONE_EVENT } from './useHierarchyData';
+import { retireInsteadOfDelete } from '../geometryChange/geometryChangeBridge';
 
 /** Values a new bed row starts with ("Beet hinzufügen" after an existing bed). */
 export type BedPrefill = Pick<Bed, 'name' | 'length_m' | 'width_m'>;
@@ -178,6 +179,10 @@ export function useBedOperations(
       setBeds((prevBeds) => prevBeds.filter((bed) => bed.id !== bedId));
       setError('');
     } catch (err) {
+      if (await retireInsteadOfDelete(err) !== null) {
+        setError('');
+        return;
+      }
       setError(t('errors.deleteBed'));
       console.error('Error deleting bed:', err);
       throw err;

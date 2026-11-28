@@ -31,6 +31,9 @@ export function buildHierarchySecondaryLine(
   }
 
   const typeLabel = t(`hierarchy:mobile.typeLabel.${row.type}`);
+  if (row.geometryStatus === 'retired' || row.geometryStatus === 'not_yet_available') {
+    return `${typeLabel} · ${t(`hierarchy:geometryStatus.${row.geometryStatus}`)}`;
+  }
   const hasLength = typeof row.length_m === "number" && Number.isFinite(row.length_m);
   const hasWidth = typeof row.width_m === "number" && Number.isFinite(row.width_m);
 

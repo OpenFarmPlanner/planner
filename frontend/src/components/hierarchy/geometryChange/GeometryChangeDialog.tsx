@@ -52,7 +52,7 @@ export function GeometryChangeDialog({ request, onDone }: {
   );
   const initialAction: GeometryChangeAction = canChangeFromSeason ? 'physical_change' : 'correction';
   const [action, setAction] = useState<GeometryChangeAction>(initialAction);
-  const actionRef = useRef(initialAction);
+  const actionRef = useRef<GeometryChangeAction>(initialAction);
   const [preview, setPreview] = useState<GeometryChangePreview | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);

@@ -75,7 +75,8 @@ from farm.services.growing_area_geometry import (
 Version = GrowingAreaGeometryVersion
 ACTION_CORRECTION = 'correction'
 ACTION_PHYSICAL_CHANGE = 'physical_change'
-ACTIONS = (ACTION_CORRECTION, ACTION_PHYSICAL_CHANGE)
+ACTION_RETIREMENT = 'retirement'
+ACTIONS = (ACTION_CORRECTION, ACTION_PHYSICAL_CHANGE, ACTION_RETIREMENT)
 TOKEN_SALT = 'farm.geometry_change.preview'
 TOKEN_MAX_AGE_SECONDS = 600
 MAX_LISTED_PLANS = 20
@@ -125,6 +126,8 @@ class GeometryPreview:
     # First date the checks cover; None also covers the dates before a first
     # legacy observation, which keep using it.
     check_from: date | None = None
+    # Retirement: each descendant's timeline, retired together with the area.
+    descendants: dict[tuple[AreaKind, int], list[Version]] = field(default_factory=dict)
     conflicts: list[dict[str, Any]] = field(default_factory=list)
     warnings: list[dict[str, Any]] = field(default_factory=list)
     fingerprint: str = ''
@@ -453,9 +456,33 @@ def _parent_conflict(project: Project, preview: GeometryPreview, facts: Geometry
         preview.conflicts.append({'code': 'geometry_parent_invalid'})
 
 
+def _retirement_checks(project: Project, preview: GeometryPreview) -> None:
+    later = [preview.following] if preview.following else []
+    later += [
+        version for versions in preview.descendants.values() for version in versions
+        if version.effective_from >= preview.effective_from
+    ]
+    if later:
+        preview.conflicts.append({
+            'code': 'geometry_retirement_later_versions',
+            'effective_from': min(version.effective_from for version in later),
+        })
+    undated = PlantingPlan.objects.filter(
+        _subtree_plan_filter(preview.request.kind, preview.area.pk), project=project,
+        planting_date__isnull=True, season__start_date__gte=preview.effective_from,
+    ).count()
+    if preview.plans or undated:
+        preview.conflicts.append({
+            'code': 'geometry_retirement_plans', 'count': len(preview.plans) + undated,
+        })
+
+
 def _run_checks(project: Project, preview: GeometryPreview, facts: GeometryFacts) -> None:
     preview.conflicts.clear()
     preview.warnings.clear()
+    if preview.request.action == ACTION_RETIREMENT:
+        _retirement_checks(project, preview)
+        return
     if facts == preview.previous:
         preview.conflicts.append({'code': 'geometry_unchanged'})
         return
@@ -478,6 +505,10 @@ def _fingerprint(preview: GeometryPreview, versions: list[Version]) -> str:
             [plan.pk, plan.updated_at.isoformat()] for plan in preview.plans
         ],
         'descendants': preview.descendant_count,
+        'descendant_versions': sorted(
+            [kind, area_id, *(v.pk for v in versions), *(v.revision for v in versions)]
+            for (kind, area_id), versions in preview.descendants.items()
+        ),
     }
     return hashlib.sha256(json.dumps(state, sort_keys=True).encode()).hexdigest()
 
@@ -503,6 +534,30 @@ def _load_area(project: Project, kind: AreaKind, area_id: int, *, lock: bool) ->
     return area
 
 
+def _descendant_timelines(
+    project: Project, kind: AreaKind, area_id: int, *, lock: bool,
+) -> dict[tuple[AreaKind, int], list[Version]]:
+    if kind == 'bed':
+        return {}
+    beds = Bed.objects.filter(project=project).filter(
+        Q(field_id=area_id) if kind == 'field' else Q(field__location_id=area_id),
+    ).values_list('pk', flat=True)
+    keys: list[tuple[AreaKind, int]] = [('bed', pk) for pk in beds]
+    if kind == 'location':
+        parcels = Field.objects.filter(project=project, location_id=area_id)
+        keys += [('field', pk) for pk in parcels.values_list('pk', flat=True)]
+    timelines: dict[tuple[AreaKind, int], list[Version]] = {key: [] for key in keys}
+    versions = Version.objects.filter(project=project).filter(
+        Q(bed_id__in=[pk for child_kind, pk in keys if child_kind == 'bed'])
+        | Q(field_id__in=[pk for child_kind, pk in keys if child_kind == 'field']),
+    ).order_by('effective_from', 'pk')
+    if lock:
+        versions = versions.select_for_update()
+    for version in versions:
+        timelines[(version.kind, version.owner_id)].append(version)
+    return timelines
+
+
 def _build_preview(
     project: Project, request: GeometryChangeRequest, *, lock: bool,
 ) -> GeometryPreview:
@@ -524,12 +579,18 @@ def _build_preview(
         None if target is versions[0] and target.origin == Version.ORIGIN_LEGACY_OBSERVATION
         and request.action == ACTION_CORRECTION else effective_from
     )
-    plans = list(_plans_in_interval(project, request.kind, area.pk, compat_start, interval_end))
+    retiring = request.action == ACTION_RETIREMENT
+    plans = list(_plans_in_interval(
+        project, request.kind, area.pk, compat_start, None if retiring else interval_end,
+    ))
     preview = GeometryPreview(
         request=request, area=area, effective_from=effective_from, interval_end=interval_end,
         target=target, following=following, previous=GeometryFacts.from_version(target),
         plans=plans, descendant_count=_descendant_count(project, request.kind, area.pk),
         check_from=compat_start,
+        descendants=(
+            _descendant_timelines(project, request.kind, area.pk, lock=lock) if retiring else {}
+        ),
     )
     _run_checks(project, preview, request.facts)
     preview.fingerprint = _fingerprint(preview, versions)
@@ -618,8 +679,41 @@ def _public_context(context: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in context.items() if not key.startswith('_')}
 
 
+def _retire(preview: GeometryPreview) -> list[Version]:
+    """Retire the area and its descendants that are active at the date.
+
+    Each retirement record keeps the facts and parent of the interval it ends.
+    """
+    request = preview.request
+    owners: list[tuple[AreaKind, int, Version | None]] = [
+        (request.kind, preview.area.pk, preview.target),
+    ]
+    for (kind, area_id), versions in preview.descendants.items():
+        in_effect = [item for item in versions if item.effective_from <= preview.effective_from]
+        current = in_effect[-1] if in_effect else None
+        if current is None or current.state == Version.STATE_ACTIVE:
+            owners.append((kind, area_id, current))
+    created = []
+    for kind, area_id, current in owners:
+        version = Version(
+            project_id=preview.area.project_id, effective_from=preview.effective_from,
+            origin=Version.ORIGIN_RETIREMENT, state=Version.STATE_RETIRED,
+            original_season=request.season, **{f'{kind}_id': area_id},
+        )
+        if current is not None:
+            GeometryFacts.from_version(current).apply_to(version, kind)
+        else:
+            row = AREA_MODELS[kind].objects.get(pk=area_id)
+            GeometryFacts.from_area(row).apply_to(version, kind)
+        version.save()
+        created.append(version)
+    return created
+
+
 def _apply(preview: GeometryPreview, facts: GeometryFacts) -> Version:
     request = preview.request
+    if request.action == ACTION_RETIREMENT:
+        return _retire(preview)[0]
     if request.action == ACTION_PHYSICAL_CHANGE:
         version = Version(
             project_id=preview.area.project_id, effective_from=preview.effective_from,
@@ -701,7 +795,12 @@ def confirm_geometry_change(
             raise GeometryChangeConflict(
                 'geometry_request_changed', 'This request ID belongs to another change.',
             ) from exc
-        version = _apply(preview, request.facts)
+        if request.action == ACTION_RETIREMENT:
+            created = _retire(preview)
+            version = created[0]
+        else:
+            version = _apply(preview, request.facts)
+            created = [version]
         with revision_batch(batch):
             changed = _sync_mirror_after(preview.area, request.kind, actor_label=actor_label)
             _record(project, preview.area, changed, actor_label=actor_label, batch=batch)
@@ -713,6 +812,7 @@ def confirm_geometry_change(
             'previous': facts_as_dict(preview.previous),
             'proposed': facts_as_dict(request.facts),
             'revision_after': version.revision,
+            'version_ids': [item.pk for item in created],
             '_request_hash': _request_hash(token),
         }
         batch.completed_at = timezone.now()
@@ -733,6 +833,9 @@ def undo_geometry_change(project: Project, batch: BatchOperation, *, actor_label
         raise GeometryChangeConflict('geometry_undo_done', 'This change was already undone.')
     context = batch.context
     kind: AreaKind = context['kind']
+    if context['action'] == ACTION_RETIREMENT:
+        _undo_retirement(project, batch, actor_label=actor_label)
+        return
     with transaction.atomic():
         lock_crop_project(project.pk)
         area = _load_area(project, kind, context['id'], lock=True)
@@ -769,6 +872,46 @@ def undo_geometry_change(project: Project, batch: BatchOperation, *, actor_label
             _apply(preview, previous)
         with revision_batch(revert):
             changed = _sync_mirror_after(area, kind, actor_label=actor_label)
+            _record(project, area, changed, actor_label=actor_label, batch=revert)
+        batch.reverted_at = timezone.now()
+        batch.save(update_fields=['reverted_at'])
+        revert.completed_at = timezone.now()
+        revert.save(update_fields=['completed_at'])
+
+
+def _undo_retirement(project: Project, batch: BatchOperation, *, actor_label: str) -> None:
+    """Make retired areas available again while no later record relies on it."""
+    context = batch.context
+    with transaction.atomic():
+        lock_crop_project(project.pk)
+        area = _load_area(project, context['kind'], context['id'], lock=True)
+        retired = list(Version.objects.select_for_update().filter(
+            project=project, pk__in=context['version_ids'],
+        ))
+        if len(retired) != len(context['version_ids']) or any(
+            version.revision != 1 for version in retired
+        ):
+            raise GeometryChangeConflict(
+                'geometry_undo_changed', 'The retirement changed after this action.',
+            )
+        later = Version.objects.filter(project=project, created_at__gt=batch.created_at).filter(
+            Q(location_id__in=[v.location_id for v in retired if v.location_id])
+            | Q(field_id__in=[v.field_id for v in retired if v.field_id])
+            | Q(bed_id__in=[v.bed_id for v in retired if v.bed_id]),
+        ).exclude(pk__in=context['version_ids'])
+        if later.exists():
+            raise GeometryChangeConflict(
+                'geometry_undo_changed', 'A later geometry change relies on this retirement.',
+            )
+        revert = start_batch_operation(
+            project=project, operation_type=BatchOperation.TYPE_REVERTED,
+            context={'reverted_operation_type': batch.operation_type,
+                     **_public_context(context)},
+            user_name=actor_label,
+        )
+        Version.objects.filter(pk__in=context['version_ids']).delete()
+        with revision_batch(revert):
+            changed = _sync_mirror_after(area, context['kind'], actor_label=actor_label)
             _record(project, area, changed, actor_label=actor_label, batch=revert)
         batch.reverted_at = timezone.now()
         batch.save(update_fields=['reverted_at'])

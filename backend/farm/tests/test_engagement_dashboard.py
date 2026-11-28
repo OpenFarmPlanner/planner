@@ -1677,19 +1677,23 @@ class PlatformActivityTests(TestCase):
         self.assertEqual(self._actions(), {'crop': 2})
         self.assertEqual(CountedActionOperation.objects.count(), 2)
 
-    def test_an_action_across_categories_counts_once_in_its_main_workflow(self) -> None:
+    def test_a_cascading_growing_area_deletion_counts_once(self) -> None:
         crop = Crop.objects.create(project=self.project, name='Cascading crop')
         location = Location.objects.create(project=self.project, name='Action location')
         field = Field.objects.create(project=self.project, location=location, name='Field')
         bed = Bed.objects.create(project=self.project, field=field, name='Bed')
-        for _ in range(2):
-            PlantingPlan.objects.create(project=self.project, bed=bed, crop=crop)
+        plans = [PlantingPlan.objects.create(project=self.project, bed=bed, crop=crop)
+                 for _ in range(2)]
         url = f'/openfarmplanner/api/locations/{location.pk}/'
+        # A used area is retired, never deleted with its plans (#1634).
+        self.assertEqual(self.client.delete(url, **self.headers).status_code, 409)
+        self.assertEqual(self._actions(), {})
+        PlantingPlan.objects.filter(pk__in=[plan.pk for plan in plans]).delete()
         self.assertEqual(self.client.delete(url, **self.headers).status_code, 204)
 
-        # Location, field and bed outnumber the two plans removed with them.
+        # Location, field and bed count as one growing-area action.
         self.assertEqual(self._actions(), {'growing_area': 1})
-        self.assertEqual(sum(ProjectChangeDay.objects.values_list('deleted', flat=True)), 5)
+        self.assertEqual(sum(ProjectChangeDay.objects.values_list('deleted', flat=True)), 3)
 
     def test_rolled_back_and_background_writes_never_count_as_actions(self) -> None:
         def synthetic_view(request: HttpRequest) -> HttpResponse:
@@ -1826,20 +1830,24 @@ class PlatformActivityTests(TestCase):
                 harvest = HarvestRecord.objects.create(
                     project=self.project, crop=crop, date=self.now.date(), quantity=2, unit='kg',
                 )
-                HarvestAllocation.objects.create(
+                allocation = HarvestAllocation.objects.create(
                     project=self.project, planting_plan=plan, harvest=harvest, quantity=2,
                 )
                 target = {'locations': location, 'fields': field, 'beds': bed}[endpoint]
                 url = f'/openfarmplanner/api/{endpoint}/{target.pk}/'
+                # A used area is retired, never deleted with its plans and harvests (#1634).
+                self.assertEqual(self.client.delete(url, **self.headers).status_code, 409)
+                self.assertTrue(HarvestAllocation.objects.filter(pk=allocation.pk).exists())
+                self.assertFalse(ProjectChangeDay.objects.filter(project=self.project).exists())
+                allocation.delete()
+                plan.delete()
                 self.assertEqual(self.client.delete(url, **self.headers).status_code, 204)
                 self.assertEqual(self.client.delete(url, **self.headers).status_code, 404)
                 self.assertTrue(HarvestRecord.objects.filter(pk=harvest.pk).exists())
                 counts = dict(ProjectChangeDay.objects.filter(project=self.project).values_list(
                     'category', 'deleted',
                 ))
-                self.assertEqual(counts, {
-                    'growing_area': growing_area_count, 'planting': 1, 'harvest': 1,
-                })
+                self.assertEqual(counts, {'growing_area': growing_area_count})
                 transaction.set_rollback(True)
 
     def test_rolled_back_savepoints_and_background_operations_leave_no_signals(self) -> None:

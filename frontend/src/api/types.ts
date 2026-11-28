@@ -1283,7 +1283,21 @@ export interface GeometryPreviewRequired {
   proposed: GeometryFactsPayload;
 }
 
-export type GeometryChangeAction = 'physical_change' | 'correction';
+/** The 409 body of a refused deletion of a used area (#1634). */
+export interface AreaInUse {
+  code: 'area_in_use';
+  kind: GrowingAreaKind;
+  id: number;
+  name: string;
+  version_id: number | null;
+  revision: number | null;
+  version_effective_from: string | null;
+  season: number | null;
+  season_start: string | null;
+  season_label: string | null;
+}
+
+export type GeometryChangeAction = 'physical_change' | 'correction' | 'retirement';
 
 export interface GeometryChangeRequest {
   kind: GrowingAreaKind;
@@ -1898,6 +1912,7 @@ export type ParcelRotationIssue =
   | { code: 'unequal_bed_counts'; group: string; parcels: { name: string; count: number }[] }
   | { code: 'missing_bed_area'; bed: string; source_bed: string }
   | { code: 'bed_placement_incompatible'; bed: string; source_bed: string }
+  | { code: 'bed_unavailable'; bed: string }
   | { code: 'bed_capacity'; bed: string; parcel: string };
 
 export interface ParcelRotationSummary {

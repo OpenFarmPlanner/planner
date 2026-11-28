@@ -1526,6 +1526,7 @@ class ImportOperationHistoryTests(TestCase):
         self.assertIsNone(media.project_id)
 
     def test_restore_replays_recorded_cascades_and_nullable_foreign_keys(self) -> None:
+        from farm.history import _serialize_instance, record_entity_revision
         from farm.history.project_restore import capture_project_state, record_project_checkpoint
         from farm.models import Bed, Field, PlantingPlan, Task
 
@@ -1537,8 +1538,18 @@ class ImportOperationHistoryTests(TestCase):
         )
         task = Task.objects.create(project=self.project, planting_plan=plan, title="Surviving task")
         record_project_checkpoint(self.project, capture_project_state(self.project))
+        # A used bed is retired, never deleted, since #1634. History recorded
+        # before that still holds the bed deletion whose cascade removed the
+        # plan without its own revision; reproduce that legacy record.
         response = self.client.delete(f"/openfarmplanner/api/beds/{bed.pk}/")
-        self.assertEqual(response.status_code, 204, response.content)
+        self.assertEqual(response.status_code, 409, response.content)
+        snapshot = _serialize_instance(bed)
+        PlantingPlan.objects.filter(pk=plan.pk).delete()
+        bed.delete()
+        record_entity_revision(
+            project=self.project, entity_type="bed", object_id=snapshot["id"],
+            action=EntityRevision.ACTION_DELETED, snapshot=snapshot, display_name=bed.name,
+        )
         target = EntityRevision.objects.filter(project=self.project).latest("id")
         self.crop.notes = "A later edit"
         self.crop.save()

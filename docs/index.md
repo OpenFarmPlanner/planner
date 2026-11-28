@@ -61,9 +61,9 @@ for step-by-step procedures of recurring tasks, see the skills in
   beds, the Growing Areas Search/Filter/Columns toolbar, and the location,
   field and bed detail pages.
 - **[Season-effective growing-area geometry](./growing-area-geometry-history.md)** —
-  dated geometry versions of locations, parcels and beds, the date-based
-  resolver and read API (implemented), and the planned preview/confirm writes
-  and delivery order.
+  dated geometry versions of locations, parcels and beds, the resolver,
+  preview/confirm corrections, physical changes and retirement, the enabled
+  operations and the remaining blockers.
 - **[Occupancy Tree / Gantt Hierarchy](./occupancy-tree-hierarchy.md)** —
   the Standort → Parzelle → Beet tree in the bed-occupancy calendar, plus
   the Gantt calendar's context menu, drag-and-drop, and row-height model.
@@ -193,7 +193,7 @@ demonstrates the behavior described in its test evidence.
 | Planned feature | Current state in the code |
 |---|---|
 | **Fruchtfolge at Parzelle (`Field`) level** — rotation planning across a whole Parzelle rather than per bed | Nothing. The implemented rotation check works per bed only — see [crop-rotation.md](./crop-rotation.md). |
-| **[Season-effective growing-area geometry](./growing-area-geometry-history.md)** | The durable timeline, legacy migration and dated reads exist. Physical changes from a season, retirement and the consumers' move to dated geometry are not enabled yet. |
+| **[Season-effective growing-area geometry](./growing-area-geometry-history.md)** | Dated versions, corrections, physical changes from a season and retirement work in the List. Relocation, split, merge and the Map remain unavailable. |
 | **[Growing Areas Map](./growing-area-map-design.md)** | The standalone OpenLayers prototype demonstrates geometry editing on synthetic data. The app view, regional provider adapters and history-aware writes are planned. |
 
 Seasons and the bed-level crop rotation check were in this table until they

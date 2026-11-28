@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import type { GridRowModesModel } from '@mui/x-data-grid';
 import { bedAPI, fieldAPI, locationAPI, type Bed, type Field, type Location as FarmLocation } from '../../../api/api';
 import { extractApiErrorMessage } from '../../../api/errors';
+import { retireInsteadOfDelete } from '../geometryChange/geometryChangeBridge';
 import { createTransientId } from '../../../utils/transientId';
 import type { HierarchyRow } from '../utils/types';
 import { hasPersistedEntityId } from '../utils/hierarchyUtils';
@@ -279,6 +280,14 @@ export function useHierarchyDelete({
         await bedAPI.delete(targetId);
       }
     } catch (err) {
+      // A used area is retired from a season instead of deleted (#1634).
+      const retired = await retireInsteadOfDelete(err);
+      if (retired !== null) {
+        // The row stays in place; only its status changes, so refresh without the spinner.
+        await fetchData({ showLoading: false });
+        setError('');
+        return;
+      }
       await fetchData();
       setError(extractApiErrorMessage(err, t, t('errors.delete')));
       return;

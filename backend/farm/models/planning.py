@@ -47,21 +47,23 @@ class PlantingPlan(TimestampedModel):
         blank=True,
         help_text="Optional until the plan is fully filled in — a plan can be saved as a draft before a crop is chosen, as long as a bed is chosen instead.",
     )
+    # RESTRICT: a used growing area is retired, never deleted together with
+    # its plans; a whole-project deletion still cascades through (#1634).
     bed = models.ForeignKey(
         Bed,
-        on_delete=models.CASCADE,
+        on_delete=models.RESTRICT,
         related_name='planting_plans',
         null=True,
         blank=True,
         help_text="Optional until the plan is fully filled in — a plan can be saved as a draft before a bed is chosen.",
     )
     parcel = models.ForeignKey(
-        Field, on_delete=models.CASCADE, related_name='individual_planting_plans',
+        Field, on_delete=models.RESTRICT, related_name='individual_planting_plans',
         null=True, blank=True,
         help_text='Direct parcel assignment for individual plants.',
     )
     site = models.ForeignKey(
-        Location, on_delete=models.CASCADE, related_name='individual_planting_plans',
+        Location, on_delete=models.RESTRICT, related_name='individual_planting_plans',
         null=True, blank=True,
         help_text='Direct location assignment for individual plants.',
     )

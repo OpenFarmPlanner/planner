@@ -330,3 +330,107 @@ class ChildAreaTest(GeometryChangeTestCase):
         used = self.client.post(PREVIEW_URL, body, format='json')
         self.assertFalse(used.data['can_confirm'])
         self.assertEqual(used.data['conflicts'][0]['code'], 'geometry_children_exceed_area')
+
+
+class RetirementTest(GeometryChangeTestCase):
+    def retire(self, kind='bed', area_id=None, season=None):
+        return self.client.post(PREVIEW_URL, {
+            'kind': kind, 'id': area_id or self.bed.pk, 'action': 'retirement',
+            'season': (season or self.next_season).pk,
+        }, format='json')
+
+    def test_a_retired_bed_takes_no_new_plans_but_keeps_its_history(self):
+        earlier = self.plan(date(NEXT_YEAR - 1, 3, 1), date(NEXT_YEAR - 1, 6, 1), '5')
+        preview = self.retire()
+        self.assertTrue(preview.data['can_confirm'], preview.data)
+        self.assertEqual(self.confirm(preview).status_code, 200)
+        self.assertEqual(self.bed_at(date(NEXT_YEAR, 1, 1)).status, 'retired')
+        self.assertEqual(self.bed_at(date(NEXT_YEAR - 1, 12, 31)).status, 'active')
+        earlier.refresh_from_db()
+        self.assertEqual(earlier.bed_id, self.bed.pk)
+        created = self.client.post('/openfarmplanner/api/planting-plans/', {
+            'crop': self.crop_.pk, 'bed': self.bed.pk, 'season': self.next_season.pk,
+            'planting_date': f'{NEXT_YEAR}-04-01',
+        }, format='json')
+        self.assertEqual(created.status_code, 400, created.data)
+        self.assertIn('bed', created.data)
+        edit = self.client.patch(f'/openfarmplanner/api/beds/{self.bed.pk}/', {'width_m': 2},
+                                 format='json', HTTP_X_SEASON_ID=str(self.next_season.pk))
+        self.assertEqual(edit.status_code, 409)
+        self.assertEqual(edit.data['code'], 'geometry_area_retired')
+
+    def test_plans_continuing_into_the_season_block_retirement(self):
+        self.plan(date(NEXT_YEAR - 1, 12, 1), date(NEXT_YEAR, 2, 1), '5')
+        preview = self.retire()
+        self.assertFalse(preview.data['can_confirm'])
+        self.assertEqual(preview.data['conflicts'][0]['code'], 'geometry_retirement_plans')
+
+    def test_a_parcel_retires_with_its_beds_and_undo_brings_all_back(self):
+        preview = self.retire('field', self.field.pk)
+        self.assertTrue(preview.data['can_confirm'], preview.data)
+        self.assertEqual(self.confirm(preview).status_code, 200)
+        self.assertEqual(self.bed_at(date(NEXT_YEAR, 2, 1)).status, 'retired')
+        batch = BatchOperation.objects.get(operation_type=BatchOperation.TYPE_GEOMETRY_CHANGE)
+        self.assertEqual(len(batch.context['version_ids']), 2)
+        undo = self.client.post(f'/openfarmplanner/api/history/batch/{batch.pk}/revert/')
+        self.assertEqual(undo.status_code, 200, undo.data)
+        self.assertEqual(self.bed_at(date(NEXT_YEAR, 2, 1)).status, 'active')
+
+    def test_a_later_scheduled_version_blocks_retirement(self):
+        self.confirm(self.preview(width_m=1.5))
+        earlier = Season.objects.create(
+            project=self.project, start_date=date(NEXT_YEAR - 1, 12, 1),
+            end_date=date(NEXT_YEAR - 1, 12, 31),
+        )
+        preview = self.retire(season=earlier)
+        self.assertEqual(preview.data['conflicts'][0]['code'], 'geometry_retirement_later_versions')
+
+
+class DeletionProtectionTest(GeometryChangeTestCase):
+    def test_used_areas_answer_with_the_retirement_context(self):
+        self.plan(date.today(), date.today() + timedelta(days=20), '1')
+        for kind, area in (('bed', self.bed), ('field', self.field), ('location', self.location)):
+            with self.subTest(kind=kind):
+                response = self.client.delete(
+                    f'/openfarmplanner/api/{kind}s/{area.pk}/',
+                    HTTP_X_SEASON_ID=str(self.next_season.pk),
+                )
+                self.assertEqual(response.status_code, 409)
+                self.assertEqual(response.data['code'], 'area_in_use')
+                self.assertEqual(response.data['season'], self.next_season.pk)
+        self.assertTrue(Bed.objects.filter(pk=self.bed.pk).exists())
+
+    def test_an_unused_bed_is_still_deleted(self):
+        spare = Bed.objects.create(project=self.project, field=self.field, name='Spare')
+        response = self.client.delete(f'/openfarmplanner/api/beds/{spare.pk}/')
+        self.assertEqual(response.status_code, 204)
+
+    def test_the_model_never_deletes_plans_with_their_area(self):
+        from django.db.models import RestrictedError
+
+        self.plan(date.today(), date.today() + timedelta(days=20), '1')
+        with self.assertRaises(RestrictedError):
+            Bed.objects.filter(pk=self.bed.pk).delete()
+        self.project.delete()
+        self.assertFalse(PlantingPlan.objects.filter(project_id=self.project.pk).exists())
+
+
+class SeasonCopyAvailabilityTest(GeometryChangeTestCase):
+    def test_a_copy_onto_a_retired_bed_keeps_no_bed(self):
+        from farm.services.seasons import build_planting_plan_copies
+
+        source = Season.objects.create(
+            project=self.project, start_date=date(NEXT_YEAR - 1, 1, 1),
+            end_date=date(NEXT_YEAR - 1, 12, 31),
+        )
+        plan = self.plan(date(NEXT_YEAR - 1, 4, 1), date(NEXT_YEAR - 1, 7, 1), '5')
+        PlantingPlan.objects.filter(pk=plan.pk).update(season=source)
+        self.confirm(self.client.post(PREVIEW_URL, {
+            'kind': 'bed', 'id': self.bed.pk, 'action': 'retirement',
+            'season': self.next_season.pk,
+        }, format='json'))
+        pairs, _skipped, _continuing, _unconfigured = build_planting_plan_copies(
+            source_season=source, target_season=self.next_season,
+        )
+        self.assertEqual(len(pairs), 1)
+        self.assertIsNone(pairs[0][1].bed)

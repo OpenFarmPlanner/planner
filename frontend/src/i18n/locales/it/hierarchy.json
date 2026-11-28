@@ -49,7 +49,8 @@
     "seeds": "semi",
     "quantityOverride": "Quantità manuale {{quantity}}",
     "previewChanged": "L’anteprima della rotazione è cambiata. Controllala prima di copiare.",
-    "bedCount_many": "{{count}} aiuole"
+    "bedCount_many": "{{count}} aiuole",
+    "unavailableBed": "L’aiuola {{bed}} non è disponibile nella stagione di destinazione."
   },
   "title": "Superfici coltivate",
   "addField": "Appezzamento",
@@ -505,5 +506,27 @@
       "geometry_undo_blocked": "Le serie esistenti non sono più compatibili con le misure precedenti.",
       "not_found": "Questa superficie non esiste più."
     }
+  },
+  "retirement": {
+    "title": "Dismettere «{{name}}»?",
+    "explanation": "«{{name}}» è usata da delle serie e quindi non viene eliminata. Una superficie dismessa conserva le serie precedenti ma non ne accoglie di nuove.",
+    "fromSeason": "Dismettere dalla stagione {{season}} ({{date}}).",
+    "descendants_one": "Anche la superficie che contiene viene dismessa.",
+    "descendants_many": "Anche le {{formatted}} superfici che contiene vengono dismesse.",
+    "descendants_other": "Anche le {{formatted}} superfici che contiene vengono dismesse.",
+    "confirm": "Dismetti",
+    "saved": "«{{name}}» è dismessa dal {{date}}.",
+    "inUse": "Questa superficie è in uso e non può essere eliminata.",
+    "findings": {
+      "geometry_retirement_plans_one": "{{formatted}} serie arriva in questa stagione o oltre. Spostala o eliminala prima.",
+      "geometry_retirement_plans_many": "{{formatted}} serie arrivano in questa stagione o oltre. Spostale o eliminale prima.",
+      "geometry_retirement_plans_other": "{{formatted}} serie arrivano in questa stagione o oltre. Spostale o eliminale prima.",
+      "geometry_retirement_later_versions": "Dal {{date}} sono già registrate altre misure. Scegli una stagione successiva."
+    }
+  },
+  "geometryStatus": {
+    "retired": "Dismessa",
+    "not_yet_available": "Non ancora creata",
+    "unavailableForPlan": "Questa superficie coltivata non è disponibile alla data di impianto."
   }
 }

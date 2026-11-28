@@ -23,6 +23,11 @@ from farm.services.crop_rotation import (
     check_season_copies,
     preview_season_copy,
 )
+from farm.services.growing_area_geometry import (
+    AreaTimeline,
+    AvailabilityIndex,
+    bed_area_timelines,
+)
 from farm.services.parcel_rotation import ordered_group, rotation_group_queryset
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.seed_demand import preview_plan_seed_demand
@@ -244,6 +249,11 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops, excluded=frozense
     """
     rotated = []
     allocations: dict[int, list[AreaAllocation]] = defaultdict(list)
+    beds = {bed.pk: bed for pair in mapping.values() for bed in pair}
+    sizes = bed_area_timelines(beds.values())
+    availability = AvailabilityIndex(
+        next(iter(beds.values())).project, beds=beds,
+    ) if beds else None
     for source, proposed in pairs:
         match = mapping.get(source.bed_id)
         if match is None:
@@ -252,9 +262,14 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops, excluded=frozense
         source_bed, target_bed = match
         rotated_plan = copy(proposed)
         rotated_plan.bed = target_bed
-        if source.pk in excluded:
+        dated = None if source.pk in excluded else _dated_rotation_beds(
+            source, proposed, match, sizes, availability, issues,
+        )
+        if dated is None:
             rotated.append((source, rotated_plan))
             continue
+        source_bed, target_bed = dated
+        rotated_plan.bed = target_bed
         if source.individual_bed:
             if not positions_fit_parent(target_bed, source.individual_positions):
                 issues.append({
@@ -297,13 +312,39 @@ def _build_rotated_pairs(pairs, mapping, index, issues, crops, excluded=frozense
     return rotated
 
 
+def _dated_rotation_beds(
+    source: PlantingPlan, proposed: PlantingPlan, match: tuple[Bed, Bed],
+    sizes: dict[int, AreaTimeline], availability: AvailabilityIndex, issues: list[dict],
+) -> tuple[Bed, Bed] | None:
+    """Each side's recorded size on its own date, or None for an unavailable target (#1634).
+
+    The source bed counts when the plan grew there, the target bed when the
+    copy would occupy it.
+    """
+    source_bed, target_bed = match
+    target_day = proposed.planting_date or proposed.season.start_date
+    if not availability.available('bed', target_bed.pk, target_day):
+        issues.append({'code': 'bed_unavailable', 'bed': target_bed.name})
+        return None
+    source_day = source.planting_date or target_day
+    return _dated_bed(source_bed, sizes, source_day), _dated_bed(target_bed, sizes, target_day)
+
+
+def _dated_bed(bed: Bed, sizes: dict[int, AreaTimeline], day: date) -> Bed:
+    """The same bed carrying its recorded area on ``day``."""
+    dated = copy(bed)
+    dated.area_sqm = sizes[bed.pk].at(day)
+    return dated
+
+
 def _bed_capacity_issue(bed: Bed) -> dict:
     return {'code': 'bed_capacity', 'bed': bed.name, 'parcel': bed.field.name}
 
 
 def _apply_allocations(allocations, index, issues):
     for bed_id, rows in allocations.items():
-        bed = rows[0].plan.bed
+        # Copies on one bed may fall into differently sized intervals.
+        bed = min((row.plan.bed for row in rows), key=lambda item: item.area_sqm)
         if not _allocate_area(rows, index.occupancies_for_bed(bed_id), bed.area_sqm):
             issues.append(_bed_capacity_issue(bed))
             continue

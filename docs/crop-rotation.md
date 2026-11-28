@@ -247,6 +247,12 @@ The API default stays `keep`, so existing callers (the "Daten aus Saison X
 exactly as before. Guided creation shows the same expandable warning count when
 the parcel rotation preview checks the proposed bed assignments.
 
+Parcel rotation scales a copied area with each bed's recorded size on its own
+date: the source bed when the plan grew there and the target bed when the copy
+occupies it. A target bed retired or not yet available on that date is
+reported as unavailable, and a plain season copy keeps no bed on such an area
+([growing-area geometry](./growing-area-geometry-history.md#implementation-status)).
+
 ## Demo project
 
 The demo project's seed data shows every rotation and capacity case on

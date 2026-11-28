@@ -63,9 +63,10 @@ export function buildBedPickerResults(
   }
 
   const results: BedPickerResult[] = [...locationsById.values(), ...fieldsById.values()];
-  for (const { id, name, field: fieldId, area_sqm } of beds) {
+  for (const { id, name, field: fieldId, area_sqm, geometry } of beds) {
     const field = fieldsById.get(fieldId);
-    if (id === undefined || !field) continue;
+    // Retired or not yet available in the selected season: no new plans (#1634).
+    if (id === undefined || !field || geometry?.assignable === false) continue;
     results.push({
       ...field, kind: 'bed', id, name, areaSqm: toNumericValue(area_sqm),
       searchText: normalizeSearchText([field.locationName, field.name, name].join('\n')),

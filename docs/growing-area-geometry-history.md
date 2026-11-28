@@ -39,7 +39,37 @@ Delivery of [#1634](https://github.com/OpenFarmPlanner/planner/issues/1634) foll
   - **Project restore:** restore leaves later scheduled versions in place. It refuses to rewrite a recorded physical change or retirement through the reconciliation of restored rows.
 - **Dated consumers.** Bed capacity and harvest-overlap checks read dated sizes ([bed occupancy](./bed-occupancy.md#errors-and-infos)). New stem positions must fit the present size and every scheduled later size.
 
-**Not yet enabled.** Retirement, relocation, split and merge have no write path. Deleting a used area still follows the existing cascade. The List shows no labels for retired, unknown or not-yet-available intervals yet. Season copy, parcel rotation and yield reports still read present sizes and parents. These remain blocked until phase 3 of #1634: retirement, deletion protection, checked restore, the move of copy and rotation onto dated availability, and the localized demo.
+**Phase 3: retirement, protection and dated consumers (implemented).**
+
+- **Retirement.** `action: retirement` in the same preview/confirm contract retires an area from the selected season's start. A parcel or location retires together with its descendants that are active then. Each retirement record keeps the facts and parent of the interval it ends, so past views still show the area. The preview blocks while plans of the subtree reach into that season or later, including undated drafts of later seasons (`geometry_retirement_plans`). It also blocks while a version of the area or a descendant is already scheduled from that date on (`geometry_retirement_later_versions`). Undo removes the retirement records together when nothing has been recorded for those areas since.
+- **Deletion.** Deleting a used location, parcel or bed answers `409 area_in_use`. The List, its mobile variant and the Locations page then open the retirement dialog for the selected season. An unused area, including one with only its setup record, can still be deleted. Planting plans `RESTRICT` their bed, parcel and site (migration `0177_protect_used_growing_areas`, schema-only), so no other path deletes plans with their area. Deleting a whole project still cascades. Project restore and history replay keep their former behaviour: a recorded older area deletion still removes its plans in the reconstruction, and a restore that removes a later parent replaces the plans beneath it from the target state.
+- **Availability.** A plan's new or changed bed, parcel, site, date or season must be available on its planting date, or the season start for undated plans: active, or unknown before the first observation, for the area and every ancestor. Retired and not-yet-available intervals are refused with *This growing area is not available on the planting date.* The bed picker leaves out areas that are not assignable in the selected season. The List shows *Retired* or *Not set up yet* in place of the area for such rows, on the phone in the secondary line.
+- **Season copy and parcel rotation.**
+  - **Season copy:** a copied area plan whose bed is retired or not yet available on the copy's date keeps no bed and becomes a draft to assign; an individual placement on such a parent is not copied.
+  - **Parcel rotation:** sizes come from each side's own date (the source bed when the plan grew there, the target bed when the copy occupies it). An unavailable target bed is reported as `bed_unavailable`.
+- **Demo.** Pachtacker Lindenhof → Schlag Nord holds two examples ([demo project](./demo-project.md#dated-growing-area-geometry)). One bed grew from 10 to 15 m² at the current season's start and keeps the previous season's plan. The other is retired from the next season with its earlier plan kept.
+
+**Enabled operations.** On the List, the detail pages and the Locations page (Graphic writes no measurements yet):
+
+| Operation | Area | Write path |
+| --- | --- | --- |
+| Create | any | Ordinary create; dated from the selected season. |
+| Correct measurements or parent | unused | Ordinary save; corrects the viewed version. |
+| Correct measurements or parent | used | Preview/confirm `correction`. |
+| Physical change from season | used | Preview/confirm `physical_change`. |
+| Retire from season | used (or any) | Preview/confirm `retirement`; offered on delete. |
+| Delete | unused only | Ordinary delete; removes the setup record. |
+| Undo | geometry change or retirement | Checked inverse from version history. |
+
+**Remaining blockers.** These stay unavailable:
+
+- Relocation onto different soil, split, merge and their lineage edges; a parent change is only a correction.
+- Geographic boundaries and the Map (#1247, #1248).
+- An explicit effective date within a season; changes take the season start.
+- Labels for unknown intervals before a legacy observation: they show the present measurements without a label. The dated API marks them `reference`.
+- Historical parent filters in yield reports, which still group by present parents.
+- Project restore cannot reconstruct geometry history. It refuses to rewrite a recorded physical change or retirement and leaves later versions in place.
+- Django admin edits correct the mirrored version like other non-API saves.
 
 ## Current behavior and gaps
 

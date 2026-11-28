@@ -125,6 +125,20 @@ end of the parcel has room for multiple beds with the 10 × 1.2 m defaults and
 the site's 0.45 m gap. Preview a group, save it, then switch to Graphic to see
 its positions alongside the existing beds.
 
+### Dated growing-area geometry
+
+Pachtacker Lindenhof → Schlag Nord (North Plot) holds two beds that show dated
+geometry ([#1634](https://github.com/OpenFarmPlanner/planner/issues/1634)).
+**Erweitertes Beet** (Widened bed) was 10 × 1 m in the previous season and is
+10 × 1.5 m from the current season's start under the same ID. Its previous
+season's potatoes keep their 8 m², and the current plan needs the 15 m².
+**Stillgelegtes Beet** (Retired bed) is retired from the next season; its
+previous season's potatoes stay. Select each season in Growing Areas → List to
+compare: the widened bed shows 10 then 15 m², and the retired bed shows
+*Stillgelegt* in the next season and no longer appears in the bed picker there.
+Both carry explanatory notes in every demo language; Italian, Portuguese and
+Dutch use the English template as a whole.
+
 ### Crop rotation story
 
 The previous seasons rotate the plant families across the beds so the
