@@ -83,7 +83,9 @@ class GeometryFactsTest(TestCase):
 class GeometryTimelineTestCase(TestCase):
     def setUp(self):
         self.project = Project.objects.create(name='Geometry', slug='geometry')
-        self.location = Location.objects.create(project=self.project, name='Hof', length_m=50, width_m=20)
+        self.location = Location.objects.create(
+            project=self.project, name='Hof', length_m=50, width_m=20,
+        )
         self.parcel = Field.objects.create(
             project=self.project, location=self.location, name='Nord', length_m=20, width_m=10,
         )
@@ -99,7 +101,8 @@ class InitialVersionTest(GeometryTimelineTestCase):
         self.assertEqual(version.effective_from, date.today())
         self.assertEqual(version.parent_field_id, self.parcel.pk)
         self.assertEqual(version.confirmed_area_sqm, Decimal('10.0'))
-        self.assertEqual(Version.objects.get(field=self.parcel).parent_location_id, self.location.pk)
+        parcel = Version.objects.get(field=self.parcel)
+        self.assertEqual(parcel.parent_location_id, self.location.pk)
 
     def test_an_area_created_in_a_selected_season_is_not_available_before_it(self):
         season = Season.objects.create(
@@ -272,7 +275,8 @@ class RestoreAndDeletionTest(GeometryTimelineTestCase):
         Version.objects.filter(bed=self.bed).delete()
         Field.objects.filter(pk=self.parcel.pk).update(length_m=30, area_sqm=Decimal('300.0'))
         reconcile_project_geometry(self.project)
-        self.assertEqual(Version.objects.get(bed=self.bed).origin, Version.ORIGIN_LEGACY_OBSERVATION)
+        bed = Version.objects.get(bed=self.bed)
+        self.assertEqual(bed.origin, Version.ORIGIN_LEGACY_OBSERVATION)
         parcel = Version.objects.get(field=self.parcel)
         self.assertEqual(parcel.confirmed_area_sqm, Decimal('300.0'))
         self.assertEqual(parcel.revision, 2)
