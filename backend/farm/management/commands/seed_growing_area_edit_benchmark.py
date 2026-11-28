@@ -6,6 +6,7 @@ from django.db import transaction
 
 from farm.management.commands.seed_library_import_acceptance import Command as LocalFixtureCommand
 from farm.models import Bed, Field, Location, Project, ProjectMembership
+from farm.services.growing_area_geometry import reconcile_project_geometry
 
 MARKER = 'Synthetic growing-area edit benchmark fixture.'
 
@@ -71,3 +72,4 @@ class Command(LocalFixtureCommand):
             )
             for field in fields for index in range(beds_per_field)
         ])
+        reconcile_project_geometry(project)

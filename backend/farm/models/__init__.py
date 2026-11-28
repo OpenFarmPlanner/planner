@@ -53,6 +53,7 @@ from .crops import (  # noqa: E402
     is_supplier_domain,
 )
 from .feedback import Feedback  # noqa: E402
+from .geometry import GrowingAreaGeometryVersion  # noqa: E402
 from .harvests import HarvestAllocation, HarvestRecord  # noqa: E402
 from .history import (  # noqa: E402
     BatchOperation,
@@ -110,6 +111,7 @@ __all__ = [
     'Feedback',
     'Field',
     'FieldLayout',
+    'GrowingAreaGeometryVersion',
     'HarvestAllocation',
     'HarvestRecord',
     'Location',

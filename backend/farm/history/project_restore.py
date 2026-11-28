@@ -11,7 +11,7 @@ from django.core.files.storage import default_storage
 from django.core.serializers.json import DjangoJSONEncoder
 from django.db import IntegrityError, connection, models, transaction
 from django.db.models import F, Q
-from django.db.models.deletion import Collector, ProtectedError
+from django.db.models.deletion import Collector, ProtectedError, RestrictedError
 from django.db.models.fields.json import KeyTransform
 from django.db.models.functions import Cast, Length
 from django.utils import timezone
@@ -35,6 +35,7 @@ from farm.models import (
 )
 from farm.services.crop_inheritance import lock_crop_project
 from farm.services.crop_media import reconcile_media_orphans
+from farm.services.growing_area_geometry import reconcile_project_geometry, removable_with_area
 from farm.services.timing_windows import (
     TimingWindow,
     load_timing_window_index,
@@ -456,13 +457,15 @@ def _validate_delete(project: Project, instances: list[models.Model]) -> None:
     collector = Collector(using="default")
     try:
         collector.collect(instances)
-    except ProtectedError as exc:
+    except (ProtectedError, RestrictedError) as exc:
         raise ProjectRestoreConflict("protected dependent data") from exc
     collected = list(collector.data.items()) + [
         (queryset.model, queryset) for queryset in collector.fast_deletes
     ]
     for model, objects in collected:
         if model._meta.model_name == "croptimingwindow":
+            continue
+        if removable_with_area(model, objects, project.pk):
             continue
         if model not in _MODELS.values() or any(obj.project_id != project.pk for obj in objects):
             raise ProjectRestoreConflict("untracked dependent data")
@@ -515,6 +518,8 @@ def apply_project_state(
         if old is not None and old["name"] != row["name"]:
             ParcelRotationGroup.objects.filter(project=project, pk=pk).update(name=f"{prefix}{pk}")
     _write_target_rows(project, target, state, current)
+    # Restored rows bypass save(); keep the dated geometry timeline in step.
+    reconcile_project_geometry(project)
     reconcile_media_orphans(project.pk)
 
 
