@@ -316,6 +316,21 @@ describe('getBatchSummary', () => {
     }), t)).toBe('2 Einträge wiederhergestellt');
   });
 
+  it('names a retirement and its undo instead of a measurement change', () => {
+    const context = { action: 'retirement', name: 'Beet 3', season_label: '2027' };
+    expect(getBatchSummary(buildEntry({
+      is_batch: true, batch_operation_type: 'geometry_change', batch_context: context,
+    }), t)).toBe('Beet 3 ab Saison 2027 stillgelegt');
+    expect(getBatchSummary(buildEntry({
+      is_batch: true, batch_operation_type: 'batch_reverted',
+      batch_context: { ...context, reverted_operation_type: 'geometry_change' },
+    }), t)).toBe('Wiederhergestellt: Beet 3 ab Saison 2027 stillgelegt');
+    expect(getBatchSummary(buildEntry({
+      is_batch: true, batch_operation_type: 'geometry_change',
+      batch_context: { action: 'physical_change', name: 'Beet 3', season_label: '2027' },
+    }), t)).toBe('Maße von Beet 3 geändert');
+  });
+
   it('falls back for an operation type it does not know', () => {
     expect(getBatchSummary(buildEntry({ is_batch: true, batch_operation_type: 'etwas_neues' }), t))
       .toBe('Mehrere Änderungen');

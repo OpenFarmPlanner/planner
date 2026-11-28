@@ -430,6 +430,11 @@ function batchBaseText(
   if (operationType === 'crop_bulk_undelete') {
     return t('bulkDelete.recoveredCount', { count: Number(context.restored_count ?? 0) });
   }
+  if (operationType === 'geometry_change' && context.action === 'retirement') {
+    return t('history.batch.areaRetirement', {
+      name: String(context.name ?? ''), season: String(context.season_label ?? ''),
+    });
+  }
   const baseKey = BATCH_OPERATION_BASE_KEYS[operationType ?? ''] ?? 'history.batch.fallback';
   return t(baseKey, {
     name: String(context.name ?? ''),

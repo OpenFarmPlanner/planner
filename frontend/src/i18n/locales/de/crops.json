@@ -627,7 +627,8 @@
       "countUpdated_other": "{{count}} Anbaupläne bearbeitet",
       "reverted": "Wiederhergestellt: {{what}}",
       "undo": "Diese Aktion rückgängig machen",
-      "geometryChange": "Maße von {{name}} geändert"
+      "geometryChange": "Maße von {{name}} geändert",
+      "areaRetirement": "{{name}} ab Saison {{season}} stillgelegt"
     },
     "import": {
       "colorInheritRequiresVariety": "Nur Sorten können in der Farbspalte den Wert inherit verwenden.",
