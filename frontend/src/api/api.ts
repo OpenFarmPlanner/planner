@@ -9,6 +9,8 @@ import type {
   ApiTokenCreatePayload,
   ApiTokenCreated,
   BulkBedCreatePayload,
+  GeometryChangePreview,
+  GeometryChangeRequest,
   CropLibraryToken,
   CropLibraryTokenCreatePayload,
   CropLibraryTokenCreated,
@@ -494,6 +496,15 @@ export const bedAPI = {
   undoBulkCreate: (token: string) => http.post('/beds/undo-bulk-create/', { token }),
   update: (id: number, data: Bed) => http.put<Bed>(`/beds/${id}/`, withActiveProject(data)),
   delete: (id: number) => http.delete(`/beds/${id}/`),
+};
+
+export const growingAreaGeometryAPI = {
+  preview: (data: GeometryChangeRequest) =>
+    http.post<GeometryChangePreview>('/growing-area-geometry/preview/', data),
+  confirm: (token: string, requestId: string) =>
+    http.post<Record<string, unknown>>('/growing-area-geometry/confirm/', {
+      token, request_id: requestId,
+    }),
 };
 
 export const harvestAPI = {

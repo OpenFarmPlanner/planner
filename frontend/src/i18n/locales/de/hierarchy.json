@@ -433,5 +433,51 @@
       "title": "Eintrag nicht gefunden",
       "description": "Dieser Standort, diese Parzelle oder dieses Beet existiert nicht (mehr) im aktiven Projekt."
     }
+  },
+  "geometryChange": {
+    "title": "Maße von „{{name}}“ ändern",
+    "summary": "Bisher: {{previous}}. Neu: {{proposed}}.",
+    "area": "{{area}} m²",
+    "unknownArea": "Fläche unbekannt",
+    "dimensions": "{{length}} × {{width}} m ({{area}})",
+    "physicalChange": "Physische Änderung ab Saison {{season}}",
+    "physicalChangeHint": "Ab {{date}} gelten die neuen Maße. Frühere Saisonen behalten {{previous}}.",
+    "physicalChangeUnavailable": "Wähle eine spätere Saison, um eine physische Änderung zu erfassen.",
+    "correction": "Maße korrigieren",
+    "correctionHint": "Die ab {{date}} erfassten Maße werden ersetzt. Anbaupläne in diesem Zeitraum werden gegen die neuen Maße geprüft.",
+    "checking": "Änderung wird geprüft …",
+    "affectedPlans_one": "{{formatted}} Anbauplan in diesem Zeitraum",
+    "affectedPlans_other": "{{formatted}} Anbaupläne in diesem Zeitraum",
+    "confirm": "Maße speichern",
+    "savedFromSeason": "Ab {{date}} gelten {{proposed}}.",
+    "savedCorrection": "Maße korrigiert.",
+    "notSaved": "Die Maße wurden nicht geändert.",
+    "findings": {
+      "geometry_capacity_exceeded": "Die Anbaupläne belegen hier bis zu {{used}} m², die Fläche hätte nur {{area}} m².",
+      "geometry_positions_outside": "Einzelpflanzen lägen außerhalb der neuen Maße.",
+      "geometry_children_exceed_area": "Die enthaltenen Flächen sind zusammen {{children}} m² groß, die Fläche hätte nur {{area}} m².",
+      "geometry_relocation_unsupported": "Das Verlegen auf eine andere Fläche ist noch nicht möglich.",
+      "geometry_parent_invalid": "Die gewählte übergeordnete Fläche gibt es nicht mehr.",
+      "geometry_unchanged": "Die Maße sind unverändert.",
+      "geometry_capacity_unknown": "Ohne Fläche lässt sich die Belegung in diesem Zeitraum nicht prüfen.",
+      "geometry_later_version_kept": "Ab {{date}} gelten weiterhin die dafür erfassten Maße.",
+      "fallback": "Diese Änderung ist so nicht möglich."
+    },
+    "errors": {
+      "generic": "Die Änderung konnte nicht geprüft werden. Versuche es erneut.",
+      "refreshed": "Die Fläche oder ihre Anbaupläne haben sich inzwischen geändert. Die Prüfung wurde aktualisiert.",
+      "geometry_version_exists_on_date": "Ab diesem Saisonbeginn sind bereits Maße erfasst. Korrigiere sie stattdessen.",
+      "geometry_not_recorded_at_date": "Für diesen Saisonbeginn sind noch keine Maße erfasst. Korrigiere die vorhandenen Maße.",
+      "geometry_area_retired": "Die Fläche ist zu diesem Saisonbeginn stillgelegt.",
+      "geometry_version_changed": "Die Maße wurden inzwischen geändert. Lade die Seite neu und versuche es erneut.",
+      "geometry_preview_stale": "Die Prüfung ist abgelaufen. Prüfe die Änderung erneut.",
+      "geometry_change_blocked": "Die Änderung passt nicht zu den bestehenden Anbauplänen.",
+      "geometry_request_changed": "Diese Änderung wurde bereits anders gespeichert. Lade die Seite neu.",
+      "geometry_season_required": "Wähle eine Saison für die physische Änderung.",
+      "geometry_undo_done": "Diese Änderung wurde bereits rückgängig gemacht.",
+      "geometry_undo_changed": "Die Maße wurden danach erneut geändert und lassen sich nicht mehr zurücksetzen.",
+      "geometry_undo_blocked": "Bestehende Anbaupläne passen nicht mehr zu den früheren Maßen.",
+      "not_found": "Diese Fläche gibt es nicht mehr."
+    }
   }
 }

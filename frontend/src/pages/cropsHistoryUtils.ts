@@ -401,6 +401,7 @@ const BATCH_OPERATION_BASE_KEYS: Record<string, string> = {
   season_copy_data: 'history.batch.seasonCopyData',
   individual_placement: 'history.batch.individualPlacement',
   individual_removal: 'history.batch.individualRemoval',
+  geometry_change: 'history.batch.geometryChange',
 };
 
 const BATCH_COUNT_KEYS: Record<string, string> = {
@@ -431,6 +432,7 @@ function batchBaseText(
   }
   const baseKey = BATCH_OPERATION_BASE_KEYS[operationType ?? ''] ?? 'history.batch.fallback';
   return t(baseKey, {
+    name: String(context.name ?? ''),
     season: String(context.season_label ?? ''),
     source: String(context.source_season_label ?? ''),
     target: String(context.target_season_label ?? ''),

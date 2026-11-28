@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { cropAPI } from '../api/api';
+import { extractApiErrorMessage, isGeometryUndoConflict } from '../api/errors';
 import type { CropHistoryEntry, ProjectRestorePreview } from '../api/types';
 import { useTranslation } from '../i18n';
 
@@ -192,7 +193,9 @@ export function useProjectHistory(showSnackbar: ShowSnackbar): ProjectHistory {
       console.error('Error reverting batch operation:', error);
       clearRestore();
       requestBatchRevert(null);
-      showSnackbar(t('commandPalette.feedback.versionRestoreError'), 'error');
+      const fallback = t('commandPalette.feedback.versionRestoreError');
+      // A geometry change explains why its checked Undo is refused (#1634).
+      showSnackbar(isGeometryUndoConflict(error) ? extractApiErrorMessage(error, t, fallback) : fallback, 'error');
     }
   }, [clearRestore, showSnackbar, t]);
 

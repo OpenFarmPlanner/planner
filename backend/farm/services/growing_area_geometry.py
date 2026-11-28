@@ -14,7 +14,7 @@ from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
@@ -130,6 +130,22 @@ class GeometryFacts:
         parent_attname = _VERSION_PARENT_ATTNAME[kind]
         if parent_attname:
             setattr(version, parent_attname, self.parent_id)
+
+
+def merge_facts(kind: AreaKind, base: GeometryFacts, values: dict[str, Any]) -> GeometryFacts:
+    """Facts after changing only the submitted measurements or parent.
+
+    Two sides decide the area, so a client's rounded area never contradicts
+    them; clearing a side keeps the recorded area as a declared one, as the
+    present-row save always has.
+    """
+    length = values['length_m'] if 'length_m' in values else base.length_m
+    width = values['width_m'] if 'width_m' in values else base.width_m
+    area = values['area_sqm'] if 'area_sqm' in values else base.area_sqm
+    if kind == 'location' or (length and width):
+        area = None
+    parent = values['parent_id'] if 'parent_id' in values else base.parent_id
+    return GeometryFacts.from_measurements(kind, length, width, area, parent)
 
 
 def derive_area(kind: AreaKind, length_m: float, width_m: float) -> Decimal:
@@ -292,21 +308,38 @@ def resolve_geometry(
     locations: Iterable[int] = (),
     fields: Iterable[int] = (),
     beds: Iterable[int] = (),
+    loaded: Iterable[Model] = (),
+    with_ancestors: bool = True,
 ) -> GeometryResolution:
     """Resolve the requested areas and their ancestors on ``as_of`` in bulk.
 
     Foreign-project IDs are ignored. Each kind costs two queries regardless of
-    the number of areas: present parents and the sparse version timeline. A
-    child is assignable only when its own and every ancestor's status is
-    active or unknown.
+    the number of areas: present parents and the sparse version timeline.
+    ``loaded`` rows of the project skip the first query. A child is assignable
+    only when its own and every ancestor's status is active or unknown;
+    without ``with_ancestors`` only the requested kinds are read and
+    ``assignable`` reflects the area's own status.
     """
     requested: dict[AreaKind, set[int]] = {
         'location': set(locations), 'field': set(fields), 'bed': set(beds),
     }
+    known: dict[AreaKind, dict[int, int | None]] = {kind: {} for kind in AREA_KINDS}
+    for row in loaded:
+        kind = area_kind(row)
+        if row.project_id == project.pk:
+            parent_attname = _PARENT_ATTNAME[kind]
+            known[kind][row.pk] = getattr(row, parent_attname) if parent_attname else None
+            requested[kind].add(row.pk)
     entries: dict[tuple[AreaKind, int], ResolvedGeometry] = {}
     pending: dict[AreaKind, set[int]] = {kind: set(ids) for kind, ids in requested.items()}
     for kind in reversed(AREA_KINDS):  # beds, then their parcels, then locations
-        parents = _current_parents(project, kind, pending[kind])
+        if not with_ancestors and not requested[kind]:
+            continue
+        missing = pending[kind] - known[kind].keys()
+        parents = {
+            **{key: value for key, value in known[kind].items() if key in pending[kind]},
+            **_current_parents(project, kind, missing),
+        }
         versions = _versions_by_owner(project, kind, parents)
         for area_id, current_parent in parents.items():
             entry = _resolve_one(kind, area_id, versions[area_id], as_of, current_parent)
@@ -321,7 +354,9 @@ def resolve_geometry(
                 continue
             parent_kind = _PARENT_KIND[kind]
             parent = resolved.get((parent_kind, entry.parent_id)) if parent_kind else None
-            parent_ok = parent_kind is None or (parent is not None and parent.assignable)
+            parent_ok = parent_kind is None or not with_ancestors or (
+                parent is not None and parent.assignable
+            )
             assignable = entry.status in _ASSIGNABLE_STATUSES and parent_ok
             resolved[(kind, area_id)] = _replace_assignable(entry, assignable)
     return GeometryResolution(
@@ -353,6 +388,71 @@ def removable_with_area(model: type[Model], objects: Iterable[Model], project_id
         version.project_id == project_id and version.origin in _SETUP_ORIGINS
         for version in objects
     )
+
+
+@dataclass(frozen=True)
+class AreaSlice:
+    """One stretch of dates with a constant recorded area; open ends are None."""
+
+    start: date | None
+    end: date | None
+    area_sqm: Decimal | None
+
+
+class AreaTimeline:
+    """An area's recorded size over time, for date-sliced capacity checks."""
+
+    def __init__(self, slices: list[AreaSlice]) -> None:
+        self.slices = slices
+
+    @classmethod
+    def constant(cls, area_sqm: Decimal | None) -> AreaTimeline:
+        """A timeline without versions keeps the present area everywhere."""
+        return cls([AreaSlice(None, None, area_sqm)])
+
+    def at(self, day: date) -> Decimal | None:
+        """The recorded area on ``day``, or None when it is unknown or unavailable."""
+        for item in self.slices:
+            if (item.start is None or item.start <= day) and (item.end is None or day <= item.end):
+                return item.area_sqm
+        return None
+
+    def between(self, start: date, end: date) -> list[AreaSlice]:
+        """The slices overlapping ``[start, end]``, clipped to it."""
+        return [
+            AreaSlice(max(item.start or start, start), min(item.end or end, end), item.area_sqm)
+            for item in self.slices
+            if (item.start is None or item.start <= end) and (item.end is None or start <= item.end)
+        ]
+
+
+def _timeline_slices(versions: list[GrowingAreaGeometryVersion]) -> list[AreaSlice]:
+    first = versions[0]
+    # Before an area's first observation its recorded size is unknown. Capacity
+    # keeps using that observation there, as every check did before the
+    # timeline existed; the dated reads still report those dates as unknown.
+    before = first.confirmed_area_sqm if first.origin == Version.ORIGIN_LEGACY_OBSERVATION else None
+    slices = [AreaSlice(None, first.effective_from - timedelta(days=1), before)]
+    for index, version in enumerate(versions):
+        following = versions[index + 1] if index + 1 < len(versions) else None
+        area = version.confirmed_area_sqm if version.state == Version.STATE_ACTIVE else None
+        end = following.effective_from - timedelta(days=1) if following else None
+        slices.append(AreaSlice(version.effective_from, end, area))
+    return slices
+
+
+def bed_area_timelines(beds: Iterable[Bed]) -> dict[int, AreaTimeline]:
+    """Recorded bed sizes over time, in one query for all beds."""
+    beds = list(beds)
+    grouped: dict[int, list[GrowingAreaGeometryVersion]] = {bed.pk: [] for bed in beds}
+    if beds:
+        for version in Version.objects.filter(bed_id__in=grouped).order_by('effective_from', 'pk'):
+            grouped[version.bed_id].append(version)
+    return {
+        bed.pk: AreaTimeline(_timeline_slices(grouped[bed.pk])) if grouped[bed.pk]
+        else AreaTimeline.constant(bed.area_sqm)
+        for bed in beds
+    }
 
 
 def geometry_view_date(season: Season | None, today: date | None = None) -> date:
@@ -481,12 +581,17 @@ def correct_version(version: GrowingAreaGeometryVersion, facts: GeometryFacts) -
     version.save()
 
 
+class GeometryHistoryConflict(Exception):
+    """A bulk write would rewrite a recorded physical change or retirement."""
+
+
 def reconcile_project_geometry(project: Project) -> None:
     """Bring the timeline in step after bulk writes such as a project restore.
 
     An area without any version gets an observation from today. An area whose
-    present facts differ from its mirrored version corrects that version.
-    Later scheduled versions are never removed.
+    present facts differ from its mirrored setup record corrects that record.
+    A recorded physical change or retirement is never rewritten this way;
+    the write is refused instead. Later scheduled versions are never removed.
     """
     today = date.today()
     for kind, model in AREA_MODELS.items():
@@ -501,6 +606,76 @@ def reconcile_project_geometry(project: Project) -> None:
                 continue
             in_effect = [version for version in timeline if version.effective_from <= today]
             mirrored = in_effect[-1] if in_effect else timeline[0]
-            if GeometryFacts.from_version(mirrored) != facts:
-                correct_version(mirrored, facts)
+            if GeometryFacts.from_version(mirrored) == facts:
+                continue
+            if mirrored.origin not in _SETUP_ORIGINS:
+                raise GeometryHistoryConflict(f'{kind} {row.pk} has dated geometry history')
+            correct_version(mirrored, facts)
         Version.objects.bulk_create(created)
+
+
+def refresh_present_mirrors(project: Project, *, actor_label: str = '') -> None:
+    """Copy a dated change that has come into effect onto its present row.
+
+    Only physical changes and retirements can make the present measurements
+    fall behind; without any in effect this costs one query. Each refreshed
+    row records an internal revision so project history stays complete.
+    """
+    from farm.history.records import _serialize_instance, record_entity_revision
+    from farm.models import EntityRevision
+
+    today = date.today()
+    owners = set(
+        Version.objects.filter(project=project, effective_from__lte=today)
+        .exclude(origin__in=_SETUP_ORIGINS)
+        .values_list('location_id', 'field_id', 'bed_id'),
+    )
+    for location_id, field_id, bed_id in owners:
+        kind: AreaKind = 'bed' if bed_id else 'field' if field_id else 'location'
+        area_id = bed_id or field_id or location_id
+        row = AREA_MODELS[kind].objects.select_for_update().filter(pk=area_id).first()
+        mirrored = mirror_version(kind, area_id, today=today)
+        if row is None or mirrored is None:
+            continue
+        facts = GeometryFacts.from_version(mirrored)
+        if GeometryFacts.from_area(row) == facts:
+            continue
+        write_present_facts(row, facts)
+        snapshot = {**_serialize_instance(row), '_project_version_internal': True}
+        record_entity_revision(
+            project=project, entity_type=kind, object_id=row.pk,
+            action=EntityRevision.ACTION_UPDATED, snapshot=snapshot,
+            display_name=row.name, changed_fields=['geometry'], user_name=actor_label,
+        )
+
+
+def write_present_facts(area: Model, facts: GeometryFacts) -> list[str]:
+    """Copy facts onto the present row without re-entering the save hook."""
+    kind = area_kind(area)
+    values: dict[str, Any] = {'length_m': facts.length_m, 'width_m': facts.width_m}
+    if kind != 'location':
+        values['area_sqm'] = (
+            facts.area_sqm.quantize(Decimal('0.1')) if facts.area_sqm is not None else None
+        )
+        values['location_id' if kind == 'field' else 'field_id'] = facts.parent_id
+    changed = [name for name, value in values.items() if getattr(area, name) != value]
+    if changed:
+        for name, value in values.items():
+            setattr(area, name, value)
+        area._skip_geometry_sync = True
+        try:
+            area.save(update_fields=[*values, 'updated_at'])
+        finally:
+            area._skip_geometry_sync = False
+    return changed
+
+
+def scheduled_dimensions(area: Model) -> list[tuple[float | None, float | None]]:
+    """Width and length of the area's active versions that start after today."""
+    kind = area_kind(area)
+    return list(
+        Version.objects.filter(
+            **{f'{kind}_id': area.pk}, effective_from__gt=date.today(),
+            state=Version.STATE_ACTIVE,
+        ).values_list('width_m', 'length_m'),
+    )

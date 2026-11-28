@@ -433,5 +433,51 @@
       "title": "Item niet gevonden",
       "description": "Deze locatie, dit perceel of dit bed bestaat niet (meer) in het actieve project."
     }
+  },
+  "geometryChange": {
+    "title": "Maten van ‘{{name}}’ wijzigen",
+    "summary": "Eerder: {{previous}}. Nieuw: {{proposed}}.",
+    "area": "{{area}} m²",
+    "unknownArea": "Oppervlakte onbekend",
+    "dimensions": "{{length}} × {{width}} m ({{area}})",
+    "physicalChange": "Fysieke wijziging vanaf seizoen {{season}}",
+    "physicalChangeHint": "De nieuwe maten gelden vanaf {{date}}. Eerdere seizoenen houden {{previous}}.",
+    "physicalChangeUnavailable": "Kies een later seizoen om een fysieke wijziging vast te leggen.",
+    "correction": "Maten corrigeren",
+    "correctionHint": "De vanaf {{date}} vastgelegde maten worden vervangen. Teelten in deze periode worden aan de nieuwe maten getoetst.",
+    "checking": "Wijziging wordt gecontroleerd …",
+    "affectedPlans_one": "{{formatted}} teelt in deze periode",
+    "affectedPlans_other": "{{formatted}} teelten in deze periode",
+    "confirm": "Maten opslaan",
+    "savedFromSeason": "Vanaf {{date}}: {{proposed}}.",
+    "savedCorrection": "Maten gecorrigeerd.",
+    "notSaved": "De maten zijn niet gewijzigd.",
+    "findings": {
+      "geometry_capacity_exceeded": "De teelten gebruiken hier tot {{used}} m², maar het oppervlak zou maar {{area}} m² hebben.",
+      "geometry_positions_outside": "Individuele planten zouden buiten de nieuwe maten liggen.",
+      "geometry_children_exceed_area": "De oppervlakken erbinnen zijn samen {{children}} m², maar het zou maar {{area}} m² hebben.",
+      "geometry_relocation_unsupported": "Verplaatsen naar een ander teeltoppervlak is nog niet mogelijk.",
+      "geometry_parent_invalid": "Het gekozen bovenliggende oppervlak bestaat niet meer.",
+      "geometry_unchanged": "De maten zijn ongewijzigd.",
+      "geometry_capacity_unknown": "Zonder oppervlakte kan de bezetting in deze periode niet worden gecontroleerd.",
+      "geometry_later_version_kept": "Vanaf {{date}} blijven de daarvoor vastgelegde maten gelden.",
+      "fallback": "Deze wijziging is zo niet mogelijk."
+    },
+    "errors": {
+      "generic": "De wijziging kon niet worden gecontroleerd. Probeer het opnieuw.",
+      "refreshed": "Het oppervlak of de teelten zijn intussen gewijzigd. De controle is bijgewerkt.",
+      "geometry_version_exists_on_date": "Vanaf dit seizoensbegin zijn al maten vastgelegd. Corrigeer die in plaats daarvan.",
+      "geometry_not_recorded_at_date": "Voor dit seizoensbegin zijn nog geen maten vastgelegd. Corrigeer de bestaande maten.",
+      "geometry_area_retired": "Het oppervlak is bij dit seizoensbegin buiten gebruik.",
+      "geometry_version_changed": "De maten zijn intussen gewijzigd. Laad de pagina opnieuw en probeer het nog eens.",
+      "geometry_preview_stale": "De controle is verlopen. Controleer de wijziging opnieuw.",
+      "geometry_change_blocked": "De wijziging past niet bij de bestaande teelten.",
+      "geometry_request_changed": "Deze wijziging is al op een andere manier opgeslagen. Laad de pagina opnieuw.",
+      "geometry_season_required": "Kies een seizoen voor de fysieke wijziging.",
+      "geometry_undo_done": "Deze wijziging is al ongedaan gemaakt.",
+      "geometry_undo_changed": "De maten zijn daarna opnieuw gewijzigd en kunnen niet meer worden teruggezet.",
+      "geometry_undo_blocked": "Bestaande teelten passen niet meer bij de eerdere maten.",
+      "not_found": "Dit oppervlak bestaat niet meer."
+    }
   }
 }

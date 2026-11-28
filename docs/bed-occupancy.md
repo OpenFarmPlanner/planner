@@ -66,6 +66,14 @@ bed-preparation parameter.
 A plan without an area skips the check, and so does a bed without an area.
 The plan being edited never counts against itself (`exclude_plan_id`).
 
+The bed area is dated ([growing-area geometry](./growing-area-geometry-history.md#implementation-status)).
+When a checked period crosses a recorded size change, each slice is compared
+with its own size and the slice with the least free room is reported; a slice
+without a recorded size does not constrain the plan. Before a bed's first
+legacy observation the check keeps using that observation, as it did before
+dated geometry existed. Harvest-overlap infos use the size on the day the
+follow-up arrives.
+
 ### The actual harvest end
 
 The actual harvest end of the previous crop is the first day of the earliest

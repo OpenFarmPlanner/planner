@@ -13,6 +13,7 @@ from farm.services.site_conditions import (
     effective_conditions_for_field,
     effective_conditions_for_location,
 )
+from farm.structure.dated_geometry import DatedGeometrySerializerMixin
 
 MAX_LOCATION_DIMENSION_M = 100_000.0
 LOCATION_PATH_GAP_FIELDS = ('bed_path_spacing_m', 'parcel_path_spacing_m')
@@ -33,7 +34,7 @@ def _serialize_effective(conditions: dict[str, EffectiveCondition]) -> dict[str,
     return {name: condition.as_dict() for name, condition in conditions.items()}
 
 
-class LocationSerializer(serializers.ModelSerializer):
+class LocationSerializer(DatedGeometrySerializerMixin, serializers.ModelSerializer):
     bed_path_spacing_cm = CentimetersField(
         source='bed_path_spacing_m', required=False,
         help_text='Recommended path between sibling beds in centimetres.',
@@ -148,7 +149,7 @@ class LocationSerializer(serializers.ModelSerializer):
         read_only_fields = ['project', 'boundary_x', 'boundary_y']
 
 
-class FieldSerializer(serializers.ModelSerializer):
+class FieldSerializer(DatedGeometrySerializerMixin, serializers.ModelSerializer):
     location_name = serializers.CharField(source='location.name', read_only=True)
     effective_site_conditions = serializers.SerializerMethodField(
         help_text=EFFECTIVE_SITE_CONDITIONS_HELP,
@@ -216,7 +217,7 @@ class FieldSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class BedSerializer(serializers.ModelSerializer):
+class BedSerializer(DatedGeometrySerializerMixin, serializers.ModelSerializer):
     field_name = serializers.CharField(source='field.name', read_only=True)
     effective_site_conditions = serializers.SerializerMethodField(
         help_text=EFFECTIVE_SITE_CONDITIONS_HELP,

@@ -640,7 +640,8 @@
       "countCreated_many": "{{count}} serie create",
       "countRestored_many": "{{count}} serie ripristinate",
       "countUpdated_many": "{{count}} serie aggiornate",
-      "undo": "Annulla questa azione"
+      "undo": "Annulla questa azione",
+      "geometryChange": "Misure di {{name}} modificate"
     },
     "import": {
       "colorInheritRequiresVariety": "Solo le varietà accettano il valore inherit nella colonna del colore.",

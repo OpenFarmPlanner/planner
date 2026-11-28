@@ -8,6 +8,10 @@ import { normalizeBasePath } from '../utils/basePath';
 import { readCookie } from '../utils/cookies';
 import { API_REQUEST_TIMEOUT_MS } from './requestTimeout';
 import { createCachingAdapter } from './responseCache';
+import {
+  geometryPreviewRequest,
+  requestGeometryChange,
+} from '../components/hierarchy/geometryChange/geometryChangeBridge';
 
 const PROD_API_PATH = '/api';
 
@@ -152,6 +156,7 @@ httpClient.interceptors.request.use((config) => {
 
 interface RetriableRequestConfig extends InternalAxiosRequestConfig {
   _retriedMissingProjectHeader?: boolean;
+  _geometryChangeConfirmed?: boolean;
 }
 
 httpClient.interceptors.response.use(
@@ -182,6 +187,17 @@ httpClient.interceptors.response.use(
       config._retriedMissingProjectHeader = true;
       await new Promise((resolve) => window.setTimeout(resolve, 150));
       return httpClient(config);
+    }
+
+    // A used area's measurements change only through preview/confirm (#1634):
+    // the dialog writes the dated version, then the original save repeats
+    // with values that no longer differ.
+    const geometryRequest = geometryPreviewRequest(error);
+    if (config && geometryRequest && !config._geometryChangeConfirmed) {
+      if (await requestGeometryChange(geometryRequest)) {
+        config._geometryChangeConfirmed = true;
+        return httpClient(config);
+      }
     }
 
     return Promise.reject(error);

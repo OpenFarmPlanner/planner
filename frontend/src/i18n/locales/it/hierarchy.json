@@ -458,5 +458,52 @@
       "title": "Voce non trovata",
       "description": "Questo sito, appezzamento o aiuola non esiste (più) nel progetto attivo."
     }
+  },
+  "geometryChange": {
+    "title": "Modifica le misure di «{{name}}»",
+    "summary": "Prima: {{previous}}. Nuovo: {{proposed}}.",
+    "area": "{{area}} m²",
+    "unknownArea": "Superficie sconosciuta",
+    "dimensions": "{{length}} × {{width}} m ({{area}})",
+    "physicalChange": "Modifica fisica dalla stagione {{season}}",
+    "physicalChangeHint": "Le nuove misure valgono dal {{date}}. Le stagioni precedenti mantengono {{previous}}.",
+    "physicalChangeUnavailable": "Scegli una stagione successiva per registrare una modifica fisica.",
+    "correction": "Correggi le misure",
+    "correctionHint": "Le misure registrate dal {{date}} vengono sostituite. Le serie di questo periodo vengono verificate con le nuove misure.",
+    "checking": "Verifica della modifica …",
+    "affectedPlans_one": "{{formatted}} serie in questo periodo",
+    "affectedPlans_many": "{{formatted}} serie in questo periodo",
+    "affectedPlans_other": "{{formatted}} serie in questo periodo",
+    "confirm": "Salva le misure",
+    "savedFromSeason": "Dal {{date}}: {{proposed}}.",
+    "savedCorrection": "Misure corrette.",
+    "notSaved": "Le misure non sono state modificate.",
+    "findings": {
+      "geometry_capacity_exceeded": "Qui le serie occupano fino a {{used}} m², ma la superficie avrebbe solo {{area}} m².",
+      "geometry_positions_outside": "Alcune piante singole si troverebbero fuori dalle nuove misure.",
+      "geometry_children_exceed_area": "Le superfici che contiene sommano {{children}} m², ma avrebbe solo {{area}} m².",
+      "geometry_relocation_unsupported": "Lo spostamento su un’altra superficie coltivata non è ancora possibile.",
+      "geometry_parent_invalid": "La superficie superiore scelta non esiste più.",
+      "geometry_unchanged": "Le misure non sono cambiate.",
+      "geometry_capacity_unknown": "Senza superficie non è possibile verificare l’occupazione di questo periodo.",
+      "geometry_later_version_kept": "Dal {{date}} restano valide le misure registrate per quella data.",
+      "fallback": "Questa modifica non è possibile così."
+    },
+    "errors": {
+      "generic": "Non è stato possibile verificare la modifica. Riprova.",
+      "refreshed": "La superficie o le sue serie sono cambiate nel frattempo. La verifica è stata aggiornata.",
+      "geometry_version_exists_on_date": "Per questo inizio stagione sono già registrate delle misure. Correggile invece.",
+      "geometry_not_recorded_at_date": "Per questo inizio stagione non sono ancora registrate misure. Correggi le misure esistenti.",
+      "geometry_area_retired": "La superficie è dismessa a questo inizio stagione.",
+      "geometry_version_changed": "Le misure sono cambiate nel frattempo. Ricarica la pagina e riprova.",
+      "geometry_preview_stale": "La verifica è scaduta. Verifica di nuovo la modifica.",
+      "geometry_change_blocked": "La modifica non è compatibile con le serie esistenti.",
+      "geometry_request_changed": "Questa modifica è già stata salvata in altro modo. Ricarica la pagina.",
+      "geometry_season_required": "Scegli una stagione per la modifica fisica.",
+      "geometry_undo_done": "Questa modifica è già stata annullata.",
+      "geometry_undo_changed": "Le misure sono state modificate di nuovo in seguito e non si possono più ripristinare.",
+      "geometry_undo_blocked": "Le serie esistenti non sono più compatibili con le misure precedenti.",
+      "not_found": "Questa superficie non esiste più."
+    }
   }
 }

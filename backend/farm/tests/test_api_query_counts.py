@@ -500,22 +500,22 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         self.assertEqual(len(response.data['results']), expected_rows)
 
     def test_locations_list_query_count(self):
-        self.assert_list_query_count('/openfarmplanner/api/locations/', 8)
+        self.assert_list_query_count('/openfarmplanner/api/locations/', 9)
 
     def test_fields_list_query_count(self):
         """`location_name` comes from the serializer's dotted source."""
-        self.assert_list_query_count('/openfarmplanner/api/fields/', 5)
+        self.assert_list_query_count('/openfarmplanner/api/fields/', 6)
 
     def test_beds_list_query_count(self):
         """`field_name` needs `field`, and the layout code needs `field__location`."""
-        self.assert_list_query_count('/openfarmplanner/api/beds/', 5)
+        self.assert_list_query_count('/openfarmplanner/api/beds/', 6)
 
     def test_structure_lists_resolve_inherited_site_conditions_without_extra_queries(self):
         """`effective_site_conditions` reads the parent chain already joined by the list."""
         Location.objects.filter(project=self.project).update(light_condition='sunny')
         Field.objects.filter(project=self.project).update(soil_moisture='moist')
-        self.assert_list_query_count('/openfarmplanner/api/fields/', 5)
-        with self.assertNumQueries(5):
+        self.assert_list_query_count('/openfarmplanner/api/fields/', 6)
+        with self.assertNumQueries(6):
             response = self.client.get('/openfarmplanner/api/beds/')
         effective = response.data['results'][0]['effective_site_conditions']
         self.assertEqual(effective['light_condition']['value'], 'sunny')
@@ -756,7 +756,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 project=self.project, planting_plan=plan, date=date(2026, 5, 17),
                 loss_type='partial', cause='frost',
             )
-        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 16)
+        self.assert_list_query_count('/openfarmplanner/api/planting-plans/', 17)
         self.assert_list_query_count('/openfarmplanner/api/harvests/', 7)
 
     def test_planting_plans_germination_findings_share_timing_indexes(self) -> None:
@@ -773,7 +773,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 cultivation_type='direct_sowing',
                 area_usage_sqm=5, project=self.project, season=self.seasons[index],
             )
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(17):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         flagged = [row for row in response.data['results'] if row['germination_findings']]
@@ -792,7 +792,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
 
         self.assert_list_query_count(
-            '/openfarmplanner/api/planting-plans/', 16, expected_rows=2 * ROW_COUNT,
+            '/openfarmplanner/api/planting-plans/', 17, expected_rows=2 * ROW_COUNT,
         )
 
     def test_planting_plans_list_inherits_variety_colors_without_per_row_queries(self):
@@ -803,7 +803,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             ) if crop.variety else crop
             for crop in self.crops
         }
-        self.assert_list_query_count(url, 16)
+        self.assert_list_query_count(url, 17)
         colors = {}
         for crop, bed in zip(self.crops, self.beds, strict=True):
             variety = Crop.objects.create(
@@ -814,7 +814,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 project=self.project, crop=variety, bed=bed, planting_date=date(2026, 5, 1),
             )
             colors[plan.pk] = parents[crop.pk].display_color
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(17):
             response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -838,7 +838,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
             )
 
         self.assert_list_query_count(
-            '/openfarmplanner/api/planting-plans/', 14, expected_rows=2 * ROW_COUNT,
+            '/openfarmplanner/api/planting-plans/', 15, expected_rows=2 * ROW_COUNT,
         )
 
     def test_individual_plans_use_joined_bed_and_parcel_ancestry(self):
@@ -1030,7 +1030,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=5, project=self.project, season=self.seasons[index],
             )
 
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(17):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         flagged = [row for row in response.data['results'] if row['timing_window_findings']]
@@ -1041,7 +1041,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         Location.objects.filter(project=self.project).update(light_condition='shade')
         url = '/openfarmplanner/api/planting-plans/'
         for size in (ROW_COUNT, 2 * ROW_COUNT):
-            with self.assertNumQueries(16):
+            with self.assertNumQueries(17):
                 response = self.client.get(url)
             self.assertEqual(response.status_code, 200, response.data)
             found = [row for row in response.data['results'] if row['site_suitability_findings']]
@@ -1070,7 +1070,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
                 area_usage_sqm=10, project=self.project, season=self.seasons[index],
             )
 
-        with self.assertNumQueries(16):
+        with self.assertNumQueries(17):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']
@@ -1103,7 +1103,7 @@ class ListEndpointQueryCountTest(ProjectApiTestCase):
         """
         self._add_bad_neighbours_on_every_bed()
 
-        with self.assertNumQueries(18):
+        with self.assertNumQueries(19):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
         self.assertEqual(response.status_code, 200)
         rows = response.data['results']

@@ -193,6 +193,12 @@ Legacy batch reverts also save a separate selectable backup and finish their
 group with a complete checkpoint. Reverting that group still composes using
 its entity revisions; the checkpoint is not treated as another inverse entity.
 
+A confirmed growing-area geometry change (`geometry_change`) is one batch with
+the area's revision and the version ID, dates and previous/new facts in its
+context. Its Undo is a checked inverse through the geometry service, not a
+snapshot replay; see
+[growing-area geometry](./growing-area-geometry-history.md#implementation-status).
+
 ## Bulk crop deletion
 
 The project crop list previews a selected set or all active crops through

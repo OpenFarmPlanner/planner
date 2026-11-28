@@ -1308,6 +1308,14 @@ folder expansion and order while avoiding a full reload. The row projector
 reuses unaffected entities. A changed location or parcel refreshes the
 descendant rows that depend on its inherited conditions.
 
+Measurements and parents are dated. The rows show the values recorded for the
+selected season, and a save compares them with that season's version. Saving
+new measurements or a new parent for a used area opens the shared
+preview/confirm dialog: physical change from the season or correction. The
+row's save repeats after confirmation, so its pending indicator covers the
+whole flow; cancelling keeps the row's previous values. See
+[growing-area geometry](./growing-area-geometry-history.md#implementation-status).
+
 Use the [guarded local fixture procedure](work-execution-queue.md#local-test-data-handoff)
 and serve a production build with `npm run preview`. From `backend/`, preview
 the 24- and 640-bed fixtures before repeating each command with `--apply`.

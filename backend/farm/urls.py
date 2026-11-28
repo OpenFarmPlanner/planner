@@ -1,7 +1,12 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter, SimpleRouter
 
-from farm.structure.geometry_views import GrowingAreaGeometryTimelineView, GrowingAreaGeometryView
+from farm.structure.geometry_views import (
+    GrowingAreaGeometryConfirmView,
+    GrowingAreaGeometryPreviewView,
+    GrowingAreaGeometryTimelineView,
+    GrowingAreaGeometryView,
+)
 from farm.structure.parcel_rotation import ParcelRotationGroupViewSet
 
 from .agent_api.views import (
@@ -171,6 +176,14 @@ urlpatterns = [
     path(
         'growing-area-geometry/timeline/', GrowingAreaGeometryTimelineView.as_view(),
         name='growing-area-geometry-timeline',
+    ),
+    path(
+        'growing-area-geometry/preview/', GrowingAreaGeometryPreviewView.as_view(),
+        name='growing-area-geometry-preview',
+    ),
+    path(
+        'growing-area-geometry/confirm/', GrowingAreaGeometryConfirmView.as_view(),
+        name='growing-area-geometry-confirm',
     ),
     path('projects-bootstrap/', MyProjectsView.as_view(), name='projects-bootstrap'),
     path('projects-switch/', ProjectSwitchView.as_view(), name='projects-switch'),

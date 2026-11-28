@@ -48,6 +48,7 @@ from farm.services.growing_area_geometry import (
     project_season,
 )
 
+from .dated_geometry import DatedGeometryViewMixin, dated_context, guard_geometry_update
 from .serializers import (
     BED_NAME_DUPLICATE_MESSAGE,
     FIELD_NAME_DUPLICATE_MESSAGE,
@@ -144,7 +145,9 @@ class BedLayoutByLocationView(APIView):
         )
 
 
-class LocationViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
+class LocationViewSet(
+    DatedGeometryViewMixin, ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet,
+):
     """ViewSet for Location model providing CRUD operations.
     
     Provides list, create, retrieve, update, and delete operations
@@ -171,6 +174,7 @@ class LocationViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
     @transaction.atomic
     def perform_update(self, serializer):
         serializer.instance = lock_placement_parent(serializer.instance)
+        guard_geometry_update(self.request, serializer.instance, serializer.validated_data)
         validate_individual_site_dimensions(serializer.instance, serializer.validated_data)
         previous_snapshot = _serialize_instance(serializer.instance)
         instance = serializer.save()
@@ -182,7 +186,9 @@ class LocationViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelVi
         super().perform_destroy(instance)
 
 
-class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
+class FieldViewSet(
+    DatedGeometryViewMixin, ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet,
+):
     """ViewSet for Field model providing CRUD operations.
     
     Provides list, create, retrieve, update, and delete operations
@@ -211,6 +217,7 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
     @transaction.atomic
     def perform_update(self, serializer):
         serializer.instance = lock_individual_parcel(serializer.instance)
+        guard_geometry_update(self.request, serializer.instance, serializer.validated_data)
         validate_individual_parcel_dimensions(serializer.instance, serializer.validated_data)
         previous_snapshot = _serialize_instance(serializer.instance)
         previous_location_id = serializer.instance.location_id
@@ -274,14 +281,16 @@ class FieldViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewS
             {
                 'field': FieldSerializer(result.field, context=self.get_serializer_context()).data,
                 'beds': BedSerializer(
-                    result.beds, many=True, context=self.get_serializer_context()
+                    result.beds, many=True, context=dated_context(self, result.beds),
                 ).data,
             },
             status=status.HTTP_201_CREATED,
         )
 
 
-class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet):
+class BedViewSet(
+    DatedGeometryViewMixin, ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet,
+):
     """ViewSet for Bed model providing CRUD operations.
     
     Provides list, create, retrieve, update, and delete operations
@@ -314,6 +323,7 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
             pk=serializer.instance.pk, project_id=self.request.active_project.pk,
         )
         serializer.instance = bed
+        guard_geometry_update(self.request, bed, serializer.validated_data)
         validate_individual_bed_dimensions(bed, serializer.validated_data)
         previous_snapshot = _serialize_instance(bed)
         destination = serializer.validated_data.get('field')
@@ -383,7 +393,8 @@ class BedViewSet(ProjectScopedMixin, ProjectRevisionMixin, viewsets.ModelViewSet
         token = signing.dumps({
             'project': request.active_project.pk, 'user': request.user.pk, 'beds': undo_snapshot,
         }, salt=BULK_BED_UNDO_SALT, compress=True)
-        return Response(BedSerializer(created, many=True).data, status=status.HTTP_201_CREATED,
+        data = BedSerializer(created, many=True, context=dated_context(self, created)).data
+        return Response(data, status=status.HTTP_201_CREATED,
                         headers={BULK_BED_UNDO_HEADER: token})
 
     @action(detail=False, methods=['post'], url_path='undo-bulk-create')

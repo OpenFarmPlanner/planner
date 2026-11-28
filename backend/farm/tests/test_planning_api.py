@@ -795,7 +795,7 @@ class PlantingPlanAttachmentCountApiTest(DRFAPITestCase):
         # + 1 allocated harvest lookup for the whole page
         # + 1 RELEASE SAVEPOINT (ATOMIC_REQUESTS wraps each request in its own
         # transaction, nested as a savepoint under the test's outer transaction).
-        with self.assertNumQueries(11):
+        with self.assertNumQueries(12):
             response = self.client.get('/openfarmplanner/api/planting-plans/')
             self.assertEqual(response.status_code, status.HTTP_200_OK)
 

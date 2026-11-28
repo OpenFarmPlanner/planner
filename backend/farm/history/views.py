@@ -17,6 +17,7 @@ from farm.crops.views.bulk_deletion import bulk_crop_deletion_error
 from farm.models import BatchOperation, Crop, EntityRevision
 from farm.project_context import get_active_project_or_400, require_project_admin
 from farm.services.crop_deletion import BulkCropDeletionConflict, recover_crop_deletion
+from farm.services.geometry_changes import GeometryChangeConflict, undo_geometry_change
 
 from .import_operations import ImportOperationConflict, import_undo_preview, undo_crop_import
 from .payloads import build_crop_history_payload
@@ -256,12 +257,20 @@ class BatchOperationRevertView(APIView):
                 return Response({"detail": "Restored.", "restored_count": restored})
             elif batch.operation_type == BatchOperation.TYPE_CROP_BULK_UNDELETE:
                 raise BatchRevertError("crop recovery can be reversed from project history")
+            elif batch.operation_type == BatchOperation.TYPE_GEOMETRY_CHANGE:
+                undo_geometry_change(
+                    active_project, batch, actor_label=_current_actor_label(request),
+                )
             else:
                 revert_batch_operation(
                     active_project, batch, user_name=_current_actor_label(request)
                 )
         except BulkCropDeletionConflict as exc:
             return bulk_crop_deletion_error(exc)
+        except GeometryChangeConflict as exc:
+            return api_error_response(
+                code=exc.code, detail=exc.detail, status_code=status.HTTP_409_CONFLICT,
+            )
         except ImportOperationConflict as exc:
             return api_error_response(
                 code=exc.code, detail='This import cannot be undone.',

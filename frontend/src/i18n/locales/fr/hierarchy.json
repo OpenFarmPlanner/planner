@@ -458,5 +458,52 @@
       "title": "Entrée introuvable",
       "description": "Ce site, cette parcelle ou cette planche n’existe pas (ou plus) dans le projet actif."
     }
+  },
+  "geometryChange": {
+    "title": "Modifier les dimensions de « {{name}} »",
+    "summary": "Avant : {{previous}}. Nouveau : {{proposed}}.",
+    "area": "{{area}} m²",
+    "unknownArea": "Surface inconnue",
+    "dimensions": "{{length}} × {{width}} m ({{area}})",
+    "physicalChange": "Modification physique à partir de la saison {{season}}",
+    "physicalChangeHint": "Les nouvelles dimensions s’appliquent à partir du {{date}}. Les saisons précédentes conservent {{previous}}.",
+    "physicalChangeUnavailable": "Choisissez une saison ultérieure pour enregistrer une modification physique.",
+    "correction": "Corriger les dimensions",
+    "correctionHint": "Les dimensions enregistrées à partir du {{date}} sont remplacées. Les séries de cette période sont vérifiées avec les nouvelles dimensions.",
+    "checking": "Vérification de la modification …",
+    "affectedPlans_one": "{{formatted}} série dans cette période",
+    "affectedPlans_many": "{{formatted}} séries dans cette période",
+    "affectedPlans_other": "{{formatted}} séries dans cette période",
+    "confirm": "Enregistrer les dimensions",
+    "savedFromSeason": "À partir du {{date}} : {{proposed}}.",
+    "savedCorrection": "Dimensions corrigées.",
+    "notSaved": "Les dimensions n’ont pas été modifiées.",
+    "findings": {
+      "geometry_capacity_exceeded": "Les séries occupent ici jusqu’à {{used}} m², mais la surface n’aurait que {{area}} m².",
+      "geometry_positions_outside": "Des plantes individuelles se trouveraient en dehors des nouvelles dimensions.",
+      "geometry_children_exceed_area": "Les surfaces qu’elle contient totalisent {{children}} m², mais elle n’aurait que {{area}} m².",
+      "geometry_relocation_unsupported": "Le déplacement vers une autre surface de culture n’est pas encore possible.",
+      "geometry_parent_invalid": "La surface parente choisie n’existe plus.",
+      "geometry_unchanged": "Les dimensions sont inchangées.",
+      "geometry_capacity_unknown": "Sans surface, l’occupation de cette période ne peut pas être vérifiée.",
+      "geometry_later_version_kept": "À partir du {{date}}, les dimensions enregistrées pour cette date restent valables.",
+      "fallback": "Cette modification n’est pas possible telle quelle."
+    },
+    "errors": {
+      "generic": "La modification n’a pas pu être vérifiée. Veuillez réessayer.",
+      "refreshed": "La surface ou ses séries ont changé entre-temps. La vérification a été mise à jour.",
+      "geometry_version_exists_on_date": "Des dimensions sont déjà enregistrées à partir de ce début de saison. Corrigez-les plutôt.",
+      "geometry_not_recorded_at_date": "Aucune dimension n’est encore enregistrée pour ce début de saison. Corrigez les dimensions existantes.",
+      "geometry_area_retired": "La surface est désaffectée à ce début de saison.",
+      "geometry_version_changed": "Les dimensions ont changé entre-temps. Rechargez la page et réessayez.",
+      "geometry_preview_stale": "La vérification a expiré. Vérifiez à nouveau la modification.",
+      "geometry_change_blocked": "La modification ne correspond pas aux séries existantes.",
+      "geometry_request_changed": "Cette modification a déjà été enregistrée autrement. Rechargez la page.",
+      "geometry_season_required": "Choisissez une saison pour la modification physique.",
+      "geometry_undo_done": "Cette modification a déjà été annulée.",
+      "geometry_undo_changed": "Les dimensions ont été modifiées à nouveau depuis et ne peuvent plus être rétablies.",
+      "geometry_undo_blocked": "Les séries existantes ne correspondent plus aux dimensions précédentes.",
+      "not_found": "Cette surface n’existe plus."
+    }
   }
 }
