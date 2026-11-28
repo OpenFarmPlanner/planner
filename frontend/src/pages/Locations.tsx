@@ -36,6 +36,7 @@ import {
   wideFieldSx,
 } from '../components/forms/formLayout';
 import LoadRetryButton from '../components/LoadRetryButton';
+import { retireInsteadOfDelete } from '../components/hierarchy/geometryChange/geometryChangeBridge';
 
 type SoilType = NonNullable<Location['soil_type']>;
 type Exposure = NonNullable<Location['exposure']>;
@@ -294,7 +295,11 @@ function Locations() {
     try {
       await locationAPI.delete(locationId);
       await loadData();
-    } catch {
+    } catch (err) {
+      if (await retireInsteadOfDelete(err) !== null) {
+        await loadData();
+        return;
+      }
       setError(t('locations:errors.delete'));
     }
   };

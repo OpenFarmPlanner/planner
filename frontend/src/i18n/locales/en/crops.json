@@ -627,7 +627,8 @@
       "countUpdated_other": "{{count}} planting plans updated",
       "reverted": "Restored: {{what}}",
       "undo": "Undo this action",
-      "geometryChange": "Measurements of {{name}} changed"
+      "geometryChange": "Measurements of {{name}} changed",
+      "areaRetirement": "{{name}} retired from season {{season}}"
     },
     "import": {
       "colorInheritRequiresVariety": "Only varieties can use inherit in the color column.",

@@ -29,6 +29,7 @@ from farm.models import (
     EntityRevision,
     Field,
     FieldLayout,
+    GrowingAreaGeometryVersion,
     HarvestAllocation,
     HarvestRecord,
     Location,
@@ -110,6 +111,58 @@ DEMO_ROTATION_GROUP_NAMES = {
     'it': 'Orto della fattoria Nord–Sud',
     'pt': 'Horta da quinta Norte–Sul',
     'nl': 'Boerderijtuin Noord–Zuid',
+}
+
+# Dated growing-area geometry (#1634): one bed widened between seasons under
+# the same identity, one retired from the next season; both keep their plans.
+GEOMETRY_DEMO_BEDS = {
+    'de': ('Erweitertes Beet', 'Stillgelegtes Beet'),
+    'en': ('Widened bed', 'Retired bed'),
+    'fr': ('Planche élargie', 'Planche désaffectée'),
+    'es': ('Bancal ampliado', 'Bancal retirado'),
+    'it': ('Aiuola allargata', 'Aiuola dismessa'),
+    'pt': ('Canteiro alargado', 'Canteiro desativado'),
+    'nl': ('Verbreed bed', 'Buiten gebruik gesteld bed'),
+}
+
+GEOMETRY_DEMO_NOTES = {
+    'de': (
+        'Seit dieser Saison 1,5 statt 1 m breit: 15 statt 10 m². '
+        'Die Kartoffeln der Vorsaison behalten ihre 10 m².',
+        'Ab der nächsten Saison stillgelegt. Die Kartoffeln der Vorsaison bleiben erhalten.',
+    ),
+    'en': (
+        'Since this season 1.5 instead of 1 m wide: 15 instead of 10 m². '
+        'Last season’s potatoes keep their 10 m².',
+        'Retired from next season. Last season’s potatoes are kept.',
+    ),
+    'fr': (
+        'Depuis cette saison, 1,5 m de large au lieu de 1 m : 15 m² au lieu de 10. '
+        'Les pommes de terre de la saison précédente gardent leurs 10 m².',
+        'Désaffectée à partir de la saison prochaine. '
+        'Les pommes de terre de la saison précédente sont conservées.',
+    ),
+    'es': (
+        'Desde esta temporada mide 1,5 m de ancho en lugar de 1 m: 15 m² en lugar de 10. '
+        'Las patatas de la temporada anterior conservan sus 10 m².',
+        'Retirado a partir de la próxima temporada. '
+        'Las patatas de la temporada anterior se conservan.',
+    ),
+    'it': (
+        'Da questa stagione è largo 1,5 m invece di 1 m: 15 m² invece di 10. '
+        'Le patate della stagione precedente mantengono i loro 10 m².',
+        'Dismessa dalla prossima stagione. Le patate della stagione precedente restano.',
+    ),
+    'pt': (
+        'Desde esta época tem 1,5 m de largura em vez de 1 m: 15 m² em vez de 10. '
+        'As batatas da época anterior mantêm os seus 10 m².',
+        'Desativado a partir da próxima época. As batatas da época anterior mantêm-se.',
+    ),
+    'nl': (
+        'Sinds dit seizoen 1,5 in plaats van 1 m breed: 15 in plaats van 10 m². '
+        'De aardappelen van vorig seizoen houden hun 10 m².',
+        'Vanaf volgend seizoen buiten gebruik. De aardappelen van vorig seizoen blijven bewaard.',
+    ),
 }
 
 DEMO_ORCHARD_CROP_NAMES = {
@@ -601,7 +654,7 @@ def resolve_demo_language(language_code: str | None) -> str:
         DEMO_TEXT, FEATURE_TEXT, DEMO_PROJECT_NAMES,
         DEMO_PERSONAL_PROJECT_DESCRIPTIONS, DEMO_SCREENSHOT_PROJECT_DESCRIPTIONS,
         BULK_BED_EXAMPLE_NOTES, DEMO_ROTATION_GROUP_NAMES, DEMO_ORCHARD_CROP_NAMES,
-        GRAPHIC_DEMO_BEDS, GRAPHIC_DEMO_TASKS,
+        GRAPHIC_DEMO_BEDS, GRAPHIC_DEMO_TASKS, GEOMETRY_DEMO_BEDS, GEOMETRY_DEMO_NOTES,
     )
     complete = all(
         _has_complete_translation(bundle[DEMO_LANGUAGE_FALLBACK], bundle.get(language))
@@ -747,6 +800,7 @@ def populate_demo_project(
         assign_unassigned_planting_plans(project, owner=owner)
         _create_demo_orchard(project, fields['fruehbeete'], owner, language, year)
         get_or_create_season_for_date(project, date(year + 1, 1, 1), created_by=owner)
+        _create_demo_geometry_history(project, fields['schlag-nord'], crops, owner, language, year)
         _create_demo_harvests(project, crops, beds, language, year)
         _create_demo_crop_losses(project, crops, beds, language, year)
         _create_demo_previous_season_reference(project, crops, beds, year)
@@ -1161,6 +1215,60 @@ def _create_layouts(
             project=project,
             x=x,
             y=y,
+        )
+
+
+def _demo_geometry_version(bed: Bed, season: Season, origin: str, width_m: float, **extra: Any):
+    return GrowingAreaGeometryVersion(
+        project=bed.project, bed=bed, parent_field=bed.field, effective_from=season.start_date,
+        original_season=season, origin=origin, length_m=10.0, width_m=width_m,
+        confirmed_area_sqm=Decimal(str(10 * width_m)).quantize(Decimal('0.1')),
+        measurement_basis=GrowingAreaGeometryVersion.BASIS_DIMENSIONS, **extra,
+    )
+
+
+def _create_demo_geometry_history(
+    project: Project, parcel: Field, crops: dict[str, Crop], owner: Any, language: str, year: int,
+) -> None:
+    """A widened bed (10 → 15 m²) and a bed retired from the next season (#1634)."""
+    previous = get_or_create_season_for_date(project, date(year - 1, 6, 1), created_by=owner)
+    current = get_or_create_season_for_date(project, date(year, 6, 1), created_by=owner)
+    following = get_or_create_season_for_date(
+        project, current.end_date + timedelta(days=1), created_by=owner,
+    )
+    beds = []
+    for name, note, width_m in zip(
+        GEOMETRY_DEMO_BEDS[language], GEOMETRY_DEMO_NOTES[language], (1.5, 1.2), strict=True,
+    ):
+        bed = Bed(project=project, field=parcel, name=name, notes=note, length_m=10.0,
+                  width_m=width_m)
+        # The dated history below replaces the setup record a save would write.
+        bed._skip_geometry_sync = True
+        bed.save()
+        beds.append(bed)
+    widened, retired = beds
+    new_area = GrowingAreaGeometryVersion.ORIGIN_NEW_AREA
+    GrowingAreaGeometryVersion.objects.bulk_create([
+        _demo_geometry_version(widened, previous, new_area, 1.0),
+        _demo_geometry_version(
+            widened, current, GrowingAreaGeometryVersion.ORIGIN_PHYSICAL_CHANGE, 1.5,
+        ),
+        _demo_geometry_version(retired, previous, new_area, 1.2),
+        _demo_geometry_version(
+            retired, following, GrowingAreaGeometryVersion.ORIGIN_RETIREMENT, 1.2,
+            state=GrowingAreaGeometryVersion.STATE_RETIRED,
+        ),
+    ])
+    for bed, x in ((widened, 8), (retired, 44)):
+        BedLayout.objects.create(bed=bed, location=parcel.location, project=project, x=x, y=432)
+    for bed, season, crop, planted, area in (
+        (widened, previous, crops['kartoffel'], date(year - 1, 4, 20), '8'),
+        (widened, current, crops['kartoffel'], date(year, 4, 20), '14'),
+        (retired, previous, crops['kartoffel'], date(year - 1, 4, 10), '10'),
+    ):
+        PlantingPlan.objects.create(
+            project=project, season=season, crop=crop, bed=bed, planting_date=planted,
+            area_usage_sqm=Decimal(area), created_by=owner,
         )
 
 

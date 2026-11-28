@@ -10,7 +10,9 @@ const activeResult = (page: Page) => beds(page).locator('[data-highlighted="true
 const searchField = (page: Page) => page.getByTestId('inline-bed-picker');
 const removeScope = (page: Page, name: string) => searchField(page).getByRole('button', { name: `Filter „${name}“ entfernen` });
 
-async function seedBeds(page: Page, request: APIRequestContext, scenario: string, longPath = false) {
+async function seedBeds(
+  page: Page, request: APIRequestContext, scenario: string, longPath = false, originalArea = 18.8,
+) {
   await loginWithDeterministicProject(page, request, scenario, { loginAsAdmin: true });
   const { id: season } = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
     start_date: '2026-01-01', end_date: '2026-12-31',
@@ -22,8 +24,8 @@ async function seedBeds(page: Page, request: APIRequestContext, scenario: string
     ? 'Folientunnel Süd mit langer Parzellenbezeichnung und mehreren getrennten Abschnitten'
     : 'Frühbeete Nord';
   const name = longPath ? 'Tomatenreihe West 2026' : 'Salat 1';
-  const createBed = async (bedName: string, fieldId: number) => (await apiRequest<{ id: number }>(
-    page, 'POST', '/beds/', { name: bedName, field: fieldId, area_sqm: 18.8 },
+  const createBed = async (bedName: string, fieldId: number, area = 18.8) => (await apiRequest<{ id: number }>(
+    page, 'POST', '/beds/', { name: bedName, field: fieldId, area_sqm: area },
   )).id;
   const createLocation = async (locationName: string) => (await apiRequest<{ id: number }>(
     page, 'POST', '/locations/', { name: locationName },
@@ -40,7 +42,7 @@ async function seedBeds(page: Page, request: APIRequestContext, scenario: string
     const duplicate = await createField(field, remote);
     await createBed(name, duplicate);
   }
-  const original = await createBed(name, north);
+  const original = await createBed(name, north, originalArea);
   const nearby = await createBed('Salat 2', north);
   await createBed('Kohl 1', south);
   const alternative = await createBed('Salat 3', west);
@@ -292,8 +294,8 @@ test.describe('inline bed picker', () => {
   });
 
   test('can keep the current bed when it no longer has enough area', async ({ page, request }) => {
-    const { plan, original } = await seedBeds(page, request, 'bed-picker-current-capacity');
-    await apiRequest(page, 'PATCH', `/beds/${original}/`, { area_sqm: 0.5 });
+    // A used bed can no longer be shrunk with a plain PATCH (#1634), so it starts too small.
+    const { plan, original } = await seedBeds(page, request, 'bed-picker-current-capacity', false, 0.5);
     const bedCell = cell(page, 'bed');
     await bedCell.dblclick();
     await expect(beds(page)).toHaveAttribute('aria-busy', 'false');

@@ -157,6 +157,11 @@ def guard_geometry_update(request: Any, instance: Model, validated_data: dict[st
     if proposed == base:
         _strip(kind, validated_data)
         return
+    if target is not None and target.state != GrowingAreaGeometryVersion.STATE_ACTIVE:
+        raise GeometryPreviewRequired({
+            'code': 'geometry_area_retired',
+            'detail': 'A retired area keeps its last measurements.',
+        })
     mirrored = mirror_version(kind, instance.pk)
     if not area_is_used(request.active_project, kind, instance.pk):
         if target is None or mirrored is None or target.pk == mirrored.pk:
@@ -198,3 +203,30 @@ def dated_context(view: Any, instances: list[Model]) -> dict[str, Any]:
     """Serializer context for an explicitly serialized group of areas."""
     resolution = resolve_for(view.request, instances)
     return {**view.get_serializer_context(), GEOMETRY_CONTEXT_KEY: resolution}
+
+
+def guard_area_deletion(request: Any, instance: Model) -> None:
+    """A used area is retired, never deleted; an unused one may still be removed."""
+    kind = area_kind(instance)
+    if not area_is_used(request.active_project, kind, instance.pk):
+        return
+    _as_of, season = request_view_date(request)
+    versions = GrowingAreaGeometryVersion.objects.filter(**{f'{kind}_id': instance.pk})
+    start = season.start_date if season else None
+    target = (
+        versions.filter(effective_from__lte=start).order_by('-effective_from', '-pk').first()
+        if start else None
+    ) or mirror_version(kind, instance.pk)
+    raise GeometryPreviewRequired({
+        'code': 'area_in_use',
+        'detail': 'A used growing area can be retired from a season instead of deleted.',
+        'kind': kind,
+        'id': instance.pk,
+        'name': instance.name,
+        'version_id': target.pk if target else None,
+        'revision': target.revision if target else None,
+        'version_effective_from': target.effective_from if target else None,
+        'season': season.pk if season else None,
+        'season_start': start,
+        'season_label': season.label if season else None,
+    })

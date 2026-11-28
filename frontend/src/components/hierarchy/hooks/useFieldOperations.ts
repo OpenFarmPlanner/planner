@@ -5,6 +5,7 @@
 import { fieldAPI, type Location } from '../../../api/api';
 import type { TFunction } from 'i18next';
 import { confirmAction } from '../../../utils/confirmAction';
+import { retireInsteadOfDelete } from '../geometryChange/geometryChangeBridge';
 
 export function useFieldOperations(
   locations: Location[],
@@ -55,6 +56,11 @@ export function useFieldOperations(
       await fetchData();
       setError('');
     } catch (err) {
+      if (await retireInsteadOfDelete(err) !== null) {
+        await fetchData();
+        setError('');
+        return;
+      }
       setError(t('errors.deleteField'));
       console.error('Error deleting field:', err);
     }

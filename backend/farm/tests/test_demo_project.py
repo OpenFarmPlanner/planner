@@ -4,6 +4,7 @@ from collections import Counter
 from copy import deepcopy
 from datetime import date, timedelta
 from decimal import Decimal
+from functools import partial
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
@@ -63,6 +64,7 @@ from farm.services.demo_project import (
     DEMO_PROJECT_SLUG,
     DEMO_ROTATION_GROUP_NAMES,
     DEMO_TEXT,
+    GEOMETRY_DEMO_BEDS,
     GRAPHIC_DEMO_BEDS,
     GRAPHIC_DEMO_TASKS,
     DemoProjectResult,
@@ -78,6 +80,7 @@ from farm.services.demo_project import (
     resolve_demo_request_language,
 )
 from farm.services.germination_check import check_germination
+from farm.services.growing_area_geometry import resolve_geometry
 from farm.services.parcel_rotation_copy import preview_parcel_rotation
 from farm.services.seasons import build_planting_plan_copies
 from farm.services.seed_demand import build_seed_demand_rows
@@ -510,12 +513,12 @@ class DemoProjectServiceTests(TestCase):
                 location.area_sqm,
                 sum(field.length_m * field.width_m for field in location.fields.all()),
             )
-        self.assertEqual(Bed.objects.filter(project=result.project).count(), 24)
+        self.assertEqual(Bed.objects.filter(project=result.project).count(), 26)
         self.assertEqual(Crop.objects.filter(project=result.project).count(), 32)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 75)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 78)
         self.assertEqual(Supplier.objects.filter(project=result.project).count(), 3)
         self.assertEqual(FieldLayout.objects.filter(project=result.project).count(), 6)
-        self.assertEqual(BedLayout.objects.filter(project=result.project).count(), 24)
+        self.assertEqual(BedLayout.objects.filter(project=result.project).count(), 26)
         linked_crops = Crop.objects.filter(project=result.project, crop_species__isnull=False)
         self.assertEqual(linked_crops.exclude(variety='Topaz').count(), 31)
         self.assertTrue(Crop.objects.filter(project=result.project, name='Tomate', variety='').exists())
@@ -580,7 +583,7 @@ class DemoProjectServiceTests(TestCase):
         graphic_plans = plans.filter(bed__name__in=GRAPHIC_DEMO_BEDS['de'])
         other_plans = plans.exclude(pk__in=graphic_plans)
         self.assertEqual(
-            [other_plans.filter(season=season).count() for season in seasons], [1, 21, 23, 25, 0],
+            [other_plans.filter(season=season).count() for season in seasons], [1, 21, 25, 26, 0],
         )
         self.assertEqual(graphic_plans.count(), 5)
         for plan in graphic_plans.select_related('season'):
@@ -648,11 +651,44 @@ class DemoProjectServiceTests(TestCase):
             actual_harvest_start_date=date(2030, 7, 10), recorded_harvest_end_date__isnull=True,
         ).exists())
 
+    def test_demo_widens_one_bed_and_retires_another_in_every_language(self) -> None:
+        """Same IDs across seasons (#1634): 10 then 15 m², and a retired bed, plans intact."""
+        year = demo_current_year()
+        for language in SUPPORTED_LANGUAGE_CODES:
+            widened_name, retired_name = GEOMETRY_DEMO_BEDS[resolve_demo_language(language)]
+            with self.subTest(language=language):
+                project = create_or_reset_demo_project(language_code=language).project
+                widened = Bed.objects.get(project=project, name=widened_name)
+                retired = Bed.objects.get(project=project, name=retired_name)
+                seasons = {
+                    season.start_date.year: season
+                    for season in Season.objects.filter(project=project)
+                }
+                resolve = partial(resolve_geometry, project, beds=[widened.pk, retired.pk])
+                earlier = resolve(seasons[year - 1].start_date)
+                current = resolve(seasons[year].start_date)
+                following = resolve(seasons[year + 1].start_date)
+                self.assertEqual(earlier.get('bed', widened.pk).area_sqm, Decimal('10.0'))
+                self.assertEqual(current.get('bed', widened.pk).area_sqm, Decimal('15.0'))
+                self.assertEqual(widened.area_sqm, Decimal('15.0'))
+                self.assertEqual(
+                    PlantingPlan.objects.get(bed=widened, season=seasons[year - 1]).area_usage_sqm,
+                    Decimal('8'),
+                )
+                self.assertEqual(current.get('bed', retired.pk).status, 'active')
+                self.assertEqual(following.get('bed', retired.pk).status, 'retired')
+                self.assertTrue(PlantingPlan.objects.filter(
+                    bed=retired, season=seasons[year - 1],
+                ).exists())
+                self.assertTrue(widened.notes and retired.notes)
+
     def test_long_running_beds_have_planting_history(self) -> None:
         result = create_or_reset_demo_project()
         current_year = demo_current_year()
 
-        beds = Bed.objects.filter(project=result.project).exclude(name__in=GRAPHIC_DEMO_BEDS['de'])
+        beds = Bed.objects.filter(project=result.project).exclude(
+            name__in=[*GRAPHIC_DEMO_BEDS['de'], *GEOMETRY_DEMO_BEDS['de']],
+        )
         for bed in beds:
             history_years = set(
                 PlantingPlan.objects.filter(bed=bed, planting_date__year__lt=current_year)
@@ -787,6 +823,8 @@ class DemoProjectServiceTests(TestCase):
             'Erntebeet': (36, 432),
             'Misch- und Folgebeet': (64, 432),
             'Freies Beispielbeet': (92, 432),
+            'Erweitertes Beet': (8, 432),
+            'Stillgelegtes Beet': (44, 432),
         }
 
         layouts_by_name = {
@@ -838,7 +876,7 @@ class DemoProjectServiceTests(TestCase):
         user = User.objects.get(email='command-demo@example.local')
         self.assertEqual(project.name, 'Solawi Sonnenacker')
         self.assertTrue(ProjectMembership.objects.filter(project=project, user=user, role='admin').exists())
-        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 75)
+        self.assertEqual(PlantingPlan.objects.filter(project=project).count(), 78)
         public_entries = PublicCrop.objects.filter(source_project=project, seed_packages=[])
         self.assertEqual(public_entries.count(), 32)
         self.assertTrue(PublicCrop.objects.filter(source_project=project, name='Tomate', variety='Roma', row_spacing_m=0.70).exists())
@@ -858,9 +896,9 @@ class DemoProjectServiceTests(TestCase):
         self.assertEqual(settings_obj.default_project_id, result.project.id)
         self.assertEqual(settings_obj.last_project_id, result.project.id)
         self.assertEqual(Location.objects.filter(project=result.project).count(), 3)
-        self.assertEqual(Bed.objects.filter(project=result.project).count(), 24)
+        self.assertEqual(Bed.objects.filter(project=result.project).count(), 26)
         self.assertEqual(Crop.objects.filter(project=result.project).count(), 32)
-        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 75)
+        self.assertEqual(PlantingPlan.objects.filter(project=result.project).count(), 78)
 
     def test_seeding_marks_when_it_finished_after_its_own_revisions(self) -> None:
         """The dashboard tells seed revisions from user changes by this marker."""

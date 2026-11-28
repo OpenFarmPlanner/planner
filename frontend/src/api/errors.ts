@@ -66,6 +66,7 @@ const AREA_INPUT_SPACING_MISSING_MESSAGE =
 
 const backendMessageMap: Record<string, string> = {
   'the harvest end must be on or after the harvest start.': 'plantingPlans:actualDates.harvestErrors.order',
+  'this growing area is not available on the planting date.': 'hierarchy:geometryStatus.unavailableForPlan',
   'use a date within the crop’s occupancy.': 'plantingPlans:actualDates.harvestErrors.occupancy',
   'use a date for the selected harvest occurrence.': 'plantingPlans:actualDates.harvestErrors.occurrence',
   'recorded harvests must be ordered by occurrence and cannot overlap.': 'plantingPlans:actualDates.harvestErrors.overlap',
@@ -95,6 +96,8 @@ const backendMessageMap: Record<string, string> = {
   'bed_contains_individual_positions': 'fields:individualPlants.bedDimensionsConflict',
   'parcel_contains_individual_positions': 'fields:individualPlants.dimensionsConflict',
   'geometry_preview_required': 'hierarchy:geometryChange.notSaved',
+  'geometry_area_retired': 'hierarchy:geometryChange.errors.geometry_area_retired',
+  'area_in_use': 'hierarchy:retirement.inUse',
   'geometry_undo_done': 'hierarchy:geometryChange.errors.geometry_undo_done',
   'geometry_undo_changed': 'hierarchy:geometryChange.errors.geometry_undo_changed',
   'geometry_undo_blocked': 'hierarchy:geometryChange.errors.geometry_undo_blocked',

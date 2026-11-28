@@ -3,6 +3,7 @@
  */
 import type {
   EffectiveSiteConditions,
+  GrowingAreaGeometryStatus,
   IrrigationAvailability,
   LightCondition,
   SoilMoisture,
@@ -26,6 +27,8 @@ export interface HierarchyRow {
   area_sqm?: number | string;
   length_m?: number | null;
   width_m?: number | null;
+  /** Recorded status at the selected season's view date (#1634). */
+  geometryStatus?: GrowingAreaGeometryStatus;
   notes?: string;
   // The row's own (explicit) site conditions; null/undefined inherits.
   light_condition?: LightCondition | null;

@@ -183,8 +183,16 @@ const renderDimensionCell = (
   );
 };
 
-const renderCalculatedValueCell = (params: GridRenderCellParams<HierarchyRow>): ReactElement | null => {
+const renderCalculatedValueCell = (
+  params: GridRenderCellParams<HierarchyRow>, t: TFunction,
+): ReactElement | null => {
   if (params.row.type === 'individualPlan') return null;
+  const status = params.row.geometryStatus;
+  if (status === 'retired' || status === 'not_yet_available') {
+    // Out of use in the selected season (#1634): the status, not a size.
+    return <Box component="span" sx={{ color: 'text.secondary' }}>
+      {t(`hierarchy:geometryStatus.${status}`)}</Box>;
+  }
   const displayValue = params.formattedValue ?? params.value;
   const hasDisplayValue = displayValue !== null && displayValue !== undefined && String(displayValue).trim() !== '';
 
@@ -350,7 +358,7 @@ export function createHierarchyColumns(
         tooltip: t('hierarchy:tooltips.calculatedArea'),
       }),
       valueGetter: (_value, row: HierarchyRow) => calculateAreaValue(row),
-      renderCell: renderCalculatedValueCell,
+      renderCell: (params: GridRenderCellParams<HierarchyRow>) => renderCalculatedValueCell(params, t),
     },
     {
       field: INDIVIDUAL_PLANT_COUNT_FIELD,

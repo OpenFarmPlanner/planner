@@ -49,7 +49,8 @@
     "seeds": "graines",
     "quantityOverride": "Quantité saisie {{quantity}}",
     "previewChanged": "L’aperçu de la rotation a changé. Vérifiez-le avant de copier.",
-    "bedCount_many": "{{count}} planches"
+    "bedCount_many": "{{count}} planches",
+    "unavailableBed": "La planche {{bed}} n’est pas disponible dans la saison cible."
   },
   "title": "Surfaces de culture",
   "addField": "Parcelle",
@@ -505,5 +506,27 @@
       "geometry_undo_blocked": "Les séries existantes ne correspondent plus aux dimensions précédentes.",
       "not_found": "Cette surface n’existe plus."
     }
+  },
+  "retirement": {
+    "title": "Désaffecter « {{name}} » ?",
+    "explanation": "« {{name}} » est utilisée par des séries et n’est donc pas supprimée. Désaffectée, la surface conserve ses séries précédentes mais n’en accueille plus de nouvelles.",
+    "fromSeason": "Désaffecter à partir de la saison {{season}} ({{date}}).",
+    "descendants_one": "{{formatted}} surface qu’elle contient est également désaffectée.",
+    "descendants_many": "Les {{formatted}} surfaces qu’elle contient sont également désaffectées.",
+    "descendants_other": "Les {{formatted}} surfaces qu’elle contient sont également désaffectées.",
+    "confirm": "Désaffecter",
+    "saved": "« {{name}} » est désaffectée à partir du {{date}}.",
+    "inUse": "Cette surface est utilisée et ne peut pas être supprimée.",
+    "findings": {
+      "geometry_retirement_plans_one": "{{formatted}} série s’étend sur cette saison ou au-delà. Déplacez-la ou supprimez-la d’abord.",
+      "geometry_retirement_plans_many": "{{formatted}} séries s’étendent sur cette saison ou au-delà. Déplacez-les ou supprimez-les d’abord.",
+      "geometry_retirement_plans_other": "{{formatted}} séries s’étendent sur cette saison ou au-delà. Déplacez-les ou supprimez-les d’abord.",
+      "geometry_retirement_later_versions": "D’autres dimensions sont déjà enregistrées à partir du {{date}}. Choisissez une saison ultérieure."
+    }
+  },
+  "geometryStatus": {
+    "retired": "Désaffectée",
+    "not_yet_available": "Pas encore créée",
+    "unavailableForPlan": "Cette surface de culture n’est pas disponible à la date de plantation."
   }
 }

@@ -27,6 +27,7 @@ from farm.project_context import get_active_project_or_400, resolve_season_id_fr
 from farm.services.geometry_changes import (
     ACTION_CORRECTION,
     ACTION_PHYSICAL_CHANGE,
+    ACTION_RETIREMENT,
     ACTIONS,
     GeometryChangeConflict,
     GeometryChangeRequest,
@@ -278,8 +279,9 @@ class GeometryChangeSerializer(serializers.Serializer):
         attrs = super().validate(attrs)
         if attrs['action'] == ACTION_CORRECTION and not attrs.get('version_id'):
             raise serializers.ValidationError({'version_id': 'A correction names its version.'})
-        if attrs['action'] == ACTION_PHYSICAL_CHANGE and not attrs.get('season'):
-            raise serializers.ValidationError({'season': 'A physical change needs a season.'})
+        dated = attrs['action'] in (ACTION_PHYSICAL_CHANGE, ACTION_RETIREMENT)
+        if dated and not attrs.get('season'):
+            raise serializers.ValidationError({'season': 'This change needs a season.'})
         validate_measurements(attrs['kind'], attrs)
         return attrs
 

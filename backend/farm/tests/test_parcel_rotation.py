@@ -484,3 +484,30 @@ class ParcelRotationApiTest(ProjectApiTestCase):
             copy = PlantingPlan.objects.get(season_id=response.data[season_key]['id'])
             self.assertEqual(copy.bed_id, bed.pk)
             self.assertEqual(copy.planting_date, planting_date)
+
+    def test_rotation_uses_dated_sizes_and_reports_a_retired_target(self):
+        from farm.models import GrowingAreaGeometryVersion as Version
+
+        self._create_group()
+        this_year = date.today().year
+        source = self._season(this_year)
+        target = self._season(this_year + 1)
+        self._plan(source, self.rotation_beds[0][0], '5')
+        south_lower = self.rotation_beds[1][0]
+        widened = Version.objects.create(
+            project=self.project, bed=south_lower, parent_field=self.rotation_fields[1],
+            effective_from=target.start_date, origin=Version.ORIGIN_PHYSICAL_CHANGE,
+            confirmed_area_sqm=Decimal('16.2'), measurement_basis=Version.BASIS_DECLARED_AREA,
+        )
+        url = f'{SEASONS_URL}{target.pk}/copy-preview/'
+        params = {'source_season_id': source.pk, 'rotate_parcels': True}
+        rotation = self.client.get(url, params).data['parcel_rotation']
+        self.assertEqual(rotation['issues'], [])
+        # 5 of the source's 10 m² scale to the target's 16.2 m² from its season.
+        self.assertEqual(Decimal(str(rotation['moves'][0]['new_area_sqm'])), Decimal('8.1'))
+
+        widened.state = Version.STATE_RETIRED
+        widened.origin = Version.ORIGIN_RETIREMENT
+        widened.save()
+        rotation = self.client.get(url, params).data['parcel_rotation']
+        self.assertIn('bed_unavailable', [issue['code'] for issue in rotation['issues']])

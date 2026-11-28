@@ -44,7 +44,8 @@
     "grams": "g",
     "seeds": "seeds",
     "quantityOverride": "Manual quantity {{quantity}}",
-    "previewChanged": "The parcel rotation preview changed. Check it again before copying."
+    "previewChanged": "The parcel rotation preview changed. Check it again before copying.",
+    "unavailableBed": "The bed {{bed}} is not available in the target season."
   },
   "title": "Fields & Beds",
   "addField": "Field",
@@ -479,5 +480,25 @@
       "geometry_undo_blocked": "Existing planting plans no longer fit the earlier measurements.",
       "not_found": "This area no longer exists."
     }
+  },
+  "retirement": {
+    "title": "Retire “{{name}}”?",
+    "explanation": "“{{name}}” is used by planting plans, so it is not deleted. A retired area keeps its earlier planting plans but takes no new ones.",
+    "fromSeason": "Retire from season {{season}} ({{date}}).",
+    "descendants_one": "{{formatted}} area inside it is retired as well.",
+    "descendants_other": "The {{formatted}} areas inside it are retired as well.",
+    "confirm": "Retire",
+    "saved": "“{{name}}” is retired from {{date}}.",
+    "inUse": "This area is in use and cannot be deleted.",
+    "findings": {
+      "geometry_retirement_plans_one": "{{formatted}} planting plan reaches into this season or later. Move or delete it first.",
+      "geometry_retirement_plans_other": "{{formatted}} planting plans reach into this season or later. Move or delete them first.",
+      "geometry_retirement_later_versions": "Further measurements are already recorded from {{date}}. Choose a later season."
+    }
+  },
+  "geometryStatus": {
+    "retired": "Retired",
+    "not_yet_available": "Not set up yet",
+    "unavailableForPlan": "This growing area is not available on the planting date."
   }
 }

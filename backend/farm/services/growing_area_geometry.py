@@ -455,6 +455,60 @@ def bed_area_timelines(beds: Iterable[Bed]) -> dict[int, AreaTimeline]:
     }
 
 
+class AvailabilityIndex:
+    """Whether areas can take new assignments on given dates, loaded in bulk.
+
+    An area is available on a day when its own version and every ancestor's
+    (at that same day) is active, or unknown before the first observation.
+    Retired and not-yet-available intervals are unavailable.
+    """
+
+    def __init__(
+        self, project: Project, *, beds: Iterable[int] = (), fields: Iterable[int] = (),
+        locations: Iterable[int] = (),
+    ) -> None:
+        self._timelines: dict[tuple[AreaKind, int], list[GrowingAreaGeometryVersion]] = {}
+        self._present_parent: dict[tuple[AreaKind, int], int | None] = {}
+        pending: dict[AreaKind, set[int]] = {
+            'bed': set(beds), 'field': set(fields), 'location': set(locations),
+        }
+        for kind in reversed(AREA_KINDS):
+            parents = _current_parents(project, kind, pending[kind])
+            versions = _versions_by_owner(project, kind, parents)
+            parent_kind = _PARENT_KIND[kind]
+            for area_id, present_parent in parents.items():
+                self._timelines[(kind, area_id)] = versions[area_id]
+                self._present_parent[(kind, area_id)] = present_parent
+                if parent_kind is None:
+                    continue
+                if present_parent:
+                    pending[parent_kind].add(present_parent)
+                pending[parent_kind].update(
+                    version.parent_id for version in versions[area_id] if version.parent_id
+                )
+
+    def available(self, kind: AreaKind, area_id: int, day: date) -> bool:
+        """Whether the area and its ancestors can take an assignment on ``day``."""
+        key = (kind, area_id)
+        if key not in self._timelines:
+            return False
+        versions = self._timelines[key]
+        in_effect = [version for version in versions if version.effective_from <= day]
+        if in_effect:
+            current = in_effect[-1]
+            if current.state != Version.STATE_ACTIVE:
+                return False
+            parent_id = current.parent_id
+        else:
+            if versions and versions[0].origin == Version.ORIGIN_NEW_AREA:
+                return False
+            parent_id = self._present_parent[key]
+        parent_kind = _PARENT_KIND[kind]
+        if parent_kind is None:
+            return True
+        return parent_id is not None and self.available(parent_kind, parent_id, day)
+
+
 def geometry_view_date(season: Season | None, today: date | None = None) -> date:
     """The date List, Graphic and Map resolve for a season view.
 

@@ -48,7 +48,12 @@ from farm.services.growing_area_geometry import (
     project_season,
 )
 
-from .dated_geometry import DatedGeometryViewMixin, dated_context, guard_geometry_update
+from .dated_geometry import (
+    DatedGeometryViewMixin,
+    dated_context,
+    guard_area_deletion,
+    guard_geometry_update,
+)
 from .serializers import (
     BED_NAME_DUPLICATE_MESSAGE,
     FIELD_NAME_DUPLICATE_MESSAGE,
@@ -182,6 +187,7 @@ class LocationViewSet(
 
     @transaction.atomic
     def perform_destroy(self, instance):
+        guard_area_deletion(self.request, instance)
         preserve_relocated_bed_layouts(instance, user_name=_current_actor_label(self.request))
         super().perform_destroy(instance)
 
@@ -205,6 +211,11 @@ class FieldViewSet(
     api_token_actions = {'list', 'retrieve'}
     queryset = Field.objects.select_related('location').all()
     serializer_class = FieldSerializer
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        guard_area_deletion(self.request, instance)
+        super().perform_destroy(instance)
 
     def perform_create(self, serializer):
         try:
@@ -307,6 +318,11 @@ class BedViewSet(
     api_token_actions = {'list', 'retrieve'}
     queryset = Bed.objects.select_related('field', 'field__location').all()
     serializer_class = BedSerializer
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        guard_area_deletion(self.request, instance)
+        super().perform_destroy(instance)
 
     def perform_create(self, serializer):
         try:

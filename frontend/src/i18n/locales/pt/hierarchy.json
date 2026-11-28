@@ -49,7 +49,8 @@
     "seeds": "sementes",
     "quantityOverride": "Quantidade manual {{quantity}}",
     "previewChanged": "A pré-visualização da rotação mudou. Verifica-a antes de copiar.",
-    "bedCount_many": "{{count}} canteiros"
+    "bedCount_many": "{{count}} canteiros",
+    "unavailableBed": "O canteiro {{bed}} não está disponível na época de destino."
   },
   "title": "Parcelas e canteiros",
   "addField": "Parcela",
@@ -505,5 +506,27 @@
       "geometry_undo_blocked": "As séries existentes já não são compatíveis com as medidas anteriores.",
       "not_found": "Esta área já não existe."
     }
+  },
+  "retirement": {
+    "title": "Desativar «{{name}}»?",
+    "explanation": "«{{name}}» é usada por séries e por isso não é eliminada. Uma área desativada mantém as séries anteriores, mas já não recebe novas.",
+    "fromSeason": "Desativar a partir da época {{season}} ({{date}}).",
+    "descendants_one": "{{formatted}} área que contém também é desativada.",
+    "descendants_many": "As {{formatted}} áreas que contém também são desativadas.",
+    "descendants_other": "As {{formatted}} áreas que contém também são desativadas.",
+    "confirm": "Desativar",
+    "saved": "«{{name}}» fica desativada a partir de {{date}}.",
+    "inUse": "Esta área está em uso e não pode ser eliminada.",
+    "findings": {
+      "geometry_retirement_plans_one": "{{formatted}} série estende-se a esta época ou mais tarde. Mova-a ou elimine-a primeiro.",
+      "geometry_retirement_plans_many": "{{formatted}} séries estendem-se a esta época ou mais tarde. Mova-as ou elimine-as primeiro.",
+      "geometry_retirement_plans_other": "{{formatted}} séries estendem-se a esta época ou mais tarde. Mova-as ou elimine-as primeiro.",
+      "geometry_retirement_later_versions": "Já existem outras medidas registadas a partir de {{date}}. Escolha uma época posterior."
+    }
+  },
+  "geometryStatus": {
+    "retired": "Desativada",
+    "not_yet_available": "Ainda não criada",
+    "unavailableForPlan": "Esta área de cultivo não está disponível na data de plantação."
   }
 }

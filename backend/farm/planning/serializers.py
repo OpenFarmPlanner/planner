@@ -42,6 +42,7 @@ from farm.services.crop_inheritance import (
 from farm.services.crop_rotation import RotationResult, RotationService
 from farm.services.demo_project import find_demo_crop_species, is_demo_project_description
 from farm.services.germination_check import check_germination
+from farm.services.growing_area_geometry import AvailabilityIndex
 from farm.services.harvests import HarvestTotals, plan_harvest_totals
 from farm.services.plant_count import compute_plan_plant_count
 from farm.services.seasonal_harvest import (
@@ -494,6 +495,7 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         validate_individual_planting(attrs, self.instance)
         self._validate_create_has_active_season(attrs)
         self._validate_planting_date_within_season(attrs)
+        self._validate_growing_area_available(attrs)
         self._resolve_clearing_date(attrs)
         self._apply_planned_propagation_dates(attrs)
         self._apply_area_input_conversion(attrs)
@@ -669,6 +671,42 @@ class PlantingPlanSerializer(serializers.ModelSerializer):
         raise serializers.ValidationError({
             'planting_date': f'Pflanztermin muss innerhalb der Saison liegen ({period}).',
         })
+
+    def _validate_growing_area_available(self, attrs) -> None:
+        """A new or moved assignment needs an area available on the plan's date (#1634).
+
+        Retired and not-yet-available intervals take no new plans; a plan that
+        keeps its area and date stays editable.
+        """
+        current = self.instance
+        keys = ('bed', 'parcel', 'site', 'planting_date', 'season')
+        if current is not None and not any(
+            key in attrs and attrs[key] != getattr(current, key) for key in keys
+        ):
+            return
+        assignments = (('bed', 'bed'), ('field', 'parcel'), ('location', 'site'))
+        area = next(
+            (
+                (kind, value) for kind, key in assignments
+                if (value := attrs.get(key, getattr(current, key, None))) is not None
+            ),
+            None,
+        )
+        if area is None:
+            return
+        day = attrs.get('planting_date', getattr(current, 'planting_date', None))
+        if day is None:
+            season = self._resolve_target_season(attrs)
+            day = season.start_date if season is not None else None
+        if day is None:
+            return
+        kind, value = area
+        index = AvailabilityIndex(value.project, **{f'{kind}s': [value.pk]})
+        if not index.available(kind, value.pk, day):
+            field = {'bed': 'bed', 'field': 'parcel', 'location': 'site'}[kind]
+            raise serializers.ValidationError({
+                field: 'This growing area is not available on the planting date.',
+            })
 
     def _validate_minimal_identity(self, attrs):
         """A plan can be saved as a draft missing bed/planting_date/

@@ -44,7 +44,8 @@
     "grams": "g",
     "seeds": "zaden",
     "quantityOverride": "Handmatige hoeveelheid {{quantity}}",
-    "previewChanged": "Het rotatievoorbeeld is gewijzigd. Controleer het opnieuw voordat je kopieert."
+    "previewChanged": "Het rotatievoorbeeld is gewijzigd. Controleer het opnieuw voordat je kopieert.",
+    "unavailableBed": "Het bed {{bed}} is in het doelseizoen niet beschikbaar."
   },
   "title": "Teeltoppervlakken",
   "addField": "Perceel",
@@ -479,5 +480,25 @@
       "geometry_undo_blocked": "Bestaande teelten passen niet meer bij de eerdere maten.",
       "not_found": "Dit oppervlak bestaat niet meer."
     }
+  },
+  "retirement": {
+    "title": "‘{{name}}’ buiten gebruik stellen?",
+    "explanation": "‘{{name}}’ wordt door teelten gebruikt en wordt daarom niet verwijderd. Een oppervlak dat buiten gebruik is, houdt zijn eerdere teelten maar krijgt geen nieuwe meer.",
+    "fromSeason": "Buiten gebruik stellen vanaf seizoen {{season}} ({{date}}).",
+    "descendants_one": "{{formatted}} oppervlak erbinnen wordt ook buiten gebruik gesteld.",
+    "descendants_other": "De {{formatted}} oppervlakken erbinnen worden ook buiten gebruik gesteld.",
+    "confirm": "Buiten gebruik stellen",
+    "saved": "‘{{name}}’ is vanaf {{date}} buiten gebruik.",
+    "inUse": "Dit oppervlak wordt gebruikt en kan niet worden verwijderd.",
+    "findings": {
+      "geometry_retirement_plans_one": "{{formatted}} teelt loopt door in dit seizoen of later. Verplaats of verwijder die eerst.",
+      "geometry_retirement_plans_other": "{{formatted}} teelten lopen door in dit seizoen of later. Verplaats of verwijder die eerst.",
+      "geometry_retirement_later_versions": "Vanaf {{date}} zijn al andere maten vastgelegd. Kies een later seizoen."
+    }
+  },
+  "geometryStatus": {
+    "retired": "Buiten gebruik",
+    "not_yet_available": "Nog niet aangelegd",
+    "unavailableForPlan": "Dit teeltoppervlak is op de plantdatum niet beschikbaar."
   }
 }

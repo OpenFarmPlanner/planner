@@ -4,11 +4,14 @@ import { AxiosError, AxiosHeaders } from 'axios';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { GeometryChangePreview, GeometryPreviewRequired } from '../../../api/types';
+import { AreaRetirementDialog } from '../geometryChange/AreaRetirementDialog';
 import { GeometryChangeDialog } from '../geometryChange/GeometryChangeDialog';
 import {
   geometryPreviewRequest,
+  registerAreaRetirementHandler,
   registerGeometryChangeHandler,
   requestGeometryChange,
+  retireInsteadOfDelete,
 } from '../geometryChange/geometryChangeBridge';
 
 const { previewMock, confirmMock } = vi.hoisted(() => ({ previewMock: vi.fn(), confirmMock: vi.fn() }));
@@ -102,5 +105,52 @@ describe('geometryChangeBridge', () => {
     expect(await requestGeometryChange(request)).toBe(true);
     unregister();
     expect(await requestGeometryChange(request)).toBe(false);
+  });
+});
+
+describe('AreaRetirementDialog', () => {
+  const inUse = {
+    code: 'area_in_use' as const, kind: 'bed' as const, id: 42, name: 'Beet 42',
+    version_id: 7, revision: 1, version_effective_from: '2025-10-01',
+    season: 9, season_start: '2026-10-01', season_label: '26/27',
+  };
+
+  beforeEach(() => {
+    previewMock.mockReset();
+    confirmMock.mockReset();
+  });
+
+  it('previews and confirms a retirement from the selected season', async () => {
+    previewMock.mockResolvedValue({ data: preview({ action: 'retirement', descendant_count: 0 }) });
+    confirmMock.mockResolvedValue({ data: {} });
+    const onDone = vi.fn();
+    render(<AreaRetirementDialog request={inUse} onDone={onDone} />);
+    expect(await screen.findByText(/Stilllegen ab Saison 26\/27/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Stilllegen' })).toBeEnabled());
+    expect(previewMock).toHaveBeenCalledWith({ kind: 'bed', id: 42, action: 'retirement', season: 9 });
+    await userEvent.click(screen.getByRole('button', { name: 'Stilllegen' }));
+    await waitFor(() => expect(onDone).toHaveBeenCalledWith(true));
+  });
+
+  it('explains plans that block the retirement', async () => {
+    previewMock.mockResolvedValue({ data: preview({
+      action: 'retirement', can_confirm: false, token: null,
+      conflicts: [{ code: 'geometry_retirement_plans', count: 2 }],
+    }) });
+    render(<AreaRetirementDialog request={inUse} onDone={vi.fn()} />);
+    expect(await screen.findByText(/2 Anbaupläne reichen in diese Saison/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Stilllegen' })).toBeDisabled();
+  });
+
+  it('offers retirement only for a refused deletion of a used area', async () => {
+    const refused = new AxiosError('Conflict', '409', undefined, undefined, {
+      status: 409, statusText: 'Conflict', data: inUse, headers: {},
+      config: { headers: new AxiosHeaders() },
+    });
+    expect(await retireInsteadOfDelete(new Error('other'))).toBeNull();
+    expect(await retireInsteadOfDelete(refused)).toBe(false);
+    const unregister = registerAreaRetirementHandler(async () => true);
+    expect(await retireInsteadOfDelete(refused)).toBe(true);
+    unregister();
   });
 });

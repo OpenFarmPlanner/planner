@@ -641,7 +641,8 @@
       "countRestored_many": "{{count}} séries restauradas",
       "countUpdated_many": "{{count}} séries atualizadas",
       "undo": "Anular esta ação",
-      "geometryChange": "Medidas de {{name}} alteradas"
+      "geometryChange": "Medidas de {{name}} alteradas",
+      "areaRetirement": "Desativação de {{name}} a partir da época {{season}}"
     },
     "import": {
       "colorInheritRequiresVariety": "Apenas as variedades aceitam o valor inherit na coluna de cor.",

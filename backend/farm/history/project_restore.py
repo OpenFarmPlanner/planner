@@ -26,6 +26,7 @@ from farm.models import (
     MediaFile,
     ParcelRotationGroup,
     ParcelRotationMember,
+    PlantingPlan,
     Project,
     RetainedUpload,
     Season,
@@ -311,7 +312,9 @@ def _apply_recorded_parent_deletions(state: ProjectState, seen: set[tuple[str, s
                     continue
                 if field.remote_field.on_delete is models.SET_NULL and field.null:
                     snapshot[field.attname] = None
-                elif field.remote_field.on_delete is models.CASCADE:
+                # Plans now RESTRICT their growing area (#1634); a recorded older
+                # area deletion still removed them by cascade.
+                elif field.remote_field.on_delete in (models.CASCADE, models.RESTRICT):
                     state[label].pop(pk)
                     absent.add((label, pk))
                     seen.add((label, pk))
@@ -455,14 +458,46 @@ def _validate_reference(
     raise ProjectRestoreConflict("missing historical dependency")
 
 
+def _delete_restored_rows(project: Project, queryset: models.QuerySet) -> None:
+    try:
+        with transaction.atomic():
+            queryset.delete()
+    except RestrictedError as exc:
+        plans = _restricted_plans(project, exc)
+        PlantingPlan.objects.filter(project=project, pk__in=[plan.pk for plan in plans]).delete()
+        queryset.delete()
+
+
+def _restricted_plans(project: Project, error: RestrictedError) -> list[models.Model]:
+    """Plans whose growing area a restore removes; the restore recreates them.
+
+    Plans RESTRICT their area so ordinary deletes cannot take them along
+    (#1634). A restore that removes a later parent still replaces the whole
+    affected subtree, as the former cascade did.
+    """
+    restricted = list(error.restricted_objects)
+    if restricted and all(
+        isinstance(item, PlantingPlan) and item.project_id == project.pk for item in restricted
+    ):
+        return restricted
+    raise ProjectRestoreConflict("protected dependent data") from error
+
+
 def _validate_delete(project: Project, instances: list[models.Model]) -> None:
     if not instances:
         return
     collector = Collector(using="default")
     try:
         collector.collect(instances)
-    except (ProtectedError, RestrictedError) as exc:
+    except RestrictedError as exc:
+        _validate_delete(project, _restricted_plans(project, exc))
+        return
+    except ProtectedError as exc:
         raise ProjectRestoreConflict("protected dependent data") from exc
+    _validate_collected(project, collector)
+
+
+def _validate_collected(project: Project, collector: Collector) -> None:
     collected = list(collector.data.items()) + [
         (queryset.model, queryset) for queryset in collector.fast_deletes
     ]
@@ -510,7 +545,7 @@ def apply_project_state(
             queryset.update(deleted_at=timezone.now())
         else:
             _validate_delete(project, list(queryset))
-            queryset.delete()
+            _delete_restored_rows(project, queryset)
     # Parent deletion can cascade or clear FKs on rows the inverse will restore.
     current = capture_project_state(project)
     prefix = f"restore{uuid4().hex}"

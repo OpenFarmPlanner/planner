@@ -420,13 +420,15 @@ class ProjectRestorePreviewTests(HistoryInvariantTestCase):
         })
         crop = self.write('general crop', 'post', '/crops/', {'name': 'Tomato'})
         variety = self.write('variety', 'post', '/crops/', {'name': 'Tomato', 'variety': 'Roma'})
-        self.write('planting plan', 'post', '/planting-plans/', {
+        plan = self.write('planting plan', 'post', '/planting-plans/', {
             'crop': crop['id'], 'bed': bed['id'], 'season': season['id'],
             'planting_date': '2026-05-01', 'area_usage_sqm': 4,
         })
         historical = self.versions[-1]
         self.write('delete variety', 'delete', f"/crops/{variety['id']}/")
         self.write('edit general crop', 'patch', f"/crops/{crop['id']}/", {'notes': 'New notes'})
+        # A used area is never deleted with its plans (#1634); remove the plan first.
+        self.write('delete planting plan', 'delete', f"/planting-plans/{plan['id']}/")
         self.write('delete growing area', 'delete', f"/locations/{location['id']}/")
         for index in range(7):
             self.write('add later crop', 'post', '/crops/', {'name': f'Later crop {index}'})

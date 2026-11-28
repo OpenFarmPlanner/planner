@@ -642,7 +642,8 @@
       "countUpdated_many": "{{count}} séries mises à jour",
       "reverted": "Restauré : {{what}}",
       "undo": "Annuler cette action",
-      "geometryChange": "Dimensions de {{name}} modifiées"
+      "geometryChange": "Dimensions de {{name}} modifiées",
+      "areaRetirement": "Désaffectation de {{name}} à partir de la saison {{season}}"
     },
     "import": {
       "colorInheritRequiresVariety": "Seules les variétés acceptent la valeur inherit dans la colonne de couleur.",

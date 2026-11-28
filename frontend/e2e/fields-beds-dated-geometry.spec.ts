@@ -61,3 +61,40 @@ test('a physical change from a later season keeps the earlier season unchanged',
   const saved = await apiRequest<{ width_m: number }>(page, 'GET', `/beds/${bed.id}/`);
   expect(saved.width_m).toBe(1);
 });
+
+test('deleting a used bed offers retiring it from the selected season instead', async ({ page, request }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await loginWithDeterministicProject(page, request, 'fields-beds-dated-geometry-retire', { loginAsAdmin: true });
+  await page.goto('/app/fields-beds');
+  await page.waitForLoadState('networkidle');
+  const year = new Date().getFullYear();
+  const current = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+    start_date: `${year}-01-01`, end_date: `${year}-12-31`,
+  });
+  const later = await apiRequest<{ id: number }>(page, 'POST', '/seasons/', {
+    start_date: `${year + 1}-01-01`, end_date: `${year + 1}-12-31`,
+  });
+  const locations = await apiRequest<{ results: Array<{ id: number }> }>(page, 'GET', '/locations/');
+  const field = await apiRequest<{ id: number }>(page, 'POST', '/fields/', {
+    name: 'Geometrieparzelle', location: locations.results[0].id,
+  });
+  const bed = await apiRequest<{ id: number }>(page, 'POST', '/beds/', {
+    name: BED, field: field.id, length_m: 10, width_m: 1,
+  });
+  await apiRequest(page, 'POST', '/planting-plans/', { bed: bed.id, season: current.id });
+
+  await selectSeason(page, later.id);
+  const row = page.locator(`[role="row"][data-id="${bed.id}"]`);
+  await row.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Löschen', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: `„${BED}“ stilllegen?` });
+  await expect(dialog).toContainText(`Stilllegen ab Saison ${year + 1}`);
+  await dialog.getByRole('button', { name: 'Stilllegen', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(bedCell(page, 'area_sqm')).toContainText('Stillgelegt');
+
+  await selectSeason(page, current.id);
+  await expect(bedCell(page, 'area_sqm')).toContainText('10');
+  const saved = await apiRequest<{ id: number }>(page, 'GET', `/beds/${bed.id}/`);
+  expect(saved.id).toBe(bed.id);
+});
