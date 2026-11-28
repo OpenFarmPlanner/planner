@@ -17,6 +17,7 @@ from farm.history.project_restore import CHECKPOINT_KEY, MAX_PREVIEW_HISTORY_BYT
 from farm.models import (
     Crop,
     CropCompanion,
+    GrowingAreaGeometryVersion,
     HarvestAllocation,
     PlantingPlan,
     Project,
@@ -951,12 +952,17 @@ class GrowingAreaEditBenchmarkSeedTests(TestCase):
         self.assertEqual(project.locations.count(), 2)
         self.assertEqual(project.fields.count(), 4)
         self.assertEqual(project.beds.count(), 24)
+        # Bulk-created areas still get their first dated geometry version.
+        versions = GrowingAreaGeometryVersion.objects.filter(project=project)
+        self.assertEqual(versions.count(), 2 + 4 + 24)
+        self.assertFalse(project.beds.filter(geometry_versions__isnull=True).exists())
         bed = project.beds.earliest("id")
         bed.notes = "Keep local notes"
         bed.save(update_fields=["notes"])
 
         call_command("seed_growing_area_edit_benchmark", apply=True, **self.arguments)
         self.assertEqual(project.beds.count(), 24)
+        self.assertEqual(versions.count(), 2 + 4 + 24)
         bed.refresh_from_db()
         self.assertEqual(bed.notes, "Keep local notes")
 
